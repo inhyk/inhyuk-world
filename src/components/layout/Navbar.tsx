@@ -1,74 +1,111 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "motion/react";
 
 const navLinks = [
-  { href: "/#games", label: "Games" },
-  { href: "/about", label: "About" },
+  { href: "/#games", label: "게임" },
+  { href: "/about", label: "소개" },
+  { href: "#contact", label: "연락하기" },
 ];
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <nav className="fixed top-0 right-0 left-0 z-50 border-b border-border bg-background/60 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+    <nav
+      className={`fixed top-0 right-0 left-0 z-50 transition-all duration-500 ${
+        scrolled
+          ? "bg-background/80 backdrop-blur-xl"
+          : "bg-transparent"
+      }`}
+    >
+      <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-8">
         <Link
           href="/"
-          className="font-[family-name:var(--font-dm-sans)] text-lg font-black tracking-[-0.05em]"
+          className="font-[family-name:var(--font-playfair)] text-2xl font-bold tracking-[-0.02em]"
         >
-          InHyuk World
+          InHyuk.
         </Link>
 
-        {/* 데스크탑 */}
-        <div className="hidden items-center gap-8 md:flex">
+        {/* Desktop */}
+        <div className="hidden items-center gap-10 md:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-semibold text-muted transition-colors hover:text-foreground"
+              className="font-[family-name:var(--font-inter)] text-sm font-medium text-muted-strong transition-colors duration-300 hover:text-foreground"
             >
               {link.label}
             </Link>
           ))}
         </div>
 
-        {/* 모바일 햄버거 */}
+        {/* Mobile hamburger */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex flex-col gap-1.5 md:hidden"
-          aria-label="메뉴 열기"
+          className="relative z-50 flex h-10 w-10 flex-col items-center justify-center gap-1.5 md:hidden"
+          aria-label="Toggle menu"
         >
           <span
-            className={`h-0.5 w-6 bg-foreground transition-transform ${isOpen ? "translate-y-2 rotate-45" : ""}`}
+            className={`h-[1.5px] w-6 bg-foreground transition-all duration-300 ${
+              isOpen ? "translate-y-[7.5px] rotate-45" : ""
+            }`}
           />
           <span
-            className={`h-0.5 w-6 bg-foreground transition-opacity ${isOpen ? "opacity-0" : ""}`}
+            className={`h-[1.5px] w-6 bg-foreground transition-all duration-300 ${
+              isOpen ? "opacity-0" : ""
+            }`}
           />
           <span
-            className={`h-0.5 w-6 bg-foreground transition-transform ${isOpen ? "-translate-y-2 -rotate-45" : ""}`}
+            className={`h-[1.5px] w-6 bg-foreground transition-all duration-300 ${
+              isOpen ? "-translate-y-[7.5px] -rotate-45" : ""
+            }`}
           />
         </button>
       </div>
 
-      {/* 모바일 메뉴 */}
-      {isOpen && (
-        <div className="border-t border-border bg-background/95 backdrop-blur-xl md:hidden">
-          <div className="flex flex-col gap-4 px-6 py-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsOpen(false)}
-                className="text-sm font-semibold text-muted transition-colors hover:text-foreground"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Mobile menu */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="absolute inset-x-0 top-0 min-h-screen bg-background md:hidden"
+          >
+            <div className="flex min-h-screen flex-col items-center justify-center gap-8">
+              {navLinks.map((link, i) => (
+                <motion.div
+                  key={link.href}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.08, duration: 0.4 }}
+                >
+                  <Link
+                    href={link.href}
+                    onClick={() => setIsOpen(false)}
+                    className="font-[family-name:var(--font-playfair)] text-3xl font-medium text-foreground transition-colors hover:text-muted-strong"
+                  >
+                    {link.label}
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }

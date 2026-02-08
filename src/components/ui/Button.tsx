@@ -17,16 +17,16 @@ export function Button({
   className,
 }: ButtonProps) {
   const baseStyles =
-    "inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200";
+    "inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-medium transition-all duration-300";
   const variants = {
     primary:
-      "bg-foreground text-background hover:bg-lavender hover:scale-105",
+      "bg-accent text-background hover:bg-accent-hover hover:scale-[1.03] hover:shadow-lg",
     outline:
-      "border border-border text-foreground hover:bg-card hover:scale-105",
+      "border border-foreground/15 text-foreground hover:bg-foreground/5 hover:scale-[1.03]",
   };
 
   const props = external
-    ? { target: "_blank", rel: "noopener noreferrer" }
+    ? { target: "_blank" as const, rel: "noopener noreferrer" }
     : {};
 
   return (

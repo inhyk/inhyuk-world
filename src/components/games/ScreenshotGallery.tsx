@@ -13,9 +13,11 @@ export function ScreenshotGallery({
   title,
 }: ScreenshotGalleryProps) {
   const [selected, setSelected] = useState(0);
+  const [direction, setDirection] = useState(0);
 
   const goTo = useCallback(
     (dir: 1 | -1) => {
+      setDirection(dir);
       setSelected((prev) => {
         const next = prev + dir;
         if (next < 0) return screenshots.length - 1;
@@ -37,20 +39,26 @@ export function ScreenshotGallery({
 
   if (screenshots.length === 0) return null;
 
+  const emojiMap: Record<string, string> = {
+    "긴긴밤": "🌙",
+    "Rhythm Game": "🎵",
+  };
+  const emoji = emojiMap[title] || "🎮";
+
   return (
     <div>
-      {/* 메인 이미지 */}
-      <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-background">
-        <AnimatePresence mode="wait">
+      {/* Main Visual */}
+      <div className="relative aspect-video overflow-hidden rounded-3xl bg-cream">
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={selected}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex h-full items-center justify-center text-7xl"
+            initial={{ opacity: 0, x: direction * 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction * -40 }}
+            transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="flex h-full items-center justify-center"
           >
-            {title.includes("Space") ? "🚀" : title.includes("Snake") ? "🐍" : "🃏"}
+            <span className="text-7xl md:text-8xl">{emoji}</span>
           </motion.div>
         </AnimatePresence>
 
@@ -58,8 +66,8 @@ export function ScreenshotGallery({
           <>
             <button
               onClick={() => goTo(-1)}
-              className="absolute top-1/2 left-3 -translate-y-1/2 rounded-full border border-border bg-background/80 p-2 backdrop-blur-sm transition-colors hover:bg-card"
-              aria-label="이전 스크린샷"
+              className="absolute top-1/2 left-4 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-foreground/5 text-foreground/60 backdrop-blur-sm transition-colors hover:bg-foreground/10 hover:text-foreground"
+              aria-label="Previous screenshot"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M10 4L6 8L10 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -67,8 +75,8 @@ export function ScreenshotGallery({
             </button>
             <button
               onClick={() => goTo(1)}
-              className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full border border-border bg-background/80 p-2 backdrop-blur-sm transition-colors hover:bg-card"
-              aria-label="다음 스크린샷"
+              className="absolute top-1/2 right-4 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-foreground/5 text-foreground/60 backdrop-blur-sm transition-colors hover:bg-foreground/10 hover:text-foreground"
+              aria-label="Next screenshot"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -78,19 +86,22 @@ export function ScreenshotGallery({
         )}
       </div>
 
-      {/* 썸네일 스트립 */}
+      {/* Pill Indicators */}
       {screenshots.length > 1 && (
-        <div className="mt-4 flex gap-2">
+        <div className="mt-5 flex justify-center gap-2">
           {screenshots.map((_, i) => (
             <button
               key={i}
-              onClick={() => setSelected(i)}
-              className={`h-2 flex-1 rounded-full transition-all ${
+              onClick={() => {
+                setDirection(i > selected ? 1 : -1);
+                setSelected(i);
+              }}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
                 i === selected
-                  ? "bg-lavender"
-                  : "bg-border hover:bg-muted"
+                  ? "w-8 bg-foreground/40"
+                  : "w-4 bg-foreground/10 hover:bg-foreground/20"
               }`}
-              aria-label={`스크린샷 ${i + 1}`}
+              aria-label={`Screenshot ${i + 1}`}
             />
           ))}
         </div>

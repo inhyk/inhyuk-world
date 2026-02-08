@@ -1,11 +1,15 @@
 import { Hero } from "@/components/home/Hero";
-import { GameGrid } from "@/components/home/GameGrid";
+import { GameShowcase } from "@/components/home/GameShowcase";
+import { QuoteSection } from "@/components/home/QuoteSection";
+import { CreatorPreview } from "@/components/home/CreatorPreview";
 
 export default function HomePage() {
   return (
     <>
       <Hero />
-      <GameGrid />
+      <GameShowcase />
+      <QuoteSection />
+      <CreatorPreview />
     </>
   );
 }

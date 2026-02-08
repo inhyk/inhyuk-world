@@ -1,26 +1,28 @@
 import type { Metadata } from "next";
-import { DM_Sans, Inter } from "next/font/google";
+import { Playfair_Display, Inter } from "next/font/google";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { CustomCursor } from "@/components/ui/CustomCursor";
+import { SmoothScroll } from "@/components/ui/SmoothScroll";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
   subsets: ["latin"],
-  weight: ["600", "900"],
+  weight: ["400", "500", "600", "700", "800", "900"],
   display: "swap",
 });
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "인혁이의 게임 월드",
-  description: "인혁이가 만든 게임들을 모아놓은 포트폴리오",
+  title: "InHyuk. | Game Developer",
+  description: "Creative game developer portfolio - Interactive games built with passion",
   icons: { icon: "/favicon.ico" },
 };
 
@@ -32,11 +34,14 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body
-        className={`${dmSans.variable} ${inter.variable} bg-background text-foreground antialiased`}
+        className={`${playfair.variable} ${inter.variable} bg-background text-foreground antialiased`}
       >
-        <Navbar />
-        <main>{children}</main>
-        <Footer />
+        <SmoothScroll>
+          <CustomCursor />
+          <Navbar />
+          <main>{children}</main>
+          <Footer />
+        </SmoothScroll>
       </body>
     </html>
   );

@@ -1,15 +1,21 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #131014;
-  --color-foreground: #ffffff;
-  --color-lavender: #f2eaef;
-  --color-card: rgba(255, 255, 255, 0.05);
-  --color-card-hover: rgba(255, 255, 255, 0.08);
-  --color-border: rgba(255, 255, 255, 0.1);
-  --color-muted: rgba(255, 255, 255, 0.5);
+  /* Milo-inspired light lavender palette */
+  --color-background: #f0e8ec;
+  --color-foreground: #1a1a1a;
+  --color-lavender: #f0e8ec;
+  --color-cream: #f7f3f5;
+  --color-rose: #c9a0b0;
+  --color-muted: rgba(26, 26, 26, 0.45);
+  --color-muted-strong: rgba(26, 26, 26, 0.65);
+  --color-border: rgba(26, 26, 26, 0.08);
+  --color-card: rgba(26, 26, 26, 0.03);
+  --color-card-hover: rgba(26, 26, 26, 0.06);
+  --color-accent: #2a2a2a;
+  --color-accent-hover: #444444;
 
-  --font-heading: "DM Sans", sans-serif;
+  --font-heading: "Playfair Display", serif;
   --font-body: "Inter", sans-serif;
 }
 
@@ -27,11 +33,19 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* 스크롤바 숨김 */
+/* Selection */
+::selection {
+  background: rgba(201, 160, 176, 0.3);
+  color: var(--color-foreground);
+}
+
+/* Scrollbar - subtle */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -39,10 +53,45 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
+  background: rgba(26, 26, 26, 0.12);
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(26, 26, 26, 0.2);
+}
+
+/* Custom cursor styles */
+.cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  background: var(--color-foreground);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transition: transform 0.15s ease;
+  mix-blend-mode: difference;
+}
+
+.cursor-dot.hovering {
+  transform: scale(6);
+}
+
+/* Smooth image reveal */
+.image-reveal {
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 1.2s cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.image-reveal.revealed {
+  clip-path: inset(0 0 0% 0);
+}
+
+/* Text gradient animation */
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
