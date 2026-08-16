@@ -7,7 +7,12 @@
     "emoji": "🌙",
     "thumbnail": "",
     "screenshots": [],
-    "techStack": ["JavaScript", "HTML", "CSS", "PeerJS"],
+    "techStack": [
+      "JavaScript",
+      "HTML",
+      "CSS",
+      "PeerJS"
+    ],
     "category": "비주얼 노벨",
     "playUrl": "https://ginbamm.vercel.app",
     "githubUrl": "https://github.com/inhyk/ginginbam-game-v2",
@@ -23,12 +28,97 @@
     "emoji": "🎵",
     "thumbnail": "",
     "screenshots": [],
-    "techStack": ["TypeScript", "PixiJS", "Vite"],
+    "techStack": [
+      "TypeScript",
+      "PixiJS",
+      "Vite"
+    ],
     "category": "리듬",
     "playUrl": "https://ih-music-game.vercel.app",
     "githubUrl": "https://github.com/inhyk/rhythm-game",
     "createdAt": "2026-01",
     "featured": true,
     "order": 2
+  },
+  {
+    "slug": "minecraft",
+    "title": "Minecraft 2D",
+    "description": "블록을 캐고 쌓는 2D 마인크래프트",
+    "longDescription": "마인크래프트를 2D로 옮긴 샌드박스 게임입니다. 블록을 캐서 모으고, 원하는 곳에 다시 쌓아 나만의 세계를 만들 수 있습니다. Node 서버를 붙여 여러 명이 같은 세계에 들어와 함께 노는 멀티플레이도 넣었습니다.",
+    "emoji": "⛏️",
+    "techStack": [
+      "JavaScript",
+      "Canvas",
+      "Node.js",
+      "WebSocket"
+    ],
+    "category": "샌드박스",
+    "playUrl": "https://minecraft-2d.vercel.app",
+    "githubUrl": "https://github.com/inhyk/minecraft",
+    "createdAt": "2026-02",
+    "thumbnail": "",
+    "screenshots": [],
+    "featured": false,
+    "order": 3
+  },
+  {
+    "slug": "diep-io",
+    "title": "diep.io",
+    "description": "탱크를 키워 살아남는 실시간 슈팅 게임",
+    "longDescription": "diep.io 스타일의 아레나 슈팅 게임입니다. 도형을 부숴 경험치를 모으고, 레벨이 오르면 탱크를 원하는 방향으로 강화합니다. 라이브러리 없이 Canvas만으로 직접 만들었습니다.",
+    "emoji": "🔺",
+    "techStack": [
+      "JavaScript",
+      "Canvas"
+    ],
+    "category": "슈팅",
+    "playUrl": "https://diep-io-indol.vercel.app",
+    "githubUrl": "https://github.com/inhyk/diep.io",
+    "createdAt": "2026-04",
+    "thumbnail": "",
+    "screenshots": [],
+    "featured": false,
+    "order": 4
+  },
+  {
+    "slug": "bean-dash-arena",
+    "title": "Bean Dash Arena",
+    "description": "장애물을 뚫고 결승선까지 달리는 파티 게임",
+    "longDescription": "Fall Guys 감성의 장애물 코스 게임입니다. 코스를 다시 만들 때마다 다른 프리셋이 나오고, 랭킹 모드에서는 최고 기록이 저장됩니다. 라이브러리 없이 Canvas로 직접 만들었습니다.",
+    "emoji": "🫘",
+    "techStack": [
+      "JavaScript",
+      "Canvas",
+      "HTML",
+      "CSS"
+    ],
+    "category": "액션",
+    "playUrl": "https://bean-dash-arena.vercel.app",
+    "githubUrl": "https://github.com/inhyk/bean-dash-arena",
+    "createdAt": "2026-03",
+    "thumbnail": "",
+    "screenshots": [],
+    "featured": false,
+    "order": 5
+  },
+  {
+    "slug": "sans-boss-fight",
+    "title": "Sans Boss Fight",
+    "description": "언더테일 산스와의 탄막 보스전",
+    "longDescription": "언더테일의 산스 보스전을 직접 만들어 본 탄막 회피 게임입니다. 쏟아지는 뼈 공격과 가스터 블래스터를 피하면서 하트를 조종해 살아남아야 합니다. 패턴을 외우고 타이밍을 잡는 것이 관건입니다.",
+    "emoji": "💀",
+    "techStack": [
+      "JavaScript",
+      "Canvas",
+      "Node.js"
+    ],
+    "category": "액션",
+    "playUrl": "https://sans-boss-fight.vercel.app",
+    "githubUrl": "https://github.com/inhyk/sans-boss-fight",
+    "createdAt": "2026-04",
+    "thumbnail": "",
+    "screenshots": [],
+    "featured": false,
+    "order": 6
   }
 ]
