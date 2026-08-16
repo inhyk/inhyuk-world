@@ -86,6 +86,12 @@
   will-change: transform;
 }
 
+/* ---- 히어로 배경 영상 ----
+   사진마다 밝기가 달라 그 위의 흰 글씨가 묻힐 수 있어 살짝 눌러 둡니다. */
+.hero-video {
+  filter: saturate(0.9) brightness(0.92);
+}
+
 /* ---- 등장 애니메이션 ----
    JS(motion)가 아니라 CSS 로 처리합니다. 스크립트가 늦게 뜨거나 막혀도
    내용이 사라지지 않고 그대로 보이게 하기 위함입니다. */
@@ -121,5 +127,10 @@
   .mesh-drift,
   .fade-up {
     animation: none;
+  }
+
+  /* 영상을 숨기면 그 아래 깔린 모자이크 이미지가 그대로 배경이 됩니다. */
+  .hero-video {
+    display: none;
   }
 }

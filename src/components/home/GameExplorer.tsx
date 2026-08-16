@@ -35,19 +35,45 @@ export function GameExplorer() {
 
   return (
     <>
-      {/* ---------- 짧은 그라데이션 히어로 ---------- */}
+      {/* ---------- 코딩 기록 영상이 깔린 히어로 ---------- */}
       <section className="relative overflow-hidden">
-        <div className="mesh absolute inset-0" />
-        <div className="mesh mesh-drift absolute inset-0 opacity-70 blur-3xl" />
+        {/* 배경: 모자이크 이미지 위에 루프 영상.
+            영상이 못 뜨거나(reduced-motion·저사양·차단) 로딩 전이면 모자이크가 그대로 보입니다. */}
+        <div
+          className="hero-bg absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url(/media/hero-mosaic.jpg)" }}
+          aria-hidden="true"
+        >
+          <video
+            className="hero-video h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/media/hero-mosaic.jpg"
+          >
+            <source src="/media/hero-loop.mp4" type="video/mp4" />
+          </video>
+        </div>
+
+        {/* 브랜드 색감 유지 + 글씨 가독성 확보.
+            사진마다 밝기가 제각각이라 균일한 스크림만으로는 부족해서,
+            글씨가 놓이는 가운데를 한 겹 더 눌러 줍니다. */}
+        <div className="mesh mesh-drift absolute inset-0 opacity-45 mix-blend-soft-light" />
+        <div className="absolute inset-0 bg-[#08080b]/45" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_65%_70%_at_50%_45%,rgba(8,8,11,0.82),rgba(8,8,11,0.15)_75%)]" />
+        {/* 상단: 투명한 네비게이션 링크가 밝은 사진 위에 놓여도 읽히도록 */}
+        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-[#08080b]/75 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-background" />
 
         <div className="relative mx-auto max-w-7xl px-5 pt-24 pb-12 text-center md:px-8 md:pt-28 md:pb-14">
-          <h1 className="fade-up font-[family-name:var(--font-inter-tight)] text-[32px] leading-[1.1] font-extrabold tracking-[-0.03em] text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.25)] md:text-[46px]">
+          <h1 className="fade-up font-[family-name:var(--font-inter-tight)] text-[32px] leading-[1.1] font-extrabold tracking-[-0.03em] text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.55)] md:text-[46px]">
             인혁이의 게임 월드
           </h1>
 
           <p
-            className="fade-up mx-auto mt-3 max-w-md text-[15px] text-white/85"
+            className="fade-up mx-auto mt-3 max-w-md text-[15px] text-white/85 drop-shadow-[0_1px_10px_rgba(0,0,0,0.5)]"
             style={{ animationDelay: "80ms" }}
           >
             직접 만든 게임 {games.length}개, 바로 아래에서 골라 보세요
