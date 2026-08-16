@@ -83,6 +83,7 @@ export function GameDetail({ game, prevGame, nextGame }: GameDetailProps) {
           <ScreenshotGallery
             screenshots={game.screenshots}
             title={game.title}
+            emoji={game.emoji}
           />
         </AnimatedSection>
 

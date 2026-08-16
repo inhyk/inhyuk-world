@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import Image from "next/image";
+import { useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 import type { Game } from "@/data/games";
 
@@ -24,6 +25,10 @@ export function GameCard({ game, index }: GameCardProps) {
 
   const y = useTransform(scrollYProgress, [0, 1], [30, -30]);
 
+  // 썸네일이 있으면 사진을, 없거나 깨지면 이모지를 보여줍니다.
+  const [imageBroken, setImageBroken] = useState(false);
+  const showImage = Boolean(game.thumbnail) && !imageBroken;
+
   return (
     <motion.div
       ref={ref}
@@ -41,11 +46,22 @@ export function GameCard({ game, index }: GameCardProps) {
         <div className="relative overflow-hidden rounded-2xl">
           <motion.div
             style={{ y }}
-            className={`flex aspect-[4/5] items-center justify-center bg-gradient-to-br ${gradients[index % gradients.length]}`}
+            className={`relative flex aspect-[4/5] items-center justify-center overflow-hidden bg-gradient-to-br ${gradients[index % gradients.length]}`}
           >
-            <span className="text-[8rem] transition-transform duration-500 group-hover:scale-110 md:text-[10rem]">
-              {game.emoji}
-            </span>
+            {showImage ? (
+              <Image
+                src={game.thumbnail}
+                alt={game.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                onError={() => setImageBroken(true)}
+              />
+            ) : (
+              <span className="text-[8rem] transition-transform duration-500 group-hover:scale-110 md:text-[10rem]">
+                {game.emoji}
+              </span>
+            )}
           </motion.div>
 
           {/* Subtle overlay on hover */}

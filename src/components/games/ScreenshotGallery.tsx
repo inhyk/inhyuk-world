@@ -1,19 +1,23 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface ScreenshotGalleryProps {
   screenshots: string[];
   title: string;
+  emoji?: string;
 }
 
 export function ScreenshotGallery({
   screenshots,
   title,
+  emoji = "🎮",
 }: ScreenshotGalleryProps) {
   const [selected, setSelected] = useState(0);
   const [direction, setDirection] = useState(0);
+  const [broken, setBroken] = useState<Record<number, boolean>>({});
 
   const goTo = useCallback(
     (dir: 1 | -1) => {
@@ -37,13 +41,9 @@ export function ScreenshotGallery({
     return () => window.removeEventListener("keydown", handler);
   }, [goTo]);
 
-  if (screenshots.length === 0) return null;
-
-  const emojiMap: Record<string, string> = {
-    "긴긴밤": "🌙",
-    "Rhythm Game": "🎵",
-  };
-  const emoji = emojiMap[title] || "🎮";
+  // 사진이 아직 없거나 깨졌으면 이모지를 대신 보여줍니다.
+  const current = screenshots[selected];
+  const showImage = Boolean(current) && !broken[selected];
 
   return (
     <div>
@@ -56,9 +56,20 @@ export function ScreenshotGallery({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: direction * -40 }}
             transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="flex h-full items-center justify-center"
+            className="relative flex h-full items-center justify-center"
           >
-            <span className="text-7xl md:text-8xl">{emoji}</span>
+            {showImage ? (
+              <Image
+                src={current}
+                alt={`${title} 스크린샷 ${selected + 1}`}
+                fill
+                sizes="(max-width: 768px) 100vw, 768px"
+                className="object-contain"
+                onError={() => setBroken((b) => ({ ...b, [selected]: true }))}
+              />
+            ) : (
+              <span className="text-7xl md:text-8xl">{emoji}</span>
+            )}
           </motion.div>
         </AnimatePresence>
 
