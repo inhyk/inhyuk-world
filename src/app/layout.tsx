@@ -1,28 +1,26 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { Inter, Inter_Tight } from "next/font/google";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { CustomCursor } from "@/components/ui/CustomCursor";
-import { SmoothScroll } from "@/components/ui/SmoothScroll";
 import "./globals.css";
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["500", "600", "700", "800"],
   display: "swap",
 });
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "InHyuk. | Game Developer",
-  description: "Creative game developer portfolio - Interactive games built with passion",
+  title: "인혁이의 게임 월드",
+  description: "인혁이가 직접 만든 게임들 - 바로 보고, 바로 플레이하세요",
   icons: { icon: "/favicon.ico" },
 };
 
@@ -34,14 +32,11 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body
-        className={`${playfair.variable} ${inter.variable} bg-background text-foreground antialiased`}
+        className={`${interTight.variable} ${inter.variable} bg-background text-foreground antialiased`}
       >
-        <SmoothScroll>
-          <CustomCursor />
-          <Navbar />
-          <main>{children}</main>
-          <Footer />
-        </SmoothScroll>
+        <Navbar />
+        <main>{children}</main>
+        <Footer />
       </body>
     </html>
   );

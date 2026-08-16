@@ -1,20 +1,18 @@
-import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-6 pt-16">
-      <h1 className="font-[family-name:var(--font-playfair)] text-[10rem] font-bold leading-none text-foreground/8 md:text-[12rem]">
+    <div className="flex min-h-[70vh] flex-col items-center justify-center px-6 pt-16 text-center">
+      <span className="font-[family-name:var(--font-inter-tight)] text-[96px] leading-none font-extrabold tracking-[-0.04em] text-foreground/10 md:text-[140px]">
         404
-      </h1>
-      <p className="mt-2 text-xl text-muted-strong md:text-2xl">
+      </span>
+      <p className="mt-4 font-[family-name:var(--font-inter-tight)] text-xl font-bold tracking-[-0.02em]">
         페이지를 찾을 수 없습니다
       </p>
-      <Link
-        href="/"
-        className="mt-10 text-sm text-foreground underline underline-offset-4 decoration-foreground/20 transition-colors hover:decoration-foreground/60"
-      >
-        홈으로 &rarr;
-      </Link>
+      <p className="mt-2 text-sm text-muted">주소를 다시 확인해 주세요</p>
+      <div className="mt-8">
+        <Button href="/">홈으로 →</Button>
+      </div>
     </div>
   );
 }

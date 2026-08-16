@@ -48,7 +48,7 @@ export function ScreenshotGallery({
   return (
     <div>
       {/* Main Visual */}
-      <div className="relative aspect-video overflow-hidden rounded-3xl bg-cream">
+      <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-surface">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={selected}

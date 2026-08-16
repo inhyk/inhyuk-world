@@ -17,12 +17,11 @@ export function Button({
   className,
 }: ButtonProps) {
   const baseStyles =
-    "inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-medium transition-all duration-300";
+    "inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200";
   const variants = {
-    primary:
-      "bg-accent text-background hover:bg-accent-hover hover:scale-[1.03] hover:shadow-lg",
+    primary: "bg-white text-[#08080b] hover:scale-[1.03]",
     outline:
-      "border border-foreground/15 text-foreground hover:bg-foreground/5 hover:scale-[1.03]",
+      "border border-border text-foreground hover:border-border-strong hover:bg-surface-hover",
   };
 
   const props = external

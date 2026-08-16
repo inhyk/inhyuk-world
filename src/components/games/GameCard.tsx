@@ -2,82 +2,72 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRef, useState } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
+import { useState } from "react";
 import type { Game } from "@/data/games";
+import { getGameCover } from "@/lib/gameVisual";
 
 interface GameCardProps {
   game: Game;
   index: number;
 }
 
-const gradients = [
-  "from-rose/30 via-cream to-background",
-  "from-background via-rose/20 to-cream",
-];
-
 export function GameCard({ game, index }: GameCardProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"],
-  });
-
-  const y = useTransform(scrollYProgress, [0, 1], [30, -30]);
-
-  // 썸네일이 있으면 사진을, 없거나 깨지면 이모지를 보여줍니다.
+  // 썸네일이 있으면 사진을, 없거나 깨지면 그라데이션 + 이모지를 보여줍니다.
   const [imageBroken, setImageBroken] = useState(false);
   const showImage = Boolean(game.thumbnail) && !imageBroken;
 
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 60 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{
-        duration: 0.8,
-        delay: index * 0.15,
-        ease: [0.25, 0.46, 0.45, 0.94],
-      }}
+    <div
+      className="fade-up"
+      style={{ animationDelay: `${Math.min(index, 7) * 50}ms` }}
     >
       <Link href={`/games/${game.slug}`} className="group block">
-        {/* Large image area */}
-        <div className="relative overflow-hidden rounded-2xl">
-          <motion.div
-            style={{ y }}
-            className={`relative flex aspect-[4/5] items-center justify-center overflow-hidden bg-gradient-to-br ${gradients[index % gradients.length]}`}
-          >
-            {showImage ? (
-              <Image
-                src={game.thumbnail}
-                alt={game.title}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-                onError={() => setImageBroken(true)}
-              />
-            ) : (
-              <span className="text-[8rem] transition-transform duration-500 group-hover:scale-110 md:text-[10rem]">
+        {/* 썸네일 */}
+        <div className="relative aspect-[16/10] overflow-hidden rounded-xl border border-border bg-surface transition-colors duration-300 group-hover:border-border-strong">
+          {showImage ? (
+            <Image
+              src={game.thumbnail}
+              alt={game.title}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+              onError={() => setImageBroken(true)}
+            />
+          ) : (
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ backgroundImage: getGameCover(game.slug) }}
+            >
+              <span className="text-4xl drop-shadow-[0_4px_16px_rgba(0,0,0,0.45)] transition-transform duration-500 group-hover:scale-110 sm:text-6xl">
                 {game.emoji}
               </span>
-            )}
-          </motion.div>
+            </div>
+          )}
 
-          {/* Subtle overlay on hover */}
-          <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-foreground/[0.04] transition-all duration-500 group-hover:ring-foreground/[0.08]" />
-        </div>
-
-        {/* Info below image: name (left), category (right) */}
-        <div className="mt-4 flex items-baseline justify-between px-1">
-          <h3 className="font-[family-name:var(--font-playfair)] text-lg tracking-[-0.02em] md:text-xl">
-            {game.title}
-          </h3>
-          <span className="text-sm text-muted">
+          {/* 카테고리 칩 */}
+          <span className="absolute top-2.5 left-2.5 rounded-full bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
             {game.category}
           </span>
+
+          {/* hover 시 플레이 안내 */}
+          <div className="pointer-events-none absolute inset-0 flex items-end bg-gradient-to-t from-black/70 via-black/0 to-transparent p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#08080b]">
+              자세히 보기
+              <span aria-hidden="true">→</span>
+            </span>
+          </div>
+        </div>
+
+        {/* 정보 */}
+        <div className="mt-3.5">
+          <h3 className="truncate font-[family-name:var(--font-inter-tight)] text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+            {game.title}
+          </h3>
+          <p className="mt-1 line-clamp-2 text-[13px] leading-[1.5] text-muted">
+            {game.description}
+          </p>
         </div>
       </Link>
-    </motion.div>
+    </div>
   );
 }
