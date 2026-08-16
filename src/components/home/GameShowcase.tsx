@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, useScroll, useTransform, type MotionValue } from "motion/react";
 import { games, type Game } from "@/data/games";
 
@@ -210,6 +211,10 @@ function GameCard({
     [0, 40, 40, 0]
   );
 
+  // 썸네일이 있으면 사진을, 없거나 깨지면 이모지를 보여줍니다.
+  const [imageBroken, setImageBroken] = useState(false);
+  const showImage = Boolean(game.thumbnail) && !imageBroken;
+
   return (
     <motion.div
       className="absolute"
@@ -226,9 +231,20 @@ function GameCard({
             ),
           }}
         >
-          <span className="text-[7rem] transition-transform duration-500 group-hover:scale-110 md:text-[9rem]">
-            {game.emoji}
-          </span>
+          {showImage ? (
+            <Image
+              src={game.thumbnail}
+              alt={game.title}
+              fill
+              sizes="360px"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={() => setImageBroken(true)}
+            />
+          ) : (
+            <span className="text-[7rem] transition-transform duration-500 group-hover:scale-110 md:text-[9rem]">
+              {game.emoji}
+            </span>
+          )}
 
           {/* Focus ring glow */}
           <motion.div
