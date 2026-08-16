@@ -120,5 +120,29 @@
     "screenshots": [],
     "featured": false,
     "order": 6
+  },
+  {
+    "slug": "hotel-tycoon",
+    "title": "La Pause",
+    "description": "부티크 호텔을 짓고 키우는 3D 경영 게임",
+    "longDescription": "브라우저에서 바로 즐기는 3D 호텔 경영 게임입니다. 객실과 레스토랑, 웰니스, 연회장 등 12종의 시설을 원하는 순서로 지어 올리고, 마우스로 호텔을 빙 돌려가며 살펴볼 수 있습니다. 투숙객 수와 만족도에 따라 수익이 쌓이고, 운영 메뉴에서 시설을 업그레이드하거나 마케팅으로 점유율을 높일 수 있습니다. 같은 시설을 계속 지으면 건물이 위층으로 무한히 올라가고, 호텔 레벨과 명성 목표도 상한 없이 계속 성장합니다. Three.js로 만들었고 진행 상황은 자동 저장됩니다.",
+    "emoji": "🏨",
+    "thumbnail": "/images/games/hotel-tycoon-thumb.png",
+    "screenshots": [
+      "/images/games/hotel-tycoon-1.png",
+      "/images/games/hotel-tycoon-2.png",
+      "/images/games/hotel-tycoon-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Three.js",
+      "Vite"
+    ],
+    "category": "시뮬레이션",
+    "playUrl": "https://hotel-tycoon.vercel.app",
+    "githubUrl": "https://github.com/inhyk/hotel-tycoon",
+    "createdAt": "2026-08",
+    "featured": false,
+    "order": 7
   }
 ]
