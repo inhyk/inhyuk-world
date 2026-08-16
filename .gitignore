@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 발행 도구 (Vercel 빌드와 분리)
+tools/node_modules/
