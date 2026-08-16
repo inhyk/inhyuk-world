@@ -144,5 +144,125 @@
     "createdAt": "2026-08",
     "featured": false,
     "order": 7
+  },
+  {
+    "slug": "inh-defense-game",
+    "title": "디펜스 게임",
+    "description": "밀려오는 웨이브를 막아내는 타워 디펜스",
+    "longDescription": "끝없이 밀려오는 적의 웨이브를 막아내는 디펜스 게임입니다. 웨이브마다 적이 강해지기 때문에 자원을 모아 방어를 계속 키워 나가야 살아남을 수 있습니다. Phaser 3 게임 엔진에 TypeScript로 코드를 짜고 Vite로 빌드했습니다.",
+    "emoji": "🏰",
+    "thumbnail": "/images/games/inh-defense-game-thumb.png",
+    "screenshots": [
+      "/images/games/inh-defense-game-1.png",
+      "/images/games/inh-defense-game-2.png",
+      "/images/games/inh-defense-game-3.png"
+    ],
+    "techStack": [
+      "TypeScript",
+      "Phaser",
+      "Vite"
+    ],
+    "category": "액션",
+    "playUrl": "https://inh-defense-game.vercel.app",
+    "githubUrl": "https://github.com/inhyk/inh-defense-game",
+    "createdAt": "2026-07",
+    "featured": false,
+    "order": 8
+  },
+  {
+    "slug": "inh-space-blaster",
+    "title": "스페이스 블래스터",
+    "description": "스테이지마다 보스가 기다리는 우주 슈팅 게임",
+    "longDescription": "우주선을 몰고 적들을 쓸어버리는 슈팅 게임입니다. 웨이브를 클리어하며 스테이지를 넘어가면 단계별 보스가 기다리고 있고, 중간중간 무기 강화 아이템을 골라 내 우주선을 키울 수 있습니다. 라이브러리 없이 Canvas만으로 만들었습니다.",
+    "emoji": "🚀",
+    "thumbnail": "/images/games/inh-space-blaster-thumb.png",
+    "screenshots": [
+      "/images/games/inh-space-blaster-1.png",
+      "/images/games/inh-space-blaster-2.png",
+      "/images/games/inh-space-blaster-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas",
+      "HTML"
+    ],
+    "category": "슈팅",
+    "playUrl": "https://inh-space-blaster.vercel.app",
+    "githubUrl": "https://github.com/inhyk/inh-space-blaster",
+    "createdAt": "2026-02",
+    "featured": false,
+    "order": 9
+  },
+  {
+    "slug": "voxel-survival",
+    "title": "Voxel Survival",
+    "description": "체력과 배고픔을 관리하며 하루하루 버티는 복셀 생존기",
+    "longDescription": "블록으로 이루어진 세계에서 살아남는 생존 게임입니다. 체력과 배고픔 게이지를 관리하면서 자원을 모으고, 하루하루 날짜를 넘기며 더 오래 버티는 것이 목표입니다. 3D 라이브러리를 쓰지 않고 Canvas 2D만으로 입체감 있는 복셀 화면을 직접 그려 만들었습니다.",
+    "emoji": "🧱",
+    "thumbnail": "/images/games/voxel-survival-thumb.png",
+    "screenshots": [
+      "/images/games/voxel-survival-1.png",
+      "/images/games/voxel-survival-2.png",
+      "/images/games/voxel-survival-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas",
+      "HTML"
+    ],
+    "category": "샌드박스",
+    "playUrl": "https://voxel-survival.vercel.app",
+    "githubUrl": "https://github.com/inhyk/voxel-survival",
+    "createdAt": "2026-04",
+    "featured": false,
+    "order": 10
+  },
+  {
+    "slug": "find-the-ending",
+    "title": "The Game to Find the Ending",
+    "description": "숨겨진 엔딩을 하나씩 찾아내는 탐험 게임",
+    "longDescription": "여러 개의 엔딩이 숨어 있고, 그것을 하나씩 찾아내는 것이 목표인 게임입니다. 스테이지를 돌아다니며 대화를 나누고 단서를 모으다 보면 생각지 못한 결말에 닿게 됩니다. 레벨과 대사, 엔딩 데이터를 따로 분리해서 관리하는 구조로 만들었습니다.",
+    "emoji": "🚪",
+    "thumbnail": "/images/games/find-the-ending-thumb.png",
+    "screenshots": [
+      "/images/games/find-the-ending-1.png",
+      "/images/games/find-the-ending-2.png",
+      "/images/games/find-the-ending-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas",
+      "HTML"
+    ],
+    "category": "퍼즐",
+    "playUrl": "https://find-the-ending.vercel.app",
+    "githubUrl": "https://github.com/inhyk/find-the-ending",
+    "createdAt": "2026-03",
+    "featured": false,
+    "order": 11
+  },
+  {
+    "slug": "lucky-machine",
+    "title": "꽝 없는 뽑기 기계",
+    "description": "꽝이 없다는 뽑기 기계 앞에서 시작되는 이야기",
+    "longDescription": "골목에 서 있는 낡은 뽑기 기계 하나에서 시작되는 짧은 이야기 게임입니다. 꽝이 없다는 그 기계를 돌리면서 이야기가 조금씩 펼쳐지고, 플레이어의 선택에 따라 결말이 달라집니다. HTML 파일 하나 안에 이야기와 연출을 전부 담아 만들었습니다.",
+    "emoji": "🎰",
+    "thumbnail": "/images/games/lucky-machine-thumb.png",
+    "screenshots": [
+      "/images/games/lucky-machine-1.png",
+      "/images/games/lucky-machine-2.png",
+      "/images/games/lucky-machine-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "HTML",
+      "CSS"
+    ],
+    "category": "비주얼 노벨",
+    "playUrl": "https://lucky-machine.vercel.app",
+    "githubUrl": "https://github.com/inhyk/lucky-machine",
+    "createdAt": "2026-02",
+    "featured": false,
+    "order": 12
   }
 ]
