@@ -12,16 +12,34 @@ export function CreatorStrip() {
   ];
 
   return (
-    <section className="mx-auto max-w-7xl px-5 pb-24 md:px-8">
+    <section
+      className="mx-auto max-w-7xl px-5 pb-24 md:px-8"
+      aria-label="만든 사람"
+    >
       <div className="overflow-hidden rounded-3xl border border-border bg-surface">
         <div className="grid gap-0 md:grid-cols-2">
           {/* 비주얼 */}
           <div className="relative flex min-h-[220px] items-center justify-center overflow-hidden md:min-h-[300px]">
             <div className="mesh absolute inset-0 opacity-90" />
             <div className="relative flex flex-wrap items-center justify-center gap-4 px-6 text-5xl md:text-6xl">
-              <span className="drop-shadow-[0_4px_16px_rgba(0,0,0,0.35)]">🎮</span>
-              <span className="drop-shadow-[0_4px_16px_rgba(0,0,0,0.35)]">🕹️</span>
-              <span className="drop-shadow-[0_4px_16px_rgba(0,0,0,0.35)]">🚀</span>
+              <span
+                className="drop-shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
+                aria-hidden="true"
+              >
+                🎮
+              </span>
+              <span
+                className="drop-shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
+                aria-hidden="true"
+              >
+                🕹️
+              </span>
+              <span
+                className="drop-shadow-[0_4px_16px_rgba(0,0,0,0.35)]"
+                aria-hidden="true"
+              >
+                🚀
+              </span>
             </div>
           </div>
 
@@ -34,9 +52,9 @@ export function CreatorStrip() {
               상상한 걸 직접 만듭니다
             </h2>
             <p className="mt-3 max-w-md text-[15px] leading-[1.7] text-muted-strong">
-              JavaScript와 Python으로 게임을 만드는 학생 개발자 인혁입니다.
-              떠오른 아이디어를 바로 플레이할 수 있는 게임으로 옮기는 걸
-              좋아합니다.
+              JavaScript와 Python으로 게임을 만드는 초등학생 게임 개발자
+              인혁입니다. 떠오른 아이디어를 바로 플레이할 수 있는 게임으로
+              옮기는 걸 좋아합니다.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-8">

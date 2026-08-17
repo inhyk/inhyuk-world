@@ -6,7 +6,17 @@ import { GameCard } from "@/components/games/GameCard";
 
 const ALL = "전체";
 
-export function GameExplorer() {
+interface GameExplorerProps {
+  title?: string;
+  description?: string;
+  showVideoHero?: boolean;
+}
+
+export function GameExplorer({
+  title = "인혁이의 게임 월드",
+  description = "초등학생 게임 개발자 인혁이 만든 웹 게임을 바로 플레이해보세요",
+  showVideoHero = true,
+}: GameExplorerProps) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(ALL);
 
@@ -35,32 +45,38 @@ export function GameExplorer() {
 
   return (
     <>
-      {/* ---------- 코딩 기록 영상이 깔린 히어로 ---------- */}
+      {/* ---------- 게임 탐색 히어로 ---------- */}
       <section className="relative overflow-hidden">
-        {/* 배경: 모자이크 이미지 위에 루프 영상.
-            영상이 못 뜨거나(reduced-motion·저사양·차단) 로딩 전이면 모자이크가 그대로 보입니다. */}
-        <div
-          className="hero-bg absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url(/media/hero-mosaic.jpg)" }}
-          aria-hidden="true"
-        >
-          <video
-            className="hero-video h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster="/media/hero-mosaic.jpg"
+        {/* 홈에서는 모자이크 이미지 위에 루프 영상을 올리고,
+            전용 게임 목록에서는 가벼운 메시 배경만 사용합니다. */}
+        {showVideoHero ? (
+          <div
+            className="hero-bg absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: "url(/media/hero-mosaic.jpg)" }}
+            aria-hidden="true"
           >
-            <source src="/media/hero-loop.mp4" type="video/mp4" />
-          </video>
-        </div>
+            <video
+              className="hero-video h-full w-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              poster="/media/hero-mosaic.jpg"
+            >
+              <source src="/media/hero-loop.mp4" type="video/mp4" />
+            </video>
+          </div>
+        ) : null}
 
         {/* 브랜드 색감 유지 + 글씨 가독성 확보.
             사진마다 밝기가 제각각이라 균일한 스크림만으로는 부족해서,
             글씨가 놓이는 가운데를 한 겹 더 눌러 줍니다. */}
-        <div className="mesh mesh-drift absolute inset-0 opacity-45 mix-blend-soft-light" />
+        <div
+          className={`mesh mesh-drift absolute inset-0 mix-blend-soft-light ${
+            showVideoHero ? "opacity-45" : "opacity-80"
+          }`}
+        />
         <div className="absolute inset-0 bg-[#08080b]/45" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_65%_70%_at_50%_45%,rgba(8,8,11,0.82),rgba(8,8,11,0.15)_75%)]" />
         {/* 상단: 투명한 네비게이션 링크가 밝은 사진 위에 놓여도 읽히도록 */}
@@ -69,14 +85,14 @@ export function GameExplorer() {
 
         <div className="relative mx-auto max-w-7xl px-5 pt-24 pb-12 text-center md:px-8 md:pt-28 md:pb-14">
           <h1 className="fade-up font-[family-name:var(--font-inter-tight)] text-[32px] leading-[1.1] font-extrabold tracking-[-0.03em] text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.55)] md:text-[46px]">
-            인혁이의 게임 월드
+            {title}
           </h1>
 
           <p
             className="fade-up mx-auto mt-3 max-w-md text-[15px] text-white/85 drop-shadow-[0_1px_10px_rgba(0,0,0,0.5)]"
             style={{ animationDelay: "80ms" }}
           >
-            인혁이가 만든 게임 바로 플레이해보세요
+            {description}
           </p>
 
           {/* 검색창 */}
@@ -125,13 +141,19 @@ export function GameExplorer() {
           </div>
 
           {/* 카테고리 칩 */}
-          <div className="no-scrollbar -mx-5 flex w-full gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:w-auto md:px-0">
+          <div
+            className="no-scrollbar -mx-5 flex w-full gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:w-auto md:px-0"
+            role="group"
+            aria-label="게임 카테고리 필터"
+          >
             {categories.map((cat) => {
               const active = cat === category;
               return (
                 <button
                   key={cat}
+                  type="button"
                   onClick={() => setCategory(cat)}
+                  aria-pressed={active}
                   className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
                     active
                       ? "border-transparent bg-foreground text-[#08080b]"
@@ -144,6 +166,10 @@ export function GameExplorer() {
             })}
           </div>
         </div>
+
+        <p className="sr-only" aria-live="polite">
+          검색 결과 {filtered.length}개의 게임이 있습니다.
+        </p>
 
         {filtered.length > 0 ? (
           <div className="mt-7 grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-5 sm:gap-y-8 lg:grid-cols-3 xl:grid-cols-4">

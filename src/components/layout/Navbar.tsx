@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 
 const navLinks = [
-  { href: "/#games", label: "게임" },
+  { href: "/games", label: "게임" },
   { href: "/about", label: "소개" },
   { href: "/#contact", label: "연락하기" },
 ];
@@ -52,7 +52,7 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <Link
-            href="/#games"
+            href="/games"
             className="hidden rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#08080b] transition-transform hover:scale-[1.04] sm:inline-block"
           >
             게임 하러 가기
@@ -60,9 +60,12 @@ export function Navbar() {
 
           {/* Mobile hamburger */}
           <button
+            type="button"
             onClick={() => setIsOpen((v) => !v)}
             className="relative z-50 flex h-10 w-10 flex-col items-center justify-center gap-[5px] md:hidden"
-            aria-label="메뉴 열기"
+            aria-label={isOpen ? "메뉴 닫기" : "메뉴 열기"}
+            aria-expanded={isOpen}
+            aria-controls="mobile-navigation"
           >
             <span
               className={`h-[1.5px] w-5 bg-white transition-all duration-300 ${
@@ -87,6 +90,7 @@ export function Navbar() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            id="mobile-navigation"
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}

@@ -38,7 +38,10 @@ export function GameCard({ game, index }: GameCardProps) {
               className="absolute inset-0 flex items-center justify-center"
               style={{ backgroundImage: getGameCover(game.slug) }}
             >
-              <span className="text-4xl drop-shadow-[0_4px_16px_rgba(0,0,0,0.45)] transition-transform duration-500 group-hover:scale-110 sm:text-6xl">
+              <span
+                className="text-4xl drop-shadow-[0_4px_16px_rgba(0,0,0,0.45)] transition-transform duration-500 group-hover:scale-110 sm:text-6xl"
+                aria-hidden="true"
+              >
                 {game.emoji}
               </span>
             </div>

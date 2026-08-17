@@ -18,7 +18,7 @@ export function Footer() {
             새로운 게임이 계속 올라옵니다
           </h2>
           <Link
-            href="/#games"
+            href="/games"
             className="mt-7 inline-block rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#08080b] transition-transform hover:scale-[1.04]"
           >
             게임 보러 가기
@@ -47,21 +47,18 @@ export function Footer() {
                   {game.title}
                 </FooterLink>
               ))}
-              <FooterLink href="/#games">전체 보기</FooterLink>
+              <FooterLink href="/games">전체 보기</FooterLink>
             </FooterColumn>
 
             <FooterColumn title="사이트">
               <FooterLink href="/">홈</FooterLink>
-              <FooterLink href="/#games">게임</FooterLink>
+              <FooterLink href="/games">게임</FooterLink>
               <FooterLink href="/about">소개</FooterLink>
             </FooterColumn>
 
             <FooterColumn title="바깥 링크">
               <FooterLink href="https://github.com/inhyk" external>
                 GitHub
-              </FooterLink>
-              <FooterLink href="https://instagram.com" external>
-                Instagram
               </FooterLink>
             </FooterColumn>
           </div>
