@@ -41,27 +41,6 @@
     "order": 2
   },
   {
-    "slug": "minecraft",
-    "title": "Minecraft 2D",
-    "description": "블록을 캐고 쌓는 2D 마인크래프트",
-    "longDescription": "마인크래프트를 2D로 옮긴 샌드박스 게임입니다. 블록을 캐서 모으고, 원하는 곳에 다시 쌓아 나만의 세계를 만들 수 있습니다. Node 서버를 붙여 여러 명이 같은 세계에 들어와 함께 노는 멀티플레이도 넣었습니다.",
-    "emoji": "⛏️",
-    "techStack": [
-      "JavaScript",
-      "Canvas",
-      "Node.js",
-      "WebSocket"
-    ],
-    "category": "샌드박스",
-    "playUrl": "https://minecraft-2d.vercel.app",
-    "githubUrl": "https://github.com/inhyk/minecraft",
-    "createdAt": "2026-02",
-    "thumbnail": "",
-    "screenshots": [],
-    "featured": false,
-    "order": 3
-  },
-  {
     "slug": "diep-io",
     "title": "diep.io",
     "description": "탱크를 키워 살아남는 실시간 슈팅 게임",
