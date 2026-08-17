@@ -671,5 +671,29 @@
     "createdAt": "2026-02",
     "featured": false,
     "order": 29
+  },
+  {
+    "slug": "inh-minecraft",
+    "title": "Minecraft 2D",
+    "description": "친구와 방 코드로 만나는 온라인 2인 마인크래프트",
+    "longDescription": "블록을 캐고 설치하며 자유롭게 탐험하는 2D 샌드박스 게임입니다. 방을 만들면 생기는 6자리 코드를 친구에게 보내 인터넷으로 같은 월드에 접속할 수 있습니다. 두 플레이어의 이동과 블록, 몬스터, 동물, 주민 상태가 실시간으로 동기화됩니다.",
+    "emoji": "⛏️",
+    "thumbnail": "/images/games/inh-minecraft-thumb.png",
+    "screenshots": [
+      "/images/games/inh-minecraft-1.png",
+      "/images/games/inh-minecraft-2.png",
+      "/images/games/inh-minecraft-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "PeerJS WebRTC",
+      "Canvas"
+    ],
+    "category": "샌드박스",
+    "playUrl": "https://inh-minecraft.vercel.app",
+    "githubUrl": "https://github.com/inhyk/minecraft",
+    "createdAt": "2026-08",
+    "featured": false,
+    "order": 30
   }
 ]
