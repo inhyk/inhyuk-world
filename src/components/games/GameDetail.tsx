@@ -2,7 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { ScreenshotGallery } from "@/components/games/ScreenshotGallery";
+import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { getGameCover } from "@/lib/gameVisual";
+import { getMediaByGameSlug, formatMediaDate } from "@/data/media";
 import type { Game } from "@/data/games";
 
 interface GameDetailProps {
@@ -12,6 +14,8 @@ interface GameDetailProps {
 }
 
 export function GameDetail({ game, prevGame, nextGame }: GameDetailProps) {
+  const mediaItems = getMediaByGameSlug(game.slug);
+
   return (
     <div className="min-h-screen pb-20">
       {/* ---------- 히어로: 스크롤 없이 커버 + 플레이 버튼까지 보입니다 ---------- */}
@@ -123,6 +127,34 @@ export function GameDetail({ game, prevGame, nextGame }: GameDetailProps) {
               title={game.title}
               emoji={game.emoji}
             />
+          </div>
+        )}
+
+        {mediaItems.length > 0 && (
+          <div className="mt-16">
+            <h2 className="mb-5 font-[family-name:var(--font-inter-tight)] text-xl font-bold tracking-[-0.02em]">
+              이 게임이 나온 영상
+            </h2>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              {mediaItems.map((item) => (
+                <div key={item.id}>
+                  <VideoEmbed
+                    youtubeId={item.youtubeId}
+                    title={item.title}
+                    thumbnail={item.thumbnail}
+                    sizes="(max-width: 768px) 100vw, 520px"
+                  />
+                  <p className="mt-4 font-[family-name:var(--font-inter-tight)] text-base leading-[1.4] font-semibold">
+                    {item.title}
+                  </p>
+                  <p className="mt-1.5 text-sm text-muted">
+                    {item.outlet} · {formatMediaDate(item.publishedAt)} ·{" "}
+                    {item.duration}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
