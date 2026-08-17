@@ -76,7 +76,7 @@ export function GameExplorer() {
             className="fade-up mx-auto mt-3 max-w-md text-[15px] text-white/85 drop-shadow-[0_1px_10px_rgba(0,0,0,0.5)]"
             style={{ animationDelay: "80ms" }}
           >
-            직접 만든 게임 {games.length}개, 바로 아래에서 골라 보세요
+            인혁이가 만든 게임 바로 플레이해보세요
           </p>
 
           {/* 검색창 */}
