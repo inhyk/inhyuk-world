@@ -264,5 +264,31 @@
     "createdAt": "2026-02",
     "featured": false,
     "order": 12
+  },
+  {
+    "slug": "modongsup",
+    "title": "모동숲",
+    "description": "AI 주민들과 함께 사는 3D 무인도 생활 게임",
+    "longDescription": "동물의 숲에서 영감을 받아 만든 3D 웹 게임입니다. 나무를 베고 돌을 캐서 집을 짓고, 낚시를 하고, 상점에서 물건을 사고팔며 섬을 가꿉니다. 마을 주민 NPC들은 AI로 움직여서 말을 걸면 진짜로 대화가 되고, 각자 기억을 쌓아가며 다르게 반응합니다. 낮과 밤, 날씨가 바뀌고 친구와 같이 접속해서 함께 놀 수도 있습니다.",
+    "emoji": "🏝️",
+    "thumbnail": "/images/games/modongsup-thumb.png",
+    "screenshots": [
+      "/images/games/modongsup-1.png",
+      "/images/games/modongsup-2.png",
+      "/images/games/modongsup-3.png"
+    ],
+    "techStack": [
+      "Three.js",
+      "TypeScript",
+      "Vite",
+      "Supabase",
+      "OpenAI"
+    ],
+    "category": "시뮬레이션",
+    "playUrl": "https://modongsup.vercel.app",
+    "githubUrl": "",
+    "createdAt": "2025-12",
+    "featured": false,
+    "order": 13
   }
 ]
