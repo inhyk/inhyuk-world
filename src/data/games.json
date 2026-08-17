@@ -139,7 +139,7 @@
       "Vite"
     ],
     "category": "시뮬레이션",
-    "playUrl": "https://hotel-tycoon.vercel.app",
+    "playUrl": "https://inh-hotel-tycoon.vercel.app",
     "githubUrl": "https://github.com/inhyk/hotel-tycoon",
     "createdAt": "2026-08",
     "featured": false,
@@ -356,7 +356,7 @@
       "JavaScript"
     ],
     "category": "플랫포머",
-    "playUrl": "https://jump-map.vercel.app",
+    "playUrl": "https://inh-jump-map.vercel.app",
     "githubUrl": "https://github.com/inhyk/jump-map",
     "createdAt": "2025-07",
     "featured": false,
@@ -379,7 +379,7 @@
       "JavaScript"
     ],
     "category": "플랫포머",
-    "playUrl": "https://jump-jump-k89m989qb-inhyuks-projects.vercel.app",
+    "playUrl": "https://inh-jump-jump.vercel.app",
     "githubUrl": "https://github.com/inhyk/jump-jump",
     "createdAt": "2025-05",
     "featured": false,
@@ -496,7 +496,7 @@
       "JavaScript"
     ],
     "category": "시뮬레이션",
-    "playUrl": "https://cookie-clicker.vercel.app",
+    "playUrl": "https://inh-cookie-clicker.vercel.app",
     "githubUrl": "https://github.com/inhyk/cookie-clicker",
     "createdAt": "2025-05",
     "featured": false,
@@ -520,7 +520,7 @@
       "JavaScript"
     ],
     "category": "퍼즐",
-    "playUrl": "https://color-match.vercel.app",
+    "playUrl": "https://inh-color-match.vercel.app",
     "githubUrl": "https://github.com/inhyk/color-match",
     "createdAt": "2025-07",
     "featured": false,
@@ -642,7 +642,7 @@
       "JavaScript"
     ],
     "category": "시뮬레이션",
-    "playUrl": "https://neon-bastion.vercel.app",
+    "playUrl": "https://inh-neon-bastion.vercel.app",
     "githubUrl": "https://github.com/inhyk/neon-bastion",
     "createdAt": "2026-08",
     "featured": false,
