@@ -24,10 +24,19 @@ function ensureGitignore(dir, info) {
   }
 }
 
-async function urlOk(url) {
+// <이름>.vercel.app 은 전 세계가 나눠 쓰는 주소라서,
+// 접속이 된다고 우리 게임이라는 뜻이 아닙니다. (남이 먼저 쓰고 있으면 남의 게임이 뜹니다)
+// 그래서 "우리 Vercel 계정 것이 맞는지" 까지 확인합니다.
+function isOurs(url, cfg) {
+  const r = tryRun("vercel", ["inspect", url, "--scope", cfg.vercelScope]);
+  return r.ok && !r.out.includes("Can't find the deployment");
+}
+
+// 로그인해야 볼 수 있는 주소면 남들은 게임을 못 합니다.
+async function isPublic(url) {
   try {
     const r = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(15000) });
-    return r.ok;
+    return r.ok && !r.url.includes("vercel.com/login");
   } catch {
     return false;
   }
@@ -112,10 +121,23 @@ async function main() {
   if (!dep.ok) fail(`배포가 실패했어요.\n${dep.out.slice(-2000)}`);
   const deployUrl = (dep.out.match(/https:\/\/[a-z0-9.-]+\.vercel\.app/gi) || []).pop();
 
-  // 예쁜 주소(<slug>.vercel.app)가 살아있으면 그걸 쓰고, 아니면 배포 주소를 씁니다.
+  // 예쁜 주소(<slug>.vercel.app)를 쓰되, 그게 진짜 우리 것이고 누구나 볼 수 있을 때만 씁니다.
   const pretty = `https://${slug}.vercel.app`;
-  let playUrl = (await urlOk(pretty)) ? pretty : deployUrl;
-  if (!playUrl) fail("배포는 됐는데 주소를 못 찾겠어요. `vercel ls` 로 확인해주세요.");
+  let playUrl = null;
+  if (isOurs(pretty, cfg) && (await isPublic(pretty))) {
+    playUrl = pretty;
+  } else if (deployUrl && (await isPublic(deployUrl))) {
+    log(`⚠ ${slug}.vercel.app 은 다른 사람이 쓰고 있어서 배포 주소를 씁니다`);
+    playUrl = deployUrl;
+  }
+  if (!playUrl) {
+    fail(
+      `쓸 수 있는 주소를 못 찾았어요.\n` +
+      `  · ${slug}.vercel.app 을 남이 먼저 쓰고 있거나\n` +
+      `  · 배포 주소가 Vercel 로그인으로 막혀 있어요.\n` +
+      `game.json 의 slug 를 "inh-${slug}" 처럼 겹치지 않는 이름으로 바꾸고 다시 해보세요.`
+    );
+  }
   log(`플레이 주소: ${playUrl}`);
 
   // 4. game.json 갱신
