@@ -5,7 +5,7 @@
     "description": "선택이 운명을 바꾸는 인터랙티브 비주얼 노벨",
     "longDescription": "긴긴밤(The Long, Long Night)은 텍스트 기반의 인터랙티브 스토리 게임입니다. 플레이어의 선택에 따라 이야기가 달라지며, 희망 게이지를 관리하면서 긴 밤을 헤쳐 나가야 합니다. 5가지 테마 스킨(밤, 황혼, 겨울, 벚꽃, 오래된 책), 인벤토리 시스템, 숨겨진 이스터에그, 그리고 PeerJS 기반 멀티플레이어까지 지원합니다. 순수 HTML, CSS, JavaScript만으로 만들었습니다.",
     "emoji": "🌙",
-    "thumbnail": "",
+    "thumbnail": "/images/games/ginginbam-thumb.jpg",
     "screenshots": [],
     "techStack": [
       "JavaScript",
@@ -26,7 +26,7 @@
     "description": "떨어지는 노트에 맞춰 키를 누르는 리듬 게임",
     "longDescription": "4키 낙하형 리듬 게임입니다. 화면 위에서 떨어지는 노트에 맞춰 타이밍에 키를 눌러 점수를 얻으세요. EDM Demo, First Step(EASY)부터 EDM NIGHTMARE(Lv.12)까지 6개의 곡이 준비되어 있고, 롱노트도 지원합니다. 스페이스바로 시작/일시정지, 좌우 화살표로 곡을 변경할 수 있습니다. TypeScript와 PixiJS로 렌더링하고, Vite로 빌드했습니다.",
     "emoji": "🎵",
-    "thumbnail": "",
+    "thumbnail": "/images/games/rhythm-game-thumb.jpg",
     "screenshots": [],
     "techStack": [
       "TypeScript",
@@ -73,7 +73,6 @@
     ],
     "category": "액션",
     "playUrl": "https://bean-dash-arena.vercel.app",
-    "githubUrl": "https://github.com/inhyk/bean-dash-arena",
     "createdAt": "2026-03",
     "thumbnail": "",
     "screenshots": [],
@@ -629,7 +628,7 @@
   },
   {
     "slug": "pokemon-party-jamboree",
-    "title": "포켓몬 파티 잼보리",
+    "title": "포켓몬 파티 잼버리",
     "description": "주사위를 굴려 보드를 도는 파티 게임",
     "longDescription": "마리오 파티처럼 주사위를 굴려 보드판을 돌면서 별을 모으는 파티 게임입니다. 칸마다 다른 사건이 일어나고 미니게임으로 승부가 갈립니다. 원래는 친구와 같이 하는 멀티플레이로 만들었습니다.",
     "emoji": "🎲",

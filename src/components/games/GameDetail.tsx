@@ -27,13 +27,31 @@ export function GameDetail({ game, prevGame, nextGame }: GameDetailProps) {
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/70 to-background" />
 
         <div className="relative mx-auto max-w-6xl px-5 pt-20 pb-10 md:px-8 md:pt-24 md:pb-14">
-          <Link
-            href="/#games"
-            className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
-          >
-            <span aria-hidden="true">←</span>
-            모든 게임
-          </Link>
+          <nav aria-label="현재 위치">
+            <ol className="flex flex-wrap items-center gap-2 text-sm text-muted">
+              <li>
+                <Link
+                  href="/"
+                  className="transition-colors hover:text-foreground"
+                >
+                  홈
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li>
+                <Link
+                  href="/games"
+                  className="transition-colors hover:text-foreground"
+                >
+                  모든 게임
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li aria-current="page" className="text-muted-strong">
+                {game.title}
+              </li>
+            </ol>
+          </nav>
 
           <div className="mt-6 grid gap-8 md:grid-cols-[1.15fr_1fr] md:items-center md:gap-10">
             {/* 커버 */}
@@ -41,7 +59,7 @@ export function GameDetail({ game, prevGame, nextGame }: GameDetailProps) {
               {game.thumbnail ? (
                 <Image
                   src={game.thumbnail}
-                  alt={game.title}
+                  alt={`${game.title} 웹 게임 대표 화면`}
                   fill
                   sizes="(max-width: 768px) 100vw, 620px"
                   className="object-cover"
@@ -52,7 +70,11 @@ export function GameDetail({ game, prevGame, nextGame }: GameDetailProps) {
                   className="absolute inset-0 flex items-center justify-center"
                   style={{ backgroundImage: getGameCover(game.slug) }}
                 >
-                  <span className="text-7xl drop-shadow-[0_6px_24px_rgba(0,0,0,0.45)] md:text-8xl">
+                  <span
+                    className="text-7xl drop-shadow-[0_6px_24px_rgba(0,0,0,0.45)] md:text-8xl"
+                    role="img"
+                    aria-label={`${game.title} 웹 게임 대표 화면`}
+                  >
                     {game.emoji}
                   </span>
                 </div>
