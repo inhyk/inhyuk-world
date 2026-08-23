@@ -42,7 +42,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ```text
 DASHBOARD_VERCEL_TOKEN
-DASHBOARD_VERCEL_TEAM_SLUG=inhyuks-projects
+DASHBOARD_VERCEL_TEAM_ID
 ```
 
 토큰에는 팀 프로젝트의 Web Analytics 조회 권한이 필요합니다.

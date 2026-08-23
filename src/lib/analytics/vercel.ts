@@ -8,7 +8,6 @@ import {
 const ANALYTICS_API_URL =
   "https://api.vercel.com/v1/query/web-analytics/visits";
 const SITE_PROJECT_NAME = "inhyuk-world";
-const DEFAULT_TEAM_SLUG = "inhyuks-projects";
 const REPORTING_DAYS = 30;
 const CACHE_SECONDS = 60 * 60;
 
@@ -133,13 +132,14 @@ async function requestAnalytics<T>(
   until: Date
 ): Promise<T> {
   const token = process.env.DASHBOARD_VERCEL_TOKEN;
-  if (!token) throw new AnalyticsRequestError(401);
+  const teamId = process.env.DASHBOARD_VERCEL_TEAM_ID;
+  if (!token || !teamId) throw new AnalyticsRequestError(401);
 
   const params = new URLSearchParams({
     projectId: projectName,
     since: since.toISOString(),
     until: until.toISOString(),
-    slug: process.env.DASHBOARD_VERCEL_TEAM_SLUG || DEFAULT_TEAM_SLUG,
+    teamId,
   });
 
   if (path === "aggregate") {
@@ -157,6 +157,13 @@ async function requestAnalytics<T>(
 
   if (!response.ok) throw new AnalyticsRequestError(response.status);
   return (await response.json()) as T;
+}
+
+function hasAnalyticsCredentials() {
+  return Boolean(
+    process.env.DASHBOARD_VERCEL_TOKEN &&
+      process.env.DASHBOARD_VERCEL_TEAM_ID
+  );
 }
 
 async function getDailyTraffic(
@@ -221,9 +228,7 @@ async function getSiteTraffic(
   } catch (error) {
     const daily = emptyDailyTraffic(dates);
     return {
-      status: process.env.DASHBOARD_VERCEL_TOKEN
-        ? getStatus(error)
-        : "not-configured",
+      status: hasAnalyticsCredentials() ? getStatus(error) : "not-configured",
       daily,
       todayVisitors: 0,
       todayPageviews: 0,
@@ -279,9 +284,7 @@ async function getGameTraffic(
   } catch (error) {
     return {
       ...project,
-      status: process.env.DASHBOARD_VERCEL_TOKEN
-        ? getStatus(error)
-        : "not-configured",
+      status: hasAnalyticsCredentials() ? getStatus(error) : "not-configured",
       daily: emptyDailyTraffic(dates),
       todayVisitors: 0,
       todayPageviews: 0,
