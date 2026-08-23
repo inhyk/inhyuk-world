@@ -1,4 +1,4 @@
-import type { Game } from "@/data/games";
+import { compareGamesByRecentUpdate, type Game } from "@/data/games";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
 const personId = `${siteConfig.url}/#person`;
@@ -59,7 +59,7 @@ export const profilePageJsonLd = {
 };
 
 export function createGamesCollectionJsonLd(games: Game[]) {
-  const sortedGames = [...games].sort((a, b) => a.order - b.order);
+  const sortedGames = [...games].sort(compareGamesByRecentUpdate);
 
   return {
     "@context": "https://schema.org",
