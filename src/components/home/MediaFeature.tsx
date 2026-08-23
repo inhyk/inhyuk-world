@@ -17,6 +17,7 @@ export function MediaFeature() {
             youtubeId={feature.youtubeId}
             title={feature.title}
             thumbnail={feature.thumbnail}
+            aspect={feature.aspect}
             sizes="(max-width: 768px) 100vw, 700px"
           />
 

@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface VideoEmbedProps {
   youtubeId: string;
   title: string;
   thumbnail: string;
+  aspect?: "landscape" | "portrait";
   /** next/image 에 넘길 sizes. 놓이는 자리마다 다릅니다. */
   sizes?: string;
   priority?: boolean;
@@ -21,13 +23,19 @@ export function VideoEmbed({
   youtubeId,
   title,
   thumbnail,
+  aspect = "landscape",
   sizes = "(max-width: 768px) 100vw, 640px",
   priority = false,
 }: VideoEmbedProps) {
   const [playing, setPlaying] = useState(false);
 
   return (
-    <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-surface">
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-2xl border border-border bg-surface",
+        aspect === "portrait" ? "aspect-[9/16]" : "aspect-video"
+      )}
+    >
       {playing ? (
         <iframe
           src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0`}

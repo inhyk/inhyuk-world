@@ -11,8 +11,9 @@ export interface MediaAppearance {
   summary: string;
   url: string;
   youtubeId: string;
-  /** public/ 아래 경로. 유튜브 썸네일을 16:9로 잘라 받아 둔 것입니다. */
+  /** public/ 아래 경로. 영상 비율에 맞춰 잘라 둔 로컬 썸네일입니다. */
   thumbnail: string;
+  aspect: "landscape" | "portrait";
   /** YYYY-MM-DD (한국 시간) */
   publishedAt: string;
   duration: string;
@@ -32,9 +33,40 @@ export const mediaAppearances: MediaAppearance[] = [
     url: "https://www.youtube.com/watch?v=twsx6DvIvBE",
     youtubeId: "twsx6DvIvBE",
     thumbnail: "/media/yozmit-interview-thumb.jpg",
+    aspect: "landscape",
     publishedAt: "2026-02-12",
     duration: "41분",
     gameSlug: "modongsup",
+  },
+  {
+    id: "wanna-die-gameplay-2025-08",
+    outlet: "Inkeun Seo",
+    outletUrl: "https://www.youtube.com/@kubony",
+    title: "인혁이 만든 우주 슈팅게임 플레이",
+    summary:
+      "인혁이가 만든 우주 슈팅게임을 직접 플레이하며 웨이브, 퀘스트, 스킨 기능을 소개합니다.",
+    url: "https://www.youtube.com/shorts/vBPSBdr_qc8",
+    youtubeId: "vBPSBdr_qc8",
+    thumbnail: "/media/wanna-die-gameplay-short-thumb.jpg",
+    aspect: "portrait",
+    publishedAt: "2025-08-15",
+    duration: "1분 8초",
+    gameSlug: "wanna-die-game",
+  },
+  {
+    id: "wanna-die-prompt-2025-08",
+    outlet: "Inkeun Seo",
+    outletUrl: "https://www.youtube.com/@kubony",
+    title: "게임을 만든 프롬프트 공개",
+    summary:
+      "Cursor에 말로 입력한 프롬프트를 보여 주며 게임에 기능을 더해 간 과정을 소개합니다.",
+    url: "https://www.youtube.com/shorts/zyUbSb_cv7U",
+    youtubeId: "zyUbSb_cv7U",
+    thumbnail: "/media/wanna-die-prompt-short-thumb.jpg",
+    aspect: "portrait",
+    publishedAt: "2025-08-15",
+    duration: "57초",
+    gameSlug: "wanna-die-game",
   },
 ];
 

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { ScreenshotGallery } from "@/components/games/ScreenshotGallery";
 import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { getGameCover } from "@/lib/gameVisual";
+import { cn } from "@/lib/utils";
 import { getMediaByGameSlug, formatMediaDate } from "@/data/media";
 import type { Game } from "@/data/games";
 
@@ -15,6 +16,9 @@ interface GameDetailProps {
 
 export function GameDetail({ game, prevGame, nextGame }: GameDetailProps) {
   const mediaItems = getMediaByGameSlug(game.slug);
+  const hasOnlyPortraitMedia =
+    mediaItems.length > 0 &&
+    mediaItems.every((item) => item.aspect === "portrait");
 
   return (
     <div className="min-h-screen pb-20">
@@ -158,14 +162,33 @@ export function GameDetail({ game, prevGame, nextGame }: GameDetailProps) {
               이 게임이 나온 영상
             </h2>
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div
+              className={cn(
+                "grid gap-6",
+                hasOnlyPortraitMedia
+                  ? "md:grid-cols-[repeat(2,minmax(0,320px))] md:justify-center"
+                  : "md:grid-cols-2"
+              )}
+            >
               {mediaItems.map((item) => (
-                <div key={item.id}>
+                <div
+                  key={item.id}
+                  className={
+                    item.aspect === "portrait"
+                      ? "mx-auto w-full max-w-[320px]"
+                      : undefined
+                  }
+                >
                   <VideoEmbed
                     youtubeId={item.youtubeId}
                     title={item.title}
                     thumbnail={item.thumbnail}
-                    sizes="(max-width: 768px) 100vw, 520px"
+                    aspect={item.aspect}
+                    sizes={
+                      item.aspect === "portrait"
+                        ? "320px"
+                        : "(max-width: 768px) 100vw, 520px"
+                    }
                   />
                   <p className="mt-4 font-[family-name:var(--font-inter-tight)] text-base leading-[1.4] font-semibold">
                     {item.title}
