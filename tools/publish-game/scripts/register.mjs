@@ -85,16 +85,18 @@ async function main() {
   }
 
   const i = games.findIndex((g) => g.slug === game.slug);
+  const nextOrder = Math.max(0, ...games.map((g) => g.order || 0)) + 1;
   if (i >= 0) {
-    entry.order = games[i].order;
+    // order 는 마지막 발행 순번입니다. 다시 올린 게임도 목록 맨 위로 보냅니다.
+    entry.order = nextOrder;
     games[i] = entry;
     log(`기존 항목 갱신: ${game.title}`);
   } else {
-    entry.order = Math.max(0, ...games.map((g) => g.order || 0)) + 1;
+    entry.order = nextOrder;
     games.push(entry);
     log(`새 항목 추가: ${game.title}`);
   }
-  games.sort((a, b) => a.order - b.order);
+  games.sort((a, b) => b.order - a.order);
   writeJson(dataFile, games);
 
   // 3. 허브에 올리기
