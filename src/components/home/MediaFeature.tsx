@@ -3,8 +3,12 @@ import { VideoEmbed } from "@/components/media/VideoEmbed";
 import { mediaAppearances, formatMediaDate } from "@/data/media";
 import { getGameBySlug } from "@/data/games";
 
+const [feature] = mediaAppearances;
+const shorts = mediaAppearances.filter((item) => item.aspect === "portrait");
+const shortsGameSlug = shorts.find((item) => item.gameSlug)?.gameSlug;
+const shortsGame = shortsGameSlug ? getGameBySlug(shortsGameSlug) : undefined;
+
 export function MediaFeature() {
-  const [feature] = mediaAppearances;
   if (!feature) return null;
 
   const relatedGame = feature.gameSlug ? getGameBySlug(feature.gameSlug) : undefined;
@@ -71,6 +75,68 @@ export function MediaFeature() {
           </div>
         </div>
       </div>
+
+      {shorts.length > 0 ? (
+        <div
+          id="shorts"
+          className="mt-6 overflow-hidden rounded-3xl border border-border bg-surface p-5 md:p-8"
+        >
+          <div className="grid gap-7 lg:grid-cols-[0.72fr_1.28fr] lg:items-center lg:gap-10">
+            <div>
+              <p className="text-xs font-medium tracking-[0.14em] text-muted uppercase">
+                개발 쇼츠
+              </p>
+              <h2
+                id="shorts-title"
+                className="mt-3 font-[family-name:var(--font-inter-tight)] text-[26px] leading-[1.2] font-bold tracking-[-0.025em] md:text-[32px]"
+              >
+                게임이 만들어지는 순간
+              </h2>
+              <p className="mt-4 max-w-md text-[15px] leading-[1.7] text-muted-strong">
+                직접 만든 게임을 플레이하고, 말로 입력한 프롬프트로 기능을
+                더해 가는 과정을 짧게 담았습니다.
+              </p>
+
+              {shortsGame ? (
+                <Link
+                  href={`/games/${shortsGame.slug}`}
+                  className="mt-7 inline-flex w-fit items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-border-strong hover:bg-surface-hover"
+                >
+                  {shortsGame.emoji} {shortsGame.title} 보러 가기
+                  <span aria-hidden="true">→</span>
+                </Link>
+              ) : null}
+            </div>
+
+            <div
+              className="no-scrollbar -mx-5 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-1 md:-mx-8 md:px-8 lg:mx-0 lg:grid lg:grid-cols-2 lg:overflow-visible lg:px-0 lg:pb-0"
+              aria-labelledby="shorts-title"
+            >
+              {shorts.map((item) => (
+                <article
+                  key={item.id}
+                  className="w-[240px] shrink-0 snap-start lg:w-full lg:max-w-[280px] lg:justify-self-center"
+                >
+                  <VideoEmbed
+                    youtubeId={item.youtubeId}
+                    title={item.title}
+                    thumbnail={item.thumbnail}
+                    aspect={item.aspect}
+                    sizes="(max-width: 1024px) 240px, 280px"
+                  />
+                  <h3 className="mt-4 font-[family-name:var(--font-inter-tight)] text-base leading-[1.4] font-semibold">
+                    {item.title}
+                  </h3>
+                  <p className="mt-1.5 text-sm text-muted">
+                    {item.outlet} · {formatMediaDate(item.publishedAt)} ·{" "}
+                    {item.duration}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
