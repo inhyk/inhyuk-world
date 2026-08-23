@@ -53,6 +53,7 @@ export function Footer() {
             <FooterColumn title="사이트">
               <FooterLink href="/">홈</FooterLink>
               <FooterLink href="/games">게임</FooterLink>
+              <FooterLink href="/stats">방문 통계</FooterLink>
               <FooterLink href="/about">소개</FooterLink>
             </FooterColumn>
 

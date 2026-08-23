@@ -34,3 +34,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## 방문 통계
+
+`/stats`는 Vercel Web Analytics API에서 최근 30일의 사이트 및 게임별
+방문 데이터를 읽습니다. 배포 환경에는 다음 서버 전용 변수가 필요합니다.
+
+```text
+DASHBOARD_VERCEL_TOKEN
+DASHBOARD_VERCEL_TEAM_ID
+```
+
+토큰에는 팀 프로젝트의 Web Analytics 조회 권한이 필요합니다.
+`DASHBOARD_VERCEL_TOKEN`에 `NEXT_PUBLIC_` 접두사를 붙이지 마세요.

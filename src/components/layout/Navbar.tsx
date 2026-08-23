@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 
 const navLinks = [
   { href: "/games", label: "게임" },
+  { href: "/stats", label: "통계" },
   { href: "/about", label: "소개" },
   { href: "/#contact", label: "연락하기" },
 ];
