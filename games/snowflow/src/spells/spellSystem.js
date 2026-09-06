@@ -69,8 +69,19 @@ export class SpellSystem {
      * @param {import("../core/camera.js").CameraRig} rig
      * @param {import("../vfx/particles.js").SprayField} spray
      */
-    constructor(scene, sky, shadows, terrain, controller, figure, rig, spray) {
-        this.lights = new SpellLights();
+    constructor(scene, sky, shadows, terrain, controller, figure, rig, spray, options = {}) {
+        /**
+         * Replica systems for the other players in a room share the local
+         * system's light pool — four slots, applied once per frame by whoever
+         * owns them — because two pools writing the same uniforms means only
+         * the last one is ever seen.
+         */
+        this.lights = options.lights || new SpellLights();
+        this.ownsLights = !options.lights;
+        /** True for a replica: nothing here reads input, casts arrive by wire. */
+        this.remote = !!options.remote;
+        /** Fires on every local cast, with what the wire needs to replay it. */
+        this.onCast = () => {};
         this.water = new WaterBody(scene, sky, shadows, this.lights);
         this.crystals = new CrystalField(scene, sky, shadows, this.lights);
 
@@ -173,10 +184,10 @@ export class SpellSystem {
         // with the camera, and the figure turns to follow.
         this.aim.copyFrom(this.ctx.rig.forward);
 
-        this.lights.begin();
+        if (this.ownsLights) this.lights.begin();
 
-        if (S.showSpells !== false) this._dispatch();
-        else this._cancelAll();
+        if (S.showSpells === false) this._cancelAll();
+        else if (!this.remote) this._dispatch();
 
         for (let i = 0; i < this.spells.length; i++) this.spells[i].update(dt);
 
@@ -193,14 +204,20 @@ export class SpellSystem {
         ch.castAimY = this.aim.y;
         ch.castAimZ = this.aim.z;
 
-        // Everything outside the spell system that answers a spell light, after
-        // the last declaration and before anything renders.
+        this.water.update(dt, cameraPos);
+        this.crystals.update(dt, cameraPos);
+    }
+
+    /**
+     * Push the light pool to everything outside the spell system that answers
+     * it. Separate from `update` so the frame can run every replica's update
+     * first — a friend's Bloom lights your snow on the frame it lands, not the
+     * one after.
+     */
+    applyLights() {
         for (let i = 0; i < this._consumers.length; i++) {
             this.lights.apply(this._consumers[i]);
         }
-
-        this.water.update(dt, cameraPos);
-        this.crystals.update(dt, cameraPos);
     }
 
     /** Returns hit strength. Target previews do not deal damage before impact. */
@@ -249,19 +266,13 @@ export class SpellSystem {
             return;
         }
 
-        this._lastCast = this._time;
-
+        let params = null;
         if (key === 1 || key === 8) {
             // Flat aim: the crescent runs along the ground, so a camera pointed
             // at the sky must not launch it into the air.
             const fl = Math.hypot(this.aim.x, this.aim.z) || 1;
-            const wave = key === 1 ? this.sweep : this.tidalWave;
-            wave.trigger(this.aim.x / fl, this.aim.z / fl);
-            rig.addTrauma(key === 1 ? 0.12 : 0.22);
-            return;
-        }
-
-        if (key === 3 || key === 4 || key === 7 || key === 9) {
+            params = [this.aim.x / fl, 0, this.aim.z / fl];
+        } else if (key === 3 || key === 4 || key === 7 || key === 9) {
             // Both are placed where the player is looking. The ray starts at the
             // eye, so what the spell hits is exactly what is under the centre of
             // the screen — which is the only targeting rule that needs no
@@ -280,13 +291,43 @@ export class SpellSystem {
                 this.aim.x, this.aim.y, this.aim.z,
                 22, 13
             );
-            if (key === 3) this.bloom.trigger(_aim[0], _aim[1], _aim[2]);
-            else if (key === 4) this.crystallize.trigger(_aim[0], _aim[1], _aim[2]);
-            else if (key === 7) this.iceLances.trigger(_aim[0], _aim[1], _aim[2]);
-            else this.frostComet.trigger(_aim[0], _aim[1], _aim[2]);
+            params = [_aim[0], _aim[1], _aim[2]];
+        }
+        this.perform(key, params);
+        this.onCast(key, params);
+    }
+
+    /**
+     * Fire a spell with its parameters already resolved — a direction for the
+     * waves, a landing point for the placed spells, nothing for the ones that
+     * happen around the body. Local casts and replayed ones both come here,
+     * which is what guarantees a friend's Bloom lands on your screen exactly
+     * where it landed on theirs: the point travelled, not the camera it was
+     * computed from.
+     *
+     * @param {number} key 1..9, not 2
+     * @param {number[]|null} params
+     */
+    perform(key, params) {
+        if (S.showSpells === false) return;
+        const rig = this.ctx.rig;
+        this._lastCast = this._time;
+        if (key === 1 || key === 8) {
+            if (!params) return;
+            const wave = key === 1 ? this.sweep : this.tidalWave;
+            wave.trigger(params[0], params[2]);
+            rig.addTrauma(key === 1 ? 0.12 : 0.22);
             return;
         }
-
+        if (key === 3 || key === 4 || key === 7 || key === 9) {
+            if (!params) return;
+            const [x, y, z] = params;
+            if (key === 3) this.bloom.trigger(x, y, z);
+            else if (key === 4) this.crystallize.trigger(x, y, z);
+            else if (key === 7) this.iceLances.trigger(x, y, z);
+            else this.frostComet.trigger(x, y, z);
+            return;
+        }
         if (key === 5) {
             this.vortex.trigger();
             rig.addTrauma(0.10);
@@ -300,11 +341,16 @@ export class SpellSystem {
             if (!this.ribbon.held) {
                 this.ribbon.trigger();
                 this._lastCast = this._time;
+                if (!this.remote) this.onCast(2, [1]);
             }
         } else if (this.ribbon.held) {
             this.ribbon.release();
+            if (!this.remote) this.onCast(2, [0]);
         }
     }
+
+    /** Cancel everything in flight. A replica does this when its owner leaves. */
+    cancelAll() { this._cancelAll(); }
 
     _cancelAll() {
         for (let i = 0; i < this.spells.length; i++) this.spells[i].cancel();

@@ -241,3 +241,40 @@ test("outside a duel nothing is sent at all", () => {
     host.sendPlayerDamage("guest-1", 18);
     assert.equal(seen.includes("pvp"), true);
 });
+
+test("a cast is one message, relayed to everyone but its caster", () => {
+    const casts = [];
+    const host = hostRoom({ onCast: (k, p, from) => casts.push([k, p, from]) });
+    host.peer = { destroyed: false };
+    const a = fakeConnection("guest-a");
+    const b = fakeConnection("guest-b");
+    for (const conn of [a, b]) {
+        host._acceptGuest(conn);
+        host._onGuestMessage(conn, { t: "hello", name: conn.peer });
+    }
+    a.sent.length = 0; b.sent.length = 0;
+
+    // Guest A places a Bloom. The host replays it and hands it on to B only.
+    host._onGuestMessage(a, { t: "cast", k: 3, p: [10, 0.5, -4] });
+    assert.deepEqual(casts, [[3, [10, 0.5, -4], "guest-a"]]);
+    assert.equal(a.sent.filter((m) => m.t === "cast").length, 0, "never back to the caster");
+    assert.deepEqual(b.sent.filter((m) => m.t === "cast"),
+        [{ t: "cast", k: 3, p: [10, 0.5, -4], from: "guest-a" }]);
+
+    // The host's own cast goes to both guests, quantised.
+    host.castSpell(1, [0.70710678, 0, 0.70710678]);
+    const toA = a.sent.filter((m) => m.t === "cast").at(-1);
+    assert.deepEqual(toA, { t: "cast", k: 1, p: [0.707, 0, 0.707], from: host.selfId });
+    assert.equal(b.sent.filter((m) => m.t === "cast").length, 2);
+});
+
+test("the body now carries where its owner is looking", () => {
+    const state = new Array(STATE_STRIDE).fill(0);
+    state[9] = 0.3; state[10] = -0.2; state[11] = 0.93;
+    const body = unpackPlayer(state);
+    assert.equal(body.aimX, 0.3);
+    assert.equal(body.aimZ, 0.93);
+    // An older, shorter packet still unpacks, aimed straight ahead.
+    const old = unpackPlayer([0, 0, 0, 0, 0, 0, 100, 0, 0]);
+    assert.deepEqual([old.aimX, old.aimY, old.aimZ], [0, 0, 1]);
+});

@@ -252,6 +252,8 @@ async function boot() {
         worldHud.announce(event);
     });
     monsters.onHit = (id, damage) => room.reportMonsterHit(id, damage, "m");
+    // Every local cast goes out as one message; every friend's comes back as one.
+    spells.onCast = (key, params) => room.castSpell(key, params);
 
     // The dawn. Same pool shape and wire format as the wraiths, opposite in
     // every other way — quick, single-point, and circling rather than closing.
@@ -431,6 +433,7 @@ async function boot() {
             const thrower = room.players.get(from);
             snowballs.accept(wire, from, thrower ? thrower.colorIndex : 0);
         },
+        onCast: (key, params, from) => remotePlayers.castFor(from, key, params),
         onMatch: (phase, timer) => match.adopt(phase, timer),
         onMatchRequest: (want) => { if (want) match.start(); },
         onMonsters: (wire, defeated) => {
@@ -567,14 +570,16 @@ async function boot() {
         }
         // Before the terrain: their boots stage brushes into the same array
         // yours do, and the simulation pass consumes it below.
-        remotePlayers.update(netDt, room, character.position);
+        remotePlayers.update(netDt, room, character.position, rig.camera.position);
+        // After every system that can declare a light has run this frame.
+        spells.applyLights();
 
         netAccum += netDt;
         if (room.active && netAccum >= NET_INTERVAL) {
             netAccum = 0;
             room.publishSelf(
                 character.position, character.facing, character.surf,
-                character.speed01, health.hp, health.downed, 0, match.score
+                character.speed01, health.hp, health.downed, 0, match.score, rig.forward
             );
             if (room.isHost) {
                 room.publishWorld(

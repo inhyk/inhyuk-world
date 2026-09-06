@@ -23,6 +23,8 @@ import { CharacterController } from "../character/controller.js";
 import { Character } from "../character/character.js";
 import { SnowContact } from "../character/snowContact.js";
 import { SurfWake } from "../vfx/surfWake.js";
+import { SpellSystem } from "../spells/spellSystem.js";
+import { RemoteAim } from "../spells/remoteAim.js";
 import { S } from "../core/settings.js";
 import { MAX_PLAYERS, PLAYER_COLORS, unpackPlayer } from "../net/room.js";
 
@@ -112,16 +114,32 @@ export class RemotePlayers {
             // friend standing inside it flat.
             this.spells.addConsumers(avatar.bodyMat, avatar.clothMat, wake.material);
 
+            // Their spells: a whole SpellSystem, aimed by three numbers off the
+            // wire instead of a camera, sharing your light pool. It writes into
+            // the same terrain buffer, so a friend's tidal wave carves your
+            // snow and their crystals stand in your field.
+            const aim = new RemoteAim();
+            const spells = new SpellSystem(
+                this.scene, this.sky, this.shadows, this.terrain,
+                controller, avatar.figure, aim, this.spray,
+                { lights: this.spells.lights, remote: true }
+            );
+            spells.registerPrepass(this.depthPass);
+
             // The shader effects are already compiled — every character shares
             // one program set — so this is binding and buffer allocation rather
             // than a second compile. It still has to finish before anything is
-            // drawn with it.
+            // drawn with it. The spells need a few real frames on screen for
+            // their pipelines to exist, exactly as the local ones did at boot.
             await avatar.warmUp();
             await wake.warmUp();
+            await spells.warmUp(3, this.terrain.heightAt(3, 3), 3);
+            await nextFrames(3);
+            spells.finishWarmUp();
 
             this.slots.push({
                 id: "", name: "", colorIndex: -1, live: false,
-                controller, avatar, contact, wake,
+                controller, avatar, contact, wake, spells, aim,
                 x: 0, y: 0, z: 0,
                 // `flash` is what *you* see when your spell lands. The damage
                 // itself is resolved on their machine and comes back a network
@@ -141,8 +159,10 @@ export class RemotePlayers {
      *   is paused behind the welcome card, because theirs is not paused
      * @param {import("../net/room.js").Room|null} room
      * @param {{x:number,z:number}} here your own body, for the distance cuts
+     * @param {import("@babylonjs/core/Maths/math.vector").Vector3} camera the
+     *   local camera, which their water still has to be shaded against
      */
-    update(dt, room, here) {
+    update(dt, room, here, camera) {
         if (!this.ready) return;
         const others = room && room.active ? room.others : [];
         const claimed = new Set();
@@ -156,6 +176,7 @@ export class RemotePlayers {
             claimed.add(slot);
 
             const body = unpackPlayer(player.state);
+            slot.lastState = player.state;
             const fresh = !slot.live;
             slot.live = true;
             slot.id = player.id;
@@ -194,6 +215,13 @@ export class RemotePlayers {
             slot.avatar.update(dt, away < CLOTH_DISTANCE);
             if (away < CONTACT_DISTANCE) slot.contact.update(dt);
             slot.wake.setEnabled(S.showWake !== false);
+
+            // Their spells follow their aim, eased like everything else about
+            // them, and run through the same update as yours — before the
+            // terrain, so the brushes they stage land this frame.
+            const body = unpackPlayer(slot.lastState || []);
+            slot.aim.set(body.aimX ?? 0, body.aimY ?? 0, body.aimZ ?? 1, p);
+            slot.spells.update(dt, camera);
         }
     }
 
@@ -260,11 +288,23 @@ export class RemotePlayers {
         for (const slot of this.slots) this._retire(slot);
     }
 
+    /**
+     * A cast that arrived over the wire for one of these bodies.
+     * @param {string} id @param {number} key @param {number[]|null} params
+     */
+    castFor(id, key, params) {
+        const slot = this.slots.find((s) => s.live && s.id === id);
+        if (!slot) return;
+        if (key === 2) slot.spells.holdRibbon(!!(params && params[0]));
+        else slot.spells.perform(key, params);
+    }
+
     _retire(slot) {
         slot.live = false;
         slot.id = "";
         slot.avatar.setVisible(false);
         slot.wake.setEnabled(false);
+        slot.spells?.cancelAll();
     }
 
     _recolour(slot, colorIndex) {

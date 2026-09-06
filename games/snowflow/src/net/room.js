@@ -37,7 +37,7 @@ const CONNECT_TIMEOUT = 14000;
 const PEER_TIMEOUT = 12000;
 
 /** Numbers per player on the wire. See `packSelf` / `unpackPlayer`. */
-export const STATE_STRIDE = 9;
+export const STATE_STRIDE = 12;
 
 const q = (value, places = 2) => {
     const k = 10 ** places;
@@ -303,6 +303,12 @@ export class Room {
             case "match":
                 this.hooks.onMatchRequest?.(msg.want);
                 return;
+            case "cast":
+                // One message per cast, relayed like a throw: the spell itself
+                // is re-run on every machine from the same parameters.
+                this.hooks.onCast?.(msg.k | 0, msg.p ?? null, id);
+                this._broadcast({ t: "cast", k: msg.k, p: msg.p ?? null, from: id }, id);
+                return;
             case "pvp":
                 // Damage is applied by whoever owns the body, so this is only
                 // ever forwarded — never resolved here.
@@ -382,6 +388,9 @@ export class Room {
             case "ball":
                 this.hooks.onBall?.(msg.b, msg.from);
                 return;
+            case "cast":
+                this.hooks.onCast?.(msg.k | 0, msg.p ?? null, msg.from);
+                return;
             case "pvp":
                 if (msg.target === this.selfId) this.hooks.onHurt?.(Number(msg.d) || 0, msg.from);
                 return;
@@ -401,7 +410,7 @@ export class Room {
      * This client's body, once per network tick.
      * @param {{x:number,y:number,z:number}} position
      */
-    publishSelf(position, facing, surf, speed01, hp, downed, castKey, score) {
+    publishSelf(position, facing, surf, speed01, hp, downed, castKey, score, aim) {
         if (!this.active) return;
         const s = this._self;
         s[0] = q(position.x); s[1] = q(position.y); s[2] = q(position.z);
@@ -411,6 +420,11 @@ export class Room {
         s[6] = Math.round(hp);
         s[7] = (downed ? 1 : 0) | ((castKey || 0) << 1);
         s[8] = score | 0;
+        // Where they are looking, so a held ribbon and the casting stance
+        // follow their camera on your screen.
+        s[9] = aim ? q(aim.x, 3) : 0;
+        s[10] = aim ? q(aim.y, 3) : 0;
+        s[11] = aim ? q(aim.z, 3) : 1;
         if (this.isHost) {
             const me = this.players.get(this.selfId);
             if (me) { me.state = s; me.hasState = true; }
@@ -442,6 +456,18 @@ export class Room {
         if (!this.active) return;
         if (this.isHost) this._broadcast({ t: "ball", b: wire, from: this.selfId });
         else if (this._uplink?.open) this._uplink.send({ t: "ball", b: wire });
+    }
+
+    /**
+     * A spell, to everyone. Direction for the waves, a landing point for the
+     * placed spells, a hold flag for the ribbon — whatever `perform` needs.
+     * @param {number} key @param {number[]|null} params
+     */
+    castSpell(key, params) {
+        if (!this.active) return;
+        const p = Array.isArray(params) ? params.map((v) => q(v, 3)) : null;
+        if (this.isHost) this._broadcast({ t: "cast", k: key, p, from: this.selfId });
+        else if (this._uplink?.open) this._uplink.send({ t: "cast", k: key, p });
     }
 
     /** Guest → host: "start a match". Only the host may actually start one. */
@@ -521,5 +547,6 @@ export function unpackPlayer(state) {
         facing: state[3], surf: state[4], speed01: state[5],
         hp: state[6], downed: (flags & 1) === 1, castKey: flags >> 1,
         score: state[8] | 0,
+        aimX: state[9] ?? 0, aimY: state[10] ?? 0, aimZ: state[11] ?? 1,
     };
 }
