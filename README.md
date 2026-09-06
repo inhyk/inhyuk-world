@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## SNOWFLOW · 눈과 물의 흐름
+
+Reddit에서 소개된 눈 서핑·물 마법 데모의 한국어 버전을 추가했습니다. 루트에서 `npm install` 후 `npm run snowflow:dev`를 실행하면 http://127.0.0.1:5173 에서 플레이할 수 있습니다. WebGPU를 지원하는 데스크톱 브라우저가 필요합니다.
+
+사이트 안에서는 `/play/snowflow`에서 실행합니다. `npm run dev`와 `npm run build`에 게임 빌드가 연결되어 있습니다. 조작법과 원본 라이선스는 [게임 README](games/snowflow/README.md)를 확인하세요.
+
 ## Getting Started
 
 First, run the development server:

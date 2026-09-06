@@ -42,3 +42,7 @@ next-env.d.ts
 
 # 발행 도구 (Vercel 빌드와 분리)
 tools/node_modules/
+
+# Generated SNOWFLOW game (npm run snowflow:build)
+/public/play/snowflow/
+/games/snowflow/node_modules/

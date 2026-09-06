@@ -2,11 +2,16 @@
   "name": "inhyuk-world",
   "version": "0.1.0",
   "private": true,
+  "workspaces": ["games/snowflow"],
   "scripts": {
+    "predev": "npm run snowflow:build",
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run snowflow:build && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "snowflow:dev": "npm run dev --workspace=@inhyuk/snowflow",
+    "snowflow:build": "npm run build --workspace=@inhyuk/snowflow",
+    "test": "node --test \"games/snowflow/tests/*.test.js\""
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

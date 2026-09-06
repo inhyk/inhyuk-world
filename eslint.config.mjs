@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "public/play/snowflow/**",
+    // Vendored JavaScript/WGSL has its own browser runtime, separate from React.
+    "games/snowflow/src/**",
   ]),
 ]);
 

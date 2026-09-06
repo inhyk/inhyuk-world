@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SNOWFLOW · 눈과 물의 흐름</title>
+<meta name="description" content="눈밭을 가르고, 물의 흐름을 다루세요. 아홉 가지 물 마법과 눈 서핑을 즐기는 SNOWFLOW 한국어 데모." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b1724'/%3E%3Cpath d='M32 10C28 20 16 30 16 40a16 16 0 0032 0C48 30 36 20 32 10Z' fill='%239eddec'/%3E%3C/svg%3E" />
+<style>
+    :root {
+        /* Cool-shadow palette pulled from the Horizon reference. */
+        --ink:      #070b12;
+        --ink-2:    #0d141f;
+        --frost:    #dbe6f2;
+        --frost-dim:#7d8ea3;
+        --accent:   #8fc4e8;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--ink);
+        color: var(--frost);
+        font-family: ui-sans-serif, "Inter", "Segoe UI", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    #view {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        outline: none;
+        touch-action: none;
+    }
+
+    /* ---------------------------------------------------------------- boot */
+
+    #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: grid;
+        place-items: center;
+        background:
+            radial-gradient(120% 90% at 50% 42%, #16202e 0%, #0a1019 55%, #05080d 100%);
+        transition: opacity 900ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #boot.gone { opacity: 0; pointer-events: none; }
+
+    /* Faint drifting grain so the boot screen is never a flat fill. */
+    #boot::after {
+        content: "";
+        position: absolute;
+        inset: -50%;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+        opacity: 0.035;
+        mix-blend-mode: screen;
+        animation: drift 24s linear infinite;
+        pointer-events: none;
+    }
+
+    @keyframes drift {
+        from { transform: translate3d(0, 0, 0); }
+        to   { transform: translate3d(-160px, -160px, 0); }
+    }
+
+    .boot-inner {
+        position: relative;
+        z-index: 1;
+        width: min(560px, 78vw);
+        text-align: center;
+    }
+
+    .wordmark {
+        font-size: clamp(28px, 4.4vw, 54px);
+        font-weight: 200;
+        letter-spacing: 0.62em;
+        text-indent: 0.62em; /* optical re-centre against the trailing track */
+        color: var(--frost);
+        opacity: 0;
+        animation: rise 1400ms cubic-bezier(0.16, 1, 0.3, 1) 120ms forwards;
+    }
+
+    .tagline {
+        margin-top: 1.4em;
+        font-size: 11px;
+        font-weight: 400;
+        letter-spacing: 0.34em;
+        text-indent: 0.34em;
+        text-transform: uppercase;
+        color: var(--frost-dim);
+        opacity: 0;
+        animation: rise 1400ms cubic-bezier(0.16, 1, 0.3, 1) 420ms forwards;
+    }
+
+    @keyframes rise {
+        from { opacity: 0; transform: translate3d(0, 14px, 0); }
+        to   { opacity: 1; transform: none; }
+    }
+
+    .bar {
+        position: relative;
+        margin: 3.6em auto 0;
+        width: 100%;
+        height: 1px;
+        background: rgba(219, 230, 242, 0.13);
+        overflow: hidden;
+    }
+
+    .bar-fill {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0%;
+        background: linear-gradient(90deg, transparent, var(--accent) 60%, #eaf4ff);
+        box-shadow: 0 0 14px rgba(143, 196, 232, 0.55);
+        transition: width 380ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .phase {
+        margin-top: 1.5em;
+        height: 1em;
+        font-size: 10px;
+        font-weight: 400;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--frost-dim);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* --------------------------------------------------------- hard failure */
+
+    #nogpu {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        display: none;
+        place-items: center;
+        background: var(--ink);
+        padding: 2rem;
+        text-align: center;
+        font-size: 13px;
+        letter-spacing: 0.06em;
+        line-height: 1.7;
+        color: var(--frost-dim);
+    }
+
+    #nogpu.show { display: grid; }
+    #nogpu b { color: var(--frost); font-weight: 500; }
+
+    /* ------------------------------------------------------------- hint */
+
+    #hint {
+        position: fixed;
+        left: 50%;
+        bottom: 38px;
+        z-index: 50;
+        transform: translateX(-50%);
+        font-size: 10px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: rgba(219, 230, 242, 0.42);
+        text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 700ms ease;
+    }
+
+    #hint.show { opacity: 1; }
+</style>
+</head>
+<body>
+    <canvas id="view" tabindex="0" aria-label="눈밭과 물 마법 3D 데모"></canvas>
+
+    <div id="hint">WASD 이동 &nbsp;·&nbsp; Space 서핑 &nbsp;·&nbsp; 1–9 마법 &nbsp;·&nbsp; Esc 조작법</div>
+
+    <div id="experience" hidden>
+        <header class="game-header">
+            <div class="game-brand">SNOWFLOW <span>눈과 물의 흐름</span></div>
+            <div id="world-hud" class="world-hud" aria-label="게임 시간: 실제 10분이 하루">
+                <div><time id="world-clock">06:00</time><span id="world-phase">☀ 새벽</span></div>
+                <p id="world-detail">1일째 · 일시정지</p>
+                <div class="day-track" aria-hidden="true"><i id="world-marker"></i></div>
+            </div>
+            <button id="help-button" class="quiet-button" type="button">조작법 <kbd>H</kbd></button>
+        </header>
+        <section id="welcome" class="welcome" aria-labelledby="welcome-title">
+            <div class="welcome-card">
+                <div class="eyebrow">A LITTLE WONDER, A WORLD OF SNOW</div>
+                <h1 id="welcome-title">흐름을 따라,<br /><span>설원 너머로.</span></h1>
+                <p class="intro">발끝에서 피어나는 파도.<br />고요한 설원에서 나만의 물 마법을 펼쳐보세요.</p>
+                <p class="world-guide">실제 <strong>10분 = 하루</strong> · 18:00~06:00에는 몬스터 출현<br />그림자에게 닿으면 <strong>체력</strong>이 줄고, 다 닳으면 잠시 쓰러졌다 일어나요.<br />마법으로 물리치거나 <kbd>6</kbd> 방패로 막아보세요. 조작법·설정에서는 시간이 멈춥니다.</p>
+                <div class="movement-guide">
+                    <span><kbd>W A S D</kbd> 이동</span><span><kbd>마우스</kbd> 시점</span>
+                    <span><kbd>Space</kbd> 서핑 · 누르기</span><span><kbd>Shift</kbd> 달리기</span>
+                </div>
+                <button id="start-button" class="start-button" type="button">설원에 들어가기 <span aria-hidden="true">↗</span></button>
+                <p id="input-note" class="input-note">마우스 휠로 확대 · Esc로 마우스 풀기</p>
+                <section class="room" aria-labelledby="room-title">
+                    <div class="eyebrow" id="room-title">함께 놀기 · 최대 4명</div>
+                    <div class="room-form">
+                        <input id="room-name" class="room-input" type="text" maxlength="10"
+                               placeholder="내 이름" autocomplete="off" spellcheck="false"
+                               aria-label="설원에서 쓸 이름" />
+                        <button id="room-create" class="quiet-button" type="button">방 만들기</button>
+                        <input id="room-code" class="room-input is-code" type="text" maxlength="5"
+                               placeholder="방 코드" autocomplete="off" spellcheck="false"
+                               aria-label="친구에게 받은 방 코드" />
+                        <button id="room-join" class="quiet-button" type="button">참가하기</button>
+                    </div>
+                    <p id="room-status" class="room-status" role="status" aria-live="polite">방을 만들어 코드를 친구에게 보내면 같은 설원에서 만나요.</p>
+                    <div id="room-open" class="room-open" hidden>
+                        <p class="room-code-show">방 코드 <b id="room-code-value">-----</b>
+                            <button id="room-copy" class="quiet-button" type="button">복사</button></p>
+                        <ul id="room-roster" class="room-roster"></ul>
+                        <div class="room-actions">
+                            <label id="room-duel-wrap" class="room-duel" hidden>
+                                <input id="room-duel" type="checkbox" /> 대전 모드 — 마법이 친구에게도 닿아요
+                            </label>
+                            <button id="room-leave" class="quiet-button" type="button">방 나가기</button>
+                        </div>
+                    </div>
+                </section>
+                <div class="welcome-footer">
+                    <button id="settings-button" class="quiet-button" type="button">화질 설정 <kbd>F1</kbd></button>
+                    <a href="https://github.com/Noniv/snowflow_demo" target="_blank" rel="noopener noreferrer">원작 Noniv · MIT</a>
+                </div>
+            </div>
+            <div class="spell-guide" aria-label="아홉 가지 물 마법">
+                <div class="eyebrow">아홉 가지 흐름</div>
+                <div><kbd>1</kbd><p>물결<span>눈밭을 가르는 초승달 파도</span></p></div>
+                <div><kbd>2</kbd><p>물의 리본<span>길게 눌러 흐름을 잇고, 놓아서 발사</span></p></div>
+                <div><kbd>3</kbd><p>솟구침<span>설원 위로 피어나는 물기둥</span></p></div>
+                <div><kbd>4</kbd><p>얼음꽃<span>반짝이는 얼음 결정을 피우기</span></p></div>
+                <div><kbd>5</kbd><p>소용돌이<span>몸을 감싸며 춤추는 눈과 물</span></p></div>
+                <div><kbd>6</kbd><p>물의 방패<span>몸을 따라 회전하는 세 겹의 물 고리</span></p></div>
+                <div><kbd>7</kbd><p>얼음창<span>세 갈래 창으로 땅을 얼리기</span></p></div>
+                <div><kbd>8</kbd><p>해일<span>거대한 파도로 설원을 밀어내기</span></p></div>
+                <div><kbd>9</kbd><p>서리 유성<span>하늘에서 떨어져 얼음꽃으로 터지기</span></p></div>
+            </div>
+        </section>
+        <aside id="encounter-hud" class="encounter-hud" hidden aria-label="몬스터 현황">
+            <span id="night-monster-count">평화로운 설원</span>
+            <small id="monsters-defeated">물리친 몬스터 0</small>
+        </aside>
+        <aside id="party-hud" class="party-hud" hidden aria-label="함께하는 마법사"></aside>
+        <p id="world-notice" class="world-notice" role="status" aria-live="polite" hidden></p>
+        <aside id="vitals" class="vitals" hidden aria-label="체력">
+            <div class="vitals-row">
+                <span class="vitals-heart" aria-hidden="true">❤</span>
+                <div class="vitals-bar"><i id="vitals-fill"></i></div>
+                <b id="vitals-value">100</b>
+            </div>
+        </aside>
+        <div id="nameplates" class="nameplates" aria-hidden="true"></div>
+        <div id="hurt-veil" class="hurt-veil" aria-hidden="true"></div>
+        <div id="downed" class="downed" hidden role="status" aria-live="assertive">
+            <strong>눈밭에 쓰러졌어요</strong>
+            <p><b id="downed-count">4</b>초 뒤에 다시 일어나요</p>
+        </div>
+        <div id="spell-bar" class="spell-bar" hidden aria-label="마법 단축키">
+            <span data-spell="1"><kbd>1</kbd> 물결</span>
+            <span data-spell="2"><kbd>2</kbd> 리본 <small>누르기</small></span>
+            <span data-spell="3"><kbd>3</kbd> 솟구침</span>
+            <span data-spell="4"><kbd>4</kbd> 얼음꽃</span>
+            <span data-spell="5"><kbd>5</kbd> 소용돌이</span>
+            <span data-spell="6"><kbd>6</kbd> 방패</span>
+            <span data-spell="7"><kbd>7</kbd> 얼음창</span>
+            <span data-spell="8"><kbd>8</kbd> 해일</span>
+            <span data-spell="9"><kbd>9</kbd> 유성</span>
+        </div>
+    </div>
+
+    <div id="boot">
+        <div class="boot-inner">
+            <div class="wordmark">SNOWFLOW</div>
+            <div class="tagline">눈과 물의 흐름</div>
+            <div class="bar"><div class="bar-fill" id="boot-bar"></div></div>
+            <div class="phase" id="boot-phase" role="status" aria-live="polite">설원을 준비하고 있어요</div>
+        </div>
+    </div>
+
+    <div id="nogpu">
+        <div>
+            <b>이 브라우저에서는 WebGPU를 사용할 수 없어요.</b><br />
+            <p>컴퓨터의 최신 Chrome 또는 Edge에서 열어주세요.<br />브라우저 설정의 그래픽 가속도 켜져 있어야 해요.</p>
+            <button type="button" onclick="location.reload()" class="quiet-button">다시 시도하기 ↻</button>
+            <a href="/" target="_top" class="quiet-button">인혁 월드로 돌아가기</a>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
