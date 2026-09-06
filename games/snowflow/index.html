@@ -204,6 +204,7 @@
                 <button id="match-start" class="second-button" type="button">
                     <span>☃️ 눈싸움 시작하기</span><small>혼자면 눈허수아비 8개 · 친구와 있으면 대결</small>
                 </button>
+                <p class="throw-note"><kbd>Q</kbd> 눌러 눈 뭉치기 &nbsp;→&nbsp; <kbd>Q</kbd> 꾹 눌렀다 <strong>놓으면</strong> 던지기</p>
                 <p id="input-note" class="input-note">마우스 휠로 확대 · Esc로 마우스 풀기</p>
                 <section class="room" aria-labelledby="room-title">
                     <div class="eyebrow" id="room-title">함께 놀기 · 최대 4명</div>
@@ -287,7 +288,7 @@
             </div>
         </div>
         <div id="throw-meter" class="throw-meter" hidden aria-hidden="true">
-            <span>☃️</span><i><b id="throw-fill"></b></i><kbd>Q</kbd>
+            <span>☃️</span><i><b id="throw-fill"></b></i><em id="throw-tip">눈 뭉치는 중…</em>
         </div>
         <div id="nameplates" class="nameplates" aria-hidden="true"></div>
         <div id="hurt-veil" class="hurt-veil" aria-hidden="true"></div>
@@ -296,6 +297,7 @@
             <p><b id="downed-count">4</b>초 뒤에 다시 일어나요</p>
         </div>
         <div id="spell-bar" class="spell-bar" hidden aria-label="마법 단축키">
+            <span id="throw-chip" class="throw-chip"><kbd>Q</kbd> 눈덩이</span>
             <span data-spell="1"><kbd>1</kbd> 물결</span>
             <span data-spell="2"><kbd>2</kbd> 리본 <small>누르기</small></span>
             <span data-spell="3"><kbd>3</kbd> 솟구침</span>

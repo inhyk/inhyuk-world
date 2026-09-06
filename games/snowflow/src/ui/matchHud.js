@@ -31,6 +31,8 @@ export function initMatchHud(match) {
     const bestLine = document.getElementById("match-best");
     const meter = document.getElementById("throw-meter");
     const meterFill = document.getElementById("throw-fill");
+    const meterTip = document.getElementById("throw-tip");
+    const chip = document.getElementById("throw-chip");
 
     try {
         match.best = Number(localStorage.getItem(BEST_KEY)) || 0;
@@ -43,6 +45,7 @@ export function initMatchHud(match) {
     let lastCombo = -1;
     let lastFill = -1;
     let lastArmed = null;
+    let lastTip = "";
 
     function rows(into, standings) {
         into.replaceChildren();
@@ -87,10 +90,13 @@ export function initMatchHud(match) {
      */
     function update(standings, thrower) {
         // ------------------------------------------------------------ meter
+        // The meter says what to do next, in words. A bar filling up tells you
+        // something is happening; it does not tell you that letting go is what
+        // throws the thing.
+        const armed = thrower.state === "armed";
         const showMeter = input.active && thrower.state !== "empty";
         if (meter.hidden === showMeter) meter.hidden = !showMeter;
         if (showMeter) {
-            const armed = thrower.state === "armed";
             const fill = armed ? Math.max(0.12, thrower.charge) : thrower.readiness;
             if (Math.abs(fill - lastFill) > 0.01) {
                 meterFill.style.width = `${(fill * 100).toFixed(0)}%`;
@@ -100,7 +106,15 @@ export function initMatchHud(match) {
                 meter.classList.toggle("is-armed", armed);
                 lastArmed = armed;
             }
+            const tip = !armed
+                ? "눈 뭉치는 중…"
+                : thrower.charge > 0.02 ? "손을 떼면 던져요!" : "Q를 꾹 누르세요";
+            if (tip !== lastTip) {
+                meterTip.textContent = tip;
+                lastTip = tip;
+            }
         }
+        chip.classList.toggle("is-ready", armed);
 
         // ------------------------------------------------------------ phase
         const phase = match.phase;

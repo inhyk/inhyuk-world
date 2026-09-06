@@ -131,6 +131,10 @@ body.playing .game-header { opacity: .95; }
 .second-button span { font-size: 13px; }
 .second-button small { color: #93aec1; font-size: 10px; line-height: 1.6; text-align: right; }
 
+.throw-note { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 11px; color: #b6cddb; font-size: 11px; line-height: 1.8; }
+.throw-note kbd { padding: 3px 8px; background: #a9dcf012; color: #e6f3fa; border: 1px solid #b1d4e93d; border-radius: 4px; }
+.throw-note strong { color: #ffe0b0; font-weight: 500; }
+
 .match-hud { position: fixed; z-index: 51; top: 108px; left: 36px; min-width: 214px; padding: 13px 15px; border-radius: 8px; border: 1px solid #bfe5ff2e; background: #06131fcc; backdrop-filter: blur(8px); pointer-events: none; }
 .match-hud header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
 .match-hud header span { color: #cfe6f4; font-size: 11px; letter-spacing: .1em; }
@@ -162,7 +166,14 @@ body.playing .game-header { opacity: .95; }
 .throw-meter i { display: block; width: 92px; height: 5px; border-radius: 3px; background: #0d2436; overflow: hidden; }
 .throw-meter b { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #8fd8ff, #eaf7ff); box-shadow: 0 0 10px #8fd8ff99; }
 .throw-meter.is-armed b { background: linear-gradient(90deg, #ffd07a, #fff0d0); box-shadow: 0 0 12px #ffc76e99; }
-.throw-meter kbd { color: #9dbccd; border: 1px solid #b1d4e933; padding: 2px 6px; border-radius: 3px; font-size: 10px; }
+.throw-meter em { min-width: 104px; color: #cfe4f2; font-style: normal; font-size: 11px; letter-spacing: .02em; white-space: nowrap; }
+.throw-meter.is-armed em { color: #ffe0b0; }
+
+/* The throw sits on the always-visible bar, ahead of the spells. */
+.throw-chip { position: relative; padding-right: 20px; margin-right: 2px; color: #d8e7ef; }
+.throw-chip::after { content: ""; position: absolute; right: 8px; top: 50%; width: 1px; height: 14px; transform: translateY(-50%); background: #b1d4e92e; }
+.throw-chip.is-ready { color: #fff0d0; text-shadow: 0 0 15px #ffc76e; }
+.throw-chip.is-ready kbd { background: #ffc76e33; border-color: #ffe0b0; color: #fff6e6; }
 
 @media (max-width: 760px) {
     .game-header { padding: 20px; }
