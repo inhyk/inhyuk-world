@@ -17,6 +17,8 @@ export const MAX_HP = 100;
 export const CONTACT_DAMAGE = 14;
 /** A spell landing on another player. Only ever applied in 대전 (duel) rooms. */
 export const SPELL_DAMAGE = 18;
+/** A snowball. A nuisance next to a spell, and free of any cooldown but the throw. */
+export const SNOWBALL_DAMAGE = 8;
 
 /** Seconds after taking a hit before the snow starts closing the wound. */
 const REGEN_DELAY = 2.2;

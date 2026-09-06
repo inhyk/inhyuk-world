@@ -37,7 +37,7 @@ const CONNECT_TIMEOUT = 14000;
 const PEER_TIMEOUT = 12000;
 
 /** Numbers per player on the wire. See `packSelf` / `unpackPlayer`. */
-export const STATE_STRIDE = 8;
+export const STATE_STRIDE = 9;
 
 const q = (value, places = 2) => {
     const k = 10 ** places;
@@ -293,6 +293,16 @@ export class Room {
             case "hit":
                 this.hooks.onMonsterHit?.(msg.id | 0, Number(msg.d) || 0);
                 return;
+            case "ball":
+                // Everyone simulates the same ball from the same launch, so a
+                // throw is one message and never a stream. The host is also a
+                // relay: guests do not see each other directly.
+                this.hooks.onBall?.(msg.b, id);
+                this._broadcast({ t: "ball", b: msg.b, from: id }, id);
+                return;
+            case "match":
+                this.hooks.onMatchRequest?.(msg.want);
+                return;
             case "pvp":
                 // Damage is applied by whoever owns the body, so this is only
                 // ever forwarded — never resolved here.
@@ -366,6 +376,10 @@ export class Room {
             case "world":
                 if (Array.isArray(msg.m)) this.hooks.onMonsters?.(msg.m, msg.d | 0);
                 if (typeof msg.c === "number") this.hooks.onClock?.(msg.c);
+                if (Array.isArray(msg.g)) this.hooks.onMatch?.(msg.g[0], msg.g[1]);
+                return;
+            case "ball":
+                this.hooks.onBall?.(msg.b, msg.from);
                 return;
             case "pvp":
                 if (msg.target === this.selfId) this.hooks.onHurt?.(Number(msg.d) || 0, msg.from);
@@ -386,7 +400,7 @@ export class Room {
      * This client's body, once per network tick.
      * @param {{x:number,y:number,z:number}} position
      */
-    publishSelf(position, facing, surf, speed01, hp, downed, castKey) {
+    publishSelf(position, facing, surf, speed01, hp, downed, castKey, score) {
         if (!this.active) return;
         const s = this._self;
         s[0] = q(position.x); s[1] = q(position.y); s[2] = q(position.z);
@@ -395,6 +409,7 @@ export class Room {
         s[5] = q(speed01, 2);
         s[6] = Math.round(hp);
         s[7] = (downed ? 1 : 0) | ((castKey || 0) << 1);
+        s[8] = score | 0;
         if (this.isHost) {
             const me = this.players.get(this.selfId);
             if (me) { me.state = s; me.hasState = true; }
@@ -407,9 +422,30 @@ export class Room {
     }
 
     /** Host only: the shadows and the clock everyone shares. */
-    publishWorld(monsterWire, clockSeconds, defeated) {
+    publishWorld(monsterWire, clockSeconds, defeated, match) {
         if (!this.active || !this.isHost || this._connections.size === 0) return;
-        this._broadcast({ t: "world", m: monsterWire, c: q(clockSeconds, 1), d: defeated | 0 });
+        this._broadcast({
+            t: "world", m: monsterWire, c: q(clockSeconds, 1), d: defeated | 0,
+            g: match ? [match.phase, q(match.timer, 1)] : null,
+        });
+    }
+
+    /**
+     * A throw, to everyone. One message per ball: the flight is the same
+     * arithmetic on every machine, so re-sending its position would be both
+     * bigger and, at fifteen hertz, worse.
+     * @param {number[]} wire [x, y, z, vx, vy, vz]
+     */
+    throwBall(wire) {
+        if (!this.active) return;
+        if (this.isHost) this._broadcast({ t: "ball", b: wire, from: this.selfId });
+        else if (this._uplink?.open) this._uplink.send({ t: "ball", b: wire });
+    }
+
+    /** Guest → host: "start a match". Only the host may actually start one. */
+    requestMatch(want) {
+        if (!this.active || this.isHost || !this._uplink?.open) return;
+        this._uplink.send({ t: "match", want: !!want });
     }
 
     /** Guest only: "my spell hit shadow #3 for 2". The host decides if it died. */
@@ -447,11 +483,11 @@ export class Room {
         if (conn?.open) conn.send(payload);
     }
 
-    _broadcast(payload) {
-        for (const conn of this._connections.values()) {
-            if (conn.open) {
-                try { conn.send(payload); } catch { /* dropped next sweep */ }
-            }
+    /** @param {string} [except] a guest id to skip — used when relaying */
+    _broadcast(payload, except) {
+        for (const [id, conn] of this._connections) {
+            if (id === except || !conn.open) continue;
+            try { conn.send(payload); } catch { /* dropped next sweep */ }
         }
     }
 }
@@ -482,5 +518,6 @@ export function unpackPlayer(state) {
         x: state[0], y: state[1], z: state[2],
         facing: state[3], surf: state[4], speed01: state[5],
         hp: state[6], downed: (flags & 1) === 1, castKey: flags >> 1,
+        score: state[8] | 0,
     };
 }

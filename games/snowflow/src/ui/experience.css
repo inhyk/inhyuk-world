@@ -125,6 +125,45 @@ body.playing .game-header { opacity: .95; }
 .minimap-north { position: absolute; top: -7px; left: 50%; transform: translateX(-50%); padding: 0 5px; background: #08131f; color: #a9c6d9; font-size: 9px; letter-spacing: .18em; }
 .minimap small { position: absolute; left: 50%; bottom: -17px; transform: translateX(-50%); color: #93aec1; font-size: 9px; letter-spacing: .16em; white-space: nowrap; }
 
+/* ------------------------------------------------------------- snowball fight */
+.second-button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; margin-top: 10px; padding: 13px 18px; border: 1px solid #b1d4e93d; border-radius: 6px; background: #0c1e2f8c; color: #dbe6f2; text-align: left; transition: background .2s, border-color .2s; }
+.second-button:hover { background: #16324880; border-color: #b1d4e977; }
+.second-button span { font-size: 13px; }
+.second-button small { color: #93aec1; font-size: 10px; line-height: 1.6; text-align: right; }
+
+.match-hud { position: fixed; z-index: 51; top: 108px; left: 36px; min-width: 214px; padding: 13px 15px; border-radius: 8px; border: 1px solid #bfe5ff2e; background: #06131fcc; backdrop-filter: blur(8px); pointer-events: none; }
+.match-hud header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.match-hud header span { color: #cfe6f4; font-size: 11px; letter-spacing: .1em; }
+.match-hud header b { color: #eaf7ff; font-size: 21px; font-weight: 300; font-variant-numeric: tabular-nums; }
+.match-hud.is-urgent header b { color: #ffb0a0; }
+.match-hud ul { list-style: none; display: grid; gap: 7px; margin-top: 12px; }
+.match-hud li { display: flex; align-items: center; gap: 9px; font-size: 12px; color: #d6e8f4; font-variant-numeric: tabular-nums; }
+.match-hud li i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 9px currentColor; }
+.match-hud li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.match-hud li b { color: #f0faff; font-weight: 500; }
+.match-hud li.is-mine { color: #ffffff; }
+.match-hud #match-combo { margin-top: 10px; color: #ffd8a8; font-size: 11px; letter-spacing: .04em; }
+
+.match-countdown { position: fixed; inset: 0; z-index: 58; display: grid; place-content: center; pointer-events: none; }
+.match-countdown b { display: block; color: #eaf7ff; font-size: clamp(72px, 14vw, 168px); font-weight: 200; letter-spacing: .04em; text-shadow: 0 8px 60px #04070c; animation: countPop .9s cubic-bezier(.16,1,.3,1); }
+@keyframes countPop { from { opacity: 0; transform: scale(1.5); } 40% { opacity: 1; } to { opacity: .85; transform: scale(1); } }
+
+.match-result { position: fixed; inset: 0; z-index: 58; display: grid; place-content: center; text-align: center; background: #04070cd9; backdrop-filter: blur(4px); pointer-events: none; }
+.match-result strong { display: block; margin: 14px 0 20px; font-size: clamp(26px, 4vw, 44px); font-weight: 300; color: #eaf7ff; }
+.match-result ul { list-style: none; display: grid; gap: 9px; min-width: 260px; }
+.match-result li { display: flex; align-items: center; gap: 11px; font-size: 14px; color: #c8dced; font-variant-numeric: tabular-nums; }
+.match-result li i { width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; }
+.match-result li span { flex: 1; text-align: left; }
+.match-result li.is-mine { color: #f4fbff; }
+.match-result p { margin-top: 22px; color: #94aec0; font-size: 11px; letter-spacing: .08em; }
+
+.throw-meter { position: fixed; z-index: 50; left: 50%; bottom: 82px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 8px 13px; border-radius: 20px; background: #08182880; border: 1px solid #c4e8f024; pointer-events: none; }
+.throw-meter span { font-size: 13px; }
+.throw-meter i { display: block; width: 92px; height: 5px; border-radius: 3px; background: #0d2436; overflow: hidden; }
+.throw-meter b { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #8fd8ff, #eaf7ff); box-shadow: 0 0 10px #8fd8ff99; }
+.throw-meter.is-armed b { background: linear-gradient(90deg, #ffd07a, #fff0d0); box-shadow: 0 0 12px #ffc76e99; }
+.throw-meter kbd { color: #9dbccd; border: 1px solid #b1d4e933; padding: 2px 6px; border-radius: 3px; font-size: 10px; }
+
 @media (max-width: 760px) {
     .game-header { padding: 20px; }
     .game-brand { font-size: 10px; letter-spacing: .14em; }
@@ -147,6 +186,10 @@ body.playing .game-header { opacity: .95; }
     .movement-guide { gap: 14px; }
     .vitals { left: 20px; bottom: 88px; min-width: 176px; }
     .minimap { right: 20px; bottom: 88px; width: 116px; height: 116px; }
+    .match-hud { top: 96px; left: 20px; min-width: 176px; padding: 10px 12px; }
+    .match-hud header b { font-size: 17px; }
+    .throw-meter { bottom: 138px; }
+    .second-button small { display: none; }
     .minimap small { display: none; }
     .party-hud { top: 182px; right: 20px; }
     .duel-badge { top: 142px; right: 20px; font-size: 10px; padding: 6px 9px; }
@@ -154,6 +197,7 @@ body.playing .game-header { opacity: .95; }
 }
 @media (prefers-reduced-motion: reduce) {
     #boot::after { animation: none; }
+    .match-countdown b { animation: none; }
     .hurt-veil, .vitals-bar i, .vitals-heart { transition: none; }
     .wordmark, .tagline { animation: none; opacity: 1; }
     .start-button { transition: none; }

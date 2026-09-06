@@ -20,6 +20,9 @@ export function initWorldHud(cycle) {
             contact: "그림자에게 닿아 체력이 줄었어요! 6번 방패로 밀어내세요.",
             spell: "친구의 마법에 맞았어요!",
             landed: "친구를 맞혔어요!",
+            snowballed: "눈덩이에 맞았어요!",
+            matchSoon: "눈싸움을 시작해요! Q로 눈을 줍고, 길게 눌렀다 놓아서 던지세요.",
+            matchGo: "시작! 눈덩이로 많이 맞히세요.",
             duelOn: "대전 모드가 켜졌어요. 이제 마법이 친구에게도 닿아요!",
             duelOff: "대전 모드가 꺼졌어요. 마법은 몬스터에게만 통해요.",
             revive: "다시 일어났어요. 잠깐은 아무것도 닿지 않아요.",
@@ -28,7 +31,8 @@ export function initWorldHud(cycle) {
         }[kind];
         if (!text) return;
         notice.textContent = text;
-        const brief = kind === "contact" || kind === "spell" || kind === "landed";
+        const brief =
+            kind === "contact" || kind === "spell" || kind === "landed" || kind === "snowballed";
         noticeUntil = cycle.elapsedSeconds + (brief ? 3 : 7);
     }
 

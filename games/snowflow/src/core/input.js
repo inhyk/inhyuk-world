@@ -21,6 +21,11 @@ export const input = {
     surf: false, // RMB held
     sprint: false, // shift
 
+    /** Q: scoop a snowball, then hold to wind up and release to throw. */
+    throwHeld: false,
+    /** Set on the keydown edge, cleared each frame. Starts the scoop. */
+    throwPressed: false,
+
     /** @type {number} 0 = none, else 1..9 — set on keydown, cleared each frame */
     spellPressed: 0,
     /** @type {boolean} spell 2 (Ribbon) is a held cast */
@@ -41,6 +46,8 @@ function clearHeldInput() {
     input.surf = false;
     input.sprint = false;
     input.spellHeld2 = false;
+    input.throwHeld = false;
+    input.throwPressed = false;
     input.moveX = input.moveZ = 0;
     input.moving = false;
     endFrame();
@@ -142,6 +149,11 @@ export function initInput(canvas, hooks) {
         if (e.repeat) return;
         keys[e.code] = true;
 
+        if (e.code === "KeyQ") {
+            input.throwPressed = true;
+            input.throwHeld = true;
+        }
+
         const n = SPELL_KEYS[e.code];
         if (n) {
             input.spellPressed = n;
@@ -152,6 +164,7 @@ export function initInput(canvas, hooks) {
     window.addEventListener("keyup", (e) => {
         keys[e.code] = false;
         if (SPELL_KEYS[e.code] === 2) input.spellHeld2 = false;
+        if (e.code === "KeyQ") input.throwHeld = false;
     });
 
     window.addEventListener("blur", pauseInput);
@@ -204,6 +217,7 @@ export function endFrame() {
     input.lookY = 0;
     input.zoomDelta = 0;
     input.spellPressed = 0;
+    input.throwPressed = false;
 }
 
 export function isDown(code) {

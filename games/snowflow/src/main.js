@@ -18,7 +18,7 @@ import { S, onChange } from "./core/settings.js";
 import {
     sample, checkSpike, stats, mark, installDrawCounter, endFrameDraws,
 } from "./core/perf.js";
-import { initInput, pollInput, endFrame, input } from "./core/input.js";
+import { initInput, pollInput, endFrame, input, startInput } from "./core/input.js";
 import { CameraRig } from "./core/camera.js";
 import { CharacterController } from "./character/controller.js";
 import { Character } from "./character/character.js";
@@ -32,11 +32,15 @@ import { initWorldHud } from "./ui/worldHud.js";
 import { initVitalsHud } from "./ui/vitalsHud.js";
 import { initNameplates } from "./ui/nameplates.js";
 import { initMinimap } from "./ui/minimap.js";
+import { initMatchHud } from "./ui/matchHud.js";
 import { initMultiplayer } from "./ui/multiplayer.js";
 import { DayCycle } from "./world/dayCycle.js";
 import { MonsterSystem } from "./world/monsters.js";
-import { PlayerHealth, CONTACT_DAMAGE, SPELL_DAMAGE } from "./world/health.js";
+import { PlayerHealth, CONTACT_DAMAGE, SPELL_DAMAGE, SNOWBALL_DAMAGE } from "./world/health.js";
 import { RemotePlayers } from "./world/remotePlayers.js";
+import { SnowballFight } from "./world/snowballFight.js";
+import { SnowballSystem } from "./world/snowball.js";
+import { Scarecrows } from "./world/scarecrows.js";
 import { Room, PLAYER_COLORS } from "./net/room.js";
 import { Sky } from "./render/sky.js";
 import { ShadowSystem } from "./render/shadows.js";
@@ -56,6 +60,19 @@ const _vel = new Vector3();
  * inside two frames.
  */
 const NET_INTERVAL = 1 / 15;
+
+/**
+ * Everything a snowball can hit, rebuilt each frame into one reused array.
+ * `id` is empty for anything that is not a player, which is also how the
+ * ballistics knows a body is not allowed to hit itself.
+ */
+const _targets = [];
+const _targetPool = [];
+function slot(i) {
+    return _targetPool[i] || (_targetPool[i] = {
+        id: "", kind: "", index: 0, x: 0, y: 0, z: 0, rise: 0, radius: 0,
+    });
+}
 
 async function boot() {
     const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById("view"));
@@ -198,6 +215,28 @@ async function boot() {
         scene, terrain, sky, shadows, spray, spells, depthPass, rig,
     });
 
+    const scarecrows = new Scarecrows(scene, terrain, sky, rig, depthPass);
+    const snowballs = new SnowballSystem({
+        scene, terrain, sky, rig, spray, depthPass,
+        onImpact: (ball, target) => onBallImpact(ball, target),
+    });
+    const match = new SnowballFight({
+        onEvent: (kind, detail) => {
+            if (kind === "countdown") worldHud.announce("matchSoon");
+            if (kind === "go") {
+                worldHud.announce("matchGo");
+                // Scarecrows are what makes this worth playing on your own.
+                // With someone else in the room, they are the target.
+                if (!room.active || room.count < 2) scarecrows.deploy(character.position);
+            }
+            if (kind === "finish" || kind === "off") {
+                scarecrows.clear();
+                snowballs.clear();
+            }
+            if (kind === "hit" && detail?.bonus) rig.addTrauma(0.10);
+        },
+    });
+
     const monsters = new MonsterSystem(scene, terrain, rig, spells, depthPass, (event) => {
         if (event === "contact") {
             // The knockback always happens; the damage only lands outside the
@@ -209,6 +248,67 @@ async function boot() {
         worldHud.announce(event);
     });
     monsters.onHit = (id, damage) => room.reportMonsterHit(id, damage);
+
+    /**
+     * A snowball has finished its flight — anyone's snowball, because every
+     * client simulates every ball. Only the thrower scores it, and only the
+     * body that was hit reacts to being hit.
+     *
+     * @param {any} ball @param {any|null} target
+     */
+    function onBallImpact(ball, target) {
+        const kind = target ? target.kind : "";
+        if (kind === "monster" && ball.mine) {
+            // A snowball is a nuisance, not a spell: one point of the two a
+            // wraith carries. The host still decides whether it died.
+            if (monsters.remote) room.reportMonsterHit(target.index, 1);
+            else monsters.applyReportedHit(target.index, 1);
+        }
+        if (kind === "self") {
+            rig.addTrauma(0.28);
+            if (!match.active && room.duel) health.damage(SNOWBALL_DAMAGE, "spell");
+            worldHud.announce(match.active ? "snowballed" : "spell");
+        }
+        if (!ball.mine) return;
+        let scored = false;
+        if (kind === "scarecrow") scored = scarecrows.knock(target);
+        else if (kind === "player" || kind === "monster") scored = true;
+        if (scored && kind === "player") worldHud.announce("landed");
+        match.resolve(scored);
+    }
+
+    /** Refill the hit list: me, everyone else, every shadow, every scarecrow. */
+    function buildTargets() {
+        _targets.length = 0;
+        let n = 0;
+        const me = slot(n++);
+        me.id = room.selfId || "me";
+        me.kind = "self";
+        me.x = character.position.x; me.y = character.position.y; me.z = character.position.z;
+        me.rise = 0.9; me.radius = 0.5;
+        _targets.push(me);
+
+        for (const other of remotePlayers.live) {
+            const t = slot(n++);
+            t.id = other.id;
+            t.kind = "player";
+            t.x = other.x; t.y = other.y; t.z = other.z;
+            t.rise = 0.9; t.radius = 0.5;
+            _targets.push(t);
+        }
+        for (const m of monsters.monsters) {
+            if (!m.active || m.hp <= 0 || m.age < 0.8) continue;
+            const t = slot(n++);
+            t.id = "";
+            t.kind = "monster";
+            t.index = m.id;
+            t.x = m.x; t.y = m.y; t.z = m.z;
+            t.rise = 1.35; t.radius = 1.0;
+            _targets.push(t);
+        }
+        scarecrows.collect(_targets);
+        return _targets;
+    }
     const syncClock = () => cycle.tick(performance.now(), input.active && !S.freezeTime);
     document.addEventListener("snowflow:input", syncClock);
     onChange("freezeTime", syncClock);
@@ -230,6 +330,14 @@ async function boot() {
     // Building three more characters is awaited before a room reports itself
     // open, so nobody's first sight of a friend is a compile hitch.
     const roomUi = initMultiplayer(room, { prepare: () => remotePlayers.provision() });
+    const matchHud = initMatchHud(match);
+
+    // One button, whether you are alone, hosting, or a guest asking the host.
+    document.getElementById("match-start").addEventListener("click", () => {
+        if (room.active && !room.isHost) room.requestMatch(true);
+        else match.start();
+        void startInput(canvas);
+    });
     // The room is built before the panel that drives it, so its hooks are
     // attached here — one place where every message from the wire is turned
     // into something in the world.
@@ -242,6 +350,8 @@ async function boot() {
                 monsters.clear();
                 health.reset();
                 remotePlayers.clear();
+                snowballs.reset();
+                match.stop();
             }
             if (kind === "closed") {
                 figure.tintGarments(null);
@@ -261,7 +371,16 @@ async function boot() {
             // the colour on their nameplate and on their map.
             const me = players.find((p) => p.id === room.selfId);
             figure.tintGarments(me ? PLAYER_COLORS[me.colorIndex % PLAYER_COLORS.length] : null);
+            snowballs.selfId = room.selfId || "me";
+            snowballs.colorIndex = me ? me.colorIndex : 0;
+            match.keepOnly(new Set(players.map((p) => p.id).filter((id) => id !== room.selfId)));
         },
+        onBall: (wire, from) => {
+            const thrower = room.players.get(from);
+            snowballs.accept(wire, from, thrower ? thrower.colorIndex : 0);
+        },
+        onMatch: (phase, timer) => match.adopt(phase, timer),
+        onMatchRequest: (want) => { if (want) match.start(); },
         onMonsters: (wire, defeated) => {
             monsters.applySnapshot(wire);
             monsters.defeated = defeated;
@@ -293,6 +412,8 @@ async function boot() {
         character.position.x + 3, character.position.y, character.position.z + 3
     );
     await monsters.warmUp();
+    await snowballs.warmUp();
+    await scarecrows.warmUp();
     await whenReady(sky.material, "sky material", [sky.mesh, false]);
     await depthPass.warmUp();
     post.update(0, 0, rig.distance);
@@ -373,6 +494,12 @@ async function boot() {
             room.isHost ? room.partyPositions(character.position) : null
         );
         health.update(dt, cycle.isNight);
+        match.update(dt);
+        scarecrows.update(dt, character.position);
+        // Digging, winding up and letting go. Before the ballistics, so a ball
+        // thrown this frame flies this frame.
+        snowballs.aimAndThrow(dt, { controller: character, figure: figure.figure, room });
+        snowballs.update(dt, buildTargets());
         if (room.duel) {
             remotePlayers.resolveDuelHits(
                 room, monsters.hitTest, SPELL_DAMAGE, () => worldHud.announce("landed")
@@ -387,16 +514,25 @@ async function boot() {
             netAccum = 0;
             room.publishSelf(
                 character.position, character.facing, character.surf,
-                character.speed01, health.hp, health.downed
+                character.speed01, health.hp, health.downed, 0, match.score
             );
             if (room.isHost) {
-                room.publishWorld(monsters.snapshot(), cycle.elapsedSeconds, monsters.defeated);
+                room.publishWorld(
+                    monsters.snapshot(), cycle.elapsedSeconds, monsters.defeated, match
+                );
+            }
+            // Other people's scores ride along with their bodies, so a dropped
+            // packet costs a scoreboard refresh and never a point.
+            for (const other of room.others) {
+                if (!other.hasState) continue;
+                match.post(other.id, other.name, other.colorIndex, other.state[8] | 0);
             }
         }
 
         const company = remotePlayers.live;
         worldHud.update(monsters, room.duel);
         vitals.update();
+        matchHud.update(match.standings(room.name || "나", snowballs.colorIndex), snowballs);
         nameplates.update(company, room, health);
         minimap.update(netDt, monsters, company, room);
         const tSpells = performance.now();
@@ -406,6 +542,7 @@ async function boot() {
         // cascade matrices rather than last frame's.
         figure.sync(rig.camera.position);
         remotePlayers.render(netDt, rig.camera.position);
+        snowballs.render({ controller: character, figure: figure.figure });
         // Before the spray: the wake decides where its own lip is, and the
         // grains it sheds have to be in the pool before the pool is uploaded.
         wake.update(dt, rig.camera.position);
@@ -447,6 +584,7 @@ async function boot() {
         engine, scene, rig, character, figure, contact, spray, wake, spells,
         overlay, terrain, sky, shadows, post, depthPass,
         cycle, monsters, health, room, remotePlayers, minimap,
+        match, snowballs, scarecrows,
         S, input, perfStats: stats,
     };
 }
