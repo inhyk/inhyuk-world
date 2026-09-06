@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    MOODS, moodAt, chordFor, nextMelodyNote, melodyPlacements, degreeToMidi, mtof,
+    MOODS, moodAt, chordFor, nextMelodyNote, melodyPlacements, leadPhrase, degreeToMidi, mtof,
+    LEAD_LOW, LEAD_HIGH,
 } from "../src/audio/score.js";
 
 const PARENT_CLASSES = new Set([62, 64, 66, 67, 69, 71, 73].map((m) => m % 12)); // D major
@@ -38,7 +39,7 @@ test("every chord of every mood is drawn from one pitch collection", () => {
 test("voice leading moves each voice the short way", () => {
     const mood = MOODS.day;
     const a = chordFor(mood, 0, null);
-    const b = chordFor(mood, 1, a);
+    const b = chordFor(mood, mood.barsPerChord, a);
     for (let v = 0; v < 4; v++) {
         assert.ok(Math.abs(b[v] - a[v]) <= 7, `voice ${v} moved ${b[v] - a[v]}`);
     }
@@ -82,11 +83,58 @@ test("pitch helpers agree with the piano", () => {
 
 test("each mood is centred where it says it is, and its first chord sits on that centre", () => {
     const names = { 62: "D", 64: "E", 67: "G", 71: "B" };
-    const expect = { dawn: "G", day: "D", dusk: "E", night: "B" };
+    const expect = { dawn: "G", day: "D", dusk: "B", night: "E" };
     for (const [key, mood] of Object.entries(MOODS)) {
         const root = degreeToMidi(mood.root, 0);
         assert.equal(names[root], expect[key], `${key} is rooted on ${expect[key]}`);
         const bass = chordFor(mood, 0, null)[0];
         assert.equal(bass % 12, root % 12, `${key}'s opening chord has its root in the bass`);
+    }
+});
+
+test("the night is a two-chord vamp that sits two bars on each", () => {
+    const night = MOODS.night;
+    const a = chordFor(night, 0, null);
+    const b = chordFor(night, 1, a);
+    assert.deepEqual(a, b, "bar two is still the first chord");
+    const c = chordFor(night, 2, b);
+    assert.notDeepEqual(a, c, "bar three moves");
+    assert.equal(c[0] % 12, 69 % 12, "onto A — the major chord in the minor mode");
+    const d = chordFor(night, 4, c);
+    assert.equal(d[0] % 12, a[0] % 12, "and back home to E");
+});
+
+test("the dusk bass walks down a step a bar", () => {
+    const dusk = MOODS.dusk;
+    let prev = null;
+    const basses = [];
+    for (let bar = 0; bar < 4; bar++) { prev = chordFor(dusk, bar, prev); basses.push(prev[0]); }
+    assert.deepEqual(basses.map((m) => m % 12), [11, 9, 7, 6], "B · A · G · F#");
+});
+
+test("the lead says little and holds it", () => {
+    let seed = 11;
+    const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    let bars = 0, silent = 0, notes = 0, longest = 0;
+    for (let i = 0; i < 400; i++) {
+        const phrase = leadPhrase(MOODS.night, 4, random);
+        bars++;
+        if (phrase.length === 0) silent++;
+        notes += phrase.length;
+        for (let k = 0; k < phrase.length; k++) {
+            assert.ok(phrase[k].hold >= 0.75, "no short notes");
+            if (k) assert.ok(phrase[k].at > phrase[k - 1].at + phrase[k - 1].hold, "never overlapping");
+            longest = Math.max(longest, phrase[k].hold);
+        }
+    }
+    assert.ok(silent / bars > 0.3, `many bars are rests: ${silent}/${bars}`);
+    assert.ok(notes / bars < 1.2, `and the rest are sparse: ${(notes / bars).toFixed(2)} a bar`);
+    assert.ok(longest > 2.5, "some notes hold for most of a bar");
+
+    const chord = chordFor(MOODS.night, 0, null);
+    let prev = nextMelodyNote(MOODS.night, null, chord, true, random, LEAD_LOW, LEAD_HIGH);
+    for (let i = 0; i < 200; i++) {
+        prev = nextMelodyNote(MOODS.night, prev, chord, i % 8 === 0, random, LEAD_LOW, LEAD_HIGH);
+        assert.ok(prev >= LEAD_LOW && prev <= LEAD_HIGH, "in the guitar's register");
     }
 });

@@ -27,30 +27,45 @@ const D = 62; // MIDI
  *   parent scale), four notes each, voiced low to high
  * @property {number} density melody notes per bar, on average
  * @property {number} brightness 0..1, drives the pad filter
+ * @property {number} barsPerChord how long the harmony sits before it moves
  */
 
-/** @type {Record<string, Mood>} */
+/**
+ * @type {Record<string, Mood>}
+ *
+ * The harmony is written the way a certain English band wrote theirs: slow,
+ * modal, and content to sit on two chords for a long time. Night is the
+ * Dorian vamp — a minor ninth rocking against the major chord a fourth up,
+ * two bars each, the most recognisable two chords in the catalogue. Dusk is
+ * the long descending bass, B–A–G–F#, one step a bar. Day is the lush
+ * suspended voicings; dawn keeps the Lydian lift but takes it slowly. All of
+ * it still lives inside the seven notes of D major, so the day can move
+ * between them without a seam.
+ */
 export const MOODS = {
     dawn: {
-        name: "dawn", root: 3, tempo: 66, density: 2.6, brightness: 0.85,
-        // G Lydian: Gmaj7 · A/G · Bm7 · D/F#. The raised fourth (C#) is in the
-        // second chord, and it is the whole colour of first light.
-        chords: [[3, 5, 0, 2], [3, 6, 1, 4], [5, 0, 2, 4], [2, 4, 6, 0]],
+        name: "dawn", root: 3, tempo: 62, density: 1.2, brightness: 0.82, barsPerChord: 2,
+        // G Lydian: Gmaj7 · A/G · Bm7 · A/C#. The raised fourth (C#) is the
+        // colour of first light, and it arrives in the bass on the last chord.
+        chords: [[3, 5, 0, 2], [3, 6, 1, 4], [5, 0, 2, 4], [6, 1, 4, 3]],
     },
     day: {
-        name: "day", root: 0, tempo: 72, density: 1.8, brightness: 0.72,
-        // D Ionian: Dmaj9 · Asus · Bm7 · Gmaj7 — open, unhurried.
-        chords: [[0, 4, 1, 6], [4, 1, 0, 3], [5, 0, 2, 4], [3, 5, 0, 2]],
+        name: "day", root: 0, tempo: 64, density: 0.9, brightness: 0.68, barsPerChord: 2,
+        // D: Dadd9 · Em11 · Gmaj9 · A7sus4 — every chord an open fourth or
+        // second somewhere, nothing resolved too hard.
+        chords: [[0, 1, 2, 4], [1, 3, 0, 4], [3, 5, 2, 4], [4, 0, 1, 3]],
     },
     dusk: {
-        name: "dusk", root: 1, tempo: 62, density: 1.4, brightness: 0.48,
-        // E Dorian: Em9 · Gmaj7 · D · Asus4 — the warm minor.
-        chords: [[1, 3, 5, 2], [3, 5, 0, 2], [0, 2, 4, 6], [4, 0, 1, 5]],
+        name: "dusk", root: 5, tempo: 60, density: 0.7, brightness: 0.42, barsPerChord: 1,
+        // B Aeolian, the long descent: Bm(add9) · Aadd9 · Gmaj7 · F#m7. The
+        // bass walks down a step a bar and the top voice barely moves.
+        chords: [[5, 0, 2, 6], [4, 6, 1, 5], [3, 5, 0, 2], [2, 4, 6, 1]],
     },
     night: {
-        name: "night", root: 5, tempo: 54, density: 0.8, brightness: 0.22,
-        // B Aeolian: Bm7 · Em7 · Bm7 · F#m7 — sparse, low, going nowhere on purpose.
-        chords: [[5, 0, 2, 4], [1, 3, 5, 0], [5, 0, 2, 4], [2, 4, 6, 1]],
+        name: "night", root: 1, tempo: 58, density: 0.5, brightness: 0.24, barsPerChord: 2,
+        // E Dorian: Em9 ↔ A9. Two chords, two bars each, for as long as the
+        // night lasts. The major chord in a minor mode is the whole mood.
+        chords: [[1, 3, 0, 2], [4, 6, 3, 5]],
     },
 };
 
@@ -107,7 +122,8 @@ export function mtof(midi) {
  * @returns {number[]} four MIDI notes
  */
 export function chordFor(mood, bar, previous) {
-    const degrees = mood.chords[bar % mood.chords.length];
+    const step = Math.floor(bar / (mood.barsPerChord || 1));
+    const degrees = mood.chords[step % mood.chords.length];
     const out = [];
     for (let v = 0; v < degrees.length; v++) {
         // Low voice sits an octave down; the rest a little above middle.
@@ -120,7 +136,12 @@ export function chordFor(mood, bar, previous) {
         }
         out.push(best);
     }
-    // Voices never cross: the pad stays a pad and not a knot.
+    // Crossings are resolved by re-pairing, not by shoving a voice up an
+    // octave. The four pad voices are the same instrument, so all that matters
+    // is that every new note is near where *some* voice already was — and a
+    // sorted set of nearest placements is exactly that. Only a true unison is
+    // spread, and only by the octave it needs.
+    out.sort((a, b) => a - b);
     for (let v = 1; v < out.length; v++) {
         while (out[v] <= out[v - 1]) out[v] += 12;
     }
@@ -130,6 +151,9 @@ export function chordFor(mood, bar, previous) {
 /** Bell register: two octaves above the pad. */
 const MELODY_LOW = 76;
 const MELODY_HIGH = 93;
+/** Lead register: where a guitar's top two strings sing. */
+export const LEAD_LOW = 64;
+export const LEAD_HIGH = 81;
 
 /**
  * The next melody note: a walk on the parent scale that prefers steps,
@@ -144,23 +168,24 @@ const MELODY_HIGH = 93;
  * @param {() => number} random
  * @returns {number} MIDI
  */
-export function nextMelodyNote(mood, previous, chord, downbeat, random = Math.random) {
+export function nextMelodyNote(mood, previous, chord, downbeat, random = Math.random,
+    low = MELODY_LOW, high = MELODY_HIGH) {
     const chordClasses = chord.map((n) => n % 12);
     if (previous === null) {
         // Open on the fifth of the mode, in the middle of the register.
         const fifth = degreeToMidi(mood.root + 4, 1);
-        return clampToRange(fifth, MELODY_LOW, MELODY_HIGH);
+        return clampToRange(fifth, low, high);
     }
     const candidates = [];
-    for (let m = MELODY_LOW; m <= MELODY_HIGH; m++) {
+    for (let m = low; m <= high; m++) {
         if (!PARENT.includes(((m - D) % 12 + 12) % 12)) continue;
         const interval = Math.abs(m - previous);
         if (interval === 0) continue;
         let weight = interval <= 2 ? 6 : interval <= 4 ? 3 : interval <= 7 ? 1.2 : 0.35;
         if (chordClasses.includes(m % 12)) weight *= downbeat ? 3.5 : 1.6;
         // A gentle pull back to the middle of the range.
-        const centre = (MELODY_LOW + MELODY_HIGH) / 2;
-        weight *= 1 - 0.55 * Math.abs(m - centre) / (MELODY_HIGH - centre);
+        const centre = (low + high) / 2;
+        weight *= 1 - 0.55 * Math.abs(m - centre) / (high - centre);
         candidates.push({ m, weight });
     }
     let total = 0;
@@ -199,4 +224,34 @@ export function melodyPlacements(mood, beatsPerBar, random = Math.random) {
     slots.sort((a, b) => a - b);
     // Never two bells inside a quarter beat: they would smear into one.
     return slots.filter((s, i) => i === 0 || s - slots[i - 1] >= 0.5);
+}
+
+/**
+ * A lead phrase for one bar: one to three long notes, each with where it
+ * starts (in beats) and how long it holds. This is not the bell line. A
+ * guitar lead in this idiom says very little and holds it: a note swells in,
+ * bends up to pitch, sits for two beats, and is followed by a rest at least as
+ * long as itself. Most bars are one note. Some are silence, which is the part
+ * players of this music understand and programmers of it forget.
+ *
+ * @param {Mood} mood
+ * @param {number} beatsPerBar
+ * @param {() => number} random
+ * @returns {Array<{at:number, hold:number}>}
+ */
+export function leadPhrase(mood, beatsPerBar, random = Math.random) {
+    const roll = random();
+    // Density here is the chance the bar has a phrase at all.
+    if (roll > Math.min(0.9, 0.35 + mood.density * 0.35)) return [];
+    const count = random() < 0.28 ? (random() < 0.4 ? 3 : 2) : 1;
+    const notes = [];
+    let at = random() < 0.5 ? 0 : 1 + Math.floor(random() * 2) * 0.5;
+    for (let i = 0; i < count && at < beatsPerBar - 0.5; i++) {
+        const hold = count === 1
+            ? 1.5 + random() * 2.0
+            : 0.75 + random() * 0.75;
+        notes.push({ at: at + (random() - 0.5) * 0.06, hold });
+        at += hold + 0.25 + random() * 0.5;
+    }
+    return notes;
 }
