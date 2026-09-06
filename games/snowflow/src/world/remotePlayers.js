@@ -34,6 +34,12 @@ export const MAX_REMOTE = MAX_PLAYERS - 1;
 /** Seconds between duel hits from one caster onto one body. */
 const PVP_COOLDOWN = 1.1;
 
+/** Resolve after `n` rendered frames. The spell warm-up needs real draws, not time. */
+const nextFrames = (n) => new Promise((resolve) => {
+    const step = () => (--n <= 0 ? resolve() : requestAnimationFrame(step));
+    requestAnimationFrame(step);
+});
+
 /** Where a body's mass is, above its feet. The duel test samples here too. */
 const CHEST_HEIGHT = 0.75;
 
