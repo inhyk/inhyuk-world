@@ -23,13 +23,13 @@ import { ShaderLanguage } from "@babylonjs/core/Materials/shaderLanguage";
 import { Vector2, Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { S } from "../core/settings.js";
 import { bakeOnce } from "../core/gpuUtil.js";
+import { PLAY_RADIUS, clampToPlayArea as clampToFence } from "./playArea.js";
+
+export { PLAY_RADIUS };
 
 export const WORLD_SIZE = 2048; // metres across the whole field
 export const HEIGHT_RES = 4096; // 0.5 m per texel
 export const AUX_RES = 2048;
-
-/** Half-extent the player is kept inside, leaving margin for the far rings. */
-export const PLAY_RADIUS = 620;
 
 export class Heightfield {
     /** @param {import("@babylonjs/core/scene").Scene} scene */
@@ -214,13 +214,7 @@ export class Heightfield {
 
     /** Clamp a world position to the playable area, in place. */
     clampToPlayArea(v) {
-        const r = PLAY_RADIUS;
-        const d = Math.hypot(v.x, v.z);
-        if (d > r) {
-            const k = r / d;
-            v.x *= k;
-            v.z *= k;
-        }
+        clampToFence(v);
     }
 
     dispose() {

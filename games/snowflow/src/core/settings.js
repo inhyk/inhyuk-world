@@ -100,6 +100,8 @@ export const S = {
     sharpenStrength: 0.55,
 
     // --------------------------------------------------------------- systems
+    /** The corner map. `M` cycles its zoom and switches it off. */
+    showMinimap: true,
     showTerrain: true,
     showCharacter: true,
     showWake: true,
@@ -200,6 +202,7 @@ export const SCHEMA = [
     {
         group: "Systems",
         items: [
+            { k: "showMinimap", l: "Minimap", t: "b" },
             { k: "showTerrain", l: "Terrain", t: "b" },
             { k: "showCharacter", l: "Character", t: "b" },
             { k: "wireframe", l: "Wireframe", t: "b" },

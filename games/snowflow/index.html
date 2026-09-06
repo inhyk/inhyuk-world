@@ -177,7 +177,7 @@
 <body>
     <canvas id="view" tabindex="0" aria-label="눈밭과 물 마법 3D 데모"></canvas>
 
-    <div id="hint">WASD 이동 &nbsp;·&nbsp; Space 서핑 &nbsp;·&nbsp; 1–9 마법 &nbsp;·&nbsp; Esc 조작법</div>
+    <div id="hint">WASD 이동 &nbsp;·&nbsp; Space 서핑 &nbsp;·&nbsp; 1–9 마법 &nbsp;·&nbsp; M 지도 &nbsp;·&nbsp; Esc 조작법</div>
 
     <div id="experience" hidden>
         <header class="game-header">
@@ -198,6 +198,7 @@
                 <div class="movement-guide">
                     <span><kbd>W A S D</kbd> 이동</span><span><kbd>마우스</kbd> 시점</span>
                     <span><kbd>Space</kbd> 서핑 · 누르기</span><span><kbd>Shift</kbd> 달리기</span>
+                    <span><kbd>M</kbd> 지도 크기 · 끄기</span><span><kbd>Esc</kbd> 마우스 풀기</span>
                 </div>
                 <button id="start-button" class="start-button" type="button">설원에 들어가기 <span aria-hidden="true">↗</span></button>
                 <p id="input-note" class="input-note">마우스 휠로 확대 · Esc로 마우스 풀기</p>
@@ -250,6 +251,12 @@
         </aside>
         <aside id="party-hud" class="party-hud" hidden aria-label="함께하는 마법사"></aside>
         <p id="world-notice" class="world-notice" role="status" aria-live="polite" hidden></p>
+        <aside id="minimap" class="minimap" hidden aria-label="설원 지도">
+            <canvas id="minimap-canvas" width="176" height="176" role="img"
+                    aria-label="내 위치와 몬스터, 친구가 표시된 설원 지도"></canvas>
+            <span class="minimap-north" aria-hidden="true">N</span>
+            <small id="minimap-zoom">가까이</small>
+        </aside>
         <aside id="vitals" class="vitals" hidden aria-label="체력">
             <div class="vitals-row">
                 <span class="vitals-heart" aria-hidden="true">❤</span>

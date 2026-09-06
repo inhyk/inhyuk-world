@@ -31,6 +31,7 @@ import { initExperience } from "./ui/experience.js";
 import { initWorldHud } from "./ui/worldHud.js";
 import { initVitalsHud } from "./ui/vitalsHud.js";
 import { initNameplates } from "./ui/nameplates.js";
+import { initMinimap } from "./ui/minimap.js";
 import { initMultiplayer } from "./ui/multiplayer.js";
 import { DayCycle } from "./world/dayCycle.js";
 import { MonsterSystem } from "./world/monsters.js";
@@ -216,6 +217,9 @@ async function boot() {
 
     const vitals = initVitalsHud(health);
     const nameplates = initNameplates(scene, engine, rig);
+    // Bakes the relief image on construction, which is why it happens here —
+    // behind the loading screen, and after the heightfield readback it reads.
+    const minimap = initMinimap({ terrain, character, rig });
     const roomUi = initMultiplayer(room);
     // The room is built before the panel that drives it, so its hooks are
     // attached here — one place where every message from the wire is turned
@@ -358,9 +362,11 @@ async function boot() {
             }
         }
 
+        const company = remotePlayers.live;
         worldHud.update(monsters);
         vitals.update();
-        nameplates.update(remotePlayers.live, room, health);
+        nameplates.update(company, room, health);
+        minimap.update(netDt, monsters, company, room);
         const tSpells = performance.now();
         terrain.update(rig.camera.position, character.position, dt);
         const tTerrain = performance.now();
@@ -406,7 +412,7 @@ async function boot() {
     globalThis.SNOWFLOW = {
         engine, scene, rig, character, figure, contact, spray, wake, spells,
         overlay, terrain, sky, shadows, post, depthPass,
-        cycle, monsters, health, room, remotePlayers,
+        cycle, monsters, health, room, remotePlayers, minimap,
         S, input, perfStats: stats,
     };
 }
