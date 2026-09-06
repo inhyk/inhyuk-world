@@ -148,9 +148,6 @@ export function chordFor(mood, bar, previous) {
     return out;
 }
 
-/** Bell register: two octaves above the pad. */
-const MELODY_LOW = 76;
-const MELODY_HIGH = 93;
 /** Lead register: where a guitar's top two strings sing. */
 export const LEAD_LOW = 64;
 export const LEAD_HIGH = 81;
@@ -169,7 +166,7 @@ export const LEAD_HIGH = 81;
  * @returns {number} MIDI
  */
 export function nextMelodyNote(mood, previous, chord, downbeat, random = Math.random,
-    low = MELODY_LOW, high = MELODY_HIGH) {
+    low = LEAD_LOW, high = LEAD_HIGH) {
     const chordClasses = chord.map((n) => n % 12);
     if (previous === null) {
         // Open on the fifth of the mode, in the middle of the register.
@@ -202,28 +199,6 @@ function clampToRange(midi, low, high) {
     while (midi < low) midi += 12;
     while (midi > high) midi -= 12;
     return midi;
-}
-
-/**
- * How many melody notes to place in this bar, and where. Sparse and off the
- * grid on purpose: a bell exactly on every beat is a clock.
- *
- * @param {Mood} mood
- * @param {number} beatsPerBar
- * @param {() => number} random
- * @returns {number[]} beat offsets within the bar, ascending
- */
-export function melodyPlacements(mood, beatsPerBar, random = Math.random) {
-    const count = Math.max(0, Math.round(mood.density + (random() - 0.5) * 1.4));
-    const slots = [];
-    for (let i = 0; i < count; i++) {
-        // Half-beat grid, then a few tens of milliseconds of human off it.
-        const grid = Math.floor(random() * beatsPerBar * 2) / 2;
-        slots.push(grid + (random() - 0.5) * 0.08);
-    }
-    slots.sort((a, b) => a - b);
-    // Never two bells inside a quarter beat: they would smear into one.
-    return slots.filter((s, i) => i === 0 || s - slots[i - 1] >= 0.5);
 }
 
 /**

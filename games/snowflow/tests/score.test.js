@@ -1,8 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    MOODS, moodAt, chordFor, nextMelodyNote, melodyPlacements, leadPhrase, degreeToMidi, mtof,
-    LEAD_LOW, LEAD_HIGH,
+    MOODS, moodAt, chordFor, nextMelodyNote, leadPhrase, degreeToMidi, mtof, LEAD_LOW, LEAD_HIGH,
 } from "../src/audio/score.js";
 
 const PARENT_CLASSES = new Set([62, 64, 66, 67, 69, 71, 73].map((m) => m % 12)); // D major
@@ -55,23 +54,13 @@ test("the melody stays in the scale, in its register, and prefers steps", () => 
     for (let i = 0; i < 400; i++) {
         const n = nextMelodyNote(mood, previous, chord, i % 4 === 0, random);
         assert.ok(PARENT_CLASSES.has(n % 12), `off-scale note ${n}`);
-        assert.ok(n >= 76 && n <= 93, `out of register ${n}`);
+        assert.ok(n >= LEAD_LOW && n <= LEAD_HIGH, `out of register ${n}`);
         assert.notEqual(n, previous, "never repeats a note back to back");
         if (Math.abs(n - previous) <= 2) steps++;
         total++;
         previous = n;
     }
     assert.ok(steps / total > 0.5, `mostly stepwise: ${steps}/${total}`);
-});
-
-test("bells are sparse, ordered, and never crowd each other", () => {
-    let seed = 3;
-    const random = () => { seed = (seed * 48271) % 2147483647; return seed / 2147483647; };
-    for (let i = 0; i < 50; i++) {
-        const slots = melodyPlacements(MOODS.night, 4, random);
-        assert.ok(slots.length <= 3, `night is sparse, got ${slots.length}`);
-        for (let k = 1; k < slots.length; k++) assert.ok(slots[k] - slots[k - 1] >= 0.5);
-    }
 });
 
 test("pitch helpers agree with the piano", () => {

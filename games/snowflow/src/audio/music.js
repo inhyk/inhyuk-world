@@ -12,13 +12,12 @@
  *
  * Signal path:
  *
- *   pad   ─┐
+ *   organ ─┐
  *   drone  ├─► dry ─────────────────────────┐
  *   bass   ┤                                ├─► master ─► limiter ─► out
  *   air    ┤                                │
- *   bells  ┤─► send ─► reverb ──────────────┤
- *   lead   ┤─► echo (dotted eighth, ping-pong, tape-dark) ─► send ─┘
- *   pulse  ┘
+ *   lead   ┤─► send ─► reverb ──────────────┤
+ *   pulse  ┘─► echo (dotted eighth, ping-pong, tape-dark) ─► send ─┘
  *
  * The echo is the sound. A dotted-eighth delay with feedback and a low-pass in
  * the loop, crossed left-to-right, is the single most recognisable device in
@@ -39,7 +38,7 @@
 
 import { S } from "../core/settings.js";
 import {
-    moodAt, chordFor, nextMelodyNote, melodyPlacements, leadPhrase, mtof, LEAD_LOW, LEAD_HIGH,
+    moodAt, chordFor, nextMelodyNote, leadPhrase, mtof, LEAD_LOW, LEAD_HIGH,
 } from "./score.js";
 
 const BEATS_PER_BAR = 4;
@@ -60,7 +59,6 @@ export class Music {
         this._bar = 0;
         this._nextBarTime = 0;
         this._chord = null;
-        this._melodyPrev = null;
         this._leadPrev = null;
         this._bassPrev = null;
         this._mood = null;
@@ -133,50 +131,43 @@ export class Music {
         this.reverbReturn.gain.value = 0.62;
         this.send.connect(this.reverb).connect(this.reverbReturn).connect(this.master);
 
-        // ------------------------------------------------------------ pad
-        // Four voices, each a triangle, a sine, and a sine an octave down,
-        // through one shared low-pass that the sun owns. No sawtooth and no
-        // detune, on purpose: a saw is the buzz timbre, and two of them a few
-        // cents apart beat against each other — which is the one sound in
-        // this score that was heard as "a whine" rather than as weather. The
-        // pad is now closer to glass than to strings. The LFO on the cutoff
-        // is what makes a held chord breathe instead of sitting there.
+        // ---------------------------------------------------------- organ
+        // Four voices of drawbar organ: a fundamental and its second, third
+        // and fourth harmonics as plain sines, which is what a tonewheel is.
+        // No saw, no detune, and no Leslie — a rotating speaker is a tremolo,
+        // and a tremolo is the whine that was taken out of this score. What
+        // makes it the instrument it is meant to be is the swell: every chord
+        // change fades in over a bar and a bit, the way a hand on a volume
+        // pedal does it, instead of arriving.
         this.padFilter = ctx.createBiquadFilter();
         this.padFilter.type = "lowpass";
-        this.padFilter.frequency.value = 900;
-        this.padFilter.Q.value = 0.5;
+        this.padFilter.frequency.value = 1400;
+        this.padFilter.Q.value = 0.4;
         this.padGain = ctx.createGain();
         this.padGain.gain.value = 0.0;
         this.padFilter.connect(this.padGain);
         this.padGain.connect(this.dry);
         const padSend = ctx.createGain();
-        padSend.gain.value = 0.55;
+        padSend.gain.value = 0.7;
         this.padGain.connect(padSend).connect(this.send);
 
-        this.padLfo = ctx.createOscillator();
-        this.padLfo.type = "sine";
-        this.padLfo.frequency.value = 0.045;
-        this.padLfoGain = ctx.createGain();
-        this.padLfoGain.gain.value = 260;
-        this.padLfo.connect(this.padLfoGain).connect(this.padFilter.frequency);
-        this.padLfo.start(now);
-
+        const DRAWBARS = [[1, 0.42], [2, 0.26], [3, 0.14], [4, 0.08]];
         this.padVoices = [];
         for (let v = 0; v < 4; v++) {
             const gain = ctx.createGain();
             gain.gain.value = 0;
             gain.connect(this.padFilter);
-            const a = ctx.createOscillator(); a.type = "triangle";
-            const b = ctx.createOscillator(); b.type = "sine";
-            const c = ctx.createOscillator(); c.type = "sine";
-            const mixA = ctx.createGain(); mixA.gain.value = 0.34;
-            const mixB = ctx.createGain(); mixB.gain.value = 0.22;
-            const mixC = ctx.createGain(); mixC.gain.value = 0.36;
-            a.connect(mixA).connect(gain);
-            b.connect(mixB).connect(gain);
-            c.connect(mixC).connect(gain);
-            a.start(now); b.start(now); c.start(now);
-            this.padVoices.push({ gain, oscs: [a, b, c], midi: 0 });
+            const oscs = [];
+            for (const [harmonic, level] of DRAWBARS) {
+                const o = ctx.createOscillator();
+                o.type = "sine";
+                const mix = ctx.createGain();
+                mix.gain.value = level;
+                o.connect(mix).connect(gain);
+                o.start(now);
+                oscs.push({ osc: o, harmonic });
+            }
+            this.padVoices.push({ gain, oscs });
         }
 
         // ---------------------------------------------------------- drone
@@ -256,14 +247,6 @@ export class Music {
         this.leadTone.connect(leadEcho).connect(this.echoIn);
         this.leadTone.connect(leadWet).connect(this.send);
 
-        // ---------------------------------------------------------- bells
-        this.bellGain = ctx.createGain();
-        this.bellGain.gain.value = 0.9;
-        const bellDry = ctx.createGain(); bellDry.gain.value = 0.35;
-        const bellWet = ctx.createGain(); bellWet.gain.value = 1.0;
-        this.bellGain.connect(bellDry).connect(this.dry);
-        this.bellGain.connect(bellWet).connect(this.send);
-
         // ------------------------------------------------------------ air
         // Wind: a band of noise the speed opens up. The centre frequency
         // climbs with speed too, which is the difference between a breeze and
@@ -325,7 +308,8 @@ export class Music {
             this.droneSub.frequency.setTargetAtTime(root / 2, t, MOOD_FADE / 4);
         }
 
-        const chord = chordFor(mood, bar, this._chord);
+        const previous = this._chord;
+        const chord = chordFor(mood, bar, previous);
         this._chord = chord;
         const beat = 60 / this._tempo();
 
@@ -345,14 +329,23 @@ export class Music {
 
         // Pad: glide each voice to its new note over a beat and a half. A pad
         // that steps is an organ; one that slides is weather.
+        // Organ: pitches glide over half a beat; on a chord change the whole
+        // instrument dips and swells back in over a bar — the volume pedal.
+        const changed = !previous || previous.some((n, i) => n !== chord[i]);
         for (let v = 0; v < 4; v++) {
             const voice = this.padVoices[v];
             const f = mtof(chord[v]);
-            for (let k = 0; k < voice.oscs.length; k++) {
-                const target = k === 2 ? f / 2 : f;
-                voice.oscs[k].frequency.setTargetAtTime(target, t, beat * 0.45);
+            for (const { osc, harmonic } of voice.oscs) {
+                osc.frequency.setTargetAtTime(f * harmonic, t, beat * 0.3);
             }
-            voice.gain.gain.setTargetAtTime(0.19, t, 0.6);
+            const g = voice.gain.gain;
+            if (changed) {
+                g.cancelScheduledValues(t);
+                g.setValueAtTime(Math.max(0.0001, g.value * 0.35), t);
+                g.linearRampToValueAtTime(0.16, t + beat * 1.3);
+            } else {
+                g.setTargetAtTime(0.16, t, 0.8);
+            }
         }
 
         // The lead. One to three long notes, or nothing.
@@ -365,17 +358,6 @@ export class Music {
             this._lead(when, mtof(midi), note.hold * beat, 0.6 + Math.random() * 0.3);
         }
 
-        // Bells, now the rare sparkle over the top rather than the tune.
-        // Only by daylight, and only one in three bars.
-        if (mood.brightness > 0.5 && Math.random() < 0.34) {
-            const slots = melodyPlacements(mood, BEATS_PER_BAR).slice(0, 1);
-            for (const slot of slots) {
-                const when = t + slot * beat;
-                const midi = nextMelodyNote(mood, this._melodyPrev, chord, slot < 0.25);
-                this._melodyPrev = midi;
-                this._bell(when, mtof(midi), 0.35 + Math.random() * 0.2);
-            }
-        }
 
         // Match pulse: a muted pluck on every beat, the off-beats quieter.
         if (this.matchRunning) {
@@ -456,30 +438,6 @@ export class Music {
         g.setTargetAtTime(this._bassLevel * 0.55, t + hold * 0.6, 0.25);
     }
 
-    /** FM bell: a sine carrier with a sine modulator at a 3:1 ratio that decays
-     *  faster than the tone, so the strike is bright and the ring is pure. */
-    _bell(t, freq, velocity) {
-        const ctx = this.ctx;
-        const carrier = ctx.createOscillator();
-        const mod = ctx.createOscillator();
-        const modGain = ctx.createGain();
-        const env = ctx.createGain();
-        carrier.type = "sine";
-        mod.type = "sine";
-        carrier.frequency.value = freq;
-        mod.frequency.value = freq * 3.01;
-        modGain.gain.setValueAtTime(freq * 1.6 * velocity, t);
-        modGain.gain.exponentialRampToValueAtTime(freq * 0.05, t + 0.9);
-        mod.connect(modGain).connect(carrier.frequency);
-
-        env.gain.setValueAtTime(0.0001, t);
-        env.gain.exponentialRampToValueAtTime(0.28 * velocity, t + 0.012);
-        env.gain.exponentialRampToValueAtTime(0.0001, t + 3.2);
-        carrier.connect(env).connect(this.bellGain);
-        carrier.start(t); mod.start(t);
-        carrier.stop(t + 3.4); mod.stop(t + 3.4);
-    }
-
     /** Pulse pluck: a filtered triangle with a very short envelope. Not a
      *  saw — nothing in this score is a saw any more. */
     _pluck(t, freq, velocity) {
@@ -541,9 +499,9 @@ export class Music {
         // The sun owns the pad's brightness. Dawn is brightest of all.
         const blend = moodAt(hour);
         const brightness = blend.from.brightness * (1 - blend.t) + blend.to.brightness * blend.t;
-        const cutoff = 260 + brightness * 1700 * (1 - nightAmount * 0.55);
+        const cutoff = 520 + brightness * 1500 * (1 - nightAmount * 0.5);
         this.padFilter.frequency.setTargetAtTime(cutoff, t, 1.2);
-        this.padGain.gain.setTargetAtTime(0.85, t, 1.0);
+        this.padGain.gain.setTargetAtTime(0.8, t, 1.0);
 
         // Night lifts the drone; so, a little, does danger.
         this.droneGain.gain.setTargetAtTime(0.04 + nightAmount * 0.15 + threat * 0.06, t, 1.5);
