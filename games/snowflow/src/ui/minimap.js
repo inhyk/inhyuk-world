@@ -139,7 +139,7 @@ export function initMinimap({ terrain, character, rig }) {
         ctx.arc(half, half, half * 0.9,
             angleToScreen(rig.yaw + cone), angleToScreen(rig.yaw - cone));
         ctx.closePath();
-        ctx.fillStyle = "rgba(226, 243, 255, 0.10)";
+        ctx.fillStyle = "rgba(226, 243, 255, 0.14)";
         ctx.fill();
 
         // -------------------------------------------------------- the fence
@@ -161,11 +161,11 @@ export function initMinimap({ terrain, character, rig }) {
             const y = half + (m.z - pz) * scale;
             if (outside(x, y, half, 4)) continue;
             ctx.beginPath();
-            ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+            ctx.arc(x, y, 3.8, 0, Math.PI * 2);
             ctx.fillStyle = "#0a1826";
             ctx.fill();
             ctx.strokeStyle = "#6fe0ff";
-            ctx.lineWidth = 1.4;
+            ctx.lineWidth = 1.6;
             ctx.stroke();
         }
 
@@ -177,10 +177,10 @@ export function initMinimap({ terrain, character, rig }) {
             const at = pinToEdge((slot.x - px) * scale, (slot.z - pz) * scale, half - 7);
             const pinned = at.pinned;
             ctx.beginPath();
-            ctx.arc(half + at.x, half + at.y, pinned ? 3.4 : 4.4, 0, Math.PI * 2);
+            ctx.arc(half + at.x, half + at.y, pinned ? 4 : 5.2, 0, Math.PI * 2);
             if (pinned) {
                 ctx.strokeStyle = colour;
-                ctx.lineWidth = 1.8;
+                ctx.lineWidth = 2;
                 ctx.stroke();
             } else {
                 ctx.fillStyle = slot.downed ? "#0a1826" : colour;
@@ -195,9 +195,9 @@ export function initMinimap({ terrain, character, rig }) {
         const dx = Math.sin(character.facing);
         const dy = Math.cos(character.facing);
         ctx.beginPath();
-        ctx.moveTo(half + dx * 7.5, half + dy * 7.5);
-        ctx.lineTo(half - dx * 4.5 - dy * 4.5, half - dy * 4.5 + dx * 4.5);
-        ctx.lineTo(half - dx * 4.5 + dy * 4.5, half - dy * 4.5 - dx * 4.5);
+        ctx.moveTo(half + dx * 8.6, half + dy * 8.6);
+        ctx.lineTo(half - dx * 5.2 - dy * 5.2, half - dy * 5.2 + dx * 5.2);
+        ctx.lineTo(half - dx * 5.2 + dy * 5.2, half - dy * 5.2 - dx * 5.2);
         ctx.closePath();
         ctx.fillStyle = room && room.active
             ? css(PLAYER_COLORS[selfColour(room)])
