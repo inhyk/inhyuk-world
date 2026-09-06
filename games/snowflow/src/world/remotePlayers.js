@@ -32,6 +32,9 @@ export const MAX_REMOTE = MAX_PLAYERS - 1;
 /** Seconds between duel hits from one caster onto one body. */
 const PVP_COOLDOWN = 1.1;
 
+/** Where a body's mass is, above its feet. The duel test samples here too. */
+const CHEST_HEIGHT = 0.75;
+
 /** Metres past which a remote robe is skinned rather than simulated. */
 const CLOTH_DISTANCE = 55;
 /**
@@ -120,7 +123,10 @@ export class RemotePlayers {
                 id: "", name: "", colorIndex: -1, live: false,
                 controller, avatar, contact, wake,
                 x: 0, y: 0, z: 0,
-                hp: 100, downed: false, hitCooldown: 0,
+                // `flash` is what *you* see when your spell lands. The damage
+                // itself is resolved on their machine and comes back a network
+                // tick later, which is far too long to feel like a hit.
+                hp: 100, downed: false, hitCooldown: 0, flash: 0,
             });
         }
     }
@@ -177,6 +183,7 @@ export class RemotePlayers {
         for (const slot of this.slots) {
             if (slot.live && !claimed.has(slot)) this._retire(slot);
             slot.hitCooldown = Math.max(0, slot.hitCooldown - dt);
+            slot.flash = Math.max(0, slot.flash - dt * 2.2);
             if (!slot.live) continue;
 
             const p = slot.controller.position;
@@ -228,14 +235,23 @@ export class RemotePlayers {
      * @param {import("../net/room.js").Room} room
      * @param {(x:number,y:number,z:number)=>number} hitTest
      * @param {number} damage
+     * @param {(slot: any) => void} [onLanded] fires on the caster's own machine
      */
-    resolveDuelHits(room, hitTest, damage) {
+    resolveDuelHits(room, hitTest, damage, onLanded) {
         if (!this.ready || !room?.active || !room.duel) return;
         for (const slot of this.slots) {
             if (!slot.live || slot.downed || slot.hitCooldown > 0) continue;
-            if (!hitTest(slot.x, slot.y, slot.z)) continue;
+            // Twice up the body. The test was written for wraiths, which are
+            // 2.6 m of ice and wide with it; a mage is a slim 1.75 m and the
+            // water sphere is under a metre across, so a cast that visibly
+            // washed over someone's chest could pass the check at their boots
+            // and register nothing.
+            if (!hitTest(slot.x, slot.y, slot.z) &&
+                !hitTest(slot.x, slot.y + CHEST_HEIGHT, slot.z)) continue;
             slot.hitCooldown = PVP_COOLDOWN;
+            slot.flash = 1;
             room.sendPlayerDamage(slot.id, damage);
+            onLanded?.(slot);
         }
     }
 

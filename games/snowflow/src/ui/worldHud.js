@@ -19,16 +19,23 @@ export function initWorldHud(cycle) {
             dawn: "해가 떠올랐어요. 밤의 그림자가 사라집니다.",
             contact: "그림자에게 닿아 체력이 줄었어요! 6번 방패로 밀어내세요.",
             spell: "친구의 마법에 맞았어요!",
+            landed: "친구를 맞혔어요!",
+            duelOn: "대전 모드가 켜졌어요. 이제 마법이 친구에게도 닿아요!",
+            duelOff: "대전 모드가 꺼졌어요. 마법은 몬스터에게만 통해요.",
             revive: "다시 일어났어요. 잠깐은 아무것도 닿지 않아요.",
             joined: "친구가 설원에 들어왔어요.",
             left: "친구가 설원을 떠났어요.",
         }[kind];
         if (!text) return;
         notice.textContent = text;
-        noticeUntil = cycle.elapsedSeconds + (kind === "contact" || kind === "spell" ? 3 : 7);
+        const brief = kind === "contact" || kind === "spell" || kind === "landed";
+        noticeUntil = cycle.elapsedSeconds + (brief ? 3 : 7);
     }
 
-    function update(monsters) {
+    const duelBadge = document.getElementById("duel-badge");
+
+    function update(monsters, duel) {
+        duelBadge.hidden = !input.active || !duel;
         const clockKey = `${cycle.clock}-${cycle.label}`;
         if (clockKey !== lastClock) {
             clock.textContent = cycle.clock;

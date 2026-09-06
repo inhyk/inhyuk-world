@@ -89,13 +89,19 @@ body.playing .game-header { opacity: .95; }
 .room-roster li { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #d3e5f0; }
 .room-roster i { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 10px currentColor; background: currentColor; }
 .room-roster small { margin-left: auto; color: #8ea6b8; font-size: 10px; }
-.room-actions { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
-.room-duel { display: flex; align-items: center; gap: 8px; color: #a7bbc9; font-size: 11px; cursor: pointer; }
-.room-duel input { accent-color: #8fc4e8; }
+.room-actions { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+.room-duel { display: flex; align-items: flex-start; gap: 11px; margin-top: 16px; padding: 12px 14px; border: 1px solid #bedeee2e; border-radius: 7px; background: #0b1e2f7a; cursor: pointer; }
+.room-duel input { margin-top: 2px; width: 15px; height: 15px; accent-color: #ff9d7a; flex: 0 0 auto; }
+.room-duel input:disabled { cursor: not-allowed; }
+.room-duel b { display: block; color: #ffd0b8; font-size: 12px; font-weight: 500; }
+.room-duel small { display: block; margin-top: 5px; color: #a7bbc9; font-size: 10px; line-height: 1.7; }
+.room-duel:has(input:checked) { border-color: #ff9d7a5c; background: #2a15127a; }
 .room-actions .quiet-button { margin-left: auto; }
 
+.duel-badge { position: fixed; z-index: 50; top: 156px; right: 36px; padding: 7px 12px; border-radius: 6px; border: 1px solid #ff9d7a4d; background: #2a1512cc; color: #ffd0b8; font-size: 11px; letter-spacing: .02em; pointer-events: none; }
+
 /* --------------------------------------------------------- in-play company */
-.party-hud { position: fixed; z-index: 50; top: 186px; right: 36px; display: grid; gap: 9px; justify-items: end; pointer-events: none; }
+.party-hud { position: fixed; z-index: 50; top: 200px; right: 36px; display: grid; gap: 9px; justify-items: end; pointer-events: none; }
 .party-hud div { display: flex; align-items: center; gap: 9px; padding: 6px 11px; border-radius: 6px; background: #07172788; font-size: 11px; color: #dceaf4; }
 .party-hud i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 9px currentColor; }
 .party-hud span { min-width: 54px; }
@@ -109,6 +115,9 @@ body.playing .game-header { opacity: .95; }
 .nameplate i { display: block; width: 54px; height: 3px; border-radius: 2px; background: #0b1c2bcc; overflow: hidden; }
 .nameplate i b { display: block; height: 100%; background: #7de3c4; }
 .nameplate.is-down span::after { content: " · 쓰러짐"; color: #9fb8c9; font-size: 10px; }
+.nameplate.is-hit span { color: #fff1ea !important; text-shadow: 0 0 15px #ff7b6b, 0 2px 10px #04070c; }
+.nameplate.is-hit i { box-shadow: 0 0 13px #ff7b6bcc; }
+.nameplate.is-hit i b { background: #ff7b6b !important; }
 
 /* ----------------------------------------------------------------- minimap */
 .minimap { position: fixed; z-index: 50; right: 36px; bottom: 30px; width: 176px; height: 176px; pointer-events: none; }
@@ -139,7 +148,8 @@ body.playing .game-header { opacity: .95; }
     .vitals { left: 20px; bottom: 88px; min-width: 176px; }
     .minimap { right: 20px; bottom: 88px; width: 116px; height: 116px; }
     .minimap small { display: none; }
-    .party-hud { top: 168px; right: 20px; }
+    .party-hud { top: 182px; right: 20px; }
+    .duel-badge { top: 142px; right: 20px; font-size: 10px; padding: 6px 9px; }
     .room-input.is-code { flex: 1 1 108px; }
 }
 @media (prefers-reduced-motion: reduce) {

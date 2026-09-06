@@ -189,6 +189,8 @@ async function boot() {
         },
     });
     const room = new Room();
+    /** Last announced duel setting, so a flip is only called out once. */
+    let duelWas = false;
     // Given every system a character needs, because the other players in a room
     // *are* characters — same skeleton, same cloth, same boots in the same snow.
     // The bodies themselves are not built until a room opens.
@@ -241,10 +243,20 @@ async function boot() {
                 health.reset();
                 remotePlayers.clear();
             }
-            if (kind === "closed") figure.tintGarments(null);
+            if (kind === "closed") {
+                figure.tintGarments(null);
+                duelWas = false;
+            }
         },
         onRoster: (players) => {
             roomUi.roster(players);
+            // The mode is broadcast with the roster, so this is where a guest
+            // finds out the host flipped it. Nobody should have to work out
+            // from a spell passing through a friend that the rules changed.
+            if (room.duel !== duelWas) {
+                duelWas = room.duel;
+                worldHud.announce(room.duel ? "duelOn" : "duelOff");
+            }
             // Wear your own room colour too, so the robe your friends see is
             // the colour on their nameplate and on their map.
             const me = players.find((p) => p.id === room.selfId);
@@ -361,7 +373,11 @@ async function boot() {
             room.isHost ? room.partyPositions(character.position) : null
         );
         health.update(dt, cycle.isNight);
-        if (room.duel) remotePlayers.resolveDuelHits(room, monsters.hitTest, SPELL_DAMAGE);
+        if (room.duel) {
+            remotePlayers.resolveDuelHits(
+                room, monsters.hitTest, SPELL_DAMAGE, () => worldHud.announce("landed")
+            );
+        }
         // Before the terrain: their boots stage brushes into the same array
         // yours do, and the simulation pass consumes it below.
         remotePlayers.update(netDt, room, character.position);
@@ -379,7 +395,7 @@ async function boot() {
         }
 
         const company = remotePlayers.live;
-        worldHud.update(monsters);
+        worldHud.update(monsters, room.duel);
         vitals.update();
         nameplates.update(company, room, health);
         minimap.update(netDt, monsters, company, room);

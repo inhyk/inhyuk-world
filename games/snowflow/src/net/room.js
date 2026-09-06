@@ -160,8 +160,16 @@ export class Room {
         this.peer = new Peer(undefined, { debug: 0 });
         this.selfId = await this._waitOpen();
 
+        // Reliable, deliberately. Most of what crosses this channel is a body
+        // fifteen times a second, and losing one of those costs nothing — but
+        // the same channel carries every one-shot event in the game: the join,
+        // the roster, a spell landing on a friend, a shadow taking a hit. An
+        // unreliable channel drops those silently and the symptom is "I hit
+        // them and nothing happened". PeerJS gives one channel per connection,
+        // so it has to be the one that cannot lose an event; at this rate the
+        // head-of-line cost is invisible under the easing.
         const conn = this.peer.connect(PEER_PREFIX + clean.toLowerCase(), {
-            reliable: false, serialization: "json",
+            reliable: true, serialization: "json",
         });
         this._uplink = conn;
         await waitFor(conn, CONNECT_TIMEOUT, "방이 응답하지 않아요.");

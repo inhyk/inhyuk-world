@@ -192,3 +192,52 @@ test("the host's world message carries the shadows, the clock and the tally", ()
     assert.equal(message.c, 123.5, "quantised, because nobody can see a millisecond");
     assert.equal(message.d, 7);
 });
+
+test("in a two-player room a hit lands on the body that owns it, both ways", () => {
+    const hostHurts = [];
+    const guestHurts = [];
+    const host = hostRoom({ onHurt: (d, from) => hostHurts.push([d, from]) });
+    host.peer = { destroyed: false };
+    host.duel = true;
+
+    const guest = new Room({ onHurt: (d, from) => guestHurts.push([d, from]) });
+    guest.selfId = "guest-1";
+    guest.peer = { destroyed: false };
+
+    // Wire the two ends together: what the host writes down the connection is
+    // what the guest reads, and what the guest writes up its link is what the
+    // host reads.
+    const conn = fakeConnection("guest-1");
+    conn.send = (msg) => guest._onHostMessage(msg);
+    host._acceptGuest(conn);
+    host._onGuestMessage(conn, { t: "hello", name: "친구" });
+    guest._uplink = { open: true, send: (msg) => host._onGuestMessage(conn, msg) };
+
+    assert.equal(guest.duel, true, "the mode travels with the roster");
+
+    host.sendPlayerDamage("guest-1", 18);
+    assert.deepEqual(guestHurts, [[18, host.selfId]], "host → guest");
+    assert.equal(hostHurts.length, 0, "and not back onto the caster");
+
+    guest.sendPlayerDamage(host.selfId, 18);
+    assert.deepEqual(hostHurts, [[18, "guest-1"]], "guest → host");
+    assert.equal(guestHurts.length, 1);
+});
+
+test("outside a duel nothing is sent at all", () => {
+    const hurts = [];
+    const host = hostRoom({ onHurt: (d) => hurts.push(d) });
+    host.peer = { destroyed: false };
+    const conn = fakeConnection("guest-1");
+    const seen = [];
+    conn.send = (msg) => seen.push(msg.t);
+    host._acceptGuest(conn);
+    host._onGuestMessage(conn, { t: "hello", name: "친구" });
+
+    host.sendPlayerDamage("guest-1", 18);
+    assert.equal(seen.includes("pvp"), false, "friendly fire is off by default");
+
+    host.setDuel(true);
+    host.sendPlayerDamage("guest-1", 18);
+    assert.equal(seen.includes("pvp"), true);
+});

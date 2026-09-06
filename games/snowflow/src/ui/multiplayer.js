@@ -32,8 +32,8 @@ export function initMultiplayer(room, hooks = {}) {
     const copyButton = document.getElementById("room-copy");
     const rosterList = document.getElementById("room-roster");
     const leaveButton = document.getElementById("room-leave");
-    const duelWrap = document.getElementById("room-duel-wrap");
     const duelToggle = /** @type {HTMLInputElement} */ (document.getElementById("room-duel"));
+    const duelNote = document.getElementById("room-duel-note");
 
     let busy = false;
 
@@ -68,8 +68,14 @@ export function initMultiplayer(room, hooks = {}) {
         nameInput.hidden = open;
         if (!open) return;
         codeValue.textContent = room.code;
-        duelWrap.hidden = !room.isHost;
+        // Shown to everyone, switchable by the host. A guest who cannot see
+        // the setting has no way to find out why their spells pass through
+        // their friend — which is the whole question this answers.
         duelToggle.checked = room.duel;
+        duelToggle.disabled = !room.isHost;
+        duelNote.textContent = room.isHost
+            ? "켜면 마법이 친구에게도 닿아요. 끄면 몬스터에게만 통해요."
+            : `지금은 ${room.duel ? "켜져 있어요 — 마법을 조심!" : "꺼져 있어요."} 방장만 바꿀 수 있어요.`;
     }
 
     function roster(players = []) {

@@ -101,6 +101,10 @@ export function initNameplates(scene, engine, rig) {
                 // Fade with distance rather than cutting off at the limit.
                 node.root.style.opacity = (1 - Math.min(0.72, distance / MAX_DISTANCE)).toFixed(2);
                 node.root.classList.toggle("is-down", slot.downed);
+                // Your own confirmation that a cast landed. Their hit points
+                // are theirs to change, and the new number is a network tick
+                // away — this is what fills that gap.
+                node.root.classList.toggle("is-hit", slot.flash > 0.15);
                 // Identity changes once per join; only the health pip moves.
                 if (node.colour !== slot.colorIndex || node.name !== slot.name) {
                     const colour = css(PLAYER_COLORS[slot.colorIndex]);
