@@ -16,8 +16,12 @@ const CODE_LENGTH = 5;
 
 const css = (colour) => `rgb(${colour.map((c) => Math.round(Math.min(1, c) * 255)).join(",")})`;
 
-/** @param {import("../net/room.js").Room} room */
-export function initMultiplayer(room) {
+/**
+ * @param {import("../net/room.js").Room} room
+ * @param {{prepare?: () => Promise<void>}} [hooks] `prepare` is awaited before
+ *   either connect, so the bodies exist before anyone can walk into view
+ */
+export function initMultiplayer(room, hooks = {}) {
     const nameInput = /** @type {HTMLInputElement} */ (document.getElementById("room-name"));
     const codeInput = /** @type {HTMLInputElement} */ (document.getElementById("room-code"));
     const createButton = document.getElementById("room-create");
@@ -106,6 +110,8 @@ export function initMultiplayer(room) {
         setBusy(true);
         const name = rememberName();
         try {
+            say("친구 맞을 준비를 하고 있어요…", "busy");
+            await hooks.prepare?.();
             const code = await room.host(name);
             renderOpen();
             say(`방을 만들었어요! 코드 ${code} 를 친구에게 보내주세요.`);
@@ -126,6 +132,8 @@ export function initMultiplayer(room) {
         setBusy(true);
         const name = rememberName();
         try {
+            say("친구 맞을 준비를 하고 있어요…", "busy");
+            await hooks.prepare?.();
             await room.join(code, name);
             renderOpen();
             say("방에 들어갔어요!");

@@ -225,6 +225,39 @@ export class Figure {
     }
 
     /**
+     * Put the feet down under the body, wherever it now is.
+     *
+     * A planted foot is deliberately impossible to move — that is the whole
+     * mechanism that stops feet sliding. Which means a body that *teleports*,
+     * as a remote player's does the moment they join, leaves its plants behind
+     * and stretches the legs across the map until the next touchdown. This is
+     * the one sanctioned way to move them.
+     *
+     * @param {import("./controller.js").CharacterController} ch
+     */
+    place(ch) {
+        const rgtX = Math.cos(ch.facing), rgtZ = -Math.sin(ch.facing);
+        for (let f = 0; f < 2; f++) {
+            const side = f === 0 ? -0.105 : 0.105;
+            const x = ch.position.x + rgtX * side;
+            const z = ch.position.z + rgtZ * side;
+            const o = f * 3;
+            this.plant[o] = x;
+            this.plant[o + 1] = this.terrain.heightAt(x, z) - this.sink * 0.7;
+            this.plant[o + 2] = z;
+            this.footPos[o] = this.plant[o];
+            this.footPos[o + 1] = this.plant[o + 1];
+            this.footPos[o + 2] = this.plant[o + 2];
+            // Both feet already carrying weight, so the next frame is not read
+            // as a touchdown and does not stamp a print nobody took a step for.
+            this._wasStance[f] = true;
+            this.touchdown[f] = false;
+            this.footWeight[f] = 1;
+        }
+        this._prevGait = ch.gaitPhase;
+    }
+
+    /**
      * Pose the skeleton for this frame.
      * @param {number} dt
      * @param {import("./controller.js").CharacterController} ch

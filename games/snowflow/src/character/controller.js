@@ -138,12 +138,76 @@ export class CharacterController {
         this.position.x += this.velocity.x * h;
         this.position.z += this.velocity.z * h;
 
+        this._settle(h);
+    }
+
+    /**
+     * Drive from another client's published body instead of from input.
+     *
+     * The figure, the garments, the footprints and the wake all read the same
+     * fields this produces, so a remote character is not a second, simpler
+     * animation path — it is this one, fed from a different place. That is the
+     * whole reason the network only carries a position, a heading and a surf
+     * blend: everything else is derived here, identically on every machine.
+     *
+     * Velocity is read back out of the eased move rather than sent. Gait phase
+     * advances with `speed * dt`, so deriving the speed from the distance
+     * actually travelled is what keeps a remote player's feet planted instead
+     * of skating — the two cannot disagree if they are the same number.
+     *
+     * @param {number} dt
+     * @param {{x:number, y:number, z:number, facing:number, surf:number}} target
+     */
+    updateRemote(dt, target) {
+        if (!(dt > 0)) {
+            this.acceleration.set(0, 0, 0);
+            return;
+        }
+        const h = Math.min(dt, 1 / 30);
+        this.prevVelocity.copyFrom(this.velocity);
+
+        this.surfActive = target.surf > 0.5;
+        this.surf = expDamp(this.surf, target.surf, 7, h);
+
+        const nx = expDamp(this.position.x, target.x, 13, h);
+        const nz = expDamp(this.position.z, target.z, 13, h);
+        this.velocity.x = (nx - this.position.x) / h;
+        this.velocity.z = (nz - this.position.z) / h;
+        this.position.x = nx;
+        this.position.z = nz;
+        this.facing = angleDamp(this.facing, target.facing, 11, h);
+
+        this._settle(h);
+    }
+
+    /** Put a body down on the snow at once, with no easing. Used on a join. */
+    placeAt(target) {
+        this.position.set(target.x, this.terrain.heightAt(target.x, target.z), target.z);
+        this.velocity.set(0, 0, 0);
+        this.prevVelocity.set(0, 0, 0);
+        this.acceleration.set(0, 0, 0);
+        this.facing = target.facing;
+        this.surf = target.surf;
+        this.speed = 0;
+        this.speed01 = 0;
+        this.lean = 0;
+        this.carve = 0;
+        this.streak01 = 0;
+        this.gaitPhase = 0;
+        this.groundY = this.position.y;
+    }
+
+    /**
+     * Ground snap and every derived quantity, shared by both drives. Whatever
+     * moved the body, this is what turns the move into a pose.
+     * @param {number} h bounded step
+     */
+    _settle(h) {
         this.groundY = this.terrain.heightAt(this.position.x, this.position.z);
         this.terrain.normalAt(this.position.x, this.position.z, this.groundNormal);
         // Snap with a little softness so micro-ripples don't jitter the rig.
         this.position.y = expDamp(this.position.y, this.groundY, 26, h);
 
-        // --------------------------------------------------------- bookkeeping
         this.speed = Math.hypot(this.velocity.x, this.velocity.z);
         this.speed01 = Scalar.Clamp(this.speed / SURF_MAX, 0, 1);
 

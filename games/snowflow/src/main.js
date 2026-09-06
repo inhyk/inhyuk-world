@@ -37,7 +37,7 @@ import { DayCycle } from "./world/dayCycle.js";
 import { MonsterSystem } from "./world/monsters.js";
 import { PlayerHealth, CONTACT_DAMAGE, SPELL_DAMAGE } from "./world/health.js";
 import { RemotePlayers } from "./world/remotePlayers.js";
-import { Room } from "./net/room.js";
+import { Room, PLAYER_COLORS } from "./net/room.js";
 import { Sky } from "./render/sky.js";
 import { ShadowSystem } from "./render/shadows.js";
 import { Terrain } from "./terrain/terrain.js";
@@ -189,7 +189,12 @@ async function boot() {
         },
     });
     const room = new Room();
-    const remotePlayers = new RemotePlayers(scene, rig, depthPass);
+    // Given every system a character needs, because the other players in a room
+    // *are* characters — same skeleton, same cloth, same boots in the same snow.
+    // The bodies themselves are not built until a room opens.
+    const remotePlayers = new RemotePlayers({
+        scene, terrain, sky, shadows, spray, spells, depthPass, rig,
+    });
 
     const monsters = new MonsterSystem(scene, terrain, rig, spells, depthPass, (event) => {
         if (event === "contact") {
@@ -220,7 +225,9 @@ async function boot() {
     // Bakes the relief image on construction, which is why it happens here —
     // behind the loading screen, and after the heightfield readback it reads.
     const minimap = initMinimap({ terrain, character, rig });
-    const roomUi = initMultiplayer(room);
+    // Building three more characters is awaited before a room reports itself
+    // open, so nobody's first sight of a friend is a compile hitch.
+    const roomUi = initMultiplayer(room, { prepare: () => remotePlayers.provision() });
     // The room is built before the panel that drives it, so its hooks are
     // attached here — one place where every message from the wire is turned
     // into something in the world.
@@ -232,9 +239,17 @@ async function boot() {
                 // screen belonged to whichever simulation you just left.
                 monsters.clear();
                 health.reset();
+                remotePlayers.clear();
             }
+            if (kind === "closed") figure.tintGarments(null);
         },
-        onRoster: (players) => roomUi.roster(players),
+        onRoster: (players) => {
+            roomUi.roster(players);
+            // Wear your own room colour too, so the robe your friends see is
+            // the colour on their nameplate and on their map.
+            const me = players.find((p) => p.id === room.selfId);
+            figure.tintGarments(me ? PLAYER_COLORS[me.colorIndex % PLAYER_COLORS.length] : null);
+        },
         onMonsters: (wire, defeated) => {
             monsters.applySnapshot(wire);
             monsters.defeated = defeated;
@@ -266,7 +281,6 @@ async function boot() {
         character.position.x + 3, character.position.y, character.position.z + 3
     );
     await monsters.warmUp();
-    await remotePlayers.warmUp();
     await whenReady(sky.material, "sky material", [sky.mesh, false]);
     await depthPass.warmUp();
     post.update(0, 0, rig.distance);
@@ -348,7 +362,9 @@ async function boot() {
         );
         health.update(dt, cycle.isNight);
         if (room.duel) remotePlayers.resolveDuelHits(room, monsters.hitTest, SPELL_DAMAGE);
-        remotePlayers.update(netDt, room);
+        // Before the terrain: their boots stage brushes into the same array
+        // yours do, and the simulation pass consumes it below.
+        remotePlayers.update(netDt, room, character.position);
 
         netAccum += netDt;
         if (room.active && netAccum >= NET_INTERVAL) {
@@ -373,6 +389,7 @@ async function boot() {
         // After the shadow refit, so the figure's uniforms carry this frame's
         // cascade matrices rather than last frame's.
         figure.sync(rig.camera.position);
+        remotePlayers.render(netDt, rig.camera.position);
         // Before the spray: the wake decides where its own lip is, and the
         // grains it sheds have to be in the pool before the pool is uploaded.
         wake.update(dt, rig.camera.position);
@@ -396,6 +413,7 @@ async function boot() {
             (terrain.mesh.metadata ? terrain.mesh.metadata.triangles : 0) +
             (S.showCharacter ? figure.triangles : 0) +
             (wake.mesh.isVisible ? wake.mesh.metadata.triangles : 0) +
+            remotePlayers.triangles +
             spells.triangles +
             spray.liveCount * 2;
 

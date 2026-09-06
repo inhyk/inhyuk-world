@@ -321,6 +321,44 @@ export class Character {
         }
     }
 
+    /**
+     * Move a body somewhere else without dragging its feet and its robe across
+     * the field to get there. For a remote player arriving in a room.
+     */
+    reseat() {
+        this.figure.place(this.controller);
+        this._needSettle = true;
+    }
+
+    /**
+     * Shift the woollen slots toward a colour, for telling four identical
+     * mages apart in a room.
+     *
+     * Hue only — the multiplier is normalised against the colour's own mean, so
+     * the slot keeps the value it was authored with. That matters more here than
+     * it looks: the palette above is very dark on purpose, because anything
+     * lighter stops reading as a silhouette against the snow at fifteen metres,
+     * and a naive lerp toward a bright room colour throws that away.
+     *
+     * @param {number[]|null} colour linear rgb, or null to go back to the palette
+     * @param {number} [amount] 0..1
+     */
+    tintGarments(colour, amount = 0.85) {
+        const slots = [0, 1, 5]; // robe, mantle, trim — not skin, leather or fur
+        for (const i of slots) {
+            for (let k = 0; k < 3; k++) this._matAlbedo[i * 4 + k] = PALETTE[i][k];
+        }
+        if (!colour) return;
+        const mean = (colour[0] + colour[1] + colour[2]) / 3;
+        if (!(mean > 1e-4)) return;
+        for (const i of slots) {
+            for (let k = 0; k < 3; k++) {
+                const shift = 1 + amount * (colour[k] / mean - 1);
+                this._matAlbedo[i * 4 + k] = PALETTE[i][k] * shift;
+            }
+        }
+    }
+
     setVisible(v) {
         this._visible = !!v;
         this.bodyMesh.isVisible = this._visible;
@@ -337,15 +375,22 @@ export class Character {
      * or the garments render one frame behind the body they hang from.
      *
      * @param {number} dt
+     * @param {boolean} [solveCloth] false drops the garments straight onto their
+     *   kinematic targets instead of simulating them. Not a way to save work on
+     *   the character you are looking at — it is for the other bodies in a room
+     *   at sixty metres, where the robe is thirty pixels tall, the folds are not
+     *   resolvable, and four Verlet solves are four Verlet solves. Skipping the
+     *   solve outright is not an option: the pins are written inside it, so an
+     *   unsolved robe simply stops following its owner.
      */
-    update(dt) {
+    update(dt, solveCloth = true) {
         const ch = this.controller;
         this.figure.update(dt, ch);
-        if (this._needSettle) {
+        if (this._needSettle || !solveCloth) {
             this._settleCloth();
             this._needSettle = false;
         }
-        this.solver.update(dt, this.figure, ch);
+        if (solveCloth) this.solver.update(dt, this.figure, ch);
         this._uploadTransforms();
     }
 

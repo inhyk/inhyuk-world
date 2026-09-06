@@ -63,6 +63,20 @@ export class SnowContact {
         this._prevZ = character.position.z;
     }
 
+    /**
+     * Forget where the body was last frame.
+     *
+     * The continuous brushes are scaled by distance travelled, so a body that
+     * has just been *placed* rather than walked — a remote player arriving in a
+     * room — would otherwise register the whole teleport as one stride and
+     * stamp a scuff nobody took a step for.
+     */
+    reseat() {
+        this._prevX = this.character.position.x;
+        this._prevZ = this.character.position.z;
+        this._sinceSplat = 0;
+    }
+
     /** @param {number} dt seconds */
     update(dt) {
         const ch = this.character;
