@@ -291,7 +291,7 @@ export class Room {
                 if (player && Array.isArray(msg.s)) { player.state = msg.s; player.hasState = true; }
                 return;
             case "hit":
-                this.hooks.onMonsterHit?.(msg.id | 0, Number(msg.d) || 0);
+                this.hooks.onMonsterHit?.(msg.id | 0, Number(msg.d) || 0, msg.k || "m");
                 return;
             case "ball":
                 // Everyone simulates the same ball from the same launch, so a
@@ -377,6 +377,7 @@ export class Room {
                 if (Array.isArray(msg.m)) this.hooks.onMonsters?.(msg.m, msg.d | 0);
                 if (typeof msg.c === "number") this.hooks.onClock?.(msg.c);
                 if (Array.isArray(msg.g)) this.hooks.onMatch?.(msg.g[0], msg.g[1]);
+                if (Array.isArray(msg.w)) this.hooks.onWhirls?.(msg.w, msg.wd | 0);
                 return;
             case "ball":
                 this.hooks.onBall?.(msg.b, msg.from);
@@ -422,11 +423,12 @@ export class Room {
     }
 
     /** Host only: the shadows and the clock everyone shares. */
-    publishWorld(monsterWire, clockSeconds, defeated, match) {
+    publishWorld(monsterWire, clockSeconds, defeated, match, whirlWire, whirlsDefeated) {
         if (!this.active || !this.isHost || this._connections.size === 0) return;
         this._broadcast({
             t: "world", m: monsterWire, c: q(clockSeconds, 1), d: defeated | 0,
             g: match ? [match.phase, q(match.timer, 1)] : null,
+            w: whirlWire || null, wd: whirlsDefeated | 0,
         });
     }
 
@@ -449,9 +451,9 @@ export class Room {
     }
 
     /** Guest only: "my spell hit shadow #3 for 2". The host decides if it died. */
-    reportMonsterHit(id, damage) {
+    reportMonsterHit(id, damage, kind = "m") {
         if (!this.active || this.isHost || !this._uplink?.open) return;
-        this._uplink.send({ t: "hit", id, d: damage });
+        this._uplink.send({ t: "hit", id, d: damage, k: kind });
     }
 
     /** Duel rooms: tell another player their own body just took a hit. */

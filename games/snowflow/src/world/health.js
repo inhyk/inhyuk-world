@@ -15,6 +15,8 @@ export const MAX_HP = 100;
 
 /** Contact with a shadow. Four hits from full, with the grace window between. */
 export const CONTACT_DAMAGE = 14;
+/** A frost whirl catching you. Lighter than a wraith, and far more frequent. */
+export const BITE_DAMAGE = 9;
 /** A spell landing on another player. Only ever applied in 대전 (duel) rooms. */
 export const SPELL_DAMAGE = 18;
 /** A snowball. A nuisance next to a spell, and free of any cooldown but the throw. */

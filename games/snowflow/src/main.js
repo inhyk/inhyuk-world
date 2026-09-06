@@ -14,7 +14,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { Vector3, Color3, Color4 } from "@babylonjs/core/Maths/math";
 
 import { registerShaders } from "./shaders/registry.js";
-import { S, onChange } from "./core/settings.js";
+import { S, onChange, set as setSetting } from "./core/settings.js";
 import {
     sample, checkSpike, stats, mark, installDrawCounter, endFrameDraws,
 } from "./core/perf.js";
@@ -36,11 +36,15 @@ import { initMatchHud } from "./ui/matchHud.js";
 import { initMultiplayer } from "./ui/multiplayer.js";
 import { DayCycle } from "./world/dayCycle.js";
 import { MonsterSystem } from "./world/monsters.js";
-import { PlayerHealth, CONTACT_DAMAGE, SPELL_DAMAGE, SNOWBALL_DAMAGE } from "./world/health.js";
+import {
+    PlayerHealth, CONTACT_DAMAGE, BITE_DAMAGE, SPELL_DAMAGE, SNOWBALL_DAMAGE,
+} from "./world/health.js";
 import { RemotePlayers } from "./world/remotePlayers.js";
 import { SnowballFight } from "./world/snowballFight.js";
 import { SnowballSystem } from "./world/snowball.js";
 import { Scarecrows } from "./world/scarecrows.js";
+import { FrostWhirls } from "./world/frostWhirls.js";
+import { Music } from "./audio/music.js";
 import { Room, PLAYER_COLORS } from "./net/room.js";
 import { Sky } from "./render/sky.js";
 import { ShadowSystem } from "./render/shadows.js";
@@ -247,7 +251,39 @@ async function boot() {
         }
         worldHud.announce(event);
     });
-    monsters.onHit = (id, damage) => room.reportMonsterHit(id, damage);
+    monsters.onHit = (id, damage) => room.reportMonsterHit(id, damage, "m");
+
+    // The dawn. Same pool shape and wire format as the wraiths, opposite in
+    // every other way — quick, single-point, and circling rather than closing.
+    const whirls = new FrostWhirls(scene, terrain, sky, rig, spells, spray, depthPass, (event) => {
+        if (event === "bite") {
+            const taken = health.damage(BITE_DAMAGE, "contact");
+            rig.addTrauma(taken > 0 ? 0.26 : 0.14);
+            if (taken === 0) return;
+        }
+        // A shove from a whirl has already been announced as a bite.
+        if (event === "contact") return;
+        worldHud.announce(event);
+    });
+    whirls.onHit = (id, damage) => room.reportMonsterHit(id, damage, "w");
+
+    // The score. Built on the first gesture, because a browser will not let a
+    // page make a sound before someone has asked it to.
+    const music = new Music();
+    const unlockMusic = () => { void music.unlock(); };
+    document.addEventListener("pointerdown", unlockMusic, { passive: true });
+    document.addEventListener("keydown", unlockMusic);
+    document.addEventListener("snowflow:input", () => { if (input.active) unlockMusic(); });
+
+    const musicButton = document.getElementById("music-button");
+    const musicState = document.getElementById("music-state");
+    const syncMusicButton = () => {
+        musicButton.setAttribute("aria-pressed", String(S.music !== false));
+        musicState.textContent = S.music !== false ? "켬" : "끔";
+    };
+    musicButton.addEventListener("click", () => setSetting("music", S.music === false));
+    onChange("music", syncMusicButton);
+    syncMusicButton();
 
     /**
      * A snowball has finished its flight — anyone's snowball, because every
@@ -261,8 +297,13 @@ async function boot() {
         if (kind === "monster" && ball.mine) {
             // A snowball is a nuisance, not a spell: one point of the two a
             // wraith carries. The host still decides whether it died.
-            if (monsters.remote) room.reportMonsterHit(target.index, 1);
+            if (monsters.remote) room.reportMonsterHit(target.index, 1, "m");
             else monsters.applyReportedHit(target.index, 1);
+        }
+        if (kind === "whirl" && ball.mine) {
+            // One point is all a whirl has. This is the throw's hour.
+            if (whirls.remote) room.reportMonsterHit(target.index, 1, "w");
+            else whirls.applyReportedHit(target.index, 1);
         }
         if (kind === "self") {
             rig.addTrauma(0.28);
@@ -272,7 +313,7 @@ async function boot() {
         if (!ball.mine) return;
         let scored = false;
         if (kind === "scarecrow") scored = scarecrows.knock(target);
-        else if (kind === "player" || kind === "monster") scored = true;
+        else if (kind === "player" || kind === "monster" || kind === "whirl") scored = true;
         if (scored && kind === "player") worldHud.announce("landed");
         match.resolve(scored);
     }
@@ -304,6 +345,16 @@ async function boot() {
             t.index = m.id;
             t.x = m.x; t.y = m.y; t.z = m.z;
             t.rise = 1.35; t.radius = 1.0;
+            _targets.push(t);
+        }
+        for (const w of whirls.monsters) {
+            if (!w.active || w.hp <= 0 || w.age < whirls.windup) continue;
+            const t = slot(n++);
+            t.id = "";
+            t.kind = "whirl";
+            t.index = w.id;
+            t.x = w.x; t.y = w.y; t.z = w.z;
+            t.rise = 1.0; t.radius = 0.9;
             _targets.push(t);
         }
         scarecrows.collect(_targets);
@@ -348,6 +399,7 @@ async function boot() {
                 // Joining and leaving are both a fresh start: the shadows on
                 // screen belonged to whichever simulation you just left.
                 monsters.clear();
+                whirls.clear();
                 health.reset();
                 remotePlayers.clear();
                 snowballs.reset();
@@ -386,7 +438,14 @@ async function boot() {
             monsters.defeated = defeated;
         },
         onClock: (seconds) => cycle.adopt(seconds),
-        onMonsterHit: (id, damage) => monsters.applyReportedHit(id, damage),
+        onMonsterHit: (id, damage, kind) => {
+            if (kind === "w") whirls.applyReportedHit(id, damage);
+            else monsters.applyReportedHit(id, damage);
+        },
+        onWhirls: (wire, defeated) => {
+            whirls.applySnapshot(wire);
+            whirls.defeated = defeated;
+        },
         onHurt: (damage) => {
             if (health.damage(damage, "spell") > 0) {
                 rig.addTrauma(0.35);
@@ -414,6 +473,7 @@ async function boot() {
     await monsters.warmUp();
     await snowballs.warmUp();
     await scarecrows.warmUp();
+    await whirls.warmUp();
     await whenReady(sky.material, "sky material", [sky.mesh, false]);
     await depthPass.warmUp();
     post.update(0, 0, rig.distance);
@@ -489,10 +549,10 @@ async function boot() {
         // In a room the host owns the shadows and the clock; a guest renders
         // them and reports what its own spells land.
         monsters.remote = room.active && !room.isHost;
-        monsters.update(
-            dt, cycle, character.position,
-            room.isHost ? room.partyPositions(character.position) : null
-        );
+        whirls.remote = monsters.remote;
+        const party = room.isHost ? room.partyPositions(character.position) : null;
+        monsters.update(dt, cycle, character.position, party);
+        whirls.update(dt, cycle, character.position, party);
         health.update(dt, cycle.isNight);
         match.update(dt);
         scarecrows.update(dt, character.position);
@@ -518,7 +578,8 @@ async function boot() {
             );
             if (room.isHost) {
                 room.publishWorld(
-                    monsters.snapshot(), cycle.elapsedSeconds, monsters.defeated, match
+                    monsters.snapshot(), cycle.elapsedSeconds, monsters.defeated, match,
+                    whirls.snapshot(), whirls.defeated
                 );
             }
             // Other people's scores ride along with their bodies, so a dropped
@@ -530,11 +591,31 @@ async function boot() {
         }
 
         const company = remotePlayers.live;
-        worldHud.update(monsters, room.duel);
+        worldHud.update(monsters, room.duel, whirls);
         vitals.update();
         matchHud.update(match.standings(room.name || "나", snowballs.colorIndex), snowballs);
+
+        // What the music needs to know. `threat` is creatures close enough to
+        // matter, 0..1 — the drone tremor and the low pulse follow it.
+        let near = 0;
+        for (const m of monsters.monsters) {
+            if (m.active && m.hp > 0 &&
+                Math.hypot(m.x - character.position.x, m.z - character.position.z) < 28) near++;
+        }
+        for (const w of whirls.monsters) {
+            if (w.active && w.hp > 0 &&
+                Math.hypot(w.x - character.position.x, w.z - character.position.z) < 28) near++;
+        }
+        music.update({
+            hour: cycle.hour, nightAmount: cycle.nightAmount,
+            speed01: character.speed01, surf: character.surf,
+            threat: Math.min(1, near / 4),
+            matchRunning: match.running,
+            lowHealth: health.fraction < 0.3 && !health.downed,
+            paused: !input.active,
+        });
         nameplates.update(company, room, health);
-        minimap.update(netDt, monsters, company, room);
+        minimap.update(netDt, monsters, company, room, whirls);
         const tSpells = performance.now();
         terrain.update(rig.camera.position, character.position, dt);
         const tTerrain = performance.now();
@@ -584,7 +665,7 @@ async function boot() {
         engine, scene, rig, character, figure, contact, spray, wake, spells,
         overlay, terrain, sky, shadows, post, depthPass,
         cycle, monsters, health, room, remotePlayers, minimap,
-        match, snowballs, scarecrows,
+        match, snowballs, scarecrows, whirls, music,
         S, input, perfStats: stats,
     };
 }

@@ -93,7 +93,7 @@ export function initMinimap({ terrain, character, rig }) {
      * @param {Array} remotes live slots from `RemotePlayers`
      * @param {import("../net/room.js").Room|null} room
      */
-    function update(dt, monsters, remotes, room) {
+    function update(dt, monsters, remotes, room, whirls) {
         const showing = input.active && zoom >= 0 && S.showMinimap;
         if (root.hidden !== !showing) root.hidden = !showing;
         if (!showing) return;
@@ -102,10 +102,10 @@ export function initMinimap({ terrain, character, rig }) {
         if (since < REDRAW_INTERVAL) return;
         since = 0;
         resize();
-        draw(monsters, remotes, room);
+        draw(monsters, remotes, room, whirls);
     }
 
-    function draw(monsters, remotes, room) {
+    function draw(monsters, remotes, room, whirls) {
         const size = cssSize;
         const half = size / 2;
         const view = ZOOMS[zoom];
@@ -167,6 +167,29 @@ export function initMinimap({ terrain, character, rig }) {
             ctx.strokeStyle = "#6fe0ff";
             ctx.lineWidth = 1.6;
             ctx.stroke();
+        }
+
+        // ------------------------------------------------------- dawn whirls
+        // Warm against the shadows' cold ring, and a diamond rather than a
+        // dot, so the two encounters are told apart at a glance.
+        if (whirls) {
+            for (const w of whirls.monsters) {
+                if (!w.active || w.hp <= 0) continue;
+                const x = half + (w.x - px) * scale;
+                const y = half + (w.z - pz) * scale;
+                if (outside(x, y, half, 4)) continue;
+                ctx.beginPath();
+                ctx.moveTo(x, y - 4.4);
+                ctx.lineTo(x + 3.6, y);
+                ctx.lineTo(x, y + 4.4);
+                ctx.lineTo(x - 3.6, y);
+                ctx.closePath();
+                ctx.fillStyle = "#f4fbff";
+                ctx.fill();
+                ctx.strokeStyle = "#ffb26b";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
         }
 
         // ------------------------------------------------------ other mages

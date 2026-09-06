@@ -99,6 +99,11 @@ export const S = {
     grainStrength: 0.022,
     sharpenStrength: 0.55,
 
+    // ----------------------------------------------------------------- sound
+    /** The synthesised score. Nothing is loaded; switching it off costs nothing. */
+    music: true,
+    musicVolume: 0.8,
+
     // --------------------------------------------------------------- systems
     /** The corner map. `M` cycles its zoom and switches it off. */
     showMinimap: true,
@@ -197,6 +202,13 @@ export const SCHEMA = [
             { k: "bloomStrength", l: "Bloom amt", t: "f", min: 0, max: 1, step: 0.005 },
             { k: "grainStrength", l: "Grain amt", t: "f", min: 0, max: 0.1, step: 0.001 },
             { k: "sharpenStrength", l: "Sharpen amt", t: "f", min: 0, max: 1, step: 0.01 },
+        ],
+    },
+    {
+        group: "Sound",
+        items: [
+            { k: "music", l: "Music", t: "b" },
+            { k: "musicVolume", l: "Volume", t: "f", min: 0, max: 1, step: 0.05 },
         ],
     },
     {

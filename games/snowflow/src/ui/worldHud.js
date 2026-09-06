@@ -17,6 +17,9 @@ export function initWorldHud(cycle) {
         const text = {
             night: "밤이 찾아왔어요. 설원의 그림자를 조심하세요!",
             dawn: "해가 떠올랐어요. 밤의 그림자가 사라집니다.",
+            dawnPack: "새벽이에요. 서리 회오리가 몰려와요 — 빙빙 돌다가 달려드니 눈덩이로!",
+            dawnEnd: "회오리가 잦아들었어요. 아침이에요.",
+            bite: "회오리에 휩쓸렸어요!",
             contact: "그림자에게 닿아 체력이 줄었어요! 6번 방패로 밀어내세요.",
             spell: "친구의 마법에 맞았어요!",
             landed: "친구를 맞혔어요!",
@@ -31,14 +34,14 @@ export function initWorldHud(cycle) {
         }[kind];
         if (!text) return;
         notice.textContent = text;
-        const brief =
-            kind === "contact" || kind === "spell" || kind === "landed" || kind === "snowballed";
+        const brief = kind === "contact" || kind === "spell" || kind === "landed" ||
+            kind === "snowballed" || kind === "bite";
         noticeUntil = cycle.elapsedSeconds + (brief ? 3 : 7);
     }
 
     const duelBadge = document.getElementById("duel-badge");
 
-    function update(monsters, duel) {
+    function update(monsters, duel, whirls) {
         duelBadge.hidden = !input.active || !duel;
         const clockKey = `${cycle.clock}-${cycle.label}`;
         if (clockKey !== lastClock) {
@@ -53,8 +56,11 @@ export function initWorldHud(cycle) {
         marker.style.left = `${((cycle.hour + 18) % 24) / 24 * 100}%`;
         document.getElementById("world-hud").classList.toggle("is-night", cycle.isNight);
         encounters.hidden = !input.active;
-        count.textContent = cycle.isNight ? `밤의 그림자 ${monsters.aliveCount} / 8` : "평화로운 설원";
-        defeated.textContent = `물리친 몬스터 ${monsters.defeated}`;
+        const whirlsUp = whirls ? whirls.aliveCount : 0;
+        count.textContent = cycle.isNight
+            ? `밤의 그림자 ${monsters.aliveCount} / 8${whirlsUp ? ` · 회오리 ${whirlsUp}` : ""}`
+            : whirlsUp ? `새벽 회오리 ${whirlsUp} / 5` : "평화로운 설원";
+        defeated.textContent = `물리친 몬스터 ${monsters.defeated + (whirls ? whirls.defeated : 0)}`;
         notice.hidden = !input.active || cycle.elapsedSeconds >= noticeUntil;
     }
 
