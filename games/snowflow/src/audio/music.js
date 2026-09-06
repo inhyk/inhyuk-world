@@ -121,13 +121,17 @@ export class Music {
         this.send.connect(this.reverb).connect(this.reverbReturn).connect(this.master);
 
         // ------------------------------------------------------------ pad
-        // Four voices, each two detuned saws and a triangle an octave down,
-        // through one shared low-pass that the sun owns. The LFO on the cutoff
+        // Four voices, each a triangle, a sine, and a sine an octave down,
+        // through one shared low-pass that the sun owns. No sawtooth and no
+        // detune, on purpose: a saw is the buzz timbre, and two of them a few
+        // cents apart beat against each other — which is the one sound in
+        // this score that was heard as "a whine" rather than as weather. The
+        // pad is now closer to glass than to strings. The LFO on the cutoff
         // is what makes a held chord breathe instead of sitting there.
         this.padFilter = ctx.createBiquadFilter();
         this.padFilter.type = "lowpass";
         this.padFilter.frequency.value = 900;
-        this.padFilter.Q.value = 0.7;
+        this.padFilter.Q.value = 0.5;
         this.padGain = ctx.createGain();
         this.padGain.gain.value = 0.0;
         this.padFilter.connect(this.padGain);
@@ -140,7 +144,7 @@ export class Music {
         this.padLfo.type = "sine";
         this.padLfo.frequency.value = 0.07;
         this.padLfoGain = ctx.createGain();
-        this.padLfoGain.gain.value = 220;
+        this.padLfoGain.gain.value = 120;
         this.padLfo.connect(this.padLfoGain).connect(this.padFilter.frequency);
         this.padLfo.start(now);
 
@@ -149,14 +153,12 @@ export class Music {
             const gain = ctx.createGain();
             gain.gain.value = 0;
             gain.connect(this.padFilter);
-            const a = ctx.createOscillator(); a.type = "sawtooth";
-            const b = ctx.createOscillator(); b.type = "sawtooth";
-            const c = ctx.createOscillator(); c.type = "triangle";
-            a.detune.value = -7;
-            b.detune.value = +7;
-            const mixA = ctx.createGain(); mixA.gain.value = 0.28;
-            const mixB = ctx.createGain(); mixB.gain.value = 0.28;
-            const mixC = ctx.createGain(); mixC.gain.value = 0.42;
+            const a = ctx.createOscillator(); a.type = "triangle";
+            const b = ctx.createOscillator(); b.type = "sine";
+            const c = ctx.createOscillator(); c.type = "sine";
+            const mixA = ctx.createGain(); mixA.gain.value = 0.34;
+            const mixB = ctx.createGain(); mixB.gain.value = 0.22;
+            const mixC = ctx.createGain(); mixC.gain.value = 0.36;
             a.connect(mixA).connect(gain);
             b.connect(mixB).connect(gain);
             c.connect(mixC).connect(gain);
@@ -165,8 +167,10 @@ export class Music {
         }
 
         // ---------------------------------------------------------- drone
-        // The root, low, and a sub an octave under it. Night lifts it; a
-        // threat nearby puts a slow tremor on it.
+        // The root, low, and a sub an octave under it. Night lifts it, and so
+        // does a threat nearby — a rise, not a tremor. An amplitude wobble on
+        // a sustained tone is the other classic whine, and it went out with
+        // the saws.
         this.droneGain = ctx.createGain();
         this.droneGain.gain.value = 0;
         this.droneGain.connect(this.dry);
@@ -178,12 +182,7 @@ export class Music {
         const subMix = ctx.createGain(); subMix.gain.value = 0.55;
         this.droneOsc.connect(this.droneGain);
         this.droneSub.connect(subMix).connect(this.droneGain);
-        this.droneTrem = ctx.createGain();
-        this.droneTrem.gain.value = 0;
-        this.droneTremLfo = ctx.createOscillator();
-        this.droneTremLfo.frequency.value = 3.1;
-        this.droneTremLfo.connect(this.droneTrem).connect(this.droneGain.gain);
-        this.droneOsc.start(now); this.droneSub.start(now); this.droneTremLfo.start(now);
+        this.droneOsc.start(now); this.droneSub.start(now);
 
         // ---------------------------------------------------------- bells
         this.bellGain = ctx.createGain();
@@ -320,13 +319,14 @@ export class Music {
         carrier.stop(t + 3.4); mod.stop(t + 3.4);
     }
 
-    /** Pulse pluck: a filtered saw with a very short envelope. */
+    /** Pulse pluck: a filtered triangle with a very short envelope. Not a
+     *  saw — nothing in this score is a saw any more. */
     _pluck(t, freq, velocity) {
         const ctx = this.ctx;
         const osc = ctx.createOscillator();
         const filter = ctx.createBiquadFilter();
         const env = ctx.createGain();
-        osc.type = "sawtooth";
+        osc.type = "triangle";
         osc.frequency.value = freq;
         filter.type = "lowpass";
         filter.frequency.setValueAtTime(freq * 6, t);
@@ -384,9 +384,8 @@ export class Music {
         this.padFilter.frequency.setTargetAtTime(cutoff, t, 1.2);
         this.padGain.gain.setTargetAtTime(0.85, t, 1.0);
 
-        // Night lifts the drone; danger shakes it.
+        // Night lifts the drone; so, a little, does danger.
         this.droneGain.gain.setTargetAtTime(0.05 + nightAmount * 0.22 + threat * 0.08, t, 1.5);
-        this.droneTrem.gain.setTargetAtTime(threat * 0.09, t, 0.8);
 
         // Wind follows speed. Surfing opens it right up and raises its pitch.
         const wind = 0.035 + speed01 * 0.16 + surf * 0.05;
