@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#09070e">
+  <title>METTATON EX · GLAMOUR / LIVE</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="masthead">
+      <a href="/" target="_top" class="brand" aria-label="게임 월드로 돌아가기"><span class="brand-mark">m<span>✦</span></span><span>MTT <b>NETWORK</b><small>ENTERTAINMENT FROM THE UNDERGROUND</small></span></a>
+      <div class="channel"><span class="live-dot"></span> LIVE <span class="channel-divider">/</span> CHANNEL 01</div>
+      <div class="header-tools">
+        <button id="help-button" class="icon-button" aria-label="조작법 보기" title="조작법">?</button>
+        <button id="sound-button" class="icon-button" aria-label="소리 켜기" title="소리 켜기 (M)"><svg viewBox="0 0 24 24"><path d="M11 5 5 9H2v6h3l6 4V5Z"/><path class="sound-waves" d="M15 8c3 2 3 6 0 8m3-11c5 4 5 10 0 14"/><path class="sound-slash" d="m16 9 6 6m0-6-6 6"/></svg></button>
+        <button id="fullscreen-button" class="icon-button" aria-label="전체 화면" title="전체 화면"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></svg></button>
+      </div>
+    </header>
+    <main>
+      <div class="episode-bar"><span><span class="pink">✦</span> TONIGHT'S MAIN EVENT</span><span class="episode-right">EXCLUSIVE BOSS BATTLE <span>—</span> EP. 001</span></div>
+      <section class="stage" id="stage" aria-label="메타톤 EX 보스전">
+        <canvas id="game" width="1120" height="680" aria-label="메타톤 전투 무대. 방향키로 이동하고 Z로 선택하거나 발사하세요."></canvas>
+        <div class="stage-grain"></div>
+        <div class="stage-corner top-left"></div><div class="stage-corner top-right"></div><div class="stage-corner bottom-left"></div><div class="stage-corner bottom-right"></div>
+        <div class="lobby" id="lobby">
+          <div class="eyebrow"><span class="tiny-line"></span> THE SPOTLIGHT IS YOURS</div>
+          <h1 id="lobby-title">DEATH BY<br><span>GLAMOUR</span><i>EX</i></h1>
+          <p class="lobby-korean" id="lobby-subtitle">메타톤 EX <span>·</span> 마지막 스포트라이트</p>
+          <p class="lobby-description" id="lobby-description">심장은 뜨겁게. 무대는 화려하게.<br>지하 세계 최고의 스타를 상대할 준비가 됐나요?</p>
+          <div class="challenge-select"><div class="difficulty" role="group" aria-label="난이도 선택"><button data-difficulty="easy">리허설 <small>EASY</small></button><button data-difficulty="normal" class="selected" aria-pressed="true">라이브 <small>NORMAL</small></button><button data-difficulty="hard">앙코르 <small>HARD</small></button><button data-difficulty="neo" id="neo-button" disabled aria-describedby="neo-requirement"><span class="neo-lock">▣</span> NEO <small>LOCKED</small></button></div><p id="difficulty-detail" class="difficulty-detail"></p><p id="neo-requirement" class="neo-requirement">🔒 메타톤 NEO · EX 앙코르 클리어 시 해금</p></div>
+          <button id="start-button" class="start-button"><span>♥</span> 쇼를 시작하자 <svg viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button>
+          <div class="start-note"><kbd>ENTER</kbd> 시작 <span>·</span> <span id="best-score">당신의 첫 무대를 기다리고 있어요</span></div>
+        </div>
+        <div class="character-label" id="character-label"><span>THE ONE & ONLY</span><strong>METTATON <i>EX</i></strong><small>「 오, YES! 시청자들이 기다리잖아! 」</small></div>
+        <div class="lobby-bottom" id="lobby-bottom"><span>01 <b>빛나는 탄막</b></span><span>02 <b>세 개의 스테이지</b></span><span>03 <b>당신만의 피날레</b></span></div>
+        <div id="battle-interface" hidden>
+          <div class="battle-topline"><span id="phase-label">ACT 01 / SHOWTIME</span><button id="pause-button" aria-label="일시정지">Ⅱ <span>ESC</span></button></div>
+          <div class="actions" id="actions"><button data-action="fight"><span>⚔</span> 공격 <small>FIGHT</small></button><button data-action="act"><span>✦</span> 행동 <small>ACT</small></button><button data-action="item"><span>✚</span> 아이템 <small>ITEM</small></button><button data-action="mercy"><span>♥</span> 자비 <small>MERCY</small></button></div>
+          <button id="strike-button" class="strike-button" hidden>지금! <kbd>Z / SPACE</kbd></button>
+          <div class="submenu" id="submenu" hidden></div>
+          <div class="battle-hint" id="battle-hint">행동을 선택하세요</div>
+        </div>
+        <div class="modal-backdrop" id="modal" hidden>
+          <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+            <span class="modal-eyebrow" id="modal-eyebrow">BACKSTAGE</span><h2 id="modal-title">잠깐, 쉬어갈까요?</h2><div id="modal-content"></div><div class="modal-actions" id="modal-actions"></div>
+          </section>
+        </div>
+        <div class="sr-only" id="announcer" role="status" aria-live="polite"></div>
+      </section>
+      <div class="touch-controls" id="touch-controls"><div class="dpad"><button data-key="ArrowUp" aria-label="위로 이동">↑</button><button data-key="ArrowLeft" aria-label="왼쪽으로 이동">←</button><button data-key="ArrowDown" aria-label="아래로 이동">↓</button><button data-key="ArrowRight" aria-label="오른쪽으로 이동">→</button></div><button data-key="Shift" class="touch-focus">정밀<br><small>이동</small></button><button data-key="KeyZ" class="touch-shoot">Z <small>발사 / 확인</small></button></div>
+      <div class="control-strip"><div><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd><span>이동</span><b></b><kbd>Z</kbd><span>선택 / 발사</span><b></b><kbd>SHIFT</kbd><span>정밀 이동</span><b></b><kbd>ESC</kbd><span>일시정지</span></div><button id="guide-link">처음이라면? <span>플레이 가이드 ↗</span></button></div>
+      <div class="bottom-caption"><span>A LITTLE DANGER. A LOT OF GLAMOUR.</span><span>UNDERTALE FAN GAME <b>·</b> MADE WITH DETERMINATION <span class="pink">♥</span></span></div>
+    </main>
+    <footer>팬이 만든 비공식 게임 · 캐릭터 원작: Toby Fox · 오리지널 신스 사운드트랙</footer>
+  </div>
+  <script type="module" src="./game.mjs"></script>
+</body>
+</html>

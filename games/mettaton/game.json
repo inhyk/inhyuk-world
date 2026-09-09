@@ -1,0 +1,23 @@
+{
+  "slug": "mettaton-ex-live",
+  "title": "메타톤 EX · GLAMOUR / LIVE",
+  "description": "스포트라이트 아래 펼쳐지는 9가지 탄막 패턴, 최고의 스타와 마지막 보스전",
+  "longDescription": "메타톤 EX의 생방송 무대에 도전하는 언더테일 팬 게임입니다. 직접 그린 픽셀 벡터 캐릭터가 춤추는 네온 무대에서 별빛 세례, 디스코, 레이저, 폭탄 등 9가지 탄막 패턴을 피하세요. 노란 영혼으로 변하면 코어와 작은 로봇을 쏠 수 있고, 파란 탄막은 멈추고 주황 탄막은 움직여야 합니다. 타이밍 공격으로 메타톤을 쓰러뜨리거나, 포즈와 춤으로 시청률 10,000을 모아 평화로운 피날레를 완성하세요. 리허설·라이브·앙코르 세 난이도, 실시간 합성 신스 음악, 모바일 터치 조작과 최고 기록 저장을 지원합니다. 앙코르에서 EX를 이기면 에너지 날개와 암 캐논을 갖춘 메타톤 NEO가 해금됩니다. NEO는 4가지 전용 탄막과 별도 시청률 목표로 도전할 수 있으며, 해금 기록은 브라우저에 저장됩니다.",
+  "emoji": "💖",
+  "thumbnail": "/images/games/mettaton-ex-live-thumb.png",
+  "screenshots": [
+    "/images/games/mettaton-ex-live-thumb.png",
+    "/images/games/mettaton-ex-live-1.png",
+    "/images/games/mettaton-ex-live-2.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Canvas 2D",
+    "Web Audio"
+  ],
+  "category": "액션",
+  "playUrl": "https://seonn.dev/play/mettaton",
+  "createdAt": "2026-09",
+  "featured": true,
+  "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/mettaton"
+}

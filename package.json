@@ -11,7 +11,8 @@
     "lint": "eslint",
     "snowflow:dev": "npm run dev --workspace=@inhyuk/snowflow",
     "snowflow:build": "npm run build --workspace=@inhyuk/snowflow",
-    "test": "node --test \"games/snowflow/tests/*.test.js\""
+    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\"",
+    "test:mettaton": "node --test \"games/mettaton/*.test.mjs\""
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

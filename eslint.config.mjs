@@ -33,6 +33,14 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    files: ["public/play/mettaton/*.mjs"],
+    languageOptions: {
+      sourceType: "module",
+      globals: { ...globals.browser, ...globals.es2022 },
+    },
+    rules: { "no-undef": "error" },
+  },
 ]);
 
 export default eslintConfig;

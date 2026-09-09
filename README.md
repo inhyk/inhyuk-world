@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 메타톤 EX · GLAMOUR / LIVE
+
+`npm run dev` 후 http://localhost:3000/play/mettaton 에서 플레이합니다. 9가지 탄막 패턴, 세 난이도, 노란 영혼 슈팅과 두 가지 결말을 갖춘 팬 게임입니다. 모바일 터치 조작을 지원하며, 창 전환 시 별도 메뉴 없이 멈췄다가 돌아오면 이어집니다. 조작법은 [게임 README](games/mettaton/README.md), 전투 검증은 `npm run test:mettaton`을 참고하세요.
+
 ## SNOWFLOW · 눈과 물의 흐름
 
 Reddit에서 소개된 눈 서핑·물 마법 데모의 한국어 버전을 추가했습니다. 루트에서 `npm install` 후 `npm run snowflow:dev`를 실행하면 http://127.0.0.1:5173 에서 플레이할 수 있습니다. WebGPU를 지원하는 데스크톱 브라우저가 필요합니다.
