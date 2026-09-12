@@ -278,8 +278,9 @@ export function drawEnding(ctx, t, state) {
     const cast = ['toriel', 'sans', 'papyrus', 'undyne', 'asgore']; cast.forEach((c, i) => { const img = bake(OVERWORLD[c], 2); ctx.drawImage(img, 90 + i * 100, 330 - img.height); });
     const hero = bake(HUMAN.up[0], 2); ctx.drawImage(hero, W / 2 - hero.width / 2 + 10, 300 - hero.height + 24);
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(0, 350, W, 130);
-    state.visible.forEach((l, i) => text(ctx, l, W / 2, 360 + i * 26, { size: 17, align: 'center' }));
-    if (state.done) text(ctx, state.soulless ? '…그런데 왜 이런 기분이 들까. 뒤에서 누군가 웃고 있는 것 같다.' : 'THE END · Z로 타이틀', W / 2, 452, { size: 13, align: 'center', color: '#ffd76a' });
+    // 최근 4줄만 보여 준다. 오래된 줄은 위로 흘러 사라진다.
+    const recent = state.visible.slice(-4); recent.forEach((l, i) => { const lines = wrap(ctx, l, 580, 16); text(ctx, lines[0], W / 2, 358 + i * 23, { size: 16, align: 'center', color: i === recent.length - 1 ? '#fff' : '#cfcfcf' }); });
+    if (state.done) text(ctx, state.soulless ? '…그런데 왜 이런 기분이 들까. 뒤에서 누군가 웃고 있는 것 같다. · Z로 타이틀' : 'THE END · Z로 타이틀', W / 2, 456, { size: 13, align: 'center', color: '#ffd76a' });
     return;
   }
   clear(ctx, '#000');
