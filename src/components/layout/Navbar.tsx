@@ -1,118 +1,116 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "motion/react";
+import { usePathname } from "next/navigation";
+import { Icon } from "@/components/ui/Icon";
 
 const navLinks = [
-  { href: "/games", label: "게임" },
-  { href: "/stats", label: "통계" },
-  { href: "/about", label: "소개" },
-  { href: "/#contact", label: "연락하기" },
+  { href: "/", label: "홈" },
+  { href: "/games", label: "게임 컬렉션" },
+  { href: "/about", label: "만든 사람" },
+  { href: "/stats", label: "방문 통계" },
 ];
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+  const menuButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 12);
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    if (!isOpen) return;
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        menuButton.current?.focus();
+      }
+    }
+    function handleResize() {
+      if (window.innerWidth >= 768) setIsOpen(false);
+    }
+    document.addEventListener("keydown", handleKey);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [isOpen]);
+
+  function isActive(href: string) {
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  }
 
   return (
-    <nav
-      className={`fixed top-0 right-0 left-0 z-50 transition-colors duration-300 ${
-        scrolled
-          ? "border-b border-border bg-background/80 backdrop-blur-xl"
-          : "border-b border-transparent bg-transparent"
-      }`}
-    >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
-        <Link href="/" className="flex items-center gap-2.5">
-          <span className="h-6 w-6 shrink-0 rounded-lg bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#f43f5e]" />
-          <span className="font-[family-name:var(--font-inter-tight)] text-[17px] font-bold tracking-[-0.02em] text-white">
-            인혁 월드
+    <header className="site-header">
+      <nav className="site-container navbar" aria-label="메인 메뉴">
+        <Link
+          href="/"
+          className="brand-lockup"
+          aria-label="인혁 월드 홈"
+          onClick={() => setIsOpen(false)}
+        >
+          <span className="brand-mark">
+            <Icon name="gamepad" width="23" height="23" />
+          </span>
+          <span className="brand-word">
+            inhyuk<span>world</span>
+            <span className="brand-period">.</span>
           </span>
         </Link>
-
-        {/* Desktop */}
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="desktop-nav">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-full px-4 py-2 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              aria-current={isActive(link.href) ? "page" : undefined}
+              className={isActive(link.href) ? "is-active" : ""}
             >
               {link.label}
             </Link>
           ))}
         </div>
-
-        <div className="flex items-center gap-2">
+        <div className="nav-actions">
           <Link
             href="/games"
-            className="hidden rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#08080b] transition-transform hover:scale-[1.04] sm:inline-block"
+            className="nav-play"
+            onClick={() => setIsOpen(false)}
           >
-            게임 하러 가기
+            LET’S PLAY
+            <Icon name="arrow-up" width="16" height="16" />
           </Link>
-
-          {/* Mobile hamburger */}
           <button
+            ref={menuButton}
             type="button"
-            onClick={() => setIsOpen((v) => !v)}
-            className="relative z-50 flex h-10 w-10 flex-col items-center justify-center gap-[5px] md:hidden"
+            onClick={() => setIsOpen((open) => !open)}
+            className={`menu-toggle ${isOpen ? "is-open" : ""}`}
             aria-label={isOpen ? "메뉴 닫기" : "메뉴 열기"}
             aria-expanded={isOpen}
             aria-controls="mobile-navigation"
           >
-            <span
-              className={`h-[1.5px] w-5 bg-white transition-all duration-300 ${
-                isOpen ? "translate-y-[6.5px] rotate-45" : ""
-              }`}
-            />
-            <span
-              className={`h-[1.5px] w-5 bg-white transition-all duration-300 ${
-                isOpen ? "opacity-0" : ""
-              }`}
-            />
-            <span
-              className={`h-[1.5px] w-5 bg-white transition-all duration-300 ${
-                isOpen ? "-translate-y-[6.5px] -rotate-45" : ""
-              }`}
-            />
+            <span />
+            <span />
           </button>
         </div>
-      </div>
-
-      {/* Mobile menu */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            id="mobile-navigation"
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="border-b border-border bg-background/95 backdrop-blur-xl md:hidden"
-          >
-            <div className="flex flex-col gap-1 px-5 pb-5">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className="rounded-xl px-3 py-3 font-[family-name:var(--font-inter-tight)] text-lg font-semibold text-white/80 transition-colors hover:bg-white/5 hover:text-white"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </nav>
+      </nav>
+      {isOpen && (
+        <nav
+          id="mobile-navigation"
+          className="mobile-nav"
+          aria-label="모바일 메뉴"
+        >
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={isActive(link.href) ? "page" : undefined}
+              onClick={() => setIsOpen(false)}
+            >
+              {link.label}
+              <Icon name="arrow-up" width="18" height="18" />
+            </Link>
+          ))}
+        </nav>
+      )}
+    </header>
   );
 }

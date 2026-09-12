@@ -17,9 +17,10 @@ export function Button({
   className,
 }: ButtonProps) {
   const baseStyles =
-    "inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200";
+    "inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-semibold transition-all duration-200";
   const variants = {
-    primary: "bg-white text-[#08080b] hover:scale-[1.03]",
+    primary:
+      "bg-brand text-[#17220b] hover:bg-[#d9ff9b] hover:-translate-y-0.5",
     outline:
       "border border-border text-foreground hover:border-border-strong hover:bg-surface-hover",
   };

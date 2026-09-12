@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <title>UNDERTALE · 팬 게임 · 세 갈래의 결말</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23f14c58' d='M2 3h4v2h4V3h4v7l-6 5-6-5z'/%3E%3C/svg%3E">
+  <link rel="preload" href="./fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./fonts/Galmuri11-Bold.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -18,8 +21,9 @@
       </div>
     </header>
     <main>
+      <div class="journey-bar"><span><i></i><span id="location-name">지하 세계로 향하는 작은 여정</span></span><span id="detail-count">작은 기억 00 / 22</span></div>
       <section class="stage" id="stage" aria-label="언더테일 팬 게임">
-        <canvas id="game" width="640" height="480" aria-label="게임 화면. 방향키로 이동하고 Z로 확인, X로 취소하세요."></canvas>
+        <canvas id="game" width="640" height="480" tabindex="0" aria-label="게임 화면. 방향키로 이동하고 Z로 확인, X로 취소하세요."></canvas>
         <div class="flash" id="flash"></div>
         <div class="modal-backdrop" id="modal" hidden>
           <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
@@ -28,11 +32,12 @@
         </div>
         <div class="sr-only" id="announcer" role="status" aria-live="polite"></div>
       </section>
+      <div class="context-row"><span id="context-hint">당신의 선택을 기다리고 있습니다.</span><button id="name-done" hidden>입력 완료 ↵</button></div>
       <div class="touch-controls" id="touch-controls"><div class="dpad"><button data-key="ArrowUp" aria-label="위">↑</button><button data-key="ArrowLeft" aria-label="왼쪽">←</button><button data-key="ArrowDown" aria-label="아래">↓</button><button data-key="ArrowRight" aria-label="오른쪽">→</button></div><div class="touch-buttons"><button data-key="KeyC" class="touch-menu">C <small>메뉴</small></button><button data-key="KeyX" class="touch-cancel">X <small>취소</small></button><button data-key="KeyZ" class="touch-confirm">Z <small>확인</small></button></div></div>
       <div class="control-strip"><div><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd><span>이동</span><b></b><kbd>Z</kbd><span>확인 / 대화</span><b></b><kbd>X</kbd><span>취소 / 빨리 넘기기</span><b></b><kbd>C</kbd><span>메뉴</span><b></b><kbd>SHIFT</kbd><span>정밀 이동</span><b></b><kbd>-</kbd><span>어디로든 이동</span></div><button id="guide-link">처음이라면? <span>플레이 가이드 ↗</span></button></div>
       <div class="bottom-caption"><span>NEUTRAL · PACIFIST · GENOCIDE</span><span>UNDERTALE FAN GAME <b>·</b> ORIGINAL CHARACTERS BY TOBY FOX <span class="red">♥</span></span></div>
     </main>
-    <footer>팬이 만든 비공식 게임 · 캐릭터 원작: Toby Fox · 대사, 픽셀 아트, 음악은 이 게임을 위해 새로 제작</footer>
+    <footer>팬이 만든 비공식 게임 · 캐릭터 원작: Toby Fox · 오리지널 대사, 픽셀 아트와 음악 <span>FONT · <a href="https://github.com/quiple/galmuri" target="_blank" rel="noopener noreferrer">GALMURI</a></span></footer>
   </div>
   <script type="module" src="./game.mjs"></script>
 </body>

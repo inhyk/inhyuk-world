@@ -30,7 +30,7 @@ export class Soundtrack {
     } catch { return false; }
   }
   disable() { this.enabled = false; if (this.context) this.master.gain.setTargetAtTime(0, this.context.currentTime, .03); clearInterval(this.timer); this.timer = null; }
-  pause(v) { this.paused = v; if (this.context) this.next = this.context.currentTime + .05; }
+  pause(v) { this.paused = v; if (this.context) { this.next = this.context.currentTime + .05; this.master.gain.setTargetAtTime(v || !this.enabled ? 0 : this.volume, this.context.currentTime, .08); } }
   play(name) { if (this.track === name) return; this.track = name; this.step = 0; if (this.context) this.next = this.context.currentTime + .08; }
   tone(freq, time, length = .15, type = 'square', volume = .08, endFreq, detune = 0) {
     if (!this.context || !this.enabled) return; const c = this.context, o = c.createOscillator(), g = c.createGain();
@@ -58,10 +58,26 @@ export class Soundtrack {
       this.step++; this.next += 60 / T.bpm / 4;
     }
   }
+  voice(speaker, index, letter) {
+    if (!this.context || !this.enabled || this.paused || !letter || /[\s.,!?…*"“”]/.test(letter)) return;
+    const voices = { '토리엘': [380, 'triangle'], '샌즈': [160, 'triangle'], '파피루스': [650, 'square'], '플라위': [740, 'square'], '언다인': [290, 'sawtooth'], '아스고어': [220, 'triangle'], '템미': [920, 'sine'], '냅스타블룩': [310, 'sine'] };
+    const [pitch, wave] = voices[speaker] || [480, 'triangle'];
+    this.tone(pitch * [1, 1.035, .975, 1.02][Math.floor(index / 2) % 4], this.context.currentTime, speaker === '샌즈' ? .055 : .035, wave, speaker ? .035 : .018);
+  }
+  footstep(area, tile, count) {
+    if (!this.context || !this.enabled || this.paused) return;
+    const t = this.context.currentTime;
+    if (tile === '=') this.tone(count % 2 ? 125 : 140, t, .045, 'triangle', .045, 65);
+    else if (area === 'snowdin') this.noise(t, .09, .045, 1800, 'lowpass');
+    else if (area === 'ruins' && tile === ',') this.noise(t, .1, .04, 1900);
+    else { this.tone(count % 2 ? 165 : 180, t, .035, 'sine', .038, 80); this.noise(t, .025, .016, 600); }
+  }
   effect(name) {
     if (!this.context || !this.enabled) return; const t = this.context.currentTime;
     switch (name) {
       case 'text': this.tone(520, t, .03, 'square', .025); break;
+      case 'page': this.noise(t, .055, .035, 1800); this.tone(460, t, .04, 'triangle', .025); break;
+      case 'discover': [76, 83, 88].forEach((m, i) => this.tone(midi(m), t + i * .11, .32, 'sine', .055)); break;
       case 'select': this.tone(660, t, .06, 'square', .06); this.tone(990, t + .05, .08, 'square', .04); break;
       case 'cancel': this.tone(440, t, .06, 'square', .04); break;
       case 'hurt': this.noise(t, .15, .2, 300); this.tone(180, t, .18, 'sawtooth', .12, 50); break;

@@ -46,3 +46,11 @@ tools/node_modules/
 # Generated SNOWFLOW game (npm run snowflow:build)
 /public/play/snowflow/
 /games/snowflow/node_modules/
+
+# Generated PROTOCOL game (npm run valorant:build)
+/public/play/valorant/
+/games/valorant/node_modules/
+
+# Local tool state (not part of the site)
+/.omx/
+/.claude/sessions/

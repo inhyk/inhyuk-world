@@ -1,0 +1,173 @@
+# Google AI Studio 앱 전체 카탈로그 (kubony@gmail.com Drive / Google AI Studio 폴더)
+# 수집일: 2026-08-17 / 총 163개 / mimeType: application/vnd.google-makersuite.applet+zip
+# 열: id, created(YYYY-MM-DD), size(bytes), kind, group, pick, title
+# kind: game=게임, app=앱, tool=단발성 AI 도구
+# pick: Y=엄선 후보, D=중복(같은 group의 하위 버전), X=제외, S=사이트에 이미 있음
+#
+# AI Studio에서 특정 앱 열기 (id를 넣어 URL 생성):
+#   https://aistudio.google.com/app/prompts?state=<urlencode({"ids":["<id>"],"action":"open","userId":"107990792917239213278","resourceKeys":{}})>
+# 예) node -e 'const id=process.argv[1];console.log("https://aistudio.google.com/app/prompts?state="+encodeURIComponent(JSON.stringify({ids:[id],action:"open",userId:"107990792917239213278",resourceKeys:{}})))' <id>
+id	created	size	kind	group	pick	title
+1jAsFkRpQDkUHDqFwn0mF4qYtrk1wKYj2	2026-01-04	6260	app	misc	X	Roleplay Storyboard Maker
+1kDQk3nBRUHt_Mo8NGe6y_OeDHxkLy79E	2025-10-29	18492	app	misc	X	일상 그림 작성기
+1ukUXrAH_BRq9pe_IkG-tSqpdAL-vhr-G	2025-12-28	10117	game	animalcrossing	S	모여봐요 동물의 숲 (Web Ver.)
+1cn2s6OjESlaiBZ0de-39Q-f7NBqDPGYY	2025-12-28	9342	game	animalcrossing	S	Animal Crossing: Web Horizon
+1bkYx43iu8iTJHeEGjtrS18aHJ-85Jfkc	2025-12-12	11618	app	misc	X	Pixelcloud - SaaS Template
+1E63RHvV3c7v-EIPRJEVnc70MwJyiLDIb	2025-12-12	7370	tool	misc	X	Apple-Style Corner Comparator
+1j-ZCgSrMeHj8Hzp8Bhg1apgrHSZMZt7h	2025-12-09	20365	app	misc	X	Pokémon UNITE: Evolved
+1R1U2kvtBYt7vVrUk9J_xnj7yhUrI9-6D	2025-12-08	6436	app	misc	X	App
+1CJZyQ6aAFw1DGDFGq6sYMmUnrfeFq_lU	2025-12-07	34745	game	puyo	Y	뿌요뿌요2 - 상혁
+182XIIfpDii6_T7opZJWmZUktLr2PWzvR	2025-12-04	34743	game	puyo	Y	뿌요뿌요2 - 인혁
+1X7FYLhzx_VIHawDPj5y3TozkoJmccX-_	2025-12-06	30789	game	puyo	Y	뿌요뿌요2 - 아빠
+1_1NwWUgpjYOhupKEU0m04RMBhlzprMt_	2025-12-06	8062	game	maze	Y	Pixel Maze Runner
+1aKxMgAb1VafkwU1ZijdwTUDJyPHRW_CX	2025-12-06	9939	game	tag	Y	Super Tag Arena
+1ZKI5ATpTEET_pe5HzEJtA4jLb9evTGCr	2025-12-05	10318	game	pet	Y	AI 3D Slime Pet
+10LnkjuVcN9SPsv9YYrlzYdhhMQUef31p	2025-12-05	7930	game	pet	D	AI 3D Slime Pet
+1Hvs6vv6ZdnqrEeKzjZeV-CLbV_GulGwi	2025-12-04	11019	game	fps	Y	네온 라비린스 (Neon Labyrinth)
+1wpQwTIDNOMNwvi9vVekOUQ_SWSJV38nO	2025-11-21	25813	game	diepio	S	Diep.io (겁내 쩔음) 업데이트 돼서 좋다ㅎㅎ
+1w6wn3w3nIjOg85HZrKamSWV8eMoEOLUx	2025-11-23	11320	game	td	S	Neon Defense AI
+1XHveN_uQveHnucgLW39YE3YO0Pe9OGV6	2025-11-22	9563	game	undertale	S	Undertale Web Tribute
+1U_BIUoF8zL7nDLRUemwdCjHPd-ib0qQt	2025-11-22	11135	game	coop	Y	Pico Pair: Co-op Platformer
+1cYrqF9Ej-QpuNFQPZGJWRIlvWn1RXKH6	2025-11-21	10431	game	platformer	Y	Neon Bounce Ball
+1_WV7t9fllXY12T4QMdYMcE9I-g6J-_Kx	2025-11-21	8979	game	jump	D	AI Infinity Jump
+17oWZyVZSybefSWjD_dQmA29o-DNLW8jl	2025-11-21	8652	game	minecraft3d	D	ReactCraft
+1AffEW5gRPS-n9fqSsfhwM_P636xmnD1I	2025-11-21	9575	game	fps	D	발로란트
+1xynVuiBJihwvCqiCwqsnsc7Ejvdn2yxV	2025-11-20	24398	game	diepio	D	퀄리티 쩌는 Diep io.
+1lMcxjnSzDaultcjJYuZB488SbQVECPRk	2025-11-21	18204	game	diepio	D	Diep.ai - 전술 탱크 전쟁
+1l6u8xyz97hl1sB50ynzT7wwH6ldtsy6l	2025-11-20	19640	game	minecraft2d	S	2D마인크레프트
+1yCH4jmSpSIHqplTXggcPdIJNHmEqku-Y	2025-11-20	9915	game	undertale	D	Under-AI: Tale of the Gemini
+1N5DfVMU1pPiHYQeJpoxJDRNNCkYekBNX	2025-11-20	11887	game	animalcrossing	S	동물의숲
+1fXeLhDzKV6pTh6wS_-HmUL4gw5wMRO77	2025-11-20	22363	game	diepio	D	Copy of 퀄리티 쩌는 Diep io.
+1v7iEpKg8u5G0KJ-D9bb8l7-GMoY9mF8k	2025-11-20	7261	game	platformer	D	Neon Leaper
+1cTw9MtRrCGPKGVphVxIbYLJlLliUboRh	2025-11-19	13304	app	portal	Y	Poki AI Arcade
+1yRbQ2uKfOHz5MLp4ZnIGS9PgM0cfn-Pi	2025-11-19	7634	game	parktycoon	D	놀이동산 타이쿤
+1CQ0GXP3ZKiECtUkaMPmtEM2h8NOEwZQF	2025-11-19	9206	game	minecraft2d	D	ReactCraft 2D
+1mG9HK24fwq4m-0b4pNvbnC-wtBLHM_sc	2025-11-19	9059	game	minecraft2d	D	2D Craft & Guide
+1RRA0iSLqED-rnLlN0Jgdy5a8BcVzQvHd	2025-11-19	10590	game	hotel	D	Gemini Hotel Tycoon
+1cJW590mXri9QlucePbTi6GHRH5Jtl2cZ	2025-11-19	12810	game	hotel	D	AI Hotel Tycoon
+1oQcKoqb4cN9oIdbm7jfbRJh_7BV89_kh	2025-11-19	11739	game	hotel	D	AI Hotel Tycoon
+1O8IKzF1jHQd_0zO2Z8B7BgILDMcGlI7Y	2025-11-19	10394	game	hotel	D	AI Hotel Tycoon
+1J_w_RG3O70WE53wSrV11b-mI8lUq5gXx	2025-11-19	13859	game	parktycoon	Y	Dream Park Tycoon AI
+1Jm7pU1HhmH3dkGxOoCA10X78h9HQB-w9	2025-11-19	15781	game	pvp	Y	Elemental Arena PvP
+1DWwg-CQGftqm_-hA9UoKv4ImTGuXjbMC	2025-11-19	11401	game	undertale	D	GeminiTale
+1yJdahiM3FzZ35TQud0oXAoaX0F21w721	2025-11-19	8468	game	jump	D	AI Jump Master
+1uRiroKlX59CtNqInYOT_FPe3MzPr3Kcy	2025-11-14	7793	game	puyo	D	React Puyo Puyo
+1-QCotpFXIYpKOYxps9Wnhv7RsqcyOYbA	2025-11-14	5443	game	puyo	D	React Puyo Clone
+1DS2xzlHWpNvJgbYoBaq7tjfuSfaSAHqp	2025-11-14	10233	app	kakaotalk	X	KakaoTalk Clone
+1u3Rb1o91hhfxp63Y6j9DetCb1vYURPQP	2025-11-09	14932	app	kakaotalk	X	KakaoTalk Clone
+13iAAxYwDDpK8zooU1vfEca3RAeU1eJs_	2025-11-09	9425	app	kakaotalk	X	KakaoTalk Clone
+15Pxjt8X4YIaoeHRCrole31cYXmxMPA5O	2025-11-09	13406	app	kakaotalk	X	카카오톡
+1XJQqGUw6XgMc11t_J1WeIUD8Y8ioWjz_	2025-11-09	11214	app	kakaotalk	X	KakaoTalk Clone
+1twnndIn-5ke-60w5zurDQ7CMndHfq3cz	2025-11-09	12319	app	kakaotalk	X	카카오톡
+1vDFml2ccjBbDEnruMf35FAfOC-yU_2w0	2025-11-09	8966	app	kakaotalk	X	카카오톡 클론
+1fWBkksKVPtS3nRl8U-fv4XKr7YTIEB9O	2025-11-09	9215	app	kakaotalk	X	KakaoTalk Clone
+1OxYXtoO7fPtFyzb9H4xLs3p_uiy7Eap2	2025-11-09	6720	app	kakaotalk	X	KakaoTalk Clone
+1VM6-i3sDOuE2AhrNMk12gGMfbhGVdnqt	2025-10-30	7148	game	word	Y	AI Word Chain (끝말잇기)
+1ief7eLG19w6JyZmCEz-cK6NetC68NP8M	2025-10-29	7166	game	puyo	D	Puyo Clone
+119ERSLVutGv_jCsjosI12Uk3d1USXOhp	2025-10-26	8375	game	pang	D	Super Pang Clone
+1nX71lPlzu--VWU5tnRXpbl19nXyxiORd	2025-10-26	10882	game	pang	Y	Super Pang Clone
+1vmdWaLiSCneasZYtg8DcGNBdRvmJY2My	2025-10-26	7533	game	pang	D	Super Pang Clone
+1OtsSLhabzHt1-_CS5MFSpx5gae_5d25o	2025-10-19	11327	game	pang	D	Super Pang Clone
+1ReDzr0DAi18i7_wSPZaZQ-3zpIXFcEtB	2025-10-20	34554	tool	misc	X	Copy of BananaFlow｜ZHO
+1mnasJoVPTuqRtBuzr4Yxbq57fEnYcjZA	2025-09-13	40631	game	minecraft2d	S	Copy of 2D 마인크레프트 (와이파이 없이)
+17Ol8rFRIUkbpvZyv4zd5-FPLL6rXSlnS	2025-08-14	49211	game	shooter	Y	죽고 싶은 게임
+1_x-pSEI1KCRw2YdR3g1H3bnyUBJJQOmb	2025-10-17	12852	game	pvp	Y	2인 pvp 게임
+1x3kR_TauXR6FObSnjn_47xOB6MOtnFnb	2025-10-19	6245	game	misc	Y	Bottle Flip 3D - Tap & Jump
+17WOgU_sIB8LKDd9tID-5DGISKr2tk2NB	2025-10-18	8720	game	io	Y	Paper IO Clone
+1jxdbrxgJGqgf9ddXG3rcHqgpipWOKNGI	2025-10-17	7338	game	pvp	D	2D PvP Shooter
+1GXknWqL-FyXUS0iDqOhHoiJknNi7PieB	2025-10-17	8605	game	pvp	D	Gemini PvP Battle Arena
+1ytqwPQGlAeEc0ODRuWHtOzYCbNN0AooD	2025-10-17	6767	game	misc	D	Gemini PvP Battle: Rock Paper Scissors
+1WvmrXbjMCP1hLoX_V4St8u7-u4FCmCCv	2025-10-09	8910	app	misc	X	Swipe & Shop
+134Qn0UUitRIMPAw-lvR_P6DPWljBJmVm	2025-08-20	76004	game	diepio	S	diep.io
+12x6x8eRc5M2TDddZa20oP-Y3N2Kc0VYB	2025-09-27	8116	game	io	D	AI City Gobbler
+1l1OVtqsQ7Ywmivn7yW7s-avwub9d8ZJ1	2025-09-28	8135	game	misc	Y	브롤스타즈 시뮬레이터
+1ZO_tWOXULb257A6KcL2x05tn_KqKigrn	2025-09-25	22722	game	tetris	Y	리액트 테트리스
+1WGfNQwcLPq7M8QhIy26kRQRXQ1jenRQ0	2025-09-30	5544	game	platformer	D	React 2D Platformer
+1DO1UrbfYhjeHL0MdscoURtpZWPtHcVZT	2025-09-26	8005	game	io	D	Agar.io Clone
+1a5PFjuwcMK50DbEgF1Cnq9N4G_rT3UAL	2025-09-26	11585	game	diepio	D	Gemini Diep.io
+1Z4DM3p-I0TAhqrMXx-i7Nu72ENn2n6t7	2025-09-07	83037	game	minecraft2d	S	2D 마인크레프트 (와이 파이 있어야 할 수 있습니다!)
+1jeBgBQjNNeci92rWbmu06gAB23oCkI8S	2025-09-25	8749	tool	misc	X	Roblox 3D Asset Generator
+1CisoKZbYowBBryNOKqfmBWgDk2GUG6-e	2025-09-20	8009	game	shooter	S	우주 슈팅 게임
+12nDyqqxzGQWDeaZXqmwGmOnb-qJJwpha	2025-09-20	7382	game	minecraft3d	D	React Minecraft Clone
+1WnBx6N98zeqwkF8dUDty2akAJAR2wBgF	2025-09-18	8582	game	minecraft3d	D	Copy of Copy of Copy of Copy of React Voxel Craft
+1XSvw3CoHXSsmNIVeFBrpGopqLQH9f2ZH	2025-09-18	8582	game	minecraft3d	D	Copy of Copy of Copy of React Voxel Craft
+1VFSwJrwKjlP0OVLdPultWXOhcdZfb8s_	2025-09-18	8581	game	minecraft3d	D	Copy of Copy of React Voxel Craft
+1dEmigRd6iuHIlC3_UuLFcVFxs-hYltbk	2025-09-18	8578	game	minecraft3d	D	Copy of React Voxel Craft
+1g6GkMr3Fw7_e1Bg71GL4Ld2iU4jhDa6j	2025-09-18	8356	game	minecraft3d	D	React Voxel Craft
+1OGcWirdfXxcDQYtVsmklTUu2r6giRBek	2025-09-13	6376	game	minecraft3d	D	React 3D Voxel Builder
+1ZEMxlURkGGpG9R6L96rbwhTXxhEnPS81	2025-09-13	8385	game	minecraft3d	D	React 3D 마인크래프트
+1xxpY4NJ-i6NnjqrCWbpovkNBP0CpF0Mw	2025-09-13	30681	game	minecraft2d	D	Copy of 마인크레프트
+13YzjZBuWCR5P23uyp1GTwASsGa7IxnEK	2025-09-10	10882	app	misc	X	Free Time Project
+1kIw4YdvmN2yxrDxuVxexDSeYWiLzOnGO	2025-09-07	7165	game	minecraft2d	D	MineReact
+1cd_23LY3tDDtvtCL4sLLMxk8y9hgqLQ-	2025-09-07	9087	game	minecraft3d	D	React Craft
+1hr2SxjyvukTmUdFcwATNYzwn5-q56k48	2025-09-07	6211	game	minecraft2d	D	React Minecraft Clone
+1Lkr53N0ILS6Eu5_dHFEsPFfUYDMGz_96	2025-09-07	6504	game	minecraft3d	D	React Minecraft
+1HpRuMcfehbAg9iftea-v6wtMAiKuN128	2025-09-07	5445	game	minecraft3d	D	React Minecraft Explorer
+1tneKRmPDfB-I1JovlT1ZF3GYM84oE8hD	2025-09-07	6480	tool	misc	X	MineGenius
+1gGZ-XFzspVgQKYO8zJwLo-UbK730lA9L	2025-09-07	6046	game	minecraft2d	D	React Minecraft Clone
+1ZlqZwJ9LBLJgBAmzO5nY46_0an9bs90_	2025-09-07	7060	game	snake	Y	Snake.io Clone
+1Q6bTvJNgpnUV3ph867-g4EBSWmk3sdVP	2025-09-07	5840	game	minecraft2d	D	2D Craft Miner
+1l-uCVqiR4g_032CKuq6RaHrB31cmkBSk	2025-09-07	5983	game	minecraft2d	D	ReactCraft 2D
+1d-_eBY-oA3JImqGQOhxSx8LhxUgqB6BA	2025-09-07	4978	game	snake	D	Snake.io
+16C4C4Yp8RiRyuGwGt2qwYaU-Ui-ZZ7-S	2025-09-07	5503	game	snake	D	Snake.io
+1xxla6r_cHh-3e6RgzLLR_XD4hc2R0UcN	2025-09-07	5822	game	snake	D	Snake.io
+18WKhWpBo1x4HOn6DEvS1pUGcpUJG9szs	2025-09-07	7963	game	jump	Y	K-pop Demon Hunters Jump Map
+1pM9nIJfaKiwmtq3fFN6gLCHhQ7ku3jL-	2025-09-05	9327	game	mario	Y	슈퍼 리액트 브라더스
+1VcHx8aYel9q4-G0JDU263s2aiPGI5Kw9	2025-09-06	6148	tool	misc	X	AI Pose Transfer Studio
+1u7ZNb0UDfLEA3g77OvizE8qtrC2cEgtA	2025-09-06	6776	tool	misc	X	Virtual Wedding Dress Try-On
+1OuxVq22E2U9bJlN8-VCvsr7kTECpOZ8I	2025-09-06	8806	tool	misc	X	AI 영정 사진 변환기
+1nxx5ThboJ0-kf4R4LaFDSZUreUo1EcQl	2025-09-06	7830	tool	misc	X	AI Wedding Dress Virtual Try-On
+1-wxzJgxNKjoLR2UwMQ-zJQjqTRW3yaQL	2025-09-06	22888	game	undertale	Y	언더테일 웹 버전
+1eiqeGQyh4F-ijYb_E8Crt99aChJDGsoF	2025-09-06	10629	game	undertale	D	언더테일 웹 시뮬레이터
+1_rpjLkEM7nq8HHofp9SUSUO2jm4v8Yc3	2025-09-06	11388	game	undertale	D	언더테일 전투 시뮬레이터
+1tqkFNKote-KchHs0dV3ydg8XUQbinc6B	2025-09-06	10686	game	undertale	D	언더테일 전투 시뮬레이터
+1FovKtA-jpMTP8tpwDDDAQ-iuy9RMWTY2	2025-09-06	7961	game	undertale	D	언더테일 전투 시뮬레이터
+194NuKA3woa4uUzgErL18dKjPN1kg4bQP	2025-09-06	10326	game	undertale	D	언더테일 전투 시뮬레이터
+1Rz8DGtt9vCT6fCNyalHjPKctO2dWjW-I	2025-09-06	9075	game	undertale	D	언더테일
+1W8HJ9D9_IQ9ElMzslX1VfuFw3qFMVaKI	2025-09-06	12829	game	mario	D	마리오 시뮬레이터
+1_sGdjwprhcGb0ZcImIjB3SZ07DUoDw08	2025-09-06	9582	game	minecraft2d	D	마인크래프트 시뮬레이터
+18Vw4N4meyY4VUwiupolXwcKOW9T5cUVb	2025-09-05	15577	game	undertale	D	언더테일
+11rP0vYZiARO7HTqLg_zitomqTkbbjWNG	2025-09-06	9429	game	minecraft2d	D	마인크래프트 시뮬레이터
+12FpJpuZQ7iUzYlPHHSSW1c6mmm725wGv	2025-09-06	9787	game	minecraft2d	D	마인크래프트 AI 시뮬레이터
+1ymsMVM6Qjd4i5jss9sBZw_U1XVaSyXrU	2025-09-06	11037	game	undertale	D	언더테일 전투 시뮬레이터
+1Qk6Ae0eEDYg47NcBXd36WEYh8XCkmr49	2025-09-06	6201	game	undertale	D	언더테일 미니게임
+1uoOnI_Iq71BUxxU-MFW-qP34qSKw0ACW	2025-09-05	6428	tool	mario	X	원더 아이디어 생성기
+12L9oSLVAeqciUlW4j_lk-BA84Aih9nWZ	2025-09-05	6495	tool	mario	X	마리오 이야기 생성기
+1av9mani6k-bYmXX5k211Xh0_l6yWcIQN	2025-09-02	13845	game	jump	Y	점프맵
+1IPeDJqUO8Qy3wQkWpMSe1ypv6hzqomwo	2025-09-04	12618	game	minecraft2d	D	2D 마인크래프트
+1N1ZE06qwWKilZp4_e0F7-P7HxUZfqopW	2025-09-04	9248	game	minecraft2d	D	AI 마인크래프트 제작 도우미
+1RdSpcuAWCgo3XdEpJgY5CQwOgflq_xpB	2025-09-05	7138	tool	mario	X	마리오 캐릭터 탐험
+1Z97w9ba15xDvbp0C4-GKiy2j5LVtEvkQ	2025-09-05	6391	tool	mario	X	마리오 캐릭터 생성기
+1u7sX9Y01zOOyiJLpGfvX_t8Qx5GPD7Fr	2025-09-05	9087	tool	mario	X	마리오 챗봇
+1-TGt9fECJKfi6xV6j0k7dJKKVVYjUUsd	2025-09-05	6805	tool	mario	X	마리오 캐릭터 탐험가
+1BtWhE3ZrCvyjH0zkZEoAeykN3-L4SjxB	2025-09-04	10241	game	mario	D	마리오 게임
+1AkCiOj-DKzCdMnc9b3gZ-FHlS668BVnt	2025-09-04	8897	game	mario	D	React Mario Clone
+1Ocow7N3miQV5YNWNeHVhPdAHIOKdrWY3	2025-09-04	7136	tool	mario	X	Super Mario Wonder Effect Generator
+12YGQC5PXOtd0z_mviFbiThU6feTtIf-F	2025-09-04	8788	game	minecraft3d	D	React 마인크래프트
+1B2PvOpxnnVDafQYWOejoxrKyzeqsWba-	2025-09-04	4742	tool	mario	X	마리오 팩트 생성기
+1fImz2fs7po-B8EJG3OwgvZIujyxW3IjH	2025-09-04	7176	tool	mario	X	슈퍼마리오 원더 이펙트 생성기
+1FaZGuEwsHXHfLYWQavBVMjcUOYeLikZQ	2025-09-04	8180	game	mario	D	Super React Mario
+1v14zzJRT7PIKpiZxRZD1WL-sABtIaKjn	2025-09-03	7532	app	misc	X	AI Gym Simulator
+1xVJnKPwITBw5xRMEwixk9c-BmDjrMbg5	2025-09-03	6190	game	undertale	D	언더테일 대화 시뮬레이터
+12VvmbyhuCGXf279oNQtK6zU8lFHwWWjv	2025-09-02	11316	game	misc	D	BlockVerse Creator
+1VP4O1IuhHzAxFSSJFW2DOR769Q--xi3F	2025-09-02	7165	game	misc	D	로봇 배틀 아레나
+1xZ0J63KBwwgwjOul5b3CvxzrW8cug7NB	2025-08-31	5559	game	runner	D	Yako Run
+1TeXRRzioGC5WOIVKBxGLxQo6XTHgyhxv	2025-08-31	6498	game	stairs	Y	Infinite Stairs
+1lYw0mbTbOnX56ubwgnOG7YWEHH8E4ugy	2025-08-23	13760	game	tycoon	Y	Startup Tycoon
+1bEm11edc8IGz3nv5vMZTxDCows1Bz9KT	2025-08-23	8824	tool	misc	X	Gemini Retro Console
+1lvhOxiohOrTrXaU6tveRpibHlEom45OG	2025-08-23	4758	tool	mario	X	Super Mario Bros. Wonder Experience
+1LUWzwg1HTsJvvUWJsIDXxyKtdwI-b2c_	2025-08-23	12797	app	misc	X	점프맵 (트램폴린 파크 찾기 앱)
+1BrgOYENxPp7lw6XyBos_7QXEPFZOS8TB	2025-08-23	4446	game	runner	D	React Parkour Game
+1SOdEHGFmZ2ywBHHu6ouTBN9ai011osmm	2025-08-22	8504	tool	misc	X	3D ASCII Model Viewer
+12Hw3Fe5GxAPX2rTXktodqtfwrDioVnqb	2025-08-22	5393	tool	misc	X	3D ASCII Model Viewer
+16bS9O9UDy2hALFTXhOz9brWbTMmsRUv7	2025-08-18	23159	game	diepio	D	diep.io
+10X0UrMgLQXtikcOdn_kB_bm7EOdtmYbq	2025-08-18	5159	app	misc	X	간편 미팅 투표
+1ce8ImMPU7x7ksyhCYux9MQwoDseJgiSq	2025-08-16	11056	game	td	Y	Tank Base Defense
+17WFAKDYZ1cdsb7URf56kNx3twf0ZZCj7	2025-08-16	8553	game	td	D	Tank Defender
+1ZFd5kfRWi1eK2VhhUKZmD-ChqUA-F-ym	2025-08-16	46912	game	shooter	D	Copy of 죽고 싶은 게임
+1uCsEmJfjva13pNVRtlMp5-spj8KmZYp1	2025-08-15	11057	game	tycoon	Y	Building Tycoon
+12a4fgwUzJPE6a9kQ42kd-V5QNhz89JzS	2025-08-15	6119	game	clicker	Y	Cookie Clicker Game
+1BWbTDn-sV7yzi0AzhObwl1-sU20UXk9r	2025-08-15	9905	game	diepio	D	Geo Arena
+1zRR3MxrR_v80Zjk5nBrR0dauBvtdmFdg	2025-08-15	6931	game	misc	D	Gemini Number Sage
+17RwcvfyvkU-gyzKcZ5v5VPuC7zbBPaX4	2025-08-15	5131	game	clicker	D	Gemini Clicker
+10R0KSNp86I8K4fB2SND2c-t669fdg-bU	2025-08-14	10475	game	minecraft3d	D	React Minecraft Clone

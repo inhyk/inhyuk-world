@@ -1,0 +1,4 @@
+interface:
+  display_name: "게임 발행하기"
+  short_description: "게임을 GitHub·Vercel·seonn.dev에 한 번에 발행"
+  default_prompt: "$publish-game을 사용해서 이 게임을 GitHub와 Vercel에 배포하고 seonn.dev에 등록해줘."

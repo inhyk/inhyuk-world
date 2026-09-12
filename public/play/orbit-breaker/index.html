@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0d0e">
+  <meta name="description" content="10웨이브 우주 슈팅게임. 5웨이브 중간 보스와 10웨이브 최종 보스에 도전하고, 같은 키보드로 2인 협동 플레이하세요.">
+  <title>ORBIT BREAKER · 오비트 브레이커</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230a0d0e'/%3E%3Cpath d='M32 10 53 49 32 40 11 49Z' fill='%23c9f878'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app">
+    <nav class="topbar" aria-label="게임 메뉴">
+      <a href="/games" target="_top" class="world-link"><span class="brand-mark">✳</span> INHYUK WORLD <span class="slash">/</span> <span class="arcade">ARCADE</span></a>
+      <div class="top-actions"><span class="live-dot"></span><span class="system-label">SYSTEM ONLINE</span><button id="sound-button" class="icon-button" aria-label="소리 켜기" aria-pressed="false">소리 OFF</button><button id="help-button" class="icon-button" aria-label="조작법 보기">?</button></div>
+    </nav>
+    <header class="heading">
+      <div><div class="eyebrow">NO. 033 <span> / </span> SPACE ARCADE</div><h1>ORBIT<span>BREAKER</span><span class="title-star">✳</span></h1></div>
+      <p>궤도를 넘어, 마지막 전투까지.<br><span>열 개의 웨이브. 두 명의 파일럿. 하나의 미션.</span></p>
+    </header>
+    <main class="game-layout">
+      <section class="game-panel" aria-label="슈팅게임">
+        <div class="hud">
+          <div class="hud-score"><span class="micro-label">SCORE</span><strong id="score">000000</strong></div>
+          <div class="hud-sector"><span class="micro-label">WAVE</span><strong id="sector">01 <span>/ 10</span></strong></div>
+          <div id="hull-panels" class="hull-panels"><div class="hud-health"><span class="micro-label">1P HULL <span id="hp-label">5 / 5</span></span><div id="health" aria-label="1P 체력 5 / 5"></div></div><div id="p2-hull" class="hud-health p2-color" hidden><span class="micro-label">2P HULL <span id="hp2-label">5 / 5</span></span><div id="health2" aria-label="2P 체력 5 / 5"></div></div></div>
+          <button id="pause-button" class="pause-button" aria-label="일시정지" disabled>Ⅱ</button>
+        </div>
+        <div id="stage" class="stage">
+          <canvas id="game" tabindex="0" aria-label="우주 슈팅게임. 1인: WASD 또는 방향키, X 노바. 2인: 1P WASD와 X, 2P 방향키와 Enter. 자동 발사는 기본 ON. 터치는 화면의 각 플레이어 구역을 드래그합니다.">이 게임은 Canvas를 지원하는 브라우저에서 실행할 수 있습니다.</canvas>
+          <div class="stage-corner top-left"></div><div class="stage-corner bottom-right"></div>
+          <div id="sector-tag" class="sector-tag"><span class="live-dot"></span> OUTER ORBIT <span>001.048 / 092.017</span></div>
+          <div id="overlay" class="overlay">
+            <section id="menu" class="menu">
+              <span class="mission-label"><span></span> READY FOR LAUNCH</span>
+              <h2>BEYOND<br>THE <em>ORBIT.</em></h2>
+              <p>5웨이브의 센티넬, 10웨이브의 이클립스.<br>혼자서, 또는 친구와 함께 마지막 궤도를 돌파하라.</p>
+              <div class="player-mode" role="group" aria-label="플레이 인원"><button data-players="1" class="selected" aria-pressed="true">1인 플레이</button><button data-players="2" aria-pressed="false">2인 협동</button></div>
+              <div class="difficulty" role="group" aria-label="난이도 선택"><button data-difficulty="easy" aria-pressed="false">루키</button><button data-difficulty="normal" class="selected" aria-pressed="true">파일럿</button><button data-difficulty="hard" aria-pressed="false">에이스</button></div>
+              <button id="start-button" class="primary-button">출격하기 <span>↗</span></button>
+              <span class="start-hint">ENTER TO START <i>·</i> <span id="difficulty-description">체력 5 · 기본 난이도</span></span>
+              <span id="coop-guide" class="coop-guide" hidden>1P WASD · X 노바 / 2P 방향키 · ENTER 노바<br>터치: 왼쪽 1P · 오른쪽 2P 드래그</span>
+            </section>
+            <section id="result" class="result" hidden aria-labelledby="result-title">
+              <span id="result-eyebrow" class="mission-label">FLIGHT REPORT</span>
+              <h2 id="result-title">MISSION<br>COMPLETE.</h2>
+              <p id="result-description"></p>
+              <div class="result-stats"><div><span>최종 점수</span><strong id="result-score">0</strong></div><div><span>최고 기록</span><strong id="result-best">0</strong></div><div><span>격추 / 비행 시간</span><strong id="result-flight">0 / 00:00</strong></div></div>
+              <button id="restart-button" class="primary-button">다시 출격 <span>↗</span></button><button id="home-button" class="text-button">난이도 선택으로</button>
+            </section>
+          </div>
+          <div id="banner" class="banner" role="status" aria-live="polite"></div>
+          <div id="boss-hud" class="boss-hud" hidden><div><span id="boss-name">ECLIPSE / 이클립스</span><span id="boss-percent">100%</span></div><div class="boss-track"><div id="boss-fill"></div></div></div>
+          <div id="combo" class="combo" hidden><strong>×2</strong><span>CHAIN BONUS</span></div>
+          <div id="touch-hint" class="touch-hint" hidden>화면을 드래그해서 이동</div>
+          <dialog id="dialog" aria-labelledby="dialog-title">
+            <div class="dialog-content"><span class="eyebrow">FLIGHT MANUAL</span><h2 id="dialog-title">잠시 숨 고르기.</h2><p id="dialog-description">준비되면 다시 궤도로 돌아가세요.</p>
+              <div class="help-controls"><div><span>1P 이동 / 노바</span><strong>WASD / X</strong></div><div><span>2P 이동 / 노바</span><strong>방향키 / ENTER</strong></div><div><span>발사</span><strong>자동 발사 / 1P SPACE · 2P /</strong></div><div><span>정밀 이동</span><strong>1P 왼쪽 SHIFT · 2P 오른쪽 SHIFT</strong></div><div><span>일시정지 / 소리</span><strong>ESC · P / M</strong></div><div><span>터치 이동</span><strong>1인: 전체 / 2인: 왼쪽 1P · 오른쪽 2P</strong></div></div>
+              <p class="help-tip">1인 모드에서는 방향키로도 이동할 수 있습니다.<br>초록 P: 무기 강화, 파랑 +: 수리, 노랑 N: 노바 충전.<br>5웨이브는 중간 보스, 10웨이브는 최종 보스!<br>2인 모드에서는 동료가 살아서 다음 웨이브에 도달하면 쓰러진 기체가 체력 절반으로 복귀합니다. 두 명 모두 격추되면 게임이 끝납니다.</p>
+              <button id="resume-button" class="primary-button">계속하기 <span>↗</span></button>
+              <button id="quit-button" class="text-button">출격 화면으로</button>
+            </div>
+          </dialog>
+        </div>
+        <div class="game-toolbar"><div class="weapon"><span class="micro-label">1P WEAPON</span><strong id="weapon-name">싱글 캐논</strong><span id="weapon-level">LV. 01</span></div><div id="p2-weapon" class="weapon p2-color" hidden><span class="micro-label">2P WEAPON</span><strong id="weapon2-name">싱글 캐논</strong><span id="weapon2-level">LV. 01</span></div><label class="auto-fire"><input type="checkbox" id="autofire" checked><span></span>자동 발사</label><button id="nova-button" class="nova-button" disabled><span>✳</span> 1P <b id="nova-count">2</b><kbd>X</kbd></button><button id="nova2-button" class="nova-button nova2" hidden disabled><span>✳</span> 2P <b id="nova2-count">2</b><kbd>↵</kbd></button></div>
+      </section>
+      <aside class="side-panel">
+        <section class="record-card"><div class="micro-label">PERSONAL BEST <span>↗</span></div><strong id="best-score">000000</strong><p id="best-label">파일럿 최고 기록</p><div class="record-line"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></section>
+        <section class="route-card"><div class="micro-label">YOUR MISSION <span>01 — 10</span></div><h3>마지막 궤도까지.</h3><ol id="mission-route"></ol><p>웨이브 돌파: 체력 +1 · 격추된 동료 복귀</p></section>
+        <section class="tip-card"><span class="tip-symbol">↗</span><div><span class="micro-label">PILOT'S TIP</span><p>위험할 땐 <b>노바</b>를 사용하세요.<br>탄막이 한순간에 사라집니다.</p></div></section>
+      </aside>
+    </main>
+    <footer class="footer"><div id="footer-controls"><kbd>WASD / ↑↓←→</kbd><span>이동</span><kbd>SPACE</kbd><span>발사</span><kbd>X</kbd><span>노바</span><kbd>ESC</kbd><span>일시정지</span></div><span>BUILT TO PLAY. <span class="footer-star">✳</span> INHYUK WORLD</span></footer>
+  </div>
+  <script type="module" src="./game.mjs"></script>
+</body>
+</html>

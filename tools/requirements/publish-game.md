@@ -25,7 +25,7 @@
 : 게임별 독립 저장소 + 허브. 모노레포 이사는 하지 않음 (기존 8개 배포를 다 갈아엎어야 하고, Node 서버형 게임 처리가 복잡해짐)
 
 **발행 방식**
-: Claude Code 슬래시 커맨드 `/publish-game`. 게임 폴더에서 한 번 실행
+: Codex 스킬 `$publish-game` 또는 Claude Code 슬래시 커맨드 `/publish-game`. 게임 폴더에서 한 번 실행
 
 **메타데이터**
 : 게임 폴더의 `game.json`이 단일 진실 소스. 없으면 대화형으로 생성
@@ -51,7 +51,7 @@
 
 **포함**
 
-- `/publish-game` 스킬 (전역 설치, 심볼릭 링크 방식)
+- `publish-game` 스킬 (Codex와 Claude Code에 전역 설치, 심볼릭 링크 방식)
 - 허브를 `games.json` 기반으로 전환 (프로그램이 안전하게 고칠 수 있도록)
 - 허브가 썸네일/스크린샷을 실제로 렌더링하도록 수정 (이모지 폴백 유지)
 - 1회성 백필: `minecraft`, `diep-io`, `bean-dash-arena`, `sans-boss-fight` 등록 + `hotel-tycoon` 전체 발행
@@ -65,7 +65,7 @@
 
 ## 성공 기준
 
-- 새 게임 폴더에서 `/publish-game` 한 번으로 seonn.dev에 카드가 뜬다
+- 새 게임 폴더에서 `$publish-game`(Codex) 또는 `/publish-game`(Claude Code) 한 번으로 seonn.dev에 카드가 뜬다
 - 백필 후 사이트 게임 수가 2개에서 7개가 된다
 - 같은 게임을 다시 발행하면 중복 추가되지 않고 기존 카드가 갱신된다
 - 사이트의 모든 플레이 버튼이 살아있는 주소를 가리킨다
@@ -76,7 +76,7 @@
 : TypeScript 배열 리터럴을 스크립트로 안전하게 고치는 건 깨지기 쉽다. JSON이면 읽고 쓰는 게 확실하다. `games.ts`는 JSON을 읽어 정렬만 하는 얇은 로더로 남겼고, `Game` 인터페이스와 헬퍼 함수는 그대로 유지했다
 
 **왜 심볼릭 링크인가**
-: 인혁이는 게임 폴더 안에서 `/publish-game`을 친다. 그 위치에서 스킬이 잡히려면 전역 스킬(`~/.claude/skills/`)이어야 한다. 동시에 코드는 git으로 관리하고 싶다. 링크가 두 조건을 같이 만족시킨다. 링크가 안 되는 환경이면 `install.sh`가 복사로 폴백한다
+: 인혁이는 게임 폴더 안에서 Codex의 `$publish-game` 또는 Claude Code의 `/publish-game`을 친다. 그 위치에서 스킬이 잡히려면 전역 스킬(`~/.codex/skills/`, `~/.claude/skills/`)이어야 한다. 동시에 코드는 git으로 관리하고 싶다. 링크가 두 조건을 같이 만족시킨다. 링크가 안 되는 환경이면 `install.sh`가 복사로 폴백한다
 
 **왜 Playwright에 `channel: "chrome"`인가**
 : 번들 크로미움을 따로 받으면 150MB가 넘는다. 맥에 이미 깔린 크롬을 쓰면 npm 패키지만 받으면 된다

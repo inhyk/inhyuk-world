@@ -3,8 +3,15 @@
 import { useMemo, useState } from "react";
 import { games } from "@/data/games";
 import { GameCard } from "@/components/games/GameCard";
+import { HomeHero } from "@/components/home/HomeHero";
+import { Icon } from "@/components/ui/Icon";
 
 const ALL = "전체";
+const categories = [
+  ALL,
+  ...Array.from(new Set(games.map((game) => game.category))),
+];
+const PAGE_SIZE = 8;
 
 interface GameExplorerProps {
   title?: string;
@@ -13,179 +20,182 @@ interface GameExplorerProps {
 }
 
 export function GameExplorer({
-  title = "인혁이의 게임 월드",
-  description = "초등학생 게임 개발자 인혁이 만든 웹 게임을 바로 플레이해보세요",
+  title = "모든 게임",
+  description,
   showVideoHero = true,
 }: GameExplorerProps) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(ALL);
-
-  const categories = useMemo(
-    () => [ALL, ...Array.from(new Set(games.map((g) => g.category)))],
-    []
-  );
+  const [sort, setSort] = useState("recent");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return games.filter((game) => {
-      const matchesCategory = category === ALL || game.category === category;
-      if (!matchesCategory) return false;
-      if (!q) return true;
-      const haystack = [
-        game.title,
-        game.description,
-        game.category,
-        ...game.techStack,
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
+    const result = games.filter((game) => {
+      if (category !== ALL && game.category !== category) return false;
+      return (
+        !q ||
+        [game.title, game.description, game.category, ...game.techStack]
+          .join(" ")
+          .toLowerCase()
+          .includes(q)
+      );
     });
-  }, [query, category]);
+    return sort === "name"
+      ? result.sort((a, b) => a.title.localeCompare(b.title, "ko"))
+      : result;
+  }, [query, category, sort]);
+
+  const visibleGames = showVideoHero
+    ? filtered.slice(0, visibleCount)
+    : filtered;
+
+  function resetFilters() {
+    setQuery("");
+    setCategory(ALL);
+    setVisibleCount(PAGE_SIZE);
+  }
 
   return (
     <>
-      {/* ---------- 게임 탐색 히어로 ---------- */}
-      <section className="relative overflow-hidden">
-        {/* 홈에서는 모자이크 이미지 위에 루프 영상을 올리고,
-            전용 게임 목록에서는 가벼운 메시 배경만 사용합니다. */}
-        {showVideoHero ? (
-          <div
-            className="hero-bg absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url(/media/hero-mosaic.jpg)" }}
-            aria-hidden="true"
-          >
-            <video
-              className="hero-video h-full w-full object-cover"
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              poster="/media/hero-mosaic.jpg"
-            >
-              <source src="/media/hero-loop.mp4" type="video/mp4" />
-            </video>
-          </div>
-        ) : null}
-
-        {/* 브랜드 색감 유지 + 글씨 가독성 확보.
-            사진마다 밝기가 제각각이라 균일한 스크림만으로는 부족해서,
-            글씨가 놓이는 가운데를 한 겹 더 눌러 줍니다. */}
-        <div
-          className={`mesh mesh-drift absolute inset-0 mix-blend-soft-light ${
-            showVideoHero ? "opacity-45" : "opacity-80"
-          }`}
-        />
-        <div className="absolute inset-0 bg-[#08080b]/45" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_65%_70%_at_50%_45%,rgba(8,8,11,0.82),rgba(8,8,11,0.15)_75%)]" />
-        {/* 상단: 투명한 네비게이션 링크가 밝은 사진 위에 놓여도 읽히도록 */}
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-[#08080b]/75 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-background" />
-
-        <div className="relative mx-auto max-w-7xl px-5 pt-24 pb-12 text-center md:px-8 md:pt-28 md:pb-14">
-          <h1 className="fade-up font-[family-name:var(--font-inter-tight)] text-[32px] leading-[1.1] font-extrabold tracking-[-0.03em] text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.55)] md:text-[46px]">
-            {title}
-          </h1>
-
-          <p
-            className="fade-up mx-auto mt-3 max-w-md text-[15px] text-white/85 drop-shadow-[0_1px_10px_rgba(0,0,0,0.5)]"
-            style={{ animationDelay: "80ms" }}
-          >
-            {description}
+      {showVideoHero ? (
+        <HomeHero />
+      ) : (
+        <header className="collection-hero site-container">
+          <p className="section-kicker">
+            <span>THE GAME COLLECTION</span>
+            <Icon name="spark" width="16" height="16" />
           </p>
-
-          {/* 검색창 */}
-          <div
-            className="fade-up mx-auto mt-7 flex w-full max-w-lg items-center gap-2 rounded-2xl border border-white/25 bg-white/12 px-4 py-3 backdrop-blur-xl transition-colors focus-within:border-white/50"
-            style={{ animationDelay: "160ms" }}
-          >
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="shrink-0 text-white/70"
-              aria-hidden="true"
-            >
-              <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-              <path
-                d="M10.5 10.5L14 14"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
+          <h1>
+            {title}
+            <span className="text-brand">.</span>
+          </h1>
+          <p>
+            {description ??
+              "작은 아이디어에서 시작된, 저마다 다른 세계를 만나보세요."}
+          </p>
+        </header>
+      )}
+      <section
+        id="games"
+        className="game-collection site-container"
+        aria-labelledby="collection-title"
+      >
+        <div className="section-heading">
+          <div>
+            <p className="section-kicker">
+              <span className="section-number">01 /</span> PICK YOUR NEXT
+              ADVENTURE
+            </p>
+            <h2 id="collection-title">
+              오늘은 어떤 세계로 갈까요?
+              <span className="count-tag">{games.length}</span>
+            </h2>
+          </div>
+          <div className="game-search">
+            <Icon name="search" width="18" height="18" />
             <input
               type="search"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="게임 이름이나 장르로 찾기"
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setVisibleCount(PAGE_SIZE);
+              }}
+              placeholder="어떤 게임을 찾고 있나요?"
               aria-label="게임 검색"
-              className="w-full bg-transparent text-[15px] text-white placeholder:text-white/60 outline-none"
             />
+            {query && (
+              <button
+                type="button"
+                aria-label="검색어 지우기"
+                onClick={() => {
+                  setQuery("");
+                  setVisibleCount(PAGE_SIZE);
+                }}
+              >
+                <Icon name="close" width="16" height="16" />
+              </button>
+            )}
           </div>
         </div>
-      </section>
-
-      {/* ---------- 게임 그리드 ---------- */}
-      <section id="games" className="mx-auto max-w-7xl px-5 pt-8 pb-20 md:px-8 md:pt-10 md:pb-24">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="font-[family-name:var(--font-inter-tight)] text-[26px] font-bold tracking-[-0.025em] md:text-[32px]">
-              게임 둘러보기
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              카드를 누르면 게임 소개와 플레이 링크로 갑니다
-            </p>
-          </div>
-
-          {/* 카테고리 칩 */}
+        <div className="collection-toolbar">
           <div
-            className="no-scrollbar -mx-5 flex w-full gap-2 overflow-x-auto px-5 pb-1 md:mx-0 md:w-auto md:px-0"
+            className="category-list no-scrollbar"
             role="group"
             aria-label="게임 카테고리 필터"
           >
-            {categories.map((cat) => {
-              const active = cat === category;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  aria-pressed={active}
-                  className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
-                    active
-                      ? "border-transparent bg-foreground text-[#08080b]"
-                      : "border-border text-muted-strong hover:border-border-strong hover:text-foreground"
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => {
+                  setCategory(cat);
+                  setVisibleCount(PAGE_SIZE);
+                }}
+                aria-pressed={cat === category}
+                className={`category-chip ${
+                  cat === category ? "is-active" : ""
+                }`}
+              >
+                {cat === ALL && <Icon name="grid" width="14" height="14" />}
+                {cat}
+              </button>
+            ))}
           </div>
+          <label className="sort-control">
+            <span className="sr-only">게임 정렬</span>
+            <select
+              value={sort}
+              onChange={(event) => {
+                setSort(event.target.value);
+                setVisibleCount(PAGE_SIZE);
+              }}
+            >
+              <option value="recent">최근 업데이트순</option>
+              <option value="name">이름순</option>
+            </select>
+            <Icon name="chevron" width="14" height="14" />
+          </label>
         </div>
-
-        <p className="sr-only" aria-live="polite">
-          검색 결과 {filtered.length}개의 게임이 있습니다.
+        <p className="sr-only" role="status">
+          검색 결과 {filtered.length}개의 게임이 있습니다. 현재{" "}
+          {visibleGames.length}개를 표시합니다.
         </p>
-
-        {filtered.length > 0 ? (
-          <div className="mt-7 grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-5 sm:gap-y-8 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((game, i) => (
-              <GameCard key={game.slug} game={game} index={i} />
+        {visibleGames.length > 0 ? (
+          <div className="game-grid">
+            {visibleGames.map((game, index) => (
+              <GameCard key={game.slug} game={game} index={index} />
             ))}
           </div>
         ) : (
-          <div className="mt-10 rounded-2xl border border-border bg-surface py-16 text-center">
-            <p className="text-4xl">🔍</p>
-            <p className="mt-4 font-[family-name:var(--font-inter-tight)] text-lg font-semibold">
-              찾는 게임이 없어요
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              다른 이름이나 장르로 다시 찾아보세요
-            </p>
+          <div className="games-empty">
+            <Icon name="search" width="32" height="32" />
+            <h3>아직 발견하지 못한 세계네요</h3>
+            <p>다른 이름이나 장르로 다시 찾아보세요.</p>
+            <button
+              type="button"
+              className="action-button action-outline"
+              onClick={resetFilters}
+            >
+              전체 게임 보기
+              <Icon name="arrow" />
+            </button>
+          </div>
+        )}
+        {showVideoHero && visibleCount < filtered.length && (
+          <div className="collection-more">
+            <span className="mono-label">
+              {String(visibleGames.length).padStart(2, "0")} / {filtered.length}{" "}
+              WORLDS EXPLORED
+            </span>
+            <button
+              type="button"
+              className="action-button action-outline"
+              onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+            >
+              더 많은 게임 만나보기
+              <Icon name="chevron" width="16" height="16" />
+            </button>
           </div>
         )}
       </section>

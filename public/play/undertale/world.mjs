@@ -3,6 +3,7 @@
 // yield한 요청(대사, 선택지, 전투, 상점, 결말)은 호스트(game.mjs)가 처리한 뒤 resolve로 돌려준다.
 import { AREAS, ITEMS, MONSTERS } from './data.mjs';
 import { routeFor, quotaMet, heal } from './core.mjs';
+import { detailsFor, inspectDetail, journalFor } from './details.mjs';
 
 export const TILE = 32, COLS = 20, ROWS = 15;
 export const WALK_SPEED = 130;
@@ -14,6 +15,7 @@ export function passable(room, tx, ty, flags) {
   if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return true; // 가장자리 밖은 출구 판정에 맡긴다
   const c = room.tiles[ty][tx];
   if ('#~oB'.includes(c)) return false;
+  if (detailsFor(room).some(item => item.solid && item.x === tx && item.y === ty)) return false;
   if (c === '^') return !!flags[`${room.id}_switch`];
   if (c === 'D') return !!flags[`${room.id}_door`];
   return true;
@@ -464,7 +466,9 @@ export function neutralEndingLines(p) {
 // ---------- 월드 상태 ----------
 export function createWorld(player, opts = {}) {
   const w = { player, room: null, x: 0, y: 0, dir: 'down', frame: 0, walkT: 0, moving: false, stepAcc: 0, actors: [], script: null, request: null, rng: opts.rng || Math.random,
-    encounterCooldown: 2, visited: {}, seed: 0, transition: 0, blocked: false };
+    encounterCooldown: 2, visited: {}, seed: 0, transition: 0, blocked: false,
+    roomTime: 0, footprints: [], footDistance: 0, stepCount: 0, notice: null };
+  journalFor(player);
   player.flags._p = player; // NPC 조건식에서 플레이어를 참조하기 위한 역참조 (저장 시 제거)
   enterRoom(w, opts.room || 'ruins_flowerbed', opts.x, opts.y);
   return w;
@@ -474,7 +478,7 @@ export function enterRoom(w, roomId, tx, ty) {
   const sp = tx === undefined ? (room.spawn || { x: 10, y: 7 }) : { x: tx, y: ty };
   w.x = sp.x * TILE + TILE / 2; w.y = sp.y * TILE + TILE / 2;
   w.actors = room.npcs.map(n => ({ ...n, px: n.x * TILE + TILE / 2, py: n.y * TILE + TILE / 2, temp: false }));
-  w.encounterCooldown = 3; w.transition = .4;
+  w.encounterCooldown = 3; w.transition = .4; w.roomTime = 0; w.footprints = []; w.footDistance = 0; w.notice = null;
 }
 export function activeActors(w) { return w.actors.filter(a => !a.when || a.when(w.player.flags, w)); }
 
@@ -487,8 +491,15 @@ function blocked(w, x, y) {
   for (const a of activeActors(w)) if (Math.abs(a.px - x) < 20 && Math.abs(a.py - y - 4) < 18) return true;
   return false;
 }
-export function update(w, dt, input = {}) {
+export function updatePresentation(w, dt) {
+  w.roomTime += dt;
+  for (const foot of w.footprints) foot.age += dt;
+  w.footprints = w.footprints.filter(foot => foot.age < 7);
+  if (w.notice) { w.notice.t += dt; if (w.notice.t > 4) w.notice = null; }
   if (w.transition > 0) w.transition -= dt;
+}
+export function update(w, dt, input = {}) {
+  updatePresentation(w, dt);
   if (w.request || w.script?.busy) { w.moving = false; tickActors(w, dt); return; }
   let dx = (input.right ? 1 : 0) - (input.left ? 1 : 0), dy = (input.down ? 1 : 0) - (input.up ? 1 : 0);
   if (dx && dy) { dx *= Math.SQRT1_2; dy *= Math.SQRT1_2; }
@@ -499,7 +510,16 @@ export function update(w, dt, input = {}) {
   if (dx && !blocked(w, nx, w.y)) { w.x = nx; moved.x = true; }
   if (dy && !blocked(w, w.x, ny)) { w.y = ny; moved.y = true; }
   w.moving = moved.x || moved.y;
-  if (w.moving) { w.walkT += dt; w.frame = Math.floor(w.walkT * 6) % 4; w.stepAcc += Math.hypot(moved.x ? dx * speed * dt : 0, moved.y ? dy * speed * dt : 0); }
+  if (w.moving) {
+    w.walkT += dt; w.frame = Math.floor(w.walkT * 6) % 4;
+    const distance = Math.hypot(moved.x ? dx * speed * dt : 0, moved.y ? dy * speed * dt : 0);
+    w.stepAcc += distance; w.footDistance += distance;
+    if (w.footDistance >= 19) {
+      w.footDistance %= 19; w.stepCount++;
+      w.footprints.push({ x: w.x, y: w.y + 12, dir: w.dir, side: w.stepCount % 2 ? -1 : 1, age: 0 });
+      if (w.footprints.length > 28) w.footprints.shift();
+    }
+  }
   else w.frame = 0;
   tickActors(w, dt);
   // 출구
@@ -538,8 +558,29 @@ function startEncounter(w) {
 
 // ---------- 상호작용 ----------
 export function facingTile(w) { const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[w.dir]; return { tx: Math.floor(w.x / TILE) + d[0], ty: Math.floor((w.y + 8) / TILE) + d[1] }; }
+// The hint and the interaction share their target so a displayed prompt always works.
+export function interactionTarget(w) {
+  if (w.request || w.script) return null;
+  const { tx, ty } = facingTile(w);
+  const actor = activeActors(w).find(a => (Math.floor(a.px / TILE) === tx && Math.floor(a.py / TILE) === ty) || (Math.hypot(a.px - w.x, a.py - w.y) < 40 && facingToward(w, a)));
+  if (actor && (actor.script || actor.shop || actor.lines)) return { kind: 'actor', actor, x: actor.px, y: actor.py, label: actor.shop ? '상점' : '대화' };
+  const item = detailsFor(w.room).find(d => d.x === tx && d.y === ty);
+  if (item) return { kind: 'detail', item, x: item.x * TILE + 16, y: item.y * TILE + 16, label: '살펴보기' };
+  const tile = w.room.tiles[ty]?.[tx];
+  const label = tile === 'S' ? '저장 · 회복' : tile === 'B' ? '열어보기' : tile === 'D' && !w.player.flags[`${w.room.id}_door`] ? '살펴보기' : tile === 'o' && w.room.deco === 'echo' ? '듣기' : null;
+  return label ? { kind: 'tile', x: tx * TILE + 16, y: ty * TILE + 16, label } : null;
+}
 export function interact(w) {
   if (w.request || w.script) return false;
+  const target = interactionTarget(w);
+  if (target?.kind === 'detail') {
+    const discovery = inspectDetail(w.player, target.item);
+    w.request = { type: 'say', who: null, lines: discovery.lines, discovery: discovery.first, resolve: () => {
+      w.request = null;
+      if (discovery.first) w.notice = { t: 0, title: discovery.title };
+    } };
+    return true;
+  }
   const { tx, ty } = facingTile(w); const room = w.room, p = w.player;
   // NPC
   for (const a of activeActors(w)) {
@@ -602,8 +643,9 @@ export function serialize(w) {
 }
 export function restore(save) {
   const player = save.player; player.flags = player.flags || {};
-  if (player.flags.torielGone) player.flags.ruins_home_door = true; // 이전 버전 세이브 호환 player.bossFate = player.bossFate || {}; player.areaKills = player.areaKills || { ruins: 0, snowdin: 0, waterfall: 0, hotland: 0 };
-  const w = createWorld(player, { room: save.room, x: save.x, y: save.y }); w.visited = save.visited || {}; return w;
+  if (player.flags.torielGone) player.flags.ruins_home_door = true;
+  player.bossFate ||= {}; player.areaKills ||= { ruins: 0, snowdin: 0, waterfall: 0, hotland: 0 };
+  const w = createWorld(player, { room: save.room, x: save.x, y: save.y }); w.visited = { ...save.visited, [w.room.id]: true }; return w;
 }
 
 // 플라위 도입부의 스크립트 전투용 가짜 몬스터

@@ -15,13 +15,14 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "public/play/snowflow/**",
     "games/snowflow/tests/**",
+    "public/play/valorant/**",
   ]),
   // The game is plain browser JavaScript with no React. It gets one rule that
   // matters more there than anywhere else: a name that is used but never
   // defined. `node --check` cannot see that, the bundler will not stop for
   // it, and it surfaces at runtime as a broken button.
   {
-    files: ["games/snowflow/src/**/*.js"],
+    files: ["games/snowflow/src/**/*.js", "games/valorant/src/**/*.{js,mjs}"],
     languageOptions: {
       sourceType: "module",
       globals: { ...globals.browser, ...globals.es2022 },
@@ -34,7 +35,7 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    files: ["public/play/mettaton/*.mjs", "public/play/undertale/*.mjs"],
+    files: ["public/play/mettaton/*.mjs", "public/play/orbit-breaker/*.mjs", "public/play/undertale/*.mjs"],
     languageOptions: {
       sourceType: "module",
       globals: { ...globals.browser, ...globals.es2022 },

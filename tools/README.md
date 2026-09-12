@@ -4,11 +4,13 @@
 
 ## 게임 올리는 법
 
-게임 폴더에서 Claude Code를 켜고 이렇게만 치면 됩니다.
+게임 폴더에서 Codex를 켜고 이렇게만 치면 됩니다.
 
 ```
-/publish-game
+$publish-game
 ```
+
+Claude Code에서는 기존처럼 `/publish-game`을 사용하면 됩니다.
 
 그러면 이 순서로 알아서 다 해줍니다.
 
@@ -45,7 +47,7 @@
 └── game.json
 ```
 
-그리고 다시 `/publish-game` 하면 직접 찍은 사진으로 바뀝니다.
+그리고 다시 `$publish-game` 하면 직접 찍은 사진으로 바뀝니다.
 
 ## 처음 한 번만 하는 설치
 
@@ -78,8 +80,8 @@ gh auth switch --user kubony
 카드 데이터(`src/data/games.json`)와 그걸 읽는 사이트 코드가 한 레포에 있어야
 한쪽만 고쳐서 사이트가 깨지는 일이 안 생기기 때문입니다.
 
-- `tools/publish-game/` — `/publish-game` 스킬 본체. `install.sh`가 `~/.claude/skills/`로 링크합니다
-  - `SKILL.md` — Claude가 따르는 순서
+- `tools/publish-game/` — publish-game 스킬 본체. `install.sh`가 `~/.codex/skills/`와 `~/.claude/skills/`로 링크합니다
+  - `SKILL.md` — Codex와 Claude가 따르는 순서
   - `scripts/detect.mjs` — 게임 종류 알아내기 (Vite / 정적 HTML / Node 서버)
   - `scripts/publish.mjs` — 빌드 → GitHub → Vercel
   - `scripts/screenshot.mjs` — 화면 사진 찍기 (Playwright + 크롬)

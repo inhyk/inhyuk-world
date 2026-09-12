@@ -1,18 +1,13 @@
 ---
 name: publish-game
-description: 인혁이가 만든 게임을 seonn.dev 포트폴리오 사이트에 올립니다. "게임 올려줘", "이거 사이트에 올려", "배포해줘", "seonn.dev에 올려", "publish game" 등의 요청 시 사용.
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Edit
-  - Glob
-  - AskUserQuestion
+description: 인혁이가 만든 게임을 GitHub와 Vercel에 배포하고 seonn.dev 포트폴리오 사이트에 등록합니다. "게임 올려줘", "이거 사이트에 올려", "배포해줘", "seonn.dev에 올려", "publish game" 같은 요청이나 $publish-game 호출에 사용합니다.
 ---
 
 # publish-game
 
 게임 폴더 하나를 **GitHub 올리기 → Vercel 배포 → 화면 사진 찍기 → seonn.dev에 카드 등록**까지 한 번에 끝냅니다.
+
+Codex에서는 `$publish-game`, Claude Code에서는 `/publish-game`으로 호출합니다.
 
 ## 말투 규칙
 
@@ -38,11 +33,11 @@ vercel whoami                                    # 인혁이 계정이어야 함
 
 인자로 폴더를 받았으면 그걸 쓰고, 없으면 현재 폴더를 씁니다.
 현재 폴더가 게임 폴더가 아닌 것 같으면(`index.html`도 `package.json`도 없음)
-`~/inhyuk/` 안의 폴더 목록을 보여주고 AskUserQuestion으로 고르게 합니다.
+`~/inhyuk/` 안의 폴더 목록을 보여주고 사용자에게 고르게 합니다.
 
 ### 2단계 — game.json 준비
 
-게임 폴더에 `game.json`이 있으면 그대로 씁니다. 없으면 **AskUserQuestion으로 한 번에 물어봐서** 만듭니다.
+게임 폴더에 `game.json`이 있으면 그대로 씁니다. 없으면 **사용자에게 한 번에 물어봐서** 만듭니다.
 질문은 4개까지 한 번에 묶고, 보기(옵션)를 미리 만들어 고르기 쉽게 합니다.
 
 물어볼 것:

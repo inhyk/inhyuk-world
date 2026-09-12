@@ -1,0 +1,25 @@
+{
+  "slug": "orbit-breaker",
+  "title": "ORBIT BREAKER · 오비트 브레이커",
+  "description": "10웨이브와 두 보스에 도전하는 우주 슈팅, 같은 키보드로 2인 협동",
+  "longDescription": "총 10웨이브를 돌파하는 우주 슈팅게임입니다. 5웨이브에서 중간 보스 센티넬을 쓰러뜨린 뒤 계속 전진하고, 10웨이브에서 최종 보스 이클립스에 도전하세요. 시작 화면의 2인 협동을 선택하면 같은 키보드로 1P는 WASD, 2P는 방향키로 함께 싸울 수 있습니다. 체력·무기·노바는 독립적이고 점수는 공유합니다. 한 명이 격추되어도 동료가 다음 웨이브를 시작하면 체력 절반으로 복귀합니다. 초록 아이템으로 트리플 캐논까지 무기를 강화하고, 위험할 때 노바로 탄환과 레이저를 지우세요. 루키·파일럿·에이스 세 난이도, 연속 격추 보너스, 인원·난이도별 최고 기록, 합성 사운드와 모바일 멀티터치를 지원합니다.",
+  "emoji": "🚀",
+  "thumbnail": "/images/games/orbit-breaker-thumb.png",
+  "screenshots": [
+    "/images/games/orbit-breaker-thumb.png",
+    "/images/games/orbit-breaker-1.png",
+    "/images/games/orbit-breaker-coop.png",
+    "/images/games/orbit-breaker-midboss.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Canvas 2D",
+    "Web Audio"
+  ],
+  "category": "슈팅",
+  "playUrl": "https://seonn.dev/play/orbit-breaker",
+  "createdAt": "2026-09",
+  "featured": true,
+  "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/orbit-breaker",
+  "repo": "inhyk/inhyuk-world"
+}

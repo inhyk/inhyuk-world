@@ -10,10 +10,12 @@ ctx.imageSmoothingEnabled = false;
 const audio = new Soundtrack();
 const SAVE_KEY = 'undertale-fan-save', META_KEY = 'undertale-fan-meta';
 const meta = load(META_KEY) || { erased: false, soulless: false, endings: [], sound: false };
-const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+let reduceMotion = motionQuery.matches; R.setReducedMotion(reduceMotion);
+motionQuery.addEventListener('change', e => { reduceMotion = e.matches; R.setReducedMotion(reduceMotion); });
 
 function load(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
-function store(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* 저장 공간 없음 */ } }
+function store(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; } }
 function saveMeta() { store(META_KEY, meta); }
 
 // ---------- 게임 상태 ----------
@@ -44,11 +46,11 @@ function confirmName() {
 function newGame(name) {
   G.player = C.createPlayer(name); if (meta.soulless) G.player.flags.soulless = true; if (name === '프리스크') G.player.flags.hard = true;
   G.world = Wd.createWorld(G.player); localStorage.removeItem(SAVE_KEY);
-  G.mode = 'overworld'; playAreaMusic();
+  G.mode = 'overworld'; G.savedAt = null; playAreaMusic();
   if (G.player.flags.hard) openText(null, ['* 하드 모드가 켜졌다.', '* 탄막이 빠르고 오래 가며, 받는 피해가 크고 보스는 더 튼튼하다. 회복 아이템은 덜 듣는다.']);
 }
 function continueGame() { const save = load(SAVE_KEY); if (!save) return newGame('프리스크'); G.player = save.player; G.world = Wd.restore(save); if (meta.soulless) G.player.flags.soulless = true; G.mode = 'overworld'; playAreaMusic(); }
-function saveGame() { store(SAVE_KEY, Wd.serialize(G.world)); }
+function saveGame() { const saved = store(SAVE_KEY, Wd.serialize(G.world)); G.savedAt = saved ? G.t : null; return saved; }
 function playAreaMusic() { const area = G.world.room.area; audio.play(C.routeFor(G.player, area) === 'genocide' && area !== 'castle' ? 'judgement' : area); }
 
 // ---------- 대화 상자 ----------
@@ -66,9 +68,9 @@ function handleWorldRequest() {
   const w = G.world, r = w.request; if (!r || r.handled) return; r.handled = true;
   const resolve = v => { Wd.resolveRequest(w, v); };
   switch (r.type) {
-    case 'say': openText(r.who, r.lines, () => resolve()); break;
+    case 'say': if (r.discovery) audio.effect('discover'); openText(r.who, r.lines, () => resolve()); break;
     case 'choice': openText(null, [r.prompt], idx => resolve(idx)); G.textbox.choice = { options: r.options, index: 0 }; break;
-    case 'save': audio.effect('save'); openText(null, r.lines, () => resolve()); G.textbox.saveAfter = true; saveGame(); break;
+    case 'save': { const saved = saveGame(); audio.effect(saved ? 'save' : 'cancel'); openText(null, [...r.lines, saved ? '* 여정과 작은 기억들을 저장했다.' : '* 저장하지 못했다. 브라우저 저장 공간을 확인해 주세요.'], () => resolve()); break; }
     case 'battle': startBattle(r.enemies, r, resolve); break;
     case 'shop': openShop(r.shop, () => resolve()); break;
     case 'wait': G.mode = 'wait'; G.wait = { t: r.s, resolve }; break;
@@ -98,7 +100,9 @@ function setupScripted(b, kind) {
   else b.attack = { name: 'scripted', t: 0, duration: 3.2, memo: {}, enemy: b.enemy, speech: '죽어.', def: { duration: 3.2, tick(c) { if (!c.memo.done) { c.memo.done = true; for (let i = 0; i < 18; i++) { const a = i * Math.PI * 2 / 18; c.spawn({ kind: 'pellet', r: 6, x: c.soul.x + Math.cos(a) * 130, y: c.soul.y + Math.sin(a) * 130, ttl: 6, dmg: 99, update(me, cc) { const dx = cc.soul.x - me.x, dy = cc.soul.y - me.y, d = Math.hypot(dx, dy) || 1; if (me.age > 1.4) { me.vx = dx / d * 60; me.vy = dy / d * 60; } if (d < 14) { me.dead = true; me.noHit = true; } } }); } } } } };
 }
 function battleInput() {
-  const b = G.battle; if (!b || b.paused) return;
+  const b = G.battle; if (!b) return;
+  if (menuPressed) { b.paused = !b.paused; audio.pause(b.paused); clearInput(); return; }
+  if (b.paused) return;
   if (b.mode === 'menu') {
     if (dirPressed === 'left') { b.menu = (b.menu + 3) % 4; audio.effect('cancel'); } if (dirPressed === 'right') { b.menu = (b.menu + 1) % 4; audio.effect('cancel'); }
     if (confirmPressed) { const action = ['fight', 'act', 'item', 'mercy'][b.menu]; b.lastAction = action; C.chooseAction(b, action); audio.effect('select'); }
@@ -125,7 +129,8 @@ function finishBattle(b) {
 }
 function saveMetaCheck() { }
 function updateBattle(dt) {
-  const b = G.battle; if (!b) return; G.battleT += dt;
+  const b = G.battle; if (!b) return; if (!b.paused) G.battleT += dt;
+  if (b.paused) return;
   const hpBefore = G.player.hp, modeBefore = b.mode, hitsBefore = b.hits, bulletsBefore = b.bullets.length;
   C.update(b, dt, { left: keys.ArrowLeft || keys.KeyA, right: keys.ArrowRight || keys.KeyD, up: keys.ArrowUp || keys.KeyW, down: keys.ArrowDown || keys.KeyS, slow: keys.ShiftLeft || keys.ShiftRight });
   if (b.hits > hitsBefore) audio.effect('hurt');
@@ -215,9 +220,10 @@ function openMenu() { G.menu = { tab: 0, sub: false, index: 0, message: '' }; G.
 function menuInput() {
   const m = G.menu, p = G.player;
   if (!m.sub) {
-    if (dirPressed === 'up') m.tab = (m.tab + 2) % 3; if (dirPressed === 'down') m.tab = (m.tab + 1) % 3;
-    if (cancelPressed || (confirmPressed && m.tab === 2)) { G.mode = 'overworld'; G.menu = null; audio.effect('cancel'); return; }
+    if (dirPressed === 'up') m.tab = (m.tab + 3) % 4; if (dirPressed === 'down') m.tab = (m.tab + 1) % 4;
+    if (cancelPressed || (confirmPressed && m.tab === 3)) { G.mode = 'overworld'; G.menu = null; audio.effect('cancel'); return; }
     if (confirmPressed && m.tab === 0 && p.items.length) { m.sub = true; m.index = 0; audio.effect('select'); }
+    if (m.tab === 2 && (dirPressed === 'left' || dirPressed === 'right')) { const n = p.journal.entries.length; if (n) { m.journalIndex = ((m.journalIndex || 0) + (dirPressed === 'left' ? -1 : 1) + n) % n; audio.effect('page'); } }
     if (confirmPressed && m.tab === 1) audio.effect('select');
     return;
   }
@@ -284,6 +290,9 @@ function erasedInput() {
 // ---------- 입력 ----------
 const DIR_KEYS = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' };
 addEventListener('keydown', e => {
+  if (G.guideOpen) { if (e.code === 'Escape' || e.code === 'KeyX') { e.preventDefault(); closeGuide(); } else if (e.code === 'Tab') { e.preventDefault(); document.getElementById('modal-close').focus(); } return; }
+  if ((e.code === 'Enter' || e.code === 'Space') && e.target.closest?.('button, a')) return;
+  if ((e.code === 'Escape' || e.code === 'KeyX' && G.battle?.paused) && G.mode === 'battle') { e.preventDefault(); G.battle.paused = !G.battle.paused; audio.pause(G.battle.paused); clearInput(); return; }
   if (e.repeat) { if (DIR_KEYS[e.code] && (G.mode === 'naming' || G.mode === 'shop' || G.mode === 'menu' || G.mode === 'warp' || G.mode === 'bossselect' || G.mode === 'lvselect')) dirPressed = DIR_KEYS[e.code]; return; }
   keys[e.code] = true;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
@@ -294,18 +303,28 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyM') toggleSound();
   if (/^[0-9]$/.test(e.key)) { codeBuffer = (codeBuffer + e.key).slice(-SECRET_CODE.length); if (codeBuffer === SECRET_CODE) { codeBuffer = ''; startSecretBattle(); } else if (codeBuffer.endsWith(LEVEL_CODE)) { codeBuffer = ''; cheatLevelUp(); } }
   if (e.code === 'Minus' || e.code === 'NumpadSubtract') { if (G.mode === 'overworld' && G.world && !G.world.request && !G.world.script) openWarp(); else if (G.mode === 'warp') { G.mode = 'overworld'; G.warp = null; } }
-  if (e.code === 'Escape' && G.mode === 'battle' && G.battle) { G.battle.paused = !G.battle.paused; audio.pause(G.battle.paused); }
   if (!audio.enabled && meta.sound && !G.audioTried) { G.audioTried = true; audio.enable().then(ok => setSoundButton(ok)); }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
-addEventListener('blur', () => { if (G.mode === 'battle' && G.battle && !G.battle.paused) { G.battle.paused = true; G.pausedByBlur = true; audio.pause(true); } for (const k in keys) keys[k] = false; });
-addEventListener('focus', () => { if (G.pausedByBlur && G.battle) { G.battle.paused = false; G.pausedByBlur = false; audio.pause(false); } });
-// 터치
-for (const btn of document.querySelectorAll('.touch-controls button')) {
-  const code = btn.dataset.key; const down = e => { e.preventDefault(); keys[code] = true; if (DIR_KEYS[code]) dirPressed = DIR_KEYS[code]; if (code === 'KeyZ') confirmPressed = true; if (code === 'KeyX') cancelPressed = true; if (code === 'KeyC') menuPressed = true; if (!audio.enabled && meta.sound) audio.enable().then(ok => setSoundButton(ok)); };
-  const up = e => { e.preventDefault(); keys[code] = false; };
-  btn.addEventListener('pointerdown', down); btn.addEventListener('pointerup', up); btn.addEventListener('pointercancel', up); btn.addEventListener('pointerleave', up);
+addEventListener('blur', () => { if (G.mode === 'battle' && G.battle && !G.battle.paused) { G.battle.paused = true; G.pausedByBlur = true; audio.pause(true); } clearInput(); });
+addEventListener('focus', () => { if (G.pausedByBlur && G.battle) { G.battle.paused = false; G.pausedByBlur = false; audio.pause(!!G.guideOpen); } });
+function clearInput() { for (const k in keys) keys[k] = false; confirmPressed = false; cancelPressed = false; menuPressed = false; dirPressed = null; }
+// Pointer capture also releases movement when a finger slides away from a button.
+for (const btn of document.querySelectorAll('.touch-controls button[data-key]')) {
+  const code = btn.dataset.key;
+  const down = e => {
+    e.preventDefault(); if (G.guideOpen) return;
+    if (code === 'KeyX' && G.mode === 'battle' && G.battle.paused) { G.battle.paused = false; audio.pause(false); return; }
+    if (e.pointerId !== undefined) { try { btn.setPointerCapture(e.pointerId); } catch { /* Synthetic test input has no active pointer. */ } }
+    keys[code] = true; btn.classList.add('pressed');
+    if (DIR_KEYS[code]) dirPressed = DIR_KEYS[code];
+    if (code === 'KeyZ') confirmPressed = true; if (code === 'KeyX') cancelPressed = true; if (code === 'KeyC') menuPressed = true;
+    if (!audio.enabled && meta.sound) audio.enable().then(ok => setSoundButton(ok));
+  };
+  const up = e => { e.preventDefault(); keys[code] = false; btn.classList.remove('pressed'); };
+  btn.addEventListener('pointerdown', down); btn.addEventListener('pointerup', up); btn.addEventListener('pointercancel', up); btn.addEventListener('lostpointercapture', up);
 }
+document.getElementById('name-done').addEventListener('click', () => { if (G.mode === 'naming') { clearInput(); confirmName(); canvas.focus({ preventScroll: true }); } });
 function inputOverworld() { return { left: keys.ArrowLeft || keys.KeyA, right: keys.ArrowRight || keys.KeyD, up: keys.ArrowUp || keys.KeyW, down: keys.ArrowDown || keys.KeyS, slow: keys.ShiftLeft || keys.ShiftRight }; }
 
 // ---------- 화면 효과 ----------
@@ -320,10 +339,14 @@ async function toggleSound() { if (audio.enabled) { audio.disable(); meta.sound 
 soundButton.addEventListener('click', toggleSound);
 document.getElementById('fullscreen-button').addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen(); else stage.requestFullscreen?.(); });
 const modal = document.getElementById('modal');
+let guideFocus = null;
+function closeGuide() { modal.hidden = true; G.guideOpen = false; clearInput(); audio.pause(!!G.battle?.paused); (guideFocus?.isConnected ? guideFocus : canvas).focus({ preventScroll: true }); }
 function showGuide() {
-  document.getElementById('modal-content').innerHTML = `<p>언더테일 팬 게임입니다. 지하 세계에 떨어진 인간이 되어 폐허, 설원, 폭포, 열지대를 지나 왕의 성까지 갑니다.</p><ul><li><b>이동</b> 방향키 / WASD · <b>확인·대화</b> Z / Enter · <b>취소</b> X · <b>메뉴</b> C</li><li><b>전투</b> 공격(타이밍 바 중앙에서 Z), 행동(대화로 몬스터를 달래기), 아이템, 자비(이름이 <span style="color:#ffe000">노란색</span>이면 살려줄 수 있음)</li><li><b>영혼</b> 빨강: 자유 이동 · 파랑: 중력, ↑로 점프 · 초록: 방향키로 방패를 돌려 화살 막기</li><li><b>파란 탄막</b>은 멈추면 안 맞고, <b>주황 탄막</b>은 움직이면 안 맞습니다.</li><li><b>세이브</b> 반짝이는 별에서 Z. 죽으면 마지막 세이브로 돌아갑니다.</li></ul><p>아무도 죽이지 않으면 <b>불살</b>, 지역마다 아무도 오지 않을 때까지 죽이면 <b>몰살</b>, 그 사이는 <b>중립</b> 결말입니다.</p>`;
+  if (G.guideOpen) return;
+  guideFocus = document.activeElement; G.guideOpen = true; clearInput(); audio.pause(true);
+  document.getElementById('modal-content').innerHTML = `<p>언더테일 팬 게임입니다. 지하 세계에 떨어진 인간이 되어 폐허, 설원, 폭포, 열지대를 지나 왕의 성까지 갑니다.</p><ul><li><b>이동</b> 방향키 / WASD · <b>확인·대화</b> Z / Enter · <b>취소</b> X · <b>메뉴</b> C</li><li><b>전투</b> 공격(타이밍 바 중앙에서 Z), 행동(대화로 몬스터를 달래기), 아이템, 자비(이름이 <span style="color:#ffe000">노란색</span>이면 살려줄 수 있음)</li><li><b>영혼</b> 빨강: 자유 이동 · 파랑: 중력, ↑로 점프 · 초록: 방향키로 방패를 돌려 화살 막기</li><li><b>파란 탄막</b>은 멈추면 안 맞고, <b>주황 탄막</b>은 움직이면 안 맞습니다.</li><li><b>탐험 수첩</b> 빛나는 물건 앞에서 Z로 조사. C → 탐험 수첩에서 좌우로 기억을 넘겨 보세요.</li><li><b>세이브</b> 반짝이는 별에서 Z. 죽으면 마지막 세이브로 돌아갑니다.</li></ul><p>아무도 죽이지 않으면 <b>불살</b>, 지역마다 아무도 오지 않을 때까지 죽이면 <b>몰살</b>, 그 사이는 <b>중립</b> 결말입니다.</p>`;
   document.getElementById('modal-actions').innerHTML = '<button class="primary" id="modal-close">알겠어</button>';
-  modal.hidden = false; document.getElementById('modal-close').addEventListener('click', () => { modal.hidden = true; }); document.getElementById('modal-close').focus();
+  modal.hidden = false; document.getElementById('modal-close').addEventListener('click', closeGuide); document.getElementById('modal-close').focus();
 }
 document.getElementById('help-button').addEventListener('click', showGuide);
 document.getElementById('guide-link').addEventListener('click', showGuide);
@@ -358,7 +381,9 @@ function textboxInput() {
 // ---------- 메인 루프 ----------
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now; G.t += dt;
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (G.guideOpen) { clearInput(); requestAnimationFrame(frame); return; }
+  G.t += dt;
   // 입력 처리
   switch (G.mode) {
     case 'title': titleInput(); break;
@@ -379,8 +404,9 @@ function frame(now) {
   }
   confirmPressed = false; cancelPressed = false; menuPressed = false; dirPressed = null;
   // 업데이트
-  if (G.mode === 'overworld') { Wd.update(G.world, dt, inputOverworld()); if (G.world.request) handleWorldRequest(); }
-  if (G.mode === 'textbox' || G.mode === 'titletext') { const tb = G.textbox; if (tb) { const before = Math.floor(tb.shown); tb.shown = Math.min(tb.lines[tb.index].length, tb.shown + dt * (keys.KeyX ? 90 : 28)); if (Math.floor(tb.shown) !== before && Math.floor(tb.shown) % 2 === 0) audio.effect('text'); } }
+  if (G.world && ['textbox', 'menu', 'warp', 'bossselect', 'lvselect', 'shop'].includes(G.mode)) Wd.updatePresentation(G.world, dt);
+  if (G.mode === 'overworld') { const room = G.world.room, step = G.world.stepCount; Wd.update(G.world, dt, inputOverworld()); if (G.world.room !== room) playAreaMusic(); if (G.world.stepCount !== step) { const w = G.world; audio.footstep(w.room.area, w.room.tiles[Math.floor((w.y + 8) / 32)]?.[Math.floor(w.x / 32)], w.stepCount); } if (G.world.request) handleWorldRequest(); }
+  if (G.mode === 'textbox' || G.mode === 'titletext') { const tb = G.textbox; if (tb) { const before = Math.floor(tb.shown); tb.shown = Math.min(tb.lines[tb.index].length, tb.shown + dt * (keys.KeyX ? 90 : 28)); if (Math.floor(tb.shown) !== before && Math.floor(tb.shown) % 2 === 0) audio.voice(tb.who, Math.floor(tb.shown), tb.lines[tb.index][Math.floor(tb.shown) - 1]); } }
   if (G.mode === 'wait') { G.wait.t -= dt; if (G.world) Wd.update(G.world, dt, {}); if (G.wait.t <= 0) { const r = G.wait.resolve; G.wait = null; G.mode = 'overworld'; r(); if (G.world.request) handleWorldRequest(); } }
   if (G.mode === 'battle') updateBattle(dt);
   if (G.mode === 'gameover') G.gameover.t += dt;
@@ -388,7 +414,7 @@ function frame(now) {
   if (G.mode === 'erased') updateErased(dt);
   if (G.mode === 'battle' && G.battle && G.battle.mode === 'text' && G.battle.text) { /* 타자 효과는 core가 처리 */ }
   // 렌더
-  render();
+  render(); updateCompanion();
   requestAnimationFrame(frame);
 }
 function render() {
@@ -398,21 +424,36 @@ function render() {
     case 'naming': R.drawNaming(ctx, G.t, G.naming); break;
     case 'confirmName': R.drawConfirmName(ctx, G.t, G.confirm); break;
     case 'overworld': case 'wait': R.drawOverworld(ctx, G.world, G.t, { chara: G.player.flags.soulless && C.routeFor(G.player, G.world.room.area) === 'genocide' }); break;
-    case 'textbox': R.drawOverworld(ctx, G.world, G.t, {}); R.drawTextbox(ctx, G.textbox, G.t, { top: G.textbox.top }); break;
+    case 'textbox': R.drawOverworld(ctx, G.world, G.t, { quiet: true }); R.drawTextbox(ctx, G.textbox, G.t, { top: G.textbox.top }); break;
     case 'battle': R.drawBattle(ctx, G.battle, G.t); break;
     case 'shop': R.drawShop(ctx, G.t, G.shop, G.player); break;
-    case 'menu': R.drawOverworld(ctx, G.world, G.t, {}); R.drawMenu(ctx, G.t, G.menu, G.player, G.world); break;
-    case 'warp': R.drawOverworld(ctx, G.world, G.t, {}); R.drawWarp(ctx, G.warp, Wd.ROOM_NAMES); break;
-    case 'bossselect': R.drawOverworld(ctx, G.world, G.t, {}); R.drawBossSelect(ctx, G.t, G.bossSelect, SECRET_BOSSES); break;
-    case 'lvselect': R.drawOverworld(ctx, G.world, G.t, {}); R.drawLevelSelect(ctx, G.lvSelect, LEVEL_STEPS, G.player); break;
+    case 'menu': R.drawOverworld(ctx, G.world, G.t, { quiet: true }); R.drawMenu(ctx, G.t, G.menu, G.player, G.world); break;
+    case 'warp': R.drawOverworld(ctx, G.world, G.t, { quiet: true }); R.drawWarp(ctx, G.warp, Wd.ROOM_NAMES); break;
+    case 'bossselect': R.drawOverworld(ctx, G.world, G.t, { quiet: true }); R.drawBossSelect(ctx, G.t, G.bossSelect, SECRET_BOSSES); break;
+    case 'lvselect': R.drawOverworld(ctx, G.world, G.t, { quiet: true }); R.drawLevelSelect(ctx, G.lvSelect, LEVEL_STEPS, G.player); break;
     case 'gameover': R.drawGameOver(ctx, G.gameover.t, G.gameover); break;
     case 'ending': R.drawEnding(ctx, G.t, G.ending); break;
     case 'erased': { const s = G.erased; R.clear(ctx, '#000'); if (s.phase !== 'dark') { R.drawEnding(ctx, G.t, { kind: 'genocide', phase: 'chara', visible: s.visible, choice: s.choice }); } break; }
   }
 }
 
+// Readable companion text mirrors context without covering the play area.
+const locationLabel = document.getElementById('location-name'), memoryCount = document.getElementById('detail-count'), contextHint = document.getElementById('context-hint'), nameDone = document.getElementById('name-done');
+let companionKey = '';
+function updateCompanion() {
+  const n = G.player?.journal?.entries.length || 0, saved = G.savedAt != null && G.t - G.savedAt < 5;
+  const key = [G.mode, G.world?.room.id, n, saved, G.battle?.soul.mode, G.battle?.mode, G.battle?.paused].join('|'); if (key === companionKey) return; companionKey = key;
+  locationLabel.textContent = G.world && !['title', 'naming', 'confirmName', 'titletext', 'erased'].includes(G.mode) ? Wd.ROOM_NAMES[G.world.room.id] : '지하 세계로 향하는 작은 여정';
+  memoryCount.textContent = saved ? '✦ 여정 저장 완료' : '작은 기억 ' + String(n).padStart(2, '0') + ' / 22';
+  nameDone.hidden = G.mode !== 'naming';
+  document.querySelector('.touch-menu small').textContent = G.mode === 'battle' ? G.battle.paused ? '계속' : '휴식' : '메뉴';
+  const hints = { title: '당신의 선택을 기다리고 있습니다.', naming: 'Z로 글자를 고르고, 입력 완료를 눌러 주세요.', confirmName: '이 이름으로 여정을 시작할까요?', overworld: '작은 빛을 발견하면, 멈춰서 살펴보세요.  Z 조사 · C 수첩', textbox: 'Z 다음 대사 · X 문장 바로 보기', menu: '↑ ↓ 메뉴 선택 · Z 확인 · X 돌아가기', shop: '↑ ↓ 물건 선택 · Z 구매 · X 나가기', gameover: '괜찮아요. 결의를 잃지 마세요.', ending: '당신이 지나온 길은, 여기에 남습니다.' };
+  contextHint.textContent = G.mode === 'battle' ? G.battle.mode === 'dodge' ? ({ red: '빨간 영혼 · 방향키로 피하기 · Shift 정밀 이동', blue: '파란 영혼 · 좌우 이동 · ↑ 점프', green: '초록 영혼 · 방향키로 방패 돌리기' }[G.battle.soul.mode]) + ' · ESC 잠시 쉬기' : '행동을 고르세요. 노란 이름의 몬스터에게 자비를 베풀 수 있어요.' : hints[G.mode] || '서두르지 않아도 괜찮아요.';
+}
+
 // ---------- 자동화용 인터페이스 ----------
 window.render_game_to_text = () => JSON.stringify({ mode: G.mode, player: G.player ? { name: G.player.name, hp: G.player.hp, maxHp: G.player.maxHp, lv: G.player.lv, exp: G.player.exp, gold: G.player.gold, kills: G.player.kills, items: G.player.items, route: C.routeFor(G.player, G.world?.room.area), hard: !!G.player.flags.hard } : null,
+  journal: G.player?.journal?.entries.length || 0, guideOpen: !!G.guideOpen,
   world: G.world ? { room: G.world.room.id, x: Math.round(G.world.x), y: Math.round(G.world.y), request: G.world.request?.type || null, script: G.world.script?.name || null } : null,
   textbox: G.textbox ? { who: G.textbox.who, line: G.textbox.lines[G.textbox.index], choice: G.textbox.choice?.options || null } : null,
   battle: G.battle ? C.summarize(G.battle) : null, ending: G.ending ? { kind: G.ending.kind, done: G.ending.done, phase: G.ending.phase || null, choice: !!G.ending.choice } : null, erasedChoice: !!G.erased?.choice, erased: meta.erased, soulless: meta.soulless, endings: meta.endings });

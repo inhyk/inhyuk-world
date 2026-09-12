@@ -63,7 +63,7 @@ export function createBattle(player, enemyIds, opts = {}) {
     mode: 'text', menu: 0, submenu: null, sub: 0, target: 0, text: null, turn: 0, playerTurns: 0,
     soul: { x: BOX_CENTER.x, y: BOX_CENTER.y, mode: 'red', vx: 0, vy: 0, facing: 'up', grounded: false, invincible: 0, moving: false, gravity: 'down', lastX: 0, lastY: 0 },
     box: { ...BOX_CENTER, ...BOX_DEFAULT, tw: BOX_DEFAULT.w, th: BOX_DEFAULT.h, tx: BOX_CENTER.x, ty: BOX_CENTER.y },
-    bullets: [], effects: [], attack: null, bar: null, pending: null, ended: null, result: null, log: [], hits: 0, karma: 0, karmaTime: 0,
+    bullets: [], effects: [], trail: [], trailTime: 0, roundNotice: null, attack: null, bar: null, pending: null, ended: null, result: null, log: [], hits: 0, karma: 0, karmaTime: 0,
     lastDamage: null, flavorIndex: 0, apronTurns: 0, time: 0, sansOffer: false, sansAsleep: false, sansSpared: false, endLine: null,
   };
   b.enemy = b.enemies[0];
@@ -173,7 +173,7 @@ function transform(b, e) {
 function killEnemy(b, e) {
   const d = e.def;
   if (TRANSFORMS[e.id] && e.hpBefore === e.maxHp && !e.transformed) { transform(b, e); return; }
-  e.dead = true; e.hp = 0; recordKill(b.player, e.id);
+  e.dead = true; e.deathT = 0; e.hp = 0; recordKill(b.player, e.id);
   const p = b.player, gotExp = d.exp, gotGold = d.gold; const leveled = gainExp(p, gotExp); p.gold += gotGold;
   b.log.push({ kill: e.id });
   const lines = [];
@@ -348,6 +348,13 @@ export function spawn(b, bullet) { b.bullets.push({ age: 0, ttl: 12, color: 'whi
 // ---------- 프레임 업데이트 ----------
 export function update(b, dt, input = {}) {
   if (b.paused) return; b.time += dt;
+  for (const e of b.enemies) {
+    if (e.dead) e.deathT = (e.deathT || 0) + dt;
+    if (e.spared || e.fled) e.exitT = (e.exitT || 0) + dt;
+  }
+  for (const point of b.trail) point.t += dt;
+  b.trail = b.trail.filter(point => point.t < .24);
+  if (b.roundNotice) { b.roundNotice.t += dt; if (b.roundNotice.t > 1.8) b.roundNotice = null; }
   if (b.text && !b.text.done && b.mode === 'text') { b.text.shown = Math.min(b.text.lines[b.text.index].length, b.text.shown + dt * 32); }
   for (const fx of b.effects) fx.t += dt; b.effects = b.effects.filter(fx => fx.t < 1);
   if (b.lastDamage) { b.lastDamage.t += dt; }
@@ -360,6 +367,11 @@ export function update(b, dt, input = {}) {
   const a = b.attack; a.t += dt; const ctx = ctxFor(b); ctx.dt = dt; ctx.t = a.t;
   if (a.def.tick && a.t < a.duration) a.def.tick(ctx);
   moveSoul(b, dt, input);
+  b.trailTime += dt;
+  if (b.trailTime >= .025 && b.soul.moving) {
+    b.trailTime = 0; b.trail.push({ x: b.soul.x, y: b.soul.y, mode: b.soul.mode, t: 0 });
+    if (b.trail.length > 10) b.trail.shift();
+  }
   // 탄막 이동
   for (const bl of b.bullets) {
     bl.age += dt; if (bl.update) bl.update(bl, ctx);
@@ -374,6 +386,7 @@ export function update(b, dt, input = {}) {
 }
 export function finishRound(b) {
   const a = b.attack, e = a.enemy, d = e.def; b.bullets = []; b.attack = null; b.soul.mode = 'red';
+  b.trail = []; b.roundNotice = { t: 0, clean: b.roundHits === 0 };
   const bx = b.box; bx.tw = BOX_DEFAULT.w; bx.th = BOX_DEFAULT.h; bx.tx = BOX_CENTER.x; bx.ty = BOX_CENTER.y; bx.w = bx.tw; bx.h = bx.th; bx.x = bx.tx; bx.y = bx.ty;
   b.soul.x = bx.x; b.soul.y = bx.y; b.flavorIndex++; for (const en of alive(b)) en.turnsSurvived++;
   if (d.ratingsGoal) { e.ratings += b.roundHits === 0 ? 400 : 100; if (e.ratings >= d.ratingsGoal) e.spareable = true; }
