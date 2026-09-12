@@ -138,7 +138,7 @@ export function drawBattle(ctx, b, t) {
   else if (b.mode === 'submenu') drawSubmenu(ctx, b);
   else if (b.mode === 'fightbar' || b.mode === 'strikeanim') drawFightBar(ctx, b);
   // 하단 상태
-  const uy = 400; text(ctx, p.name, 36, uy, { size: 16, bold: true }); text(ctx, `LV ${p.lv}`, 150, uy, { size: 16, bold: true });
+  const uy = 400; text(ctx, p.name, 36, uy, { size: 16, bold: true }); text(ctx, `LV ${p.lv}`, 150, uy, { size: 16, bold: true }); if (b.hard) text(ctx, 'HARD', 200, uy + 3, { size: 11, bold: true, color: '#ff5a5a' });
   text(ctx, 'HP', 246, uy + 3, { size: 12, bold: true });
   const hbw = Math.max(40, p.maxHp * 1.2), hx = 272; ctx.fillStyle = '#c00'; ctx.fillRect(hx, uy, hbw, 20); ctx.fillStyle = b.karma > 0 ? '#ffe000' : '#ffe000'; ctx.fillRect(hx, uy, hbw * Math.max(0, p.hp / p.maxHp), 20);
   if (b.karma > 0) { ctx.fillStyle = '#b26bff'; ctx.fillRect(hx + hbw * Math.max(0, (p.hp - b.karma) / p.maxHp), uy, hbw * Math.min(b.karma, p.hp) / p.maxHp, 20); text(ctx, 'KR', hx + hbw + 6, uy + 3, { size: 12, color: '#b26bff', bold: true }); }

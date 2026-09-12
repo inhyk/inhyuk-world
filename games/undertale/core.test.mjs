@@ -122,3 +122,9 @@ test('언다인과 메타톤을 한 방에 쓰러뜨리면 언다잉·NEO로 변
   // 여러 번에 걸쳐 쓰러뜨리면 그대로 죽는다
   const q = C.createPlayer('q'); q.lv = 8; q.weapon = 'pan'; q.maxHp = 48; q.hp = 48; const b3 = open(['undyne'], q); let m = 0; while (!b3.ended && m++ < 80) fightOnce(b3); assert.equal(b3.ended, 'kill'); assert.equal(q.bossFate.undyne, 'killed');
 });
+test('하드 모드: 적이 성난 상태로 시작하고 HP가 늘며 피해가 커지고 회복이 줄어든다', () => {
+  const p = C.createPlayer('프리스크'); p.flags.hard = true; const b = open(['froggit'], p); assert.equal(b.hard, true); assert.equal(b.enemy.angry, true); assert.equal(b.enemy.maxHp, 38);
+  C.chooseAction(b, 'act'); C.chooseSub(b, 0); C.chooseSub(b, 0); skip(b); const hp = p.hp; C.hurt(b, 8); const hardDmg = hp - p.hp;
+  const q = C.createPlayer('q'); const b2 = open(['froggit'], q); assert.equal(b2.enemy.maxHp, 30); C.chooseAction(b2, 'act'); C.chooseSub(b2, 0); C.chooseSub(b2, 0); skip(b2); const hp2 = q.hp; C.hurt(b2, 8); assert.ok(hardDmg > hp2 - q.hp);
+  p.hp = 1; p.items = ['candy']; b.mode = 'menu'; C.chooseAction(b, 'item'); C.chooseSub(b, 0); assert.equal(p.hp, 8);
+});

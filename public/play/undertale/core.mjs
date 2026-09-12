@@ -57,8 +57,9 @@ export function createBattle(player, enemyIds, opts = {}) {
   const rng = mulberry32(opts.seed ?? Math.floor(Math.random() * 1e9));
   const b = {
     player, rng, area: opts.area || MONSTERS[enemyIds[0]].area, route: opts.route || routeFor(player, opts.area || MONSTERS[enemyIds[0]].area),
-    enemies: enemyIds.map(id => ({ id, def: MONSTERS[id], hp: MONSTERS[id].hp, maxHp: MONSTERS[id].hp, stage: 0, acted: {}, spareable: !!MONSTERS[id].dummy,
-      dead: false, spared: false, fled: false, angry: false, mercyCount: 0, fleeCount: 0, ratings: 0, soulHelp: 0, saved: [], dodges: 0, turnsSurvived: 0 })),
+    hard: !!player.flags.hard,
+    enemies: enemyIds.map(id => { const hp = player.flags.hard && !MONSTERS[id].immortal && !MONSTERS[id].karma ? Math.round(MONSTERS[id].hp * 1.25) : MONSTERS[id].hp; return { id, def: MONSTERS[id], hp, maxHp: hp, stage: 0, acted: {}, spareable: !!MONSTERS[id].dummy,
+      dead: false, spared: false, fled: false, angry: !!player.flags.hard, mercyCount: 0, fleeCount: 0, ratings: 0, soulHelp: 0, saved: [], dodges: 0, turnsSurvived: 0 }; }),
     mode: 'text', menu: 0, submenu: null, sub: 0, target: 0, text: null, turn: 0, playerTurns: 0,
     soul: { x: BOX_CENTER.x, y: BOX_CENTER.y, mode: 'red', vx: 0, vy: 0, facing: 'up', grounded: false, invincible: 0, moving: false, gravity: 'down', lastX: 0, lastY: 0 },
     box: { ...BOX_CENTER, ...BOX_DEFAULT, tw: BOX_DEFAULT.w, th: BOX_DEFAULT.h, tx: BOX_CENTER.x, ty: BOX_CENTER.y },
@@ -165,7 +166,7 @@ const TRANSFORMS = { undyne: { into: 'undying', lines: ['* 언다인이 먼지�
   mettaton: { into: 'neo', lines: ['* 메타톤의 전원이 꺼지려는 순간… 알피스의 목소리가 들린다.', '* 메타톤: "달링… 아직 쇼는 끝나지 않았어."', '* 메타톤 NEO로 변형했다!'] } };
 function transform(b, e) {
   const t = TRANSFORMS[e.id]; const def = MONSTERS[t.into];
-  e.id = t.into; e.def = def; e.hp = def.hp; e.maxHp = def.hp; e.dead = false; e.turnsSurvived = 0; e.spareable = false; e.ratings = 0; e.acted = {}; e.transformed = true;
+  e.id = t.into; e.def = def; e.hp = b.hard ? Math.round(def.hp * 1.25) : def.hp; e.maxHp = e.hp; e.dead = false; e.turnsSurvived = 0; e.spareable = false; e.ratings = 0; e.acted = {}; e.transformed = true;
   b.enemy = e; b.lastDamage = null; b.flavorIndex = 0;
   say(b, t.lines, () => enemyTurn(b));
 }
@@ -234,7 +235,7 @@ function doSave(b, index) {
 export function consumeItem(b, index) {
   const p = b.player, id = p.items[index]; if (!id) return;
   const it = ITEMS[id];
-  if (it.heal) { p.items.splice(index, 1); const h = heal(p, it.heal); const full = p.hp === p.maxHp; endPlayerTurn(b, [`* ${it.name}을(를) 먹었다.`, full ? '* HP가 가득 찼다.' : `* HP를 ${h} 회복했다.`]); }
+  if (it.heal) { p.items.splice(index, 1); const h = heal(p, p.flags.hard ? Math.max(1, Math.round(it.heal * .7)) : it.heal); const full = p.hp === p.maxHp; endPlayerTurn(b, [`* ${it.name}을(를) 먹었다.`, full ? '* HP가 가득 찼다.' : `* HP를 ${h} 회복했다.`]); }
   else if (it.weapon !== undefined) { const old = p.weapon; p.weapon = id; p.items.splice(index, 1); if (old) p.items.push(old); endPlayerTurn(b, `* ${it.name}을(를) 장착했다.`); }
   else if (it.armor !== undefined) { const old = p.armor; p.armor = id; p.items.splice(index, 1); if (old) p.items.push(old); endPlayerTurn(b, `* ${it.name}을(를) 장착했다.`); }
 }
@@ -424,7 +425,7 @@ function collide(b) {
 export function hurt(b, at, bullet = {}) {
   const p = b.player, s = b.soul;
   // 원작처럼 방어력이 피해를 조금 줄인다. LV1 기준 토리엘·파피루스 5, 프로깃 2.
-  let dmg = Math.max(1, Math.round(at * .7 * (bullet.mult || 1) - Math.floor(defenseStat(p) / 5)));
+  let dmg = Math.max(1, Math.round(at * .7 * (bullet.mult || 1) * (p.flags.hard ? 1.4 : 1) - Math.floor(defenseStat(p) / 5)));
   p.hp = Math.max(0, p.hp - dmg); s.invincible = bullet.iframes || .8; b.hits++; b.roundHits++;
   if (b.attack?.enemy.def.karma) b.karma = Math.min(b.karma + 6, 20);
   b.effects.push({ kind: 'hurt', x: s.x, y: s.y, t: 0, dmg });
@@ -433,5 +434,5 @@ export function hurt(b, at, bullet = {}) {
 
 // 자동화/디버그용 상태 요약
 export function summarize(b) {
-  return { mode: b.mode, turn: b.turn, hp: b.player.hp, maxHp: b.player.maxHp, lv: b.player.lv, enemy: b.enemy.id, enemyHp: b.enemy.hp, soul: { x: Math.round(b.soul.x), y: Math.round(b.soul.y), mode: b.soul.mode }, bullets: b.bullets.length, ended: b.ended, route: b.route, text: b.text ? b.text.lines[b.text.index] : null, attack: b.attack?.name || null };
+  return { mode: b.mode, turn: b.turn, hp: b.player.hp, maxHp: b.player.maxHp, lv: b.player.lv, enemy: b.enemy.id, enemyHp: b.enemy.hp, soul: { x: Math.round(b.soul.x), y: Math.round(b.soul.y), mode: b.soul.mode }, bullets: b.bullets.length, ended: b.ended, route: b.route, hard: b.hard, text: b.text ? b.text.lines[b.text.index] : null, attack: b.attack?.name || null };
 }

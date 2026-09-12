@@ -24,7 +24,7 @@ const keys = {}; let confirmPressed = false, cancelPressed = false, menuPressed 
 function titleState() {
   const save = load(SAVE_KEY);
   const options = [];
-  if (save) options.push({ id: 'continue', label: '계속하기', sub: `${save.player.name} · LV ${save.player.lv} · ${AREAS[Wd.ROOMS[save.room]?.area || 'ruins'].name}` });
+  if (save) options.push({ id: 'continue', label: '계속하기', sub: `${save.player.name} · LV ${save.player.lv} · ${AREAS[Wd.ROOMS[save.room]?.area || 'ruins'].name}${save.player.flags?.hard ? ' · HARD' : ''}` });
   options.push({ id: 'new', label: '새로 시작', sub: save ? '기존 세이브가 지워집니다' : '' });
   options.push({ id: 'guide', label: '조작법' });
   return { options, index: 0, save };
@@ -33,7 +33,7 @@ function gotoTitle() { G.mode = 'title'; G.title = titleState(); audio.play('tit
 
 // ---------- 이름 짓기 ----------
 const KEY_ROWS = ['가나다라마바사아자차카타파하'.split(''), 'ABCDEFGHIJKLMN'.split(''), 'OPQRSTUVWXYZ'.split(''), '프리스크차라토리엘샌즈'.split('')];
-const NAME_COMMENTS = { '프리스크': '진짜 이름은 나중에 알게 된다. 이 이름인가?', '차라': '…진짜 이름이다.', '샌즈': '안 돼요. 너무 게을러서.', '파피루스': '난 이 이름을 좋아한다! 하지만 안 된다.', '토리엘': '아니, 나의 아이. 이 이름은 안 되겠구나.', '플라위': '그 이름 마음에 든다. 진짜야.', '아스고어': '이건 좀 이상하지 않니?', '아스리엘': '…', '언다인': '이 이름은 근위대장 거야!', '알피스': '어… 어… 이 이름은 안 돼. 아마도.', '메타톤': 'OH YES!!! …그래도 안 돼.' };
+const NAME_COMMENTS = { '프리스크': '경고: 이 이름은 하드 모드를 켠다. 그래도 이 이름인가?', '차라': '…진짜 이름이다.', '샌즈': '안 돼요. 너무 게을러서.', '파피루스': '난 이 이름을 좋아한다! 하지만 안 된다.', '토리엘': '아니, 나의 아이. 이 이름은 안 되겠구나.', '플라위': '그 이름 마음에 든다. 진짜야.', '아스고어': '이건 좀 이상하지 않니?', '아스리엘': '…', '언다인': '이 이름은 근위대장 거야!', '알피스': '어… 어… 이 이름은 안 돼. 아마도.', '메타톤': 'OH YES!!! …그래도 안 돼.' };
 const FORBIDDEN = ['샌즈', '파피루스', '토리엘', '아스고어', '언다인', '알피스', '메타톤'];
 function startNaming() { G.mode = 'naming'; G.naming = { name: '', row: 0, col: 0, keys: KEY_ROWS, message: '' }; }
 function confirmName() {
@@ -42,9 +42,10 @@ function confirmName() {
   G.mode = 'confirmName'; G.confirm = { name, comment, index: 1, forbidden: FORBIDDEN.includes(name) };
 }
 function newGame(name) {
-  G.player = C.createPlayer(name); if (meta.soulless) G.player.flags.soulless = true;
+  G.player = C.createPlayer(name); if (meta.soulless) G.player.flags.soulless = true; if (name === '프리스크') G.player.flags.hard = true;
   G.world = Wd.createWorld(G.player); localStorage.removeItem(SAVE_KEY);
   G.mode = 'overworld'; playAreaMusic();
+  if (G.player.flags.hard) openText(null, ['* 하드 모드가 켜졌다.', '* 탄막이 빠르고 오래 가며, 받는 피해가 크고 보스는 더 튼튼하다. 회복 아이템은 덜 듣는다.']);
 }
 function continueGame() { const save = load(SAVE_KEY); if (!save) return newGame('프리스크'); G.player = save.player; G.world = Wd.restore(save); if (meta.soulless) G.player.flags.soulless = true; G.mode = 'overworld'; playAreaMusic(); }
 function saveGame() { store(SAVE_KEY, Wd.serialize(G.world)); }
@@ -411,7 +412,7 @@ function render() {
 }
 
 // ---------- 자동화용 인터페이스 ----------
-window.render_game_to_text = () => JSON.stringify({ mode: G.mode, player: G.player ? { name: G.player.name, hp: G.player.hp, maxHp: G.player.maxHp, lv: G.player.lv, exp: G.player.exp, gold: G.player.gold, kills: G.player.kills, items: G.player.items, route: C.routeFor(G.player, G.world?.room.area) } : null,
+window.render_game_to_text = () => JSON.stringify({ mode: G.mode, player: G.player ? { name: G.player.name, hp: G.player.hp, maxHp: G.player.maxHp, lv: G.player.lv, exp: G.player.exp, gold: G.player.gold, kills: G.player.kills, items: G.player.items, route: C.routeFor(G.player, G.world?.room.area), hard: !!G.player.flags.hard } : null,
   world: G.world ? { room: G.world.room.id, x: Math.round(G.world.x), y: Math.round(G.world.y), request: G.world.request?.type || null, script: G.world.script?.name || null } : null,
   textbox: G.textbox ? { who: G.textbox.who, line: G.textbox.lines[G.textbox.index], choice: G.textbox.choice?.options || null } : null,
   battle: G.battle ? C.summarize(G.battle) : null, ending: G.ending ? { kind: G.ending.kind, done: G.ending.done, phase: G.ending.phase || null, choice: !!G.ending.choice } : null, erasedChoice: !!G.erased?.choice, erased: meta.erased, soulless: meta.soulless, endings: meta.endings });
