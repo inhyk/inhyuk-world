@@ -26,11 +26,90 @@ const friskLeft = [
   ['......hhhhhhhh......', '.....hhhhhhhhhh.....', '....hhhhhhhhhhhh....', '....hhhhhhhhhhhh....', '...hhhhhhhhhhhhhh...', '...hhhhhhhhhhhhhh...', '...hhhhhhhhhhhhhh...', '...sssshhhhhhhhhh...', '..ssssshhhhhhhhhh...', '..skksshhhhhhhhhh...', '..ssssshhhhhhhhhh...', '..sssshhhhhhhhhhhh..', '..sksshhhhhhhhhhhh..', '....ssshhhhhhhh.....', '......bbbbbbbb......', '.....bbbbbbbbbb.....', '.....bbbbbbbbbb.....', '.....bbbbbbbbbb.....', '.....mmmmmmmmmm.....', '.....bbbbbbbbbb.....', '.....bbbbbbbbbb.....', '.....mmmmmmmmmm.....', '.....bbbbbbbbbb.....', '.....bbsssbbbbb.....', '......pppppppp......', '......pppppppp......', '......pppppppp......', '.......ssssss.......', '.....ooooooooo......', '.....ooooooooo......'],
   ['......hhhhhhhh......', '.....hhhhhhhhhh.....', '....hhhhhhhhhhhh....', '....hhhhhhhhhhhh....', '...hhhhhhhhhhhhhh...', '...hhhhhhhhhhhhhh...', '...hhhhhhhhhhhhhh...', '...sssshhhhhhhhhh...', '..ssssshhhhhhhhhh...', '..skksshhhhhhhhhh...', '..ssssshhhhhhhhhh...', '..sssshhhhhhhhhhhh..', '..sksshhhhhhhhhhhh..', '....ssshhhhhhhh.....', '......bbbbbbbb......', '.....bbbbbbbbbb.....', '.....bbbbbbbbbb.....', '.....bbbbbbbbbb.....', '.....mmmmmmmmmm.....', '.....bbbbbbbbbb.....', '.....bbbbbbbbbb.....', '.....mmmmmmmmmm.....', '.....bbbbbbbbbb.....', '.....bsssbbbbbb.....', '......pppppppp......', '......pppppppp......', '......pppp.pppp.....', '......ssss..ssss....', '.....oooo...ooooo...', '.....oooo...ooooo...']
 ];
-const frisk = rows => def(rows, FRISK);
+// ---------- 고해상도 정제: 20x30 밑그림 → 40x60 · 외곽선, 명암, 하이라이트, 앞머리 결, 옷 주름 ----------
+// 밑그림은 재질 글자(h 머리, s 피부, b 셔츠, m 줄무늬, p 반바지, o 신발, k 눈·입)만 담고,
+// refine()이 2배로 키우면서 재질마다 4단계 톤(기본·그늘·밝음·외곽선)을 자동으로 입힌다.
+const FRISK_TONES = {
+  h: ['#5a3a22', '#3f2716', '#7d5637', '#241408'],
+  s: ['#f4d494', '#d8ae6c', '#fce8b8', '#7d5030'],
+  b: ['#4f66dc', '#3647aa', '#7a8cee', '#1f2a6e'],
+  m: ['#d84fc4', '#a2378f', '#ec82d8', '#5e1f55'],
+  p: ['#55402e', '#3a2a1e', '#705744', '#1c1109'],
+  o: ['#2b1c13', '#170e08', '#4a3527', '#0a0504'],
+};
+const CHARA_TONES = { ...FRISK_TONES, k: '#5a1418', r: '#f28c9a',
+  s: ['#ffd9dc', '#e8aeb4', '#fff0f0', '#8a4a52'],
+  b: ['#2f9a3e', '#1f6c2b', '#5cc46a', '#123f19'],
+  m: ['#f2cf3c', '#c49f1e', '#fbe37a', '#6e5410'],
+};
+const LIGHT = { h: '1', s: '2', b: '3', m: '4', p: '5', o: '6' }, LINE = { h: '!', s: '@', b: '$', m: '%', p: '^', o: '&' };
+function tonePalette(tones) {
+  const pal = { k: tones.k || '#2a1a10', r: tones.r || '#efb39a' };
+  for (const c in tones) { const [base, shade, light, line] = tones[c]; pal[c] = base; pal[c.toUpperCase()] = shade; pal[LIGHT[c]] = light; pal[LINE[c]] = line; }
+  return pal;
+}
+function refine(base) {
+  const H = base.length * 2, W = base[0].length * 2;
+  const g = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => base[y >> 1][x >> 1]));
+  const at = (x, y) => (y < 0 || y >= H || x < 0 || x >= W) ? '.' : g[y][x];
+  const group = c => c === 'm' ? 'b' : (c === 'k' || c === 'r') ? 's' : c;
+  // 1. 눈과 입은 두 줄이 아니라 한 줄의 가는 선으로
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === 'k' && at(x, y - 1) === 'k') g[y][x] = 's';
+  const eyeRow = g.findIndex(r => r.includes('k'));
+  for (let y = eyeRow + 1; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === 'k' && at(x - 1, y) !== 'k') { let n = 0; while (at(x + n, y) === 'k') n++; if (n >= 4) { g[y][x] = 's'; g[y][x + n - 1] = 's'; } x += n; }
+  // 2. 앞머리 끝을 지그재그로 (머리와 피부가 만나는 줄마다 2px 폭의 머리끝을 한 칸 내린다)
+  const bang = g.map(r => r.slice());
+  for (let y = 0; y < H - 2; y++) for (let x = 0; x < W; x++) if (bang[y][x] === 'h' && bang[y + 1][x] === 's' && bang[y + 2][x] === 's' && (x % 4 === 1 || x % 4 === 2)) g[y + 1][x] = 'h';
+  // 3. 볼에 은은한 홍조 (눈 바깥쪽 끝에서 세 줄 아래)
+  for (let x = 0; x < W; x++) if (at(x, eyeRow) === 'k') {
+    if (at(x - 1, eyeRow) !== 'k' && x < W / 2) for (const dx of [-2, -1]) if (at(x + dx, eyeRow + 3) === 's') g[eyeRow + 3][x + dx] = 'r';
+    if (at(x + 1, eyeRow) !== 'k' && x >= W / 2) for (const dx of [1, 2]) if (at(x + dx, eyeRow + 3) === 's') g[eyeRow + 3][x + dx] = 'r';
+  }
+  // 4. 실루엣의 계단 모서리를 둥글게 (충분히 넓은 덩어리의 볼록 모서리만 깎는다)
+  const snap = g.map(r => r.slice()), sa = (x, y) => (y < 0 || y >= H || x < 0 || x >= W) ? '.' : snap[y][x];
+  const run = (x, y, dx, dy) => { let n = 0; for (let i = 1; sa(x + dx * i, y + dy * i) !== '.'; i++) n++; return n; };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if (sa(x, y) === '.') continue;
+    const u = sa(x, y - 1) === '.', d = sa(x, y + 1) === '.', l = sa(x - 1, y) === '.', r = sa(x + 1, y) === '.';
+    const wide = run(x, y, 1, 0) + run(x, y, -1, 0) + 1 >= 4, tall = run(x, y, 0, 1) + run(x, y, 0, -1) + 1 >= 4;
+    if (((u && l) || (u && r) || (d && l) || (d && r)) && wide && tall) g[y][x] = '.';
+  }
+  // 5. 머리 윤기: 머리 덩어리의 왼쪽 위에 짧은 광택 줄기 두 개
+  let top = H, left = W, right = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g[y][x] === 'h') { top = Math.min(top, y); left = Math.min(left, x); right = Math.max(right, x); }
+  const sheen = new Set();
+  if (right >= 0) { const w = right - left + 1; for (let i = 0; i < 4; i++) { sheen.add(`${left + Math.round(w * .28) + i},${top + 3}`); sheen.add(`${left + Math.round(w * .28) + i + 2},${top + 4}`); } for (let i = 0; i < 3; i++) sheen.add(`${left + Math.round(w * .15)},${top + 5 + i}`); }
+  // 6. 톤 입히기: 외곽선 → 그늘 → 밝음 → 기본
+  const out = [];
+  for (let y = 0; y < H; y++) {
+    let row = '';
+    for (let x = 0; x < W; x++) {
+      const c = g[y][x];
+      if (c === '.' || c === 'k' || c === 'r') { row += c; continue; }
+      const gc = group(c), same = (dx, dy) => group(at(x + dx, y + dy)) === gc, outer = (dx, dy) => at(x + dx, y + dy) === '.';
+      let tone = c;
+      if (outer(0, -1) || outer(0, 1) || outer(-1, 0) || outer(1, 0)) tone = LINE[c];
+      else if (c === 'm') tone = at(x, y + 1) !== 'm' ? 'M' : at(x, y - 1) !== 'm' ? LIGHT.m : 'm';
+      else if (!same(0, 1) || !same(0, 2) || !same(1, 0)) tone = c.toUpperCase();
+      else if (gc === 's' && group(at(x, y - 1)) === 'h') tone = 'S';                                              // 앞머리 그늘
+      else if (gc === 'b' && (group(at(x, y - 1)) === 's' || group(at(x, y - 2)) === 's' || group(at(x, y - 1)) === 'h')) tone = 'B';  // 턱 아래 옷깃 그늘
+      else if (gc === 'p' && !same(0, -1)) tone = 'P';                                                          // 셔츠 밑단 그늘
+      else if (gc === 'o' && !same(0, -1)) tone = LIGHT.o;                                                      // 신발 윗면
+      else if (gc === 'h' && sheen.has(`${x},${y}`)) tone = LIGHT.h;
+      else if (outer(0, -2) || outer(-2, 0)) tone = LIGHT[c];
+      row += tone;
+    }
+    out.push(row);
+  }
+  return out;
+}
+const FRISK_PAL = tonePalette(FRISK_TONES), CHARA_PAL = tonePalette(CHARA_TONES);
+const frisk = rows => def(refine(rows), FRISK_PAL);
+export const HUMAN_SCALE = 1; // 정제된 스프라이트는 이미 2배 해상도라 1배로 그린다
 export const HUMAN = { down: friskDown.map(frisk), up: friskUp.map(frisk), left: friskLeft.map(frisk), right: friskLeft.map(rows => frisk(mirror(rows))) };
 // 차라 (몰살 결말용): 초록 셔츠에 노란 줄무늬 하나, 분홍빛 피부
 let stripe = 0;
-export const CHARA = def(friskDown[0].map(r => { if (/^\.+m+\.+$/.test(r)) return (stripe++ === 0 ? r.replace(/m/g, 'y') : r.replace(/m/g, 'z')); return r.replace(/b/g, 'z').replace(/m/g, 'y').replace(/s/g, 'i'); }), { ...FRISK, z: '#2c9c3e', y: '#f4d34a', i: '#ffd6e0' });
+export const CHARA = def(refine(friskDown[0].map(r => /^\.+m+\.+$/.test(r) && stripe++ > 0 ? r.replace(/m/g, 'b') : r)), CHARA_PAL);
 
 // ---------- 플라위 16x18 ----------
 export const FLOWEY = def([

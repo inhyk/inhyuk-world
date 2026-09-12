@@ -1,6 +1,6 @@
 // 언더테일 팬 게임 · Canvas 2D 렌더러. 논리 해상도 640×480.
 import { TILE, COLS, ROWS, activeActors, interactionTarget, ROOM_NAMES } from './world.mjs';
-import { HUMAN, OVERWORLD, BATTLE, BATTLE_SCALE, bake, CHARA } from './sprites.mjs';
+import { HUMAN, HUMAN_SCALE, OVERWORLD, BATTLE, BATTLE_SCALE, bake, CHARA } from './sprites.mjs';
 import { SOUL_RADIUS, attackStat, defenseStat, spareReady, flavor, alive } from './core.mjs';
 import { ITEMS } from './data.mjs';
 import { detailsFor, DETAILS } from './details.mjs';
@@ -473,7 +473,7 @@ function drawActor(ctx, a, t) {
 }
 function drawPlayer(ctx, w, t, chara = false) {
   const frames = chara ? [CHARA] : HUMAN[w.dir], f = frames[w.moving ? w.frame % frames.length : 0];
-  const img = bake(f, 2); Scene.shadow(ctx, w.x, w.y + 14, 11, 3);
+  const img = bake(f, HUMAN_SCALE); Scene.shadow(ctx, w.x, w.y + 14, 11, 3);
   ctx.drawImage(img, Math.round(w.x - img.width / 2), Math.round(w.y + 16 - img.height - (w.moving && w.frame % 2 ? 1 : 0)));
 }
 
@@ -707,7 +707,7 @@ export function drawTitle(ctx, t, state) {
     text(ctx, o.label, 254, y, { size: 18, color: selected ? '#f8dfa1' : '#9d97a6' });
     if (o.sub) text(ctx, o.sub, 254, y + 25, { size: 9, color: '#8c8294' });
   });
-  const human = bake(HUMAN.up[0], 2); Scene.shadow(ctx, 320, 442, 12, 3); ctx.drawImage(human, 320 - human.width / 2, 442 - human.height);
+  const human = bake(HUMAN.up[0], HUMAN_SCALE); Scene.shadow(ctx, 320, 442, 12, 3); ctx.drawImage(human, 320 - human.width / 2, 442 - human.height);
   text(ctx, 'FAN GAME  /  THREE ENDINGS', 22, 460, { size: 9, color: '#a99a83' });
   text(ctx, '방향키 선택 · Z 확인', 616, 460, { size: 10, color: '#b8a68b', align: 'right' });
 }
@@ -736,7 +736,7 @@ export function drawGameOver(ctx, t, state) {
 }
 export function drawEnding(ctx, t, state) {
   const kind = state.kind;
-  if (kind === 'genocide') { clear(ctx, '#000'); if (state.phase === 'chara') { const img = bake(CHARA, 6); ctx.drawImage(img, W / 2 - img.width / 2, 40); } state.visible.forEach((l, i) => text(ctx, l, W / 2, 330 + i * 28, { size: 18, align: 'center', color: '#ddd' })); if (state.choice) state.choice.options.forEach((o, i) => { const x = 200 + i * 240, y = 446; if (state.choice.index === i) heart(ctx, x - 20, y + 10, 7, '#ff2a2a'); text(ctx, o, x, y, { size: 20, color: state.choice.index === i ? '#ffd76a' : '#fff' }); }); return; }
+  if (kind === 'genocide') { clear(ctx, '#000'); if (state.phase === 'chara') { const img = bake(CHARA, HUMAN_SCALE * 3); ctx.drawImage(img, W / 2 - img.width / 2, 40); } state.visible.forEach((l, i) => text(ctx, l, W / 2, 330 + i * 28, { size: 18, align: 'center', color: '#ddd' })); if (state.choice) state.choice.options.forEach((o, i) => { const x = 200 + i * 240, y = 446; if (state.choice.index === i) heart(ctx, x - 20, y + 10, 7, '#ff2a2a'); text(ctx, o, x, y, { size: 20, color: state.choice.index === i ? '#ffd76a' : '#fff' }); }); return; }
   if (kind === 'pacifist') {
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1b1b4a'); g.addColorStop(.6, '#ff9a5a'); g.addColorStop(1, '#ffe08a'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#ffe66d'; ctx.beginPath(); ctx.arc(W / 2, 300 - Math.min(80, state.t * 8), 60, 0, 7); ctx.fill();
@@ -747,7 +747,7 @@ export function drawEnding(ctx, t, state) {
       ctx.drawImage(img, px, py);
       drawCharacterAccent(ctx, c, px, py, img.width, img.height, t, 'battle');
     });
-    const hero = bake(HUMAN.up[0], 2); ctx.drawImage(hero, W / 2 - hero.width / 2 + 10, 300 - hero.height + 24);
+    const hero = bake(HUMAN.up[0], HUMAN_SCALE); ctx.drawImage(hero, W / 2 - hero.width / 2 + 10, 300 - hero.height + 24);
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(0, 350, W, 130);
     // 최근 4줄만 보여 준다. 오래된 줄은 위로 흘러 사라진다.
     const recent = state.visible.slice(-4); recent.forEach((l, i) => { const lines = wrap(ctx, l, 580, 16); text(ctx, lines[0], W / 2, 358 + i * 23, { size: 16, align: 'center', color: i === recent.length - 1 ? '#fff' : '#cfcfcf' }); });
