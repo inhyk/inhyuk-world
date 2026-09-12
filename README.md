@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## UNDERTALE · 세 갈래의 결말
+
+`npm run dev` 후 http://localhost:3000/play/undertale 에서 플레이합니다. 폐허에서 왕좌의 방까지 압축한 언더테일 팬 게임으로, 공격·행동·아이템·자비 전투와 빨강·파랑·초록 영혼 모드, 15종 몬스터와 9명의 보스를 갖추고 있습니다. 아무도 죽이지 않으면 불살, 지역마다 아무도 오지 않을 때까지 죽이면 몰살, 그 사이는 중립 결말이며 몰살 뒤에는 세계가 지워집니다. 이름 짓기, 세이브, 상점, 합성 음악, 모바일 터치를 지원합니다. 조작법은 [게임 README](games/undertale/README.md), 원작 시스템 분석은 [ANALYSIS.md](games/undertale/ANALYSIS.md), 전투·월드 검증은 `npm run test:undertale`을 참고하세요.
+
 ## 메타톤 EX · GLAMOUR / LIVE
 
 `npm run dev` 후 http://localhost:3000/play/mettaton 에서 플레이합니다. 9가지 탄막 패턴, 세 난이도, 노란 영혼 슈팅과 두 가지 결말을 갖춘 팬 게임입니다. 모바일 터치 조작을 지원하며, 창 전환 시 별도 메뉴 없이 멈췄다가 돌아오면 이어집니다. 조작법은 [게임 README](games/mettaton/README.md), 전투 검증은 `npm run test:mettaton`을 참고하세요.

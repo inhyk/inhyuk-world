@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>UNDERTALE · 팬 게임 · 세 갈래의 결말</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="masthead">
+      <a href="/" target="_top" class="brand" aria-label="게임 월드로 돌아가기"><span class="brand-heart">♥</span><span>UNDERTALE <b>FAN GAME</b><small>THREE ENDINGS · MADE WITH DETERMINATION</small></span></a>
+      <div class="header-tools">
+        <button id="help-button" class="icon-button" aria-label="조작법 보기" title="조작법">?</button>
+        <button id="sound-button" class="icon-button" aria-label="소리 켜기" title="소리 켜기 (M)"><svg viewBox="0 0 24 24"><path d="M11 5 5 9H2v6h3l6 4V5Z"/><path class="sound-waves" d="M15 8c3 2 3 6 0 8m3-11c5 4 5 10 0 14"/><path class="sound-slash" d="m16 9 6 6m0-6-6 6"/></svg></button>
+        <button id="fullscreen-button" class="icon-button" aria-label="전체 화면" title="전체 화면"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m8 0h5v-5"/></svg></button>
+      </div>
+    </header>
+    <main>
+      <section class="stage" id="stage" aria-label="언더테일 팬 게임">
+        <canvas id="game" width="640" height="480" aria-label="게임 화면. 방향키로 이동하고 Z로 확인, X로 취소하세요."></canvas>
+        <div class="flash" id="flash"></div>
+        <div class="modal-backdrop" id="modal" hidden>
+          <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+            <span class="modal-eyebrow" id="modal-eyebrow">GUIDE</span><h2 id="modal-title">조작법</h2><div id="modal-content"></div><div class="modal-actions" id="modal-actions"></div>
+          </section>
+        </div>
+        <div class="sr-only" id="announcer" role="status" aria-live="polite"></div>
+      </section>
+      <div class="touch-controls" id="touch-controls"><div class="dpad"><button data-key="ArrowUp" aria-label="위">↑</button><button data-key="ArrowLeft" aria-label="왼쪽">←</button><button data-key="ArrowDown" aria-label="아래">↓</button><button data-key="ArrowRight" aria-label="오른쪽">→</button></div><div class="touch-buttons"><button data-key="KeyC" class="touch-menu">C <small>메뉴</small></button><button data-key="KeyX" class="touch-cancel">X <small>취소</small></button><button data-key="KeyZ" class="touch-confirm">Z <small>확인</small></button></div></div>
+      <div class="control-strip"><div><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd><span>이동</span><b></b><kbd>Z</kbd><span>확인 / 대화</span><b></b><kbd>X</kbd><span>취소 / 빨리 넘기기</span><b></b><kbd>C</kbd><span>메뉴</span><b></b><kbd>SHIFT</kbd><span>정밀 이동</span><b></b><kbd>-</kbd><span>어디로든 이동</span></div><button id="guide-link">처음이라면? <span>플레이 가이드 ↗</span></button></div>
+      <div class="bottom-caption"><span>NEUTRAL · PACIFIST · GENOCIDE</span><span>UNDERTALE FAN GAME <b>·</b> ORIGINAL CHARACTERS BY TOBY FOX <span class="red">♥</span></span></div>
+    </main>
+    <footer>팬이 만든 비공식 게임 · 캐릭터 원작: Toby Fox · 대사, 픽셀 아트, 음악은 이 게임을 위해 새로 제작</footer>
+  </div>
+  <script type="module" src="./game.mjs"></script>
+</body>
+</html>

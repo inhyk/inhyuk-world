@@ -720,5 +720,29 @@
     "featured": true,
     "order": 32,
     "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/mettaton"
+  },
+  {
+    "slug": "undertale-fan-game",
+    "title": "UNDERTALE · 세 갈래의 결말",
+    "description": "아무도 죽이지 않거나, 모두를 죽이거나. 선택이 결말을 바꾸는 언더테일 팬 게임",
+    "longDescription": "폐허에 떨어진 인간이 되어 설원, 폭포, 열지대를 지나 왕좌의 방까지 가는 언더테일 팬 게임입니다. 직접 그린 픽셀 스프라이트로 15종의 몬스터와 9명의 보스를 만나고, 공격·행동·아이템·자비 네 가지 선택으로 매 전투를 풀어 갑니다. 자유롭게 움직이는 빨간 영혼, 중력에 붙잡혀 점프하는 파란 영혼, 방패를 돌려 화살을 막는 초록 영혼으로 탄막을 피하세요. 아무도 죽이지 않으면 불살, 지역마다 아무도 오지 않을 때까지 죽이면 몰살, 그 사이는 중립 결말로 이어지며, 몰살 뒤에는 세계가 지워지고 영혼 계약으로만 되돌릴 수 있습니다. 떨어진 인간의 이름 짓기, 반짝이는 별에서의 세이브, 세 곳의 상점, 실시간 합성 음악과 모바일 터치 조작을 지원합니다.",
+    "emoji": "❤️",
+    "thumbnail": "/images/games/undertale-fan-game-thumb.png",
+    "screenshots": [
+      "/images/games/undertale-fan-game-thumb.png",
+      "/images/games/undertale-fan-game-1.png",
+      "/images/games/undertale-fan-game-2.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "액션",
+    "playUrl": "https://seonn.dev/play/undertale",
+    "createdAt": "2026-09",
+    "featured": true,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/undertale",
+    "order": 33
   }
 ]

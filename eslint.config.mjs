@@ -34,7 +34,7 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    files: ["public/play/mettaton/*.mjs"],
+    files: ["public/play/mettaton/*.mjs", "public/play/undertale/*.mjs"],
     languageOptions: {
       sourceType: "module",
       globals: { ...globals.browser, ...globals.es2022 },
