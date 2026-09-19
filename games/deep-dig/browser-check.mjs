@@ -1,0 +1,87 @@
+import { chromium } from '../../tools/node_modules/playwright/index.mjs';
+import assert from 'node:assert/strict';
+import {initial} from './core.mjs';
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const errors=[];
+const origin=process.env.DEEP_DIG_URL||'http://localhost:3000';
+const url=origin+'/play/deep-dig/index.html';
+const state=p=>p.evaluate(()=>JSON.parse(window.render_game_to_text()));
+const ready=p=>p.waitForFunction(()=>typeof window.render_game_to_text==='function'&&JSON.parse(window.render_game_to_text()).world.ready);
+const watch=p=>{p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text());});};
+async function fixture(p,s){await p.goto(origin+'/robots.txt');await p.evaluate(s=>localStorage.setItem('deep-dig-v1',JSON.stringify(s)),s);await p.goto(url);await ready(p);}
+async function point(p,col){const s=await state(p),r=await p.locator('#mine').boundingBox(),b=s.world.blocks[col];return {x:r.x+b.x,y:r.y+b.y};}
+async function hold(p,col){const pos=await point(p,col);await p.mouse.move(pos.x,pos.y);await p.mouse.down();}
+try {
+ const page=await browser.newPage({viewport:{width:1440,height:1100}});watch(page);
+ // Vercel serves analytics only on deployments, not on a local production server.
+ if(new URL(origin).hostname==='localhost'||new URL(origin).hostname==='127.0.0.1')await page.route('**/_vercel/insights/script.js',route=>route.fulfill({status:200,contentType:'application/javascript',body:''}));
+ assert.equal((await page.goto(origin+'/play/deep-dig')).status(),200);
+ assert.equal(await page.locator('iframe').getAttribute('src'),'/play/deep-dig/index.html');
+ await page.goto(url);await ready(page);assert.equal((await state(page)).world.renderer,'WebGL 3D');assert.equal((await state(page)).world.view,'first-person');
+ const initialCamera=await state(page);assert.equal(initialCamera.world.cameraPosition.x,initialCamera.player.x);assert.equal(initialCamera.world.cameraPosition.z,initialCamera.player.z);assert.ok(Math.abs(initialCamera.world.cameraPosition.y-initialCamera.player.y-1.55)<.001);
+ const viewBox=await page.locator('#mine').boundingBox();await page.mouse.move(viewBox.x+300,viewBox.y+220);await page.mouse.down({button:'right'});await page.mouse.move(viewBox.x+340,viewBox.y+240,{steps:5});await page.mouse.up({button:'right'});assert.ok((await state(page)).world.cameraAngle>initialCamera.world.cameraAngle+.1);assert.ok((await state(page)).world.cameraPitch>initialCamera.world.cameraPitch+.05);assert.equal((await state(page)).damage.reduce((a,b)=>a+b),0);
+ await page.mouse.down({button:'right'});await page.mouse.move(viewBox.x+300,viewBox.y+220,{steps:5});await page.mouse.up({button:'right'});
+ await page.screenshot({path:'public/images/games/deep-dig-thumb.png',fullPage:true});
+ const pos=await point(page,4);await page.mouse.click(pos.x,pos.y);assert.equal((await state(page)).selected,4);assert.equal((await state(page)).bag.reduce((a,b)=>a+b),0);assert.equal((await state(page)).damage[4],0,'quick click does not mine instantly');
+ await hold(page,4);await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).damage[4]>=20);await page.mouse.up();
+ let s=await state(page);assert.ok(s.damage[4]>0&&s.damage[4]<100);assert.equal(s.bag.reduce((a,b)=>a+b),0);assert.ok(s.world.crackStages[4]>=1);
+ const partial=s.damage[4];await page.waitForTimeout(600);assert.equal((await state(page)).damage[4],partial,'release stops damage');
+ await page.reload();await ready(page);assert.equal((await state(page)).damage[4],partial,'cracks survive reload');
+ await hold(page,4);await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).damage[4]>=60);await page.mouse.up();
+ s=await state(page);assert.ok(s.world.crackStages[4]>=3);assert.equal(s.bag.reduce((a,b)=>a+b),0);
+ await page.screenshot({path:'public/images/games/deep-dig-cracks.png',fullPage:true});
+ await hold(page,4);await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).bag[0]===1);await page.mouse.up();s=await state(page);assert.ok(s.dug.includes(4));assert.equal(s.world.blocks[4].visible,false);
+ await page.locator('#down').click();assert.equal((await state(page)).depth,2);assert.deepEqual((await state(page)).damage,Array(9).fill(0));
+ await page.locator('#sell').click();assert.equal((await state(page)).money,10);
+ await page.locator('#book').click();assert.equal(await page.locator('.ore-page').count(),8);await page.keyboard.press('Escape');
+ const angle=(await state(page)).world.cameraAngle;await page.locator('#rotate-right').click();await page.waitForTimeout(450);assert.ok((await state(page)).world.cameraAngle>angle+.2);
+ // Manual movement uses the camera's screen directions and stops on release.
+ await page.locator('#mine').focus();const startPlayer=(await state(page)).player;
+ await page.keyboard.down('KeyD');await page.waitForTimeout(450);await page.keyboard.up('KeyD');
+ const walkState=await state(page);assert.ok(Math.abs(walkState.world.cameraPosition.x-walkState.player.x)<.001);assert.ok(Math.abs(walkState.world.cameraPosition.z-walkState.player.z)<.001);let walked=walkState.player;assert.ok(Math.hypot(walked.x-startPlayer.x,walked.z-startPlayer.z)>.5);
+ await page.waitForTimeout(250);assert.equal((await state(page)).player.x,walked.x);assert.equal((await state(page)).player.z,walked.z);
+ await page.keyboard.down('ArrowUp');await page.waitForTimeout(250);await page.keyboard.up('ArrowUp');assert.ok((await state(page)).player.z>walked.z);
+ await page.keyboard.down('KeyW');await page.locator('#book').click();const modalPlayer=(await state(page)).player;await page.waitForTimeout(300);assert.equal((await state(page)).player.z,modalPlayer.z);await page.keyboard.up('KeyW');await page.keyboard.press('Escape');
+ await page.locator('#mine').focus();await page.keyboard.down('KeyA');await page.waitForTimeout(150);await page.evaluate(()=>window.dispatchEvent(new Event('blur')));const blurred=(await state(page)).player;await page.waitForTimeout(250);assert.equal((await state(page)).player.x,blurred.x);await page.keyboard.up('KeyA');
+ const rich=initial();rich.money=10000;await fixture(page,rich);
+ await page.locator('[data-upgrade="strength"]').click();assert.equal((await state(page)).levels.strength,1);assert.equal((await state(page)).money,9900);
+ await hold(page,4);await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).damage[4]>=28);await page.mouse.up();assert.equal((await state(page)).damage[4],28);assert.equal((await state(page)).swingInterval,420);
+ await page.locator('[data-upgrade="speed"]').click();assert.equal((await state(page)).swingInterval,365);assert.equal((await state(page)).power,28);
+ await page.locator('#dig').focus();await page.keyboard.down('Space');await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).damage[4]>=56);await page.keyboard.up('Space');assert.equal((await state(page)).held,false);
+ await hold(page,1);await page.evaluate(()=>window.dispatchEvent(new Event('blur')));assert.equal((await state(page)).held,false);await page.mouse.up();
+ const full=initial();full.bag[0]=20;await fixture(page,full);assert.ok(await page.locator('#dig').isDisabled());await hold(page,4);await page.waitForTimeout(500);await page.mouse.up();assert.deepEqual((await state(page)).damage,Array(9).fill(0));await page.locator('#sell').click();assert.ok(await page.locator('#dig').isEnabled());
+ const mid=initial();mid.depth=500;mid.money=100000;mid.found.fill(1);await fixture(page,mid);await page.screenshot({path:'public/images/games/deep-dig-depth.png',fullPage:true});
+ const win=initial();win.bag[7]=10;await fixture(page,win);await page.locator('#sell').click();assert.ok(await page.locator('#victory').isVisible());await page.locator('#continue').click();
+ const legacy=initial();legacy.version=1;delete legacy.damage;delete legacy.levels.strength;legacy.money=1234;await fixture(page,legacy);assert.equal((await state(page)).money,1234);assert.equal((await state(page)).levels.strength,0);
+ const progressed=initial();progressed.money=1234;progressed.earned=10000000000;progressed.won=true;progressed.depth=120;progressed.levels={shovel:1,speed:2,strength:3,bag:1};progressed.bag[0]=3;progressed.found.fill(2);progressed.dug=[0];progressed.damage[1]=20;
+ await fixture(page,progressed);
+ const beforeReset=await page.evaluate(()=>localStorage.getItem('deep-dig-v1'));
+ await page.locator('#reset').click();assert.ok(await page.locator('#reset-dialog').isVisible());assert.ok(await page.locator('#cancel-reset').evaluate(el=>el===document.activeElement));
+ await page.locator('#cancel-reset').click();assert.equal(await page.evaluate(()=>localStorage.getItem('deep-dig-v1')),beforeReset);
+ await page.locator('#reset').click();await page.keyboard.press('Escape');assert.equal((await state(page)).money,1234);
+ await page.locator('#reset').click();await page.locator('#confirm-reset').click();
+ assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('deep-dig-v1'))),initial());
+ const resetState=await state(page);assert.equal(resetState.held,false);assert.equal(resetState.selected,4);assert.equal(resetState.player.x,0);assert.equal(resetState.player.z,-3.02);assert.ok(resetState.world.blocks.every(b=>b.visible));assert.deepEqual(resetState.world.crackStages,Array(9).fill(0));
+ await page.reload();await ready(page);assert.equal((await state(page)).depth,1);assert.equal((await state(page)).money,0);assert.equal((await state(page)).collection,0);
+ await hold(page,4);await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).damage[4]>=20);await page.mouse.up();assert.ok((await state(page)).damage[4]>0,'mining works after reset');
+ const mobile=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});watch(mobile);await mobile.goto(url);await ready(mobile);
+ const cdp=await mobile.context().newCDPSession(mobile);
+ const moveButton=await mobile.locator('[data-move="right"]').boundingBox();const mobileStart=(await state(mobile)).player;
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:moveButton.x+20,y:moveButton.y+20}]});await mobile.waitForTimeout(450);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});const mobileMoved=(await state(mobile)).player;assert.ok(Math.hypot(mobileMoved.x-mobileStart.x,mobileMoved.z-mobileStart.z)>.5);
+ await mobile.waitForTimeout(250);assert.equal((await state(mobile)).player.x,mobileMoved.x);
+ const cancelButton=await mobile.locator('[data-move="up"]').boundingBox();
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cancelButton.x+20,y:cancelButton.y+20}]});await mobile.waitForTimeout(150);await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});const cancelled=(await state(mobile)).player;await mobile.waitForTimeout(250);assert.equal((await state(mobile)).player.z,cancelled.z);
+ const mp=await point(mobile,7);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:mp.x,y:mp.y}]});
+ await mobile.waitForFunction(()=>JSON.parse(window.render_game_to_text()).damage[7]>=40);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ const ms=await state(mobile);assert.equal(ms.selected,7,'high DPI 3D picking hits the touched block');assert.ok(ms.damage[7]<100);assert.equal(ms.bag.reduce((a,b)=>a+b),0);assert.equal(ms.held,false);
+ await mobile.waitForTimeout(500);assert.equal((await state(mobile)).damage[7],ms.damage[7]);assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await mobile.screenshot({path:'/tmp/deep-dig-3d-mobile.png',fullPage:true});await mobile.locator('#book').tap();assert.ok(await mobile.locator('#journal').isVisible());await mobile.locator('#close-book').tap();
+ const lookBox=await mobile.locator('#look-pad').boundingBox(),beforeLook=await state(mobile);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:lookBox.x+25,y:lookBox.y+30}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:lookBox.x+55,y:lookBox.y+15}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ const afterLook=await state(mobile);assert.ok(afterLook.world.cameraAngle>beforeLook.world.cameraAngle+.1);assert.ok(afterLook.world.cameraPitch<beforeLook.world.cameraPitch);assert.deepEqual(afterLook.damage,beforeLook.damage);
+ await mobile.locator('#reset').tap();assert.ok(await mobile.locator('#reset-dialog').isVisible());await mobile.locator('#confirm-reset').tap();assert.deepEqual((await state(mobile)).damage,Array(9).fill(0));assert.ok((await state(mobile)).world.blocks.every(b=>b.visible));
+ assert.deepEqual(errors,[]);console.log('PASS: real 3D rendering/picking, no instant mining, progressive cracks, release/reload, block break, descent, sale, strength/speed, keyboard hold, blur, full backpack, camera, journal, victory, legacy saves, high-DPI mobile touch, reset cancellation/confirmation/persistence and post-reset mining, keyboard walking, modal/blur stops, mobile movement and touch cancellation, first-person eye position/camera follow, mouse look and touch look. No browser errors.');
+} finally {await browser.close();}
