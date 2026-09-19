@@ -60,3 +60,6 @@ tools/node_modules/
 
 # Generated BLOCKTOPIA game
 /public/play/blocktopia/
+
+# Generated FREE DRIVE game
+/public/play/free-drive/
