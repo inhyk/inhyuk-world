@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import { chromium } from '../../tools/node_modules/playwright/index.mjs';
+const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+const errors=[];
+async function start(page){page.on('pageerror',e=>errors.push(e.message));await page.goto(process.env.BLOCKTOPIA_URL||'http://127.0.0.1:5180/');await page.waitForFunction(()=>document.querySelector('#start')&&!document.querySelector('#start').disabled);await page.locator('#start').click();await page.waitForFunction(()=>window.blocktopia&&!window.blocktopia.getState().paused);}
+const state=p=>p.evaluate(()=>window.blocktopia.getState());
+try{
+ if(!process.env.MOBILE_ONLY){const page=await browser.newPage({viewport:{width:1440,height:900}});await start(page);
+ await page.keyboard.down('a');await page.waitForFunction(()=>window.blocktopia.getState().position.x< -2.8);await page.keyboard.up('a');
+ await page.keyboard.down('w');await page.waitForFunction(()=>window.blocktopia.getState().collected>=1);await page.keyboard.up('w');assert.equal((await state(page)).coins,1);
+ await page.keyboard.press('Space');await page.waitForFunction(()=>window.blocktopia.getState().position.y>.5);await page.waitForFunction(()=>window.blocktopia.getState().position.grounded);
+ await page.keyboard.press('Escape');assert.equal((await state(page)).paused,true);await page.keyboard.press('Escape');assert.equal((await state(page)).paused,false);
+ await page.keyboard.press('3');await page.locator('[data-outfit="1"]').click();assert.equal((await state(page)).outfit,0);await page.locator('#close-modal').click();
+ await page.keyboard.press('4');assert.equal((await state(page)).night,true);await page.keyboard.press('4');
+ await page.keyboard.press('2');await page.waitForTimeout(2500);await page.mouse.click(720,240);await page.waitForFunction(()=>window.blocktopia.getState().blocks===1);await page.mouse.click(670,270);await page.waitForFunction(()=>window.blocktopia.getState().blocks===2);await page.locator('#undo').click();assert.equal((await state(page)).blocks,1);
+ await page.reload();await page.waitForFunction(()=>!document.querySelector('#start').disabled);await page.locator('#start').click();assert.equal((await state(page)).blocks,1);assert.equal((await state(page)).coins,1);
+ await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('blocktopia-v1'));s.coins=10;localStorage.setItem('blocktopia-v1',JSON.stringify(s));});await page.reload();await page.waitForFunction(()=>!document.querySelector('#start').disabled);await page.locator('#start').click();await page.keyboard.press('3');await page.locator('[data-outfit="2"]').click();assert.equal((await state(page)).outfit,2);assert.equal((await state(page)).coins,5);await page.locator('[data-outfit="2"]').click();assert.equal((await state(page)).coins,5);await page.locator('#close-modal').click();
+ await page.keyboard.press('r');await page.waitForTimeout(2500);await page.screenshot({path:'/tmp/blocktopia-desktop.png'});
+ await page.keyboard.press('4');await page.waitForTimeout(600);await page.screenshot({path:'/tmp/blocktopia-night.png'});await page.keyboard.press('4');await page.keyboard.press('2');await page.waitForTimeout(2000);await page.screenshot({path:'/tmp/blocktopia-build.png'});
+ console.log('Desktop: movement, coin pickup, jump, pause, wardrobe pricing, day/night, building, undo and reload persistence passed.',await state(page));await page.close();}
+ const mobile=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});await start(mobile);const cdp=await mobile.context().newCDPSession(mobile);const pad=await mobile.locator('[data-key="KeyW"]').boundingBox();await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:pad.x+pad.width/2,y:pad.y+pad.height/2}]});await mobile.waitForFunction(()=>window.blocktopia.getState().position.z< -16);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await mobile.locator('[data-key="Space"]').tap();await mobile.waitForFunction(()=>window.blocktopia.getState().position.y>.5);await mobile.waitForFunction(()=>window.blocktopia.getState().position.grounded);await mobile.screenshot({path:'/tmp/blocktopia-mobile.png'});assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);console.log('Mobile: touch movement, jump and responsive viewport passed.');
+ assert.deepEqual(errors,[]);console.log('No browser runtime errors.');
+}finally{await browser.close();}

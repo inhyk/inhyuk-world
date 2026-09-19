@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { chromium } from '../../tools/node_modules/playwright/index.mjs';
+import { cleanSave, SAVE_KEY } from './core.mjs';
+
+const browser = await chromium.launch({ headless: true, args: ['--enable-unsafe-swiftshader'] });
+try {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(process.env.BLOCKTOPIA_URL || 'http://127.0.0.1:5180/');
+  const original = cleanSave({ coins: 42, collected: [0, 1], checkpoint: 6, won: true, outfit: 2, owned: [0, 2], blocks: [{ x: -24, z: -20, y: 0, color: 2 }] });
+  await page.evaluate(({ key, save }) => { localStorage.setItem(key, JSON.stringify(save)); localStorage.setItem('other-game-test', 'keep'); }, { key: SAVE_KEY, save: original });
+  await page.reload();
+  const start = async () => { await page.locator('#start:not([disabled])').waitFor(); await page.locator('#start').click(); };
+  const openReset = async () => { await page.locator('#settings').click(); await page.locator('#reset-progress').click(); };
+  const saved = () => page.evaluate(key => JSON.parse(localStorage.getItem(key)), SAVE_KEY);
+  await start();
+  await openReset();
+  assert.equal(await page.locator('[role="alertdialog"]').count(), 1);
+  assert.deepEqual(await saved(), original);
+  await page.locator('#close-modal').click();
+  assert.deepEqual(await saved(), original);
+  assert.equal(await page.evaluate(() => window.blocktopia.getState().paused), false);
+  await openReset();
+  await page.keyboard.press('Escape');
+  assert.deepEqual(await saved(), original);
+  await openReset();
+  await page.evaluate(() => { window.originalSetItem = Storage.prototype.setItem; Storage.prototype.setItem = () => { throw new Error('Storage unavailable'); }; });
+  await page.locator('#confirm-reset').click();
+  assert.equal(await page.locator('#reset-error').isVisible(), true);
+  assert.deepEqual(await saved(), original);
+  await page.evaluate(() => { Storage.prototype.setItem = window.originalSetItem; });
+  await Promise.all([page.waitForEvent('load'), page.locator('#confirm-reset').click()]);
+  await start();
+  assert.deepEqual(await saved(), cleanSave({}));
+  const state = await page.evaluate(() => window.blocktopia.getState());
+  for (const key of ['coins', 'collected', 'checkpoint', 'blocks', 'outfit']) assert.equal(state[key], 0);
+  assert.equal(state.won, false);
+  assert.equal(state.position.x, 0);
+  assert.equal(state.position.z, -17);
+  assert.equal(await page.evaluate(() => localStorage.getItem('other-game-test')), 'keep');
+  await page.reload();
+  await start();
+  assert.deepEqual(await saved(), cleanSave({}));
+  assert.deepEqual(errors, []);
+  console.log('Reset passed: cancel, Escape, storage failure, full reset, spawn, reload persistence, and other saves preserved.');
+} finally { await browser.close(); }

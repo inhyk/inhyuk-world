@@ -7,9 +7,9 @@
     "games/valorant"
   ],
   "scripts": {
-    "predev": "npm run snowflow:build && npm run valorant:build && npm run deep-dig:build",
+    "predev": "npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build",
     "dev": "next dev",
-    "build": "npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && next build",
+    "build": "npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && next build",
     "start": "next start",
     "lint": "eslint",
     "snowflow:dev": "npm run dev --workspace=@inhyuk/snowflow",
@@ -23,7 +23,10 @@
     "test:undertale": "node --test \"games/undertale/*.test.mjs\"",
     "deep-dig:build": "vite build --config games/deep-dig/vite.config.js",
     "deep-dig:dev": "vite --config games/deep-dig/vite.config.js --host 127.0.0.1",
-    "test:deep-dig": "node --test games/deep-dig/core.test.mjs"
+    "test:deep-dig": "node --test games/deep-dig/core.test.mjs",
+    "blocktopia:build": "vite build --config games/blocktopia/vite.config.js",
+    "blocktopia:dev": "vite --config games/blocktopia/vite.config.js --host 127.0.0.1",
+    "test:blocktopia": "node --test games/blocktopia/core.test.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

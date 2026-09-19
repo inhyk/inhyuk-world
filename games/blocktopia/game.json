@@ -1,0 +1,24 @@
+{
+  "slug": "blocktopia",
+  "title": "BLOCKTOPIA · 블록토피아",
+  "description": "여섯 가지 점프 타워와 디테일 가득한 3D 도시! 코인을 모으고 나만의 정원을 지어요.",
+  "longDescription": "로블록스에서 영감을 받은 싱글플레이 3D 블록 월드입니다. 분수, 회전 관람차, 카페와 주민들이 있는 섬을 탐험하세요. 기존 12단계 스카이 점프맵에 딸기·숲·얼음·노을·별빛 테마의 타워 5개가 더해져 총 6개의 점프 코스와 112개 발판에 도전할 수 있습니다. 새 타워는 12~28층, 4층마다 별도 체크포인트를 저장하고 최초 완주 시 30~75코인을 받습니다. 코인 수집, 의상 구매, 블록 건축, 낮과 밤, 진행 상황 자동 저장과 리셋을 지원합니다. PC 키보드와 모바일 터치로 플레이하세요.",
+  "emoji": "🏡",
+  "thumbnail": "/images/games/blocktopia-thumb.png",
+  "screenshots": [
+    "/images/games/blocktopia-thumb.png",
+    "/images/games/blocktopia-frost-tower.png",
+    "/images/games/blocktopia-starlight-tower.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Babylon.js",
+    "Web Audio"
+  ],
+  "category": "어드벤처",
+  "playUrl": "/play/blocktopia",
+  "createdAt": "2026-09",
+  "featured": true,
+  "order": 37,
+  "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/blocktopia"
+}

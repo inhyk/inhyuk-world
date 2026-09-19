@@ -57,3 +57,6 @@ tools/node_modules/
 
 # Generated DEEP DIG game
 /public/play/deep-dig/
+
+# Generated BLOCKTOPIA game
+/public/play/blocktopia/
