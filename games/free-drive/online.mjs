@@ -62,6 +62,7 @@ export function setupOnline(ctx){
   else if(kind==='repair')tell(partner.repair(partnerSave));
   else if(kind==='cuff')tell(partner.handcuff());
   else if(kind==='gear'&&['D','N','P','R'].includes(value)&&!partner.walking){if(Math.abs(partner.p.speed)<=1)partner.p.gear=value;else tell('차를 멈춘 뒤 기어를 바꿔 주세요.');}
+  else if(kind==='place'&&!partnerSave.wanted){partnerLaw.trail=[];partnerLaw.schoolSpeeding=0;if(partner.travel(value,partnerSave.selected))tell('선택한 장소에 도착했어요!');}
   else if(kind==='reset'&&!partnerSave.wanted){partnerLaw.trail=[];partner.reset(partnerSave.selected);}
   else if(kind==='buy'&&!partnerSave.wanted&&typeof value==='string'&&buy(partnerSave,value)){partner.select(value);tell('자동차가 준비됐어요!');}
   else if(kind==='daily'){if(claimDaily(partnerSave,day()))tell('오늘의 선물 +100 코인');}

@@ -1,9 +1,10 @@
+import {schoolZoneAt,SCHOOL_LIMIT} from './places.mjs';
 import {nearestRoad,blockedAt} from './core.mjs';
 import {signalPhase,crossedRed,jailSeconds,arrest,release} from './law.mjs';
 
 export class Enforcement {
  constructor({save,persist,toast,journey,world,node,box,cyl,makeCar,material}){
-  Object.assign(this,{save,persist,toast,journey,world,node,box,cyl,material});this.trail=[];this.signals=new Map();this.cop={x:0,z:0,yaw:0};this.chasing=false;
+  Object.assign(this,{save,persist,toast,journey,world,node,box,cyl,material});this.trail=[];this.signals=new Map();this.cop={x:0,z:0,yaw:0};this.chasing=false;this.schoolSpeeding=0;
   this.car=makeCar({name:'경찰 순찰차',color:'#e8eff4',shape:'compact'});this.car.parent=world;
   box('police stripe',0,.84,2.19,1.8,.22,.03,'#3567b7',this.car);box('police roof',0,2.04,-.3,1.5,.12,.5,'#27384e',this.car);
   this.red=box('red siren',-.42,2.21,-.3,.6,.22,.4,'#fc6960',this.car);this.blue=box('blue siren',.42,2.21,-.3,.6,.22,.4,'#75c9ff',this.car);
@@ -13,7 +14,7 @@ export class Enforcement {
  get jailed(){return jailSeconds(this.save)>0;}
  unlock(code){if(code!=='13570'||!this.jailed)return false;this.save.jailUntil=Date.now();this.tick();return true;}
  tick(now=Date.now()){
-  if(release(this.save,now)){this.chasing=false;this.trail=[];this.car.setEnabled(false);this.officer.setEnabled(false);this.journey.reset(this.save.selected);this.persist();this.toast('출소했어요! 빨간불에는 정지선 앞에서 멈춰 주세요.');}
+  if(release(this.save,now)){this.chasing=false;this.trail=[];this.car.setEnabled(false);this.officer.setEnabled(false);this.journey.reset(this.save.selected);this.persist();this.toast('출소했어요! 신호와 어린이 보호구역 제한속도를 지켜 주세요.');}
   return jailSeconds(this.save,now);
  }
  shift(dx,dz){for(const t of this.trail){t.x-=dx;t.z-=dz;}this.cop.x-=dx;this.cop.z-=dz;for(const s of this.signals.values())s.root.dispose();this.signals.clear();}
@@ -29,12 +30,16 @@ export class Enforcement {
  }
  step(dt,seconds,before,driving){
   if(this.journey.occupied?.model==='police'){
-   const wasWanted=this.save.wanted;this.save.wanted=false;this.chasing=false;this.trail=[];
+   this.schoolSpeeding=0;const wasWanted=this.save.wanted;this.save.wanted=false;this.chasing=false;this.trail=[];
    this.car.setEnabled(false);this.officer.setEnabled(false);
    if(wasWanted){this.persist();this.toast('경찰차에 탔어요. 경찰 추격이 해제됐어요.');}
    return;
   }
   const p=this.journey.p,last=this.trail.at(-1);
+  const speeding=driving&&schoolZoneAt(p,this.journey.stream?.origin)&&Math.abs(p.speed)>SCHOOL_LIMIT+.05;
+  this.schoolSpeeding=speeding?(this.schoolSpeeding||0)+dt:0;
+  if(!this.save.wanted&&this.schoolSpeeding>=.5){this.save.wanted=true;this.persist();this.toast('어린이 보호구역 과속! 30 km/h 이하로 달려 주세요. 경찰이 추격해요.');}
+
   if(!last||Math.hypot(last.x-p.x,last.z-p.z)>1)this.trail.push({x:p.x,z:p.z});
   if(!this.save.wanted){while(this.trail.length>35)this.trail.shift();if(driving&&crossedRed(before,p,seconds,nearestRoad)){this.save.wanted=true;this.persist();this.toast('신호 위반! 경찰이 추격해요. 잡히면 60초 동안 감옥에 있어요.');}}
   if(!this.save.wanted||this.jailed)return;

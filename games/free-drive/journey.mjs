@@ -1,4 +1,5 @@
 import {CARS,drive,walk,vehicleBounds,findExit,nearestVehicle,nearestRoad,stepTraffic,rebaseDelta,applyCollision,clearCollisionAfterSeparation,cuffTarget,toggleCuffs} from './core.mjs';
+import {PLACES,schoolZoneAt,SCHOOL_LIMIT} from './places.mjs';
 import {WorldStream} from './world.mjs';
 
 export class Journey {
@@ -81,13 +82,20 @@ export class Journey {
   Object.assign(this.own,{x:nearestRoad(this.p.x)+3,z:this.p.z,yaw:0,speed:0});
   this.occupied=this.own;Object.assign(this.p,{x:this.own.x,z:this.own.z,yaw:0,speed:0,gear:'D'});this.render(0);
  }
+ travel(id,selected){
+  const place=PLACES.find(place=>place.id===id);if(!place)return false;
+  const ox=Number(this.stream.origin.x)*240,oz=Number(this.stream.origin.z)*240;
+  const destination={x:place.x-ox,z:place.z-oz};
+  for(let i=0;i<12;i++){if(!this.vehicles.some(v=>v!==this.own&&Math.hypot(v.x-destination.x,v.z-destination.z)<6))break;destination.z-=6;}
+  Object.assign(this.p,destination,{yaw:0,speed:0,gear:'D'});this.select(selected);this.refresh();this.render(0);return true;
+ }
  reset(selected){
   if(this.actors.length>1){Object.assign(this.p,{x:3-Number(this.stream.origin.x)*240,z:(this.shared?-25:-15)-Number(this.stream.origin.z)*240,yaw:0,speed:0,gear:'D'});this.select(selected);this.refresh();return;}
   this.stream.origin={x:0n,z:0n};for(const c of this.stream.chunks.values())c.root.dispose();this.stream.chunks.clear();this.stream.center='';
   Object.assign(this.p,{x:3,z:-15,yaw:0,speed:0,gear:'D'});this.select(selected);
   for(const v of this.vehicles)if(v!==this.own)this.respawn(v);this.refresh();this.render(0);
  }
- updateTraffic(dt,seconds){for(const v of this.vehicles){if(this.actors.some(a=>a.occupied===v))continue;if(this.actors.every(a=>Math.hypot(v.x-a.p.x,v.z-a.p.z)>230&&v!==a.own))this.respawn(v);const near=this.actors.slice().sort((a,b)=>Math.hypot(a.p.x-v.x,a.p.z-v.z)-Math.hypot(b.p.x-v.x,b.p.z-v.z))[0];stepTraffic(v,dt,{player:near.p,walking:near.walking,vehicles:this.vehicles,seconds});}}
+ updateTraffic(dt,seconds){for(const v of this.vehicles){if(this.actors.some(a=>a.occupied===v))continue;if(this.actors.every(a=>Math.hypot(v.x-a.p.x,v.z-a.p.z)>230&&v!==a.own))this.respawn(v);const near=this.actors.slice().sort((a,b)=>Math.hypot(a.p.x-v.x,a.p.z-v.z)-Math.hypot(b.p.x-v.x,b.p.z-v.z))[0];stepTraffic(v,dt,{player:near.p,walking:near.walking,vehicles:this.vehicles,seconds,speedLimit:schoolZoneAt(v,this.stream.origin)?SCHOOL_LIMIT:Infinity});}}
  update(dt,input,seconds){
   if(!this.shared)this.updateTraffic(dt,seconds);
   const obstacles=[...this.solids,...this.vehicles.filter(v=>v!==this.occupied).map(v=>({...vehicleBounds(v,this.walking?0:1.5),vehicle:v}))];

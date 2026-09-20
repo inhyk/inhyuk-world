@@ -46,7 +46,7 @@ export function vehicleBounds(v,padding=0){const s=Math.abs(Math.sin(v.yaw)),c=M
 export function walk(p,dx,dz,dt,solids=[]){const length=Math.hypot(dx,dz);if(!length){p.speed=0;return 0;}const step=5*Math.min(.05,dt),ox=p.x,oz=p.z;dx=dx/length*step;dz=dz/length*step;if(!blockedAt(p.x+dx,p.z,solids))p.x+=dx;if(!blockedAt(p.x,p.z+dz,solids))p.z+=dz;p.yaw=Math.atan2(dx,dz);const moved=Math.hypot(p.x-ox,p.z-oz);p.speed=moved/Math.max(dt,.001);return moved;}
 export function findExit(v,solids){const c=Math.cos(v.yaw),s=Math.sin(v.yaw);for(const [side,along] of [[3,0],[-3,0],[0,-4.5],[0,4.5],[3,-3],[-3,-3]]){const x=v.x+c*side+s*along,z=v.z-s*side+c*along;if(!blockedAt(x,z,solids,.5))return {x,z};}return null;}
 export function nearestVehicle(p,vehicles){return vehicles.filter(v=>!v.cuffed&&Math.abs(v.speed)<.8&&Math.hypot(v.x-p.x,v.z-p.z)<5).sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z))[0]||null;}
-export function stepTraffic(v,dt,{player,walking,vehicles,seconds}){
+export function stepTraffic(v,dt,{player,walking,vehicles,seconds,speedLimit=Infinity}){
  if(!v.auto)return;if(v.durability===0||v.cuffed){v.speed=0;return;}
  const sx=Math.sin(v.yaw),sz=Math.cos(v.yaw),vertical=Math.abs(sz)>.5;
  const ahead=(x,z)=>(x-v.x)*sx+(z-v.z)*sz;
@@ -59,7 +59,7 @@ export function stepTraffic(v,dt,{player,walking,vehicles,seconds}){
  const red=signalPhase(seconds,vertical?'z':'x')!=='green';
  const center=chunkAt(coordinate)*CHUNK_SIZE;
  for(let tile=-1;tile<=1;tile++)for(const offset of [-70,0,70]){const d=(center+tile*CHUNK_SIZE+offset-coordinate)*dir;if(red&&d>6&&d<13)stop=true;}
- const target=stop?0:v.cruise;
+ const target=stop?0:Math.min(v.cruise,speedLimit);
  v.speed+=Math.sign(target-v.speed)*Math.min(Math.abs(target-v.speed),(stop?25:4)*dt);
  const x=v.x+sx*v.speed*dt,z=v.z+sz*v.speed*dt;
  if(vehicles.some(o=>o!==v&&Math.hypot(o.x-x,o.z-z)<4.8)||Math.hypot(player.x-x,player.z-z)<(walking?2.8:4.8)){v.speed=0;return;}
