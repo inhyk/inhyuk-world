@@ -103,9 +103,11 @@ export function setupOnline(ctx){
   const actor=(j,law)=>({p:pose(j.p),vehicle:j.occupied?.id||null,jail:law.jailed?law.state().jailRemaining:0,police:law.state().police});
   return {type:'frame',seconds:ctx.clock(),origin:{x:journey.stream.origin.x.toString(),z:journey.stream.origin.z.toString()},vehicles:journey.state().traffic,self:actor(partner,partnerLaw),other:actor(journey,ctx.law),save:partnerSave,coins:ctx.coins.map(c=>ctx.wallClock()>=c.ready)};
  }
- function update(dt,input,playing){
+ // Networking and the guest simulation must keep ticking when the host renders slowly.
+ function tick(dt,input,playing){
   if(!room.active)return;
   sendClock+=dt;
+  if(room.host)ctx.clock(ctx.clock()+dt);
   if(room.host&&partner){
    if(!playing)journey.updateTraffic(dt,ctx.clock());
    for(const c of ctx.coins)if(ctx.wallClock()>=c.ready)c.mesh.setEnabled(true);
@@ -119,8 +121,14 @@ export function setupOnline(ctx){
    }else{partner.p.speed=0;if(partner.occupied)partner.occupied.speed=0;}
    partner.render(ctx.clock());partner.pawn.setEnabled(partner.walking&&!remaining);api.other={p:pose(partner.p),vehicle:partner.occupied?.id||null,jail:remaining};friendMarker.setEnabled(!remaining);friendMarker.position.set(partner.p.x,3.3,partner.p.z);
   }
-  if(sendClock>=.05){sendClock=0;if(room.guest&&room.ready)room.send({type:'input',input:safeInput(input),playing});else if(room.host&&partner&&room.ready)room.send(frame());}
+  if(sendClock>=.05){sendClock%=.05;if(room.guest&&room.ready)room.send({type:'input',input:safeInput(input),playing});else if(room.host&&partner&&room.ready)room.send(frame());}
  }
+ let lastTick=performance.now();
+ setInterval(()=>{
+  const now=performance.now();let remaining=Math.min((now-lastTick)/1000,.25);lastTick=now;
+  const {input,playing}=ctx.controls();
+  while(remaining>.001){const dt=Math.min(remaining,.05);tick(dt,safeInput(input),playing);remaining-=dt;}
+ },50);
  function openPanel(){ctx.clearInput();$('#room-panel').hidden=false;$('#room-code-input').focus();}
  $('#multiplayer').onclick=openPanel;$('#room-badge').onclick=openPanel;$('#room-close').onclick=()=>$('#room-panel').hidden=true;
  $('#room-host').onclick=()=>connect();$('#room-form').onsubmit=e=>{e.preventDefault();connect($('#room-code-input').value);};
@@ -129,6 +137,6 @@ export function setupOnline(ctx){
  $('#room-copy').onclick=async()=>{try{await navigator.clipboard.writeText(room.code);toast('방 코드를 복사했어요. 친구에게 알려 주세요!');}catch{toast(`친구에게 방 코드 ${room.code}를 알려 주세요.`);}};
  $('#room-code-input').oninput=e=>e.target.value=normaliseCode(e.target.value);
  addEventListener('pagehide',()=>room.leave());
- const api={room,other:null,get guest(){return room.guest&&room.ready;},get waitingGuest(){return room.guest;},get active(){return room.active;},get jail(){return guestJail;},action,update,shift(x,z){partnerLaw?.shift(x,z);},get blocked(){return !$('#room-panel').hidden;},state:()=>({role:room.role,code:room.code,status:room.status,count:room.active?(room.ready?2:1):0,other:api.other}),leave:()=>room.leave()};
+ const api={room,other:null,get guest(){return room.guest&&room.ready;},get waitingGuest(){return room.guest;},get active(){return room.active;},get jail(){return guestJail;},action,shift(x,z){partnerLaw?.shift(x,z);},get blocked(){return !$('#room-panel').hidden;},state:()=>({role:room.role,code:room.code,status:room.status,count:room.active?(room.ready?2:1):0,other:api.other}),leave:()=>room.leave()};
  return api;
 }

@@ -133,8 +133,8 @@ function makeCuffs(parent){const root=new TransformNode('vehicle handcuffs',scen
 const journey=new Journey({p,world,central,solids,makeCar,node:n=>new TransformNode(n,scene),box,cyl,camera,selected:save.selected,makeTreasure,makeCuffs,conditions:save.durability,onDamage:health=>{persist();toast(health===0?'내구도 0! 차가 고장 났어요. E로 내려 다른 차에 타세요.':`사고! 내구도 -10 · 남은 내구도 ${health}/100`);}});
 car.parent=showroom;let travelClock=0;
 const enforcement=new Enforcement({save,persist,toast,journey,world,node:n=>new TransformNode(n,scene),box,cyl,makeCar,material:mat});
-const net=setupOnline({journey,world,node:n=>new TransformNode(n,scene),box,cyl,makeCar,makeTreasure,makeCuffs,camera,material:mat,toast,persist,law:enforcement,save:()=>save,clock(value){if(value!==undefined)travelClock=value;return travelClock;},wallClock:()=>clock,coins,treasures:allTreasures,clearInput,start,closeModal,syncCar,wallet:updateWallet,refreshModal(){if(modalKind)renderModal();},showPolice(cop,driving,seconds){enforcement.chasing=!!cop;if(cop)enforcement.cop={...cop};enforcement.car.setEnabled(!!cop&&driving);enforcement.officer.setEnabled(!!cop&&!driving);if(cop)for(const m of [enforcement.car,enforcement.officer]){m.position.set(cop.x,.13,cop.z);m.rotation.y=cop.yaw;}enforcement.red.setEnabled(Math.floor(seconds*6)%2===0);enforcement.blue.setEnabled(Math.floor(seconds*6)%2!==0);}});
-const keys=new Set(),touch=new Set();function clearInput(){keys.clear();touch.clear();}function updateWallet(){$('#balance').textContent=save.coins.toLocaleString();}
+const net=setupOnline({journey,world,node:n=>new TransformNode(n,scene),box,cyl,makeCar,makeTreasure,makeCuffs,camera,material:mat,toast,persist,law:enforcement,save:()=>save,clock(value){if(value!==undefined)travelClock=value;return travelClock;},wallClock:()=>clock,coins,treasures:allTreasures,clearInput,start,closeModal,syncCar,controls:()=>({input:readInput(),playing:playing&&!modalKind&&!net.blocked&&!(net.guest?net.jail:enforcement.jailed)&&!document.hidden}),wallet:updateWallet,refreshModal(){if(modalKind)renderModal();},showPolice(cop,driving,seconds){enforcement.chasing=!!cop;if(cop)enforcement.cop={...cop};enforcement.car.setEnabled(!!cop&&driving);enforcement.officer.setEnabled(!!cop&&!driving);if(cop)for(const m of [enforcement.car,enforcement.officer]){m.position.set(cop.x,.13,cop.z);m.rotation.y=cop.yaw;}enforcement.red.setEnabled(Math.floor(seconds*6)%2===0);enforcement.blue.setEnabled(Math.floor(seconds*6)%2!==0);}});
+const keys=new Set(),touch=new Set();function readInput(){return {gas:keys.has('KeyW')||keys.has('ArrowUp')||touch.has('gas'),brake:keys.has('KeyS')||keys.has('ArrowDown')||keys.has('Space')||touch.has('brake'),steer:Number(keys.has('KeyD')||keys.has('ArrowRight')||touch.has('right'))-Number(keys.has('KeyA')||keys.has('ArrowLeft')||touch.has('left'))};}function clearInput(){keys.clear();touch.clear();}function updateWallet(){$('#balance').textContent=save.coins.toLocaleString();}
 function syncCar(){car.dispose();car=makeCar(CARS.find(c=>c.id===save.selected));car.parent=showroom;if(!net.guest)journey.select(save.selected);const c=CARS.find(c=>c.id===save.selected);$('#car-name').textContent=c.name;$('#car-tag').textContent=c.tag;updateWallet();}
 function setGear(g){if(net.action('gear',g))return;if(enforcement.jailed||journey.walking)return;if(Math.abs(p.speed)>1){toast('차를 멈춘 뒤 기어를 바꿔 주세요.');return;}p.gear=g;document.querySelectorAll('[data-gear]').forEach(b=>b.classList.toggle('active',b.dataset.gear===g));}
 function home(){playing=false;clearInput();save.distance=Math.floor(distance);persist();$('#hud').hidden=true;$('#home').hidden=false;$('#car-caption').hidden=false;world.setEnabled(false);showroom.setEnabled(true);scene.fogColor=new Color3(.14,.29,.29);scene.clearColor=new Color4(.14,.29,.29,1);p.speed=0;if(journey.occupied)journey.occupied.speed=0;$('#start').innerHTML='자유주행 시작 <span>↗</span>';}
@@ -199,10 +199,10 @@ function updateHud(){
 syncCar();home();engine.runRenderLoop(()=>{
  const dt=Math.min(engine.getDeltaTime()/1000,.05);clock+=dt;
  const remaining=net.guest?net.jail:enforcement.tick();$('#jail').hidden=remaining===0;$('#jail-count').textContent=String(remaining);if(remaining)clearInput();else{jailCode='';$('#jail-code').value='';}
- const input={gas:keys.has('KeyW')||keys.has('ArrowUp')||touch.has('gas'),brake:keys.has('KeyS')||keys.has('ArrowDown')||keys.has('Space')||touch.has('brake'),steer:Number(keys.has('KeyD')||keys.has('ArrowRight')||touch.has('right'))-Number(keys.has('KeyA')||keys.has('ArrowLeft')||touch.has('left'))};
+ const input=readInput();
  if(playing){
   if(!modalKind&&!remaining&&!net.blocked&&!net.waitingGuest){
-   travelClock+=dt;
+   if(!net.active)travelClock+=dt;
    const before={x:p.x,z:p.z},driving=!journey.walking,origin={...journey.stream.origin};
    distance+=journey.update(dt,input,travelClock);
    const shiftX=Number(journey.stream.origin.x-origin.x)*240,shiftZ=Number(journey.stream.origin.z-origin.z)*240;
@@ -216,16 +216,12 @@ syncCar();home();engine.runRenderLoop(()=>{
    for(const h of allTreasures())if(Math.hypot(h.x-p.x,h.z-p.z)<5&&discover(save,h.id)){persist();toast(`히든 차 발견! ${CARS.find(c=>c.id===h.id).name} · 차고에 추가됐어요`);}
    if(clock-lastPersist>5){save.distance=Math.floor(distance);persist();lastPersist=clock;}
   }
-  if(net.active&&!net.waitingGuest&&(modalKind||remaining||net.blocked))travelClock+=dt;
-  net.update(dt,input,!modalKind&&!remaining&&!net.blocked);
   enforcement.lights(travelClock);
   const walking=journey.walking,dir=new Vector3(Math.sin(p.yaw),0,Math.cos(p.yaw)),target=new Vector3(p.x,1.2,p.z);
   const desired=walking?target.add(new Vector3(0,6,-9)):view===2?new Vector3(p.x,32,p.z-18):view===1?new Vector3(p.x,2.5,p.z).add(dir.scale(.6)):target.subtract(dir.scale(10)).add(new Vector3(0,5.5,0));
   camera.position=Vector3.Lerp(camera.position,desired,Math.min(1,dt*6));camera.setTarget(walking?target:view===1?target.add(dir.scale(18)).add(new Vector3(0,1,0)):target.add(dir.scale(2)));
   if(journey.occupied)journey.occupied.mesh.setEnabled(view!==1);updateHud();drawMap();sun.position.set(p.x+30,70,p.z-40);
  }else{
-  if(net.active&&!net.waitingGuest)travelClock+=dt;
-  net.update(dt,input,false);
   car.setEnabled(true);car.position.set(0,.12,0);car.rotation.y=clock*.14+.5;const narrow=innerWidth<760;camera.position.set(11,7.5,-13);camera.setTarget(narrow?new Vector3(0,4.6,0):new Vector3(-5,1,0));sun.position.set(30,70,-40);
  }
  for(const c of coins){c.mesh.rotation.y=clock*1.5;c.mesh.position.y=1.35+Math.sin(clock*2+c.x)*.15;}
