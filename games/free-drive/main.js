@@ -57,8 +57,50 @@ function makeBlockJeep(c){
  for(const x of [-.92,-.46,0,.46,.92]){const bar=cyl('front bumper tube',x,.55,2.3,.12,.45,black,r);bar.rotation.x=Math.PI/2;}
  r.metadata={wheels};return r;
 }
+// Hand-built stylized sports cars; share the existing vehicle dimensions and wheel animation.
+function makeSupercar(c){
+ const r=new TransformNode(c.name,scene),wheels=[],round=c.shape==='porsche',dark='#202d37',glass='#365766';
+ function oval(n,x,y,z,w,h,d,color){const mesh=finish(MeshBuilder.CreateSphere(n,{diameter:1,segments:12},scene),x,y,z,color,r,true);mesh.scaling.set(w,h,d);return mesh;}
+ function tapered(n,x,y,z,w,h,d,color){const mesh=finish(MeshBuilder.CreateBox(n,{width:w,height:h,depth:d,updatable:true},scene),x,y,z,color,r,true),vertices=mesh.getVerticesData('position');for(let i=0;i<vertices.length;i+=3)if(vertices[i+1]>0){vertices[i]*=.85;vertices[i+2]*=.58;}mesh.updateVerticesData('position',vertices);return mesh;}
+ box('sports chassis',0,.51,0,2.16,.22,4.3,dark,r,true);
+ if(round){
+  oval('rounded 911 body',0,.85,0,2.24,.95,4.35,c.color);
+  oval('911 glass canopy',0,1.27,-.35,1.83,1.3,2.7,glass);
+  oval('911 curved roof',0,1.51,-.52,1.85,.88,1.7,c.color);
+  for(const side of [-1,1]){
+   oval('911 fender',side*.87,1,1.27,.59,.65,1.52,c.color);
+   oval('round headlight',side*.82,1.17,1.91,.42,.42,.16,'#fff5cf');
+   box('911 door',side*1.01,.95,-.12,.1,.4,1.7,c.color,r);
+  }
+  box('911 rear light bar',0,1,-2.09,1.85,.1,.05,'#ff6d67',r);
+ }else{
+  box('angular lower body',0,.78,0,2.22,.48,4.25,c.color,r,true);
+  const hood=box('sloping wedge nose',0,1.01,1.27,2.14,.17,1.72,c.color,r,true);hood.rotation.x=.13;
+  tapered('dark angular cockpit',0,1.32,-.25,1.85,.61,2.4,glass);
+  box('low lime roof',0,1.64,-.25,1.59,.08,1.42,c.color,r,true);
+  for(const side of [-1,1]){
+   const lamp=box('sharp LED headlight',side*.76,1.09,1.99,.61,.09,.08,'#f5ffff',r);lamp.rotation.z=side*.23;
+   box('side air intake',side*1.12,.9,-.75,.04,.35,.65,dark,r);
+   box('rear wing support',side*.72,1.28,-1.75,.1,.52,.14,dark,r);
+   box('rear LED',side*.72,.95,-2.14,.61,.1,.04,'#ff6d67',r);
+  }
+  box('large rear wing',0,1.56,-1.79,2.34,.13,.43,dark,r,true);
+  for(let i=0;i<4;i++)box('engine vent',0,1.16,-1.25-i*.18,1.24,.03,.08,dark,r);
+ }
+ for(const side of [-1,1]){
+  box('sports mirror',side*1.16,1.26,.45,.25,.13,.3,c.color,r);
+  box('front intake',side*.66,.69,2.13,.68,.18,.06,dark,r);
+  for(const z of [-1.34,1.34]){
+   const wheel=cyl('sports tire',side*1.09,.5,z,.46,.27,'#1e262b',r);wheel.rotation.z=Math.PI/2;wheels.push(wheel);
+   const hub=cyl('sports alloy',side*1.235,.5,z,.3,.026,'#a6b4c4',r);hub.rotation.z=Math.PI/2;
+   const center=cyl('dark hub',side*1.255,.5,z,.12,.035,dark,r);center.rotation.z=Math.PI/2;
+  }
+  const exhaust=cyl('exhaust',side*.7,.55,-2.17,.11,.13,'#adb8c3',r);exhaust.rotation.x=Math.PI/2;
+ }
+ r.metadata={wheels};return r;
+}
 const makeFerrari=ferrariFactory(scene,shadow,()=>makeCar({name:'페라리 로딩 중',shape:'sport',color:'#30363c'}),toast);
-function makeCar(c){if(c.shape==='ferrari')return makeFerrari();if(c.shape==='jeep')return makeBlockJeep(c);const r=new TransformNode(c.name,scene),wheels=[];const van=c.shape==='van',sport=c.shape==='sport';box('body',0,.78,0,2.25,.65,4.3,c.color,r,true);box('hood',0,1.14,1.23,2.12,.25,1.55,c.color,r,true);box('cabin',0,1.53,van?-.4:-.3,1.9,van?1.3:.85,van?2.6:2.1,c.color,r,true);box('front glass',0,1.58,van?.93:.78,1.67,van?.85:.58,.025,'#294a55',r);box('back glass',0,1.6,van?-1.72:-1.37,1.63,.51,.025,'#294a55',r);for(const side of [-1,1]){box('side glass',side*.96,1.62,-.29,.025,van?.8:.53,van?2.05:1.73,'#345c62',r);box('pillar',side*.98,1.63,-.28,.04,.65,.1,c.color,r);box('mirror',side*1.2,1.3,.65,.25,.2,.35,c.color,r);for(const z of [-1.35,1.35]){const wheel=cyl('tire',side*1.12,.55,z,.49,.28,'#243336',r);wheel.rotation.z=Math.PI/2;const hub=cyl('hub',side*1.285,.55,z,.25,.025,'#d5dfca',r);hub.rotation.z=Math.PI/2;wheels.push(wheel);}box('headlight',side*.74,.99,2.16,.5,.22,.035,'#fff4c1',r);box('taillight',side*.78,.95,-2.16,.42,.18,.035,'#e77963',r);}
+function makeCar(c){if(['porsche','lamborghini'].includes(c.shape))return makeSupercar(c);if(c.shape==='ferrari')return makeFerrari();if(c.shape==='jeep')return makeBlockJeep(c);const r=new TransformNode(c.name,scene),wheels=[];const van=c.shape==='van',sport=c.shape==='sport';box('body',0,.78,0,2.25,.65,4.3,c.color,r,true);box('hood',0,1.14,1.23,2.12,.25,1.55,c.color,r,true);box('cabin',0,1.53,van?-.4:-.3,1.9,van?1.3:.85,van?2.6:2.1,c.color,r,true);box('front glass',0,1.58,van?.93:.78,1.67,van?.85:.58,.025,'#294a55',r);box('back glass',0,1.6,van?-1.72:-1.37,1.63,.51,.025,'#294a55',r);for(const side of [-1,1]){box('side glass',side*.96,1.62,-.29,.025,van?.8:.53,van?2.05:1.73,'#345c62',r);box('pillar',side*.98,1.63,-.28,.04,.65,.1,c.color,r);box('mirror',side*1.2,1.3,.65,.25,.2,.35,c.color,r);for(const z of [-1.35,1.35]){const wheel=cyl('tire',side*1.12,.55,z,.49,.28,'#243336',r);wheel.rotation.z=Math.PI/2;const hub=cyl('hub',side*1.285,.55,z,.25,.025,'#d5dfca',r);hub.rotation.z=Math.PI/2;wheels.push(wheel);}box('headlight',side*.74,.99,2.16,.5,.22,.035,'#fff4c1',r);box('taillight',side*.78,.95,-2.16,.42,.18,.035,'#e77963',r);}
 box('front bumper',0,.59,2.17,1.97,.15,.14,'#dce5cf',r);box('grill',0,.85,2.18,.75,.19,.025,'#263f3e',r);box('back bumper',0,.6,-2.17,1.95,.15,.15,'#dce5cf',r);if(sport){box('spoiler',0,1.37,-1.9,2.37,.12,.4,c.color,r);for(const x of [-.75,.75])box('spoiler strut',x,1.2,-1.9,.09,.3,.08,'#273c3c',r);}if(c.kit==='police'){box('police roof bar',0,2.04,-.3,1.5,.12,.5,'#27384e',r);box('red emergency lamp',-.42,2.21,-.3,.6,.22,.4,'#fc6960',r);box('blue emergency lamp',.42,2.21,-.3,.6,.22,.4,'#75c9ff',r);for(const side of [-1,1]){box('police blue stripe',side*1.13,.87,0,.025,.25,3.8,'#3567b7',r);box('gold badge',side*1.15,1.03,-.2,.03,.34,.3,'#f6d67e',r);}}
 if(c.kit==='stripe')for(const x of [-.35,.35])box('racing stripe',x,1.275,1.23,.2,.02,1.45,'#f7edbf',r);
 if(c.kit==='roof')box('contrast roof',0,van?2.2:1.98,-.3,1.97,.12,van?2.65:2.15,'#fff2d6',r);

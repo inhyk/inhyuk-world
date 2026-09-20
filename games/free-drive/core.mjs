@@ -3,6 +3,8 @@ export const SAVE_KEY='free-drive-v1';
 export const CARS=[
  {id:'mint',name:'민트 러너',tag:'가벼운 첫 드라이브',color:'#70e2c0',price:0,speed:24,shape:'compact'},
  {id:'ferrari',name:'페라리 458 이탈리아',tag:'Three.js 예제의 스포츠카 · 무료 선물',color:'#30363c',price:0,speed:48,shape:'ferrari'},
+ {id:'porsche',name:'포르쉐 911',tag:'둥근 헤드라이트 · 실버 스포츠카',color:'#d4dce6',price:700,speed:45,shape:'porsche'},
+ {id:'lamborghini',name:'람보르기니 아벤타도르',tag:'낮고 날카로운 차체 · 라임 슈퍼카',color:'#b4ed37',price:900,speed:50,shape:'lamborghini'},
  {id:'sun',name:'선셋 쿠페',tag:'노을을 닮은 스포츠카',color:'#ffad66',price:150,speed:32,shape:'sport'},
  {id:'berry',name:'베리 밴',tag:'어디든 함께 떠나요',color:'#dba7ed',price:250,speed:22,shape:'van'},
  {id:'forest',name:'포레스트',tag:'숲속 전망대에서 발견',color:'#b9da73',hidden:true,speed:27,shape:'van'},
