@@ -1,0 +1,5 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {initial,redeem,balance,GIFT_AMOUNT,buy,sell,restore,money} from './core.mjs';
+test('exact gift code credits exact requested amount and wrong code changes nothing',()=>{const s=initial();assert.equal(redeem(s,'13570753111357'),false);assert.equal(s.money,0);assert.equal(redeem(s,'135707531113570'),true);assert.equal(String(s.money),'100000000000000000000000000000000');assert.equal(balance(s),GIFT_AMOUNT);});
+test('huge wallet preserves every won through purchase, sales, save and repeated codes',()=>{const s=initial();s.money=137;redeem(s,'135707531113570');buy(s,'strength');sell(s,{id:1});sell(s,{id:0});assert.equal(balance(s),GIFT_AMOUNT+37n);const loaded=restore(JSON.stringify(s));assert.equal(balance(loaded),GIFT_AMOUNT+37n);redeem(loaded,'135707531113570');assert.equal(balance(loaded),2n*GIFT_AMOUNT+37n);assert.equal(money(loaded.money),(2n*GIFT_AMOUNT+37n).toLocaleString('ko-KR')+'원');assert.equal(restore('{"money":123}').money,123);});

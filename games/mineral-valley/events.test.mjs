@@ -1,0 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {eventStatus,pickEvent,EVENT_CHANCES,timeLabel,BASE_ORE_COUNT} from './events.mjs';
+import {initial,restore} from './core.mjs';
+test('all six ten-minute milestones start once, end after two minutes, and repeat hourly',()=>{assert.equal(BASE_ORE_COUNT,1600);assert.equal(eventStatus(599.99).active,false);for(let i=1;i<=6;i++){const t=i*600;assert.deepEqual(eventStatus(t),{cycle:i,active:true,stage:i,remaining:120});assert.equal(eventStatus(t+119.99).active,true);assert.equal(eventStatus(t+120).active,false);assert.equal(eventStatus(t+120).remaining,480);}assert.equal(eventStatus(4200).stage,1);});
+test('rare distribution totals 100%, excludes common ores, and includes every rare tier',()=>{assert.equal(EVENT_CHANCES.reduce((a,b)=>a+b),100);let total=0;EVENT_CHANCES.forEach((chance,id)=>{if(chance)assert.equal(pickEvent(()=>(total+chance/2)/100),id);total+=chance;});assert.equal(pickEvent(()=>0),3);assert.equal(pickEvent(()=>.9999999),13);});
+test('playtime survives save, legacy saves start at zero, invalid times are rejected',()=>{const s=initial();s.playSeconds=601.25;const saved=restore(JSON.stringify(s));assert.equal(saved.playSeconds,601.25);assert.equal(eventStatus(saved.playSeconds).remaining,118.75);assert.equal(restore('{"money":100}').playSeconds,0);assert.equal(restore('{"playSeconds":-9}').playSeconds,0);assert.equal(timeLabel(600),'10:00');assert.equal(timeLabel(.1),'00:01');});

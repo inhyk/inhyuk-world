@@ -7,9 +7,9 @@
     "games/valorant"
   ],
   "scripts": {
-    "predev": "npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build",
+    "predev": "npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build",
     "dev": "next dev",
-    "build": "npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && next build",
+    "build": "npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && next build",
     "start": "next start",
     "lint": "eslint",
     "snowflow:dev": "npm run dev --workspace=@inhyuk/snowflow",
@@ -17,7 +17,7 @@
     "valorant:dev": "npm run dev --workspace=@inhyuk/valorant-protocol",
     "valorant:build": "npm run build --workspace=@inhyuk/valorant-protocol",
     "test:valorant": "npm run test --workspace=@inhyuk/valorant-protocol",
-    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\" \"games/orbit-breaker/*.test.mjs\" \"games/undertale/*.test.mjs\" \"games/valorant/tests/*.test.mjs\" \"games/deep-dig/*.test.mjs\" \"games/free-drive/*.test.mjs\"",
+    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\" \"games/orbit-breaker/*.test.mjs\" \"games/undertale/*.test.mjs\" \"games/valorant/tests/*.test.mjs\" \"games/deep-dig/*.test.mjs\" \"games/free-drive/*.test.mjs\" \"games/mineral-valley/*.test.mjs\"",
     "test:orbit-breaker": "node --test \"games/orbit-breaker/*.test.mjs\"",
     "test:mettaton": "node --test \"games/mettaton/*.test.mjs\"",
     "test:undertale": "node --test \"games/undertale/*.test.mjs\"",
@@ -29,7 +29,10 @@
     "test:blocktopia": "node --test games/blocktopia/core.test.mjs",
     "free-drive:build": "vite build --config games/free-drive/vite.config.js",
     "free-drive:dev": "vite --config games/free-drive/vite.config.js --host 127.0.0.1",
-    "test:free-drive": "node --test \"games/free-drive/*.test.mjs\""
+    "test:free-drive": "node --test \"games/free-drive/*.test.mjs\"",
+    "mineral-valley:build": "vite build --config games/mineral-valley/vite.config.js",
+    "mineral-valley:dev": "vite --config games/mineral-valley/vite.config.js --host 127.0.0.1",
+    "test:mineral-valley": "node --test games/mineral-valley/*.test.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

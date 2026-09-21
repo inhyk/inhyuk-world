@@ -1,0 +1,25 @@
+{
+  "slug": "mineral-valley",
+  "title": "미네랄 밸리 · MINERAL VALLEY",
+  "description": "14종 광물을 발견하고 최대 5개까지 운반하세요. 판매와 힘·속도 강화, 희귀 광맥 이벤트가 있는 3D 탐험.",
+  "longDescription": "1000×1000m의 3D 계곡에서 14종 광물을 찾아 최대 5개까지 운반하고 판매하세요. 가격이 높을수록 희귀하고 무거우며, 돌 틈에는 보석이 빛납니다. 총무게를 버틸 수 있도록 힘을 Lv.31까지 키우고 이동 속도도 강화하세요. 10분마다 열리는 희귀 광맥 이벤트, 광물 도감, 모바일 조작, 자동 저장, 리셋과 상점 선물 코드를 지원합니다.",
+  "emoji": "💎",
+  "thumbnail": "/images/games/mineral-valley-thumb.png",
+  "screenshots": [
+    "/images/games/mineral-valley-thumb.png",
+    "/images/games/mineral-valley-guide.png",
+    "/images/games/mineral-valley-event.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Babylon.js",
+    "WebGL",
+    "Vite"
+  ],
+  "category": "시뮬레이션",
+  "playUrl": "/play/mineral-valley",
+  "createdAt": "2026-09",
+  "featured": true,
+  "order": 39,
+  "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/mineral-valley"
+}

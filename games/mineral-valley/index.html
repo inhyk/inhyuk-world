@@ -1,0 +1,14 @@
+<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><meta name="theme-color" content="#153c37"><title>미네랄 밸리 · MINERAL VALLEY</title></head><body>
+<canvas id="world" aria-label="3D 광물 탐험 지도"></canvas>
+<header><a href="/">←</a><div class="brand"><small>INHYUK'S EXPLORER CLUB</small><h1>MINERAL <span>VALLEY</span><i>01</i></h1></div><div class="wallet"><small>보유 금액</small><b id="money">0원</b></div><button id="reset" aria-label="진행 초기화">리셋</button><button id="sound" aria-label="소리 켜기">소리 OFF</button></header>
+<aside class="mission glass"><small class="eyebrow">YOUR NEXT DISCOVERY</small><h2>돌 틈에 숨은<br>빛을 찾아서.</h2><p>발견하고, 들어 올리고, 판매하세요.<br>작은 원석 하나로 시작하는 큰 탐험.</p><div class="stats"><div><small>나의 힘</small><b id="power"></b></div><div><small>이동 속도</small><b id="speed"></b></div></div><div class="progress"><span id="collected"></span><button id="journal">광물 도감 ↗</button></div><div class="track"><i id="track"></i></div><small id="save">진행 상황 자동 저장</small></aside>
+<aside class="map glass"><div><b>VALLEY MAP</b><span>1,000 × 1,000 m</span></div><canvas id="minimap" width="180" height="180"></canvas><small id="coords"></small><p><i></i> 나의 위치 <span>◆ 베이스캠프</span></p></aside>
+<section id="event-panel" class="glass" aria-label="희귀 광맥 이벤트"><div><small>RARE ORE SURGE</small><b id="event-title">희귀 광맥 이벤트</b></div><strong id="event-countdown">10:00</strong><p id="event-detail"></p><small id="event-schedule"></small></section>
+<section id="cargo" class="glass"><b id="cargo-count"></b><div id="cargo-items"></div></section>
+<div class="place"><span>● LIVE EXPEDITION</span><b id="region">이끼빛 초원</b></div>
+<div id="toast" role="status">앞에 놓인 초록 원석으로 첫 탐험을 시작하세요.</div>
+<section id="target" class="glass"><div class="ore-symbol" id="target-symbol">◇</div><div><small id="target-rank">BASE CAMP</small><h3 id="target-name">원석을 찾아 가까이 다가가세요</h3><p id="target-info">WASD 이동 · 드래그로 시점 회전</p></div><button id="lift">E · 줍기</button></section>
+<footer><div class="shortcuts"><span><kbd>W A S D</kbd> 이동</span><span><kbd>드래그</kbd> 둘러보기</span><span><kbd>R</kbd> 캠프 귀환</span></div><div class="actions"><button id="return">⌂ 귀환</button><button id="drop" hidden>Q · 내려놓기</button><button id="sell">판매소 <kbd>F</kbd></button><button id="shop">상점 <kbd>B</kbd> ↗</button></div></footer>
+<div id="touch"><button data-move="w" aria-label="앞으로">▲</button><div><button data-move="a" aria-label="왼쪽">◀</button><button data-move="s" aria-label="뒤로">▼</button><button data-move="d" aria-label="오른쪽">▶</button></div></div>
+<dialog id="modal"><button id="close" aria-label="닫기">✕</button><small class="eyebrow" id="modal-label"></small><h2 id="modal-title"></h2><div id="modal-body"></div></dialog>
+<script type="module" src="./main.js"></script></body></html>
