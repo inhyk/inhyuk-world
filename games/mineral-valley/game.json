@@ -1,12 +1,13 @@
 {
   "slug": "mineral-valley",
   "title": "미네랄 밸리 · MINERAL VALLEY",
-  "description": "14종 광물을 발견하고 최대 5개까지 운반하세요. 판매와 힘·속도 강화, 희귀 광맥 이벤트가 있는 3D 탐험.",
-  "longDescription": "1000×1000m의 3D 계곡에서 14종 광물을 찾아 최대 5개까지 운반하고 판매하세요. 가격이 높을수록 희귀하고 무거우며, 돌 틈에는 보석이 빛납니다. 총무게를 버틸 수 있도록 힘을 Lv.31까지 키우고 이동 속도도 강화하세요. 10분마다 열리는 희귀 광맥 이벤트, 광물 도감, 모바일 조작, 자동 저장, 리셋과 상점 선물 코드를 지원합니다.",
+  "description": "19종 광물을 캐고 크기만큼 비싸게 파세요. 30,000×30,000m 계곡에 아침·낮·밤이 흐르고 2 키를 누르면 둘이 함께 탐험합니다.",
+  "longDescription": "30,000×30,000m 3D 계곡에서 19종 광물을 찾아 판매하세요. 가격은 광물의 실제 크기에 비례하고, 0.1% 확률로 나오는 초대형 광물은 가격이 80배까지 뜁니다. 운반 칸은 1개로 시작해 상점에서 5개까지 늘리고, 힘은 Lv.45까지 강화합니다. 캠프에서 1,000m를 넘어가면 고급 광물이 제대로 나오기 시작하고 멀어질수록 최대 18배까지 잘 나옵니다. 아침 10분·낮 10분·밤 10분의 하루, 10분마다 1분간 열리는 희귀 광맥 이벤트, 플레이어를 따라 움직이는 미니맵, 2 키로 켜는 분할 화면 2인 플레이, 광물 도감, 모바일 조작, 자동 저장, 리셋과 상점 선물 코드를 지원합니다.",
   "emoji": "💎",
   "thumbnail": "/images/games/mineral-valley-thumb.png",
   "screenshots": [
     "/images/games/mineral-valley-thumb.png",
+    "/images/games/mineral-valley-coop.png",
     "/images/games/mineral-valley-guide.png",
     "/images/games/mineral-valley-event.png"
   ],

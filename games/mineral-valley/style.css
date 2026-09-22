@@ -11,3 +11,59 @@
 
 .gift-form{margin-top:20px;padding:18px;border:1px solid #d6dfc9;border-radius:12px;background:#f0f1e4}.gift-form label{display:block;font-size:13px;font-weight:700;margin-bottom:10px}.gift-form>div{display:flex;gap:8px}.gift-form input{min-width:0;flex:1;font:inherit;font-size:14px;padding:12px;border:1px solid #b6c7b1;border-radius:8px;background:#fffdf5}.gift-form button{background:#285a42;color:white}.gift-form p{font-size:12px;overflow-wrap:anywhere}.wallet:has(.large-balance){max-width:260px;min-width:0}.wallet .large-balance{font-size:13px;overflow-wrap:anywhere;line-height:1.35}.note{overflow-wrap:anywhere}@media(max-width:600px){.wallet:has(.large-balance){width:100px;flex-shrink:0}.wallet .large-balance{font-size:9px}.gift-form{padding:12px}}
 @media(max-width:600px){header:has(.large-balance){align-items:flex-start}.wallet .large-balance{word-break:break-all;font-size:8px;line-height:10px;max-height:40px;overflow:auto}.wallet:has(.large-balance){padding:6px 8px}.wallet:has(.large-balance) small{line-height:12px}}
+
+/* 하루 시간대 표시 — 화면 위쪽 가운데 알약 */
+#day-panel{position:absolute;top:22px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:11px;padding:9px 18px;border-radius:26px;z-index:2}
+#day-panel>b{font-size:19px;line-height:1}
+#day-panel div small{display:block;font-size:8px;letter-spacing:1.6px;font-weight:800;color:#768273}
+#day-panel div b{font-size:13px;display:block;margin-top:2px}
+#day-panel strong{font-size:17px;font-variant-numeric:tabular-nums}
+#day-panel>small{font-size:9px;color:#71806d;border-left:1px solid #d7ddca;padding-left:11px;max-width:190px}
+#rarity{display:block;margin-top:3px;font-weight:800;color:#3f6b4e}
+#coop-toggle{background:#eef1e2}
+body.coop #coop-toggle{background:#204e3d;color:#fff}
+/* 밤에는 HUD도 함께 어두워진다 */
+body.night #day-panel{background:#1b2440f0;border-color:#41507e;color:#e2e9ff}
+body.night #day-panel div small,body.night #day-panel>small{color:#a9b8e8}
+body.night #day-panel>small{border-left-color:#3b4a75}
+body.night .map canvas{background:#1b2440}
+body.night #rarity{color:#8fb5ff}
+/* 2인 분할 화면 */
+#split-line{display:none;position:absolute;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:#fffdf3c0;pointer-events:none;z-index:1}
+body.coop #split-line{display:block}
+#coop{position:absolute;bottom:202px;right:32px;width:278px;padding:14px}
+#coop-count{font-size:11px;display:block;font-weight:800}
+#coop-items{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+#coop-items:empty{margin:0}
+#coop-items button{padding:6px 8px;border:1px solid;font-size:10px;background:#fffdf3}
+#coop-items small{display:block;color:#758071;font-size:9px}
+#coop p{font-size:10px;margin:9px 0 6px;color:#2f5a48;font-weight:700}
+#coop>small{font-size:9px;color:#71806d;line-height:1.8}
+body.coop .mission,body.coop .place{display:none}
+body.coop #event-panel{top:132px}
+body.coop #cargo{left:32px;right:auto}
+body.coop #target{left:25%}
+@media(max-width:900px){#coop{width:214px;padding:11px}#day-panel>small{display:none}body.coop #event-panel{top:112px}}
+@media(max-width:600px){
+ #day-panel{left:16px;right:auto;transform:none;top:302px;bottom:auto;padding:5px 11px;gap:7px}
+ #day-panel>b{font-size:13px}#day-panel div b{font-size:10px}#day-panel strong{font-size:12px}#day-panel div small{display:none}
+ #rarity{font-size:8px;margin-top:2px}
+ #coop{right:16px;bottom:300px;width:175px;padding:10px}
+ #coop-count{font-size:9px}#coop-items button{font-size:8px;padding:4px}#coop p{font-size:9px}#coop>small{font-size:8px}
+ body.coop #cargo{left:auto;right:16px}body.coop #target{left:50%}
+ #coop-toggle kbd{display:none}
+}
+/* 밤에는 유리 패널 밖의 글자도 함께 밝아진다 */
+body.night header,body.night header a,body.night .shortcuts,body.night .place{color:#e9eefc}
+body.night .wallet{color:#204b3e}
+body.night kbd{border-color:#a8bbd9aa}
+body.night #toast{background:#0d1526f2;color:#e9eefc}
+/* 2인 플레이에서는 1P 전용 버튼을 왼쪽 화면 안에 둔다 */
+body.coop footer{right:50%;justify-content:flex-end}
+body.coop .shortcuts{display:none}
+@media(max-width:600px){body.coop footer{right:16px}}
+/* 미니맵 카드가 희귀도 한 줄만큼 길어져 토스트를 그 아래로 내린다 */
+@media(max-width:600px){#toast{top:345px}}
+
+/* 모바일 방향 버튼은 언제나 다른 패널보다 위에 있어야 한다 */
+#touch{z-index:4}

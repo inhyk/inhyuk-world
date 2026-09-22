@@ -1,13 +1,37 @@
 import {chromium} from '../../tools/node_modules/playwright/index.mjs';
 import assert from 'node:assert/strict';
 const b=await chromium.launch({channel:'chrome',headless:true});
-try{const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto('http://127.0.0.1:5186/?test');await p.waitForFunction(()=>window.__mineralTest);const read=()=>p.evaluate(()=>JSON.parse(window.render_game_to_text()));assert.equal((await read()).ores,1612);
-for(let i=1;i<=6;i++){
- await p.evaluate(i=>{const t=window.__mineralTest;t.advanceEvents(i*600-t.state.playSeconds);},i);
- let s=await read();assert.equal(s.event.active,true);assert.equal(s.event.stage,i);assert.equal(s.event.bonusOres,240);assert.equal(s.ores,1852);assert.ok(await p.locator('#event-panel').evaluate(e=>e.classList.contains('active')));
- assert.equal(await p.evaluate(()=>window.__mineralTest.ores.filter(o=>o.eventOre).every(o=>o.id>=3&&Math.abs(o.x)<=480&&Math.abs(o.z)<=480)),true);
- await p.evaluate(()=>window.__mineralTest.advanceEvents(120));s=await read();assert.equal(s.event.active,false);assert.equal(s.event.bonusOres,0);assert.equal(s.ores,1612);
-}
-await p.evaluate(()=>{const t=window.__mineralTest;t.advanceEvents(4200-t.state.playSeconds);});await p.reload();await p.waitForFunction(()=>window.__mineralTest);let s=await read();assert.equal(s.event.active,true);assert.equal(s.event.stage,1);assert.equal(s.event.bonusOres,240);
-await p.evaluate(()=>{const t=window.__mineralTest;t.state.strength=30;const o=t.ores.find(o=>o.eventOre);t.player.x=o.x;t.player.z=o.z;});await p.waitForTimeout(600);await p.keyboard.press('e');s=await read();assert.equal(s.carried.length,1);await p.evaluate(()=>window.__mineralTest.advanceEvents(120));s=await read();assert.equal(s.carried.length,1);assert.equal(s.event.bonusOres,1);await p.click('#return');await p.click('#sell');s=await read();assert.equal(s.event.bonusOres,0);assert.equal(s.ores,1612);
-await p.evaluate(()=>{const t=window.__mineralTest;t.advanceEvents(480);});await p.screenshot({path:'/tmp/mineral-event-desktop.png'});await p.setViewportSize({width:390,height:844});await p.waitForTimeout(300);await p.screenshot({path:'/tmp/mineral-event-mobile.png'});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);assert.deepEqual(errors,[]);console.log('PASS: 1,612 ores; all 6 event milestones; 240 rare bonus ores; cleanup without count growth; hourly repeat; save/resume; carried ore retained and sellable; desktop/mobile HUD; zero browser errors.');}finally{await b.close();}
+try{
+ const p=await b.newPage({viewport:{width:1440,height:1000}}),errors=[];p.on('pageerror',e=>errors.push(e.message));
+ await p.goto('http://127.0.0.1:5186/?test');await p.waitForFunction(()=>window.__mineralTest);
+ const read=()=>p.evaluate(()=>JSON.parse(window.render_game_to_text()));
+ assert.equal((await read()).ores,1612);
+ for(let i=1;i<=6;i++){
+  await p.evaluate(i=>{const t=window.__mineralTest;t.advanceEvents(i*600-t.state.playSeconds);},i);
+  let s=await read();
+  assert.equal(s.event.active,true);assert.equal(s.event.stage,i);assert.equal(s.event.bonusOres,240);assert.equal(s.ores,1852);
+  assert.equal(Math.round(s.event.remaining),60);
+  assert.ok(await p.locator('#event-panel').evaluate(e=>e.classList.contains('active')));
+  assert.equal(await p.evaluate(()=>window.__mineralTest.ores.filter(o=>o.eventOre).every(o=>o.id>=3&&Math.abs(o.x)<=14960&&Math.abs(o.z)<=14960)),true);
+  // 이벤트는 2분이 아니라 1분 만에 끝난다.
+  await p.evaluate(()=>window.__mineralTest.advanceEvents(59));s=await read();assert.equal(s.event.active,true);
+  await p.evaluate(()=>window.__mineralTest.advanceEvents(1));s=await read();
+  assert.equal(s.event.active,false);assert.equal(s.event.bonusOres,0);assert.equal(s.ores,1612);
+ }
+ await p.evaluate(()=>{const t=window.__mineralTest;t.advanceEvents(4200-t.state.playSeconds);});
+ await p.reload();await p.waitForFunction(()=>window.__mineralTest);
+ let s=await read();assert.equal(s.event.active,true);assert.equal(s.event.stage,1);assert.equal(s.event.bonusOres,240);
+ await p.evaluate(()=>{const t=window.__mineralTest;t.state.strength=42;const o=t.ores.find(o=>o.eventOre);t.player.x=o.x;t.player.z=o.z;});
+ await p.waitForFunction(()=>JSON.parse(window.render_game_to_text()).nearest);
+ await p.keyboard.press('e');s=await read();assert.equal(s.carried.length,1);
+ await p.evaluate(()=>window.__mineralTest.advanceEvents(60));
+ s=await read();assert.equal(s.carried.length,1);assert.equal(s.event.bonusOres,1);
+ await p.click('#return');await p.click('#sell');
+ s=await read();assert.equal(s.event.bonusOres,0);assert.equal(s.ores,1612);
+ await p.evaluate(()=>{const t=window.__mineralTest;t.advanceEvents(480);});await p.waitForTimeout(300);
+ await p.screenshot({path:'public/images/games/mineral-valley-event.png'});
+ await p.setViewportSize({width:390,height:844});await p.waitForTimeout(300);await p.screenshot({path:'/tmp/mineral-event-mobile.png'});
+ assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ assert.deepEqual(errors,[]);
+ console.log('PASS: 1,612 ores; all 6 milestones; one-minute duration; 240 rare bonus ores; cleanup without count growth; hourly repeat; save/resume; carried ore retained and sellable; desktop/mobile HUD; zero browser errors.');
+}finally{await b.close();}
