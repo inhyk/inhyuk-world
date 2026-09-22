@@ -189,14 +189,14 @@ $('modal-body').onsubmit=e=>{if(e.target.id!=='gift-form')return;e.preventDefaul
 $('modal-body').onclick=e=>{const b=e.target.closest('[data-buy]');if(b&&buy(state,b.dataset.buy)){tone(true);save();update();shop();}};
 // 1인 플레이에서는 방향키가 WASD를 대신하고, 2인 플레이에서는 2P 전용이 된다.
 const ARROWS={w:'arrowup',s:'arrowdown',a:'arrowleft',d:'arrowright'};
-const HOTKEYS=new Set(['w','a','s','d','e','q','r','f','z','2',' ','arrowup','arrowdown','arrowleft','arrowright','.',',','/',"'"]);
+const HOTKEYS=new Set(['w','a','s','d','e','q','r','f','b','2',' ','arrowup','arrowdown','arrowleft','arrowright','.',',','/',"'"]);
 addEventListener('keydown',e=>{
  if($('modal').open)return;
  const k=e.key.toLowerCase();
  if(HOTKEYS.has(k))e.preventDefault();
  keys.add(k);
  if(e.repeat)return;
- if(k==='e')lift(P1);if(k==='q')drop(P1);if(k==='r')home(P1);if(k==='f')sale(P1);if(k==='z')shop();
+ if(k==='e')lift(P1);if(k==='q')drop(P1);if(k==='r')home(P1);if(k==='f')sale(P1);if(k==='b')shop();
  if(k==='2')setTwoPlayer(!twoPlayer);
  if(twoPlayer){if(k==='.')lift(P2);if(k===',')drop(P2);if(k==='/')sale(P2);if(k==="'")home(P2);}
 });

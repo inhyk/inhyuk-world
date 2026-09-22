@@ -23,9 +23,8 @@ try{
  // 30,000m 맵의 경계에서 멈춘다.
  await page.evaluate(()=>{const t=window.__mineralTest;t.player.x=14950;t.player.z=14950;});await page.keyboard.down('w');await page.waitForTimeout(500);await page.keyboard.up('w');assert.ok((await read()).player.z<=14960);
  await page.click('#shop');assert.equal(await page.locator('#modal').evaluate(e=>e.open),false);
- // Z 키가 상점을 연다(예전 B 대신).
- await page.evaluate(()=>window.__mineralTest.home());await page.keyboard.press('z');assert.equal(await page.locator('#modal').evaluate(e=>e.open),true);await page.click('#close');
- await page.keyboard.press('b');assert.equal(await page.locator('#modal').evaluate(e=>e.open),false);
+ // B 키가 상점을 연다.
+ await page.evaluate(()=>window.__mineralTest.home());await page.keyboard.press('b');assert.equal(await page.locator('#modal').evaluate(e=>e.open),true);await page.click('#close');
  const money=(await read()).money;
  await page.reload();await page.waitForFunction(()=>window.__mineralTest);assert.equal((await read()).power,16);assert.equal((await read()).money,money);
  await page.click('#journal');assert.equal(await page.locator('.catalog article').count(),19);await page.click('#close');
@@ -38,5 +37,5 @@ try{
  assert.equal(await mobile.locator('#touch').isVisible(),true);assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  const touch=await mobile.context().newCDPSession(mobile);const bounds=await mobile.locator('[data-move="w"]').boundingBox();await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:bounds.x+bounds.width/2,y:bounds.y+bounds.height/2}]});await mobile.waitForTimeout(350);await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});assert.ok(JSON.parse(await mobile.evaluate(()=>window.render_game_to_text())).player.z>20);
  await mobile.click('#shop');assert.ok(await mobile.locator('#modal').evaluate(e=>e.open));await mobile.click('#close');await mobile.screenshot({path:'/tmp/mineral-mobile.png'});
- assert.deepEqual(errors,[]);console.log('PASS: 30,000m map, one-slot start, movement, heavy rejection, weight-priced sale, upgrade, negative sale, drop, boundary, camp restriction, Z shop key, persistence, 19-mineral guide, mobile controls; no browser errors.');
+ assert.deepEqual(errors,[]);console.log('PASS: 30,000m map, one-slot start, movement, heavy rejection, weight-priced sale, upgrade, negative sale, drop, boundary, camp restriction, B shop key, persistence, 19-mineral guide, mobile controls; no browser errors.');
 }finally{await browser.close();}

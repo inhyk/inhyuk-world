@@ -26,7 +26,7 @@ for(const look of Object.values(DAY_LOOK)){look.skyColor=Color3.FromHexString(lo
 export function createWorld(canvas){
  const engine=new Engine(canvas,true,{preserveDrawingBuffer:true,stencil:true});engine.setHardwareScalingLevel(1/Math.min(devicePixelRatio,1.5));
  const scene=new Scene(engine);scene.clearColor=Color4.FromHexString('#b5cec2ff');scene.fogMode=Scene.FOGMODE_EXP2;scene.fogDensity=.0024;scene.fogColor=Color3.FromHexString('#b5cec2');
- const cameras=[0,1].map(i=>{const cam=new FreeCamera('camera'+i,new Vector3(0,30,-38),scene);cam.inputs.clear();cam.minZ=.3;cam.maxZ=900;cam.fov=.86;return cam;});
+ const cameras=[0,1].map(i=>{const cam=new FreeCamera('camera'+i,new Vector3(0,30,-38),scene);cam.inputs.clear();cam.minZ=1;cam.maxZ=900;cam.fov=.86;return cam;});
  scene.activeCameras=[cameras[0]];
  const hemi=new HemisphericLight('sky',new Vector3(0,1,0),scene);hemi.intensity=.78;hemi.groundColor=Color3.FromHexString('#637655');
  const sun=new DirectionalLight('sun',new Vector3(-.5,-1,.5),scene);sun.intensity=.78;sun.diffuse=Color3.FromHexString('#fff1cf');
@@ -36,12 +36,14 @@ export function createWorld(canvas){
  function cylinder(n,x,y,z,diameter,height,c,p,top=diameter,tessellation=8){return finish(MeshBuilder.CreateCylinder(n,{diameterBottom:diameter,diameterTop:top,height,tessellation},scene),x,y,z,c,p);}
  function sphere(n,x,y,z,size,c,p,segments=8){return finish(MeshBuilder.CreateSphere(n,{diameter:size,segments},scene),x,y,z,c,p);}
  function label(text,x,y,z,w=15){const t=new DynamicTexture(text,{width:512,height:128},scene,false);t.hasAlpha=true;t.drawText(text,null,83,'bold 48px sans-serif','#fffae4','#234e3e',true);const m=new StandardMaterial(text,scene);m.diffuseTexture=t;m.emissiveColor=new Color3(.6,.6,.6);m.backFaceCulling=false;const mesh=MeshBuilder.CreatePlane(text,{width:w,height:w/4},scene);mesh.position.set(x,y,z);mesh.material=m;mesh.billboardMode=7;mesh.isPickable=false;return mesh;}
- const ground=finish(MeshBuilder.CreateGround(`${MAP_SIZE} × ${MAP_SIZE} map`,{width:MAP_SIZE,height:MAP_SIZE},scene),0,-.03,0,'#8da978');ground.isPickable=false;
- box('camp pathway',0,.01,0,14,.06,65,'#c9c2a0');box('camp clearing',0,0,0,54,.06,30,'#c5bf9c');
+ // 30,000m 지면과 캠프 바닥이 같은 높이면 깊이 버퍼가 다퉈 화면이 반짝인다.
+ // 바닥판은 두껍게 만들어 지면 아래로 묻고, 윗면 높이만 층마다 벌려 둔다. (지면 -0.03 → 광장 0.03 → 길 0.08)
+ const ground=finish(MeshBuilder.CreateGround(`${MAP_SIZE} × ${MAP_SIZE} map`,{width:MAP_SIZE,height:MAP_SIZE,subdivisions:24},scene),0,-.03,0,'#8da978');ground.isPickable=false;
+ box('camp clearing',0,-.47,0,54,1,30,'#c5bf9c');box('camp pathway',0,-.42,0,14,1,65,'#c9c2a0');
  for(let j=0;j<4;j++){const side=j<2?1:-1;box('map boundary',j%2?side*(MAP_SIZE/2):0,6,j%2?0:side*(MAP_SIZE/2),j%2?2:MAP_SIZE,12,j%2?MAP_SIZE:2,'#728675');}
  function stall(x,color,title){box('wood deck',x,.3,0,12,.6,8,'#876b4d');for(const dx of [-5.3,5.3])for(const dz of [-3,3])box('post',x+dx,3.3,dz,.45,6,.45,'#6b6246');box('counter',x,1.7,-2,10,2,2,'#ad8759');for(let j=0;j<6;j++){const roof=box('canvas awning',x-5+j*2,6.3,0,2, .35,9,j%2?'#f1e7bf':color);roof.rotation.x=-.07;}label(title,x,8,0,13);for(let i=0;i<3;i++)box('crate',x-3+i*3,1,-.5,2,1.7,2,'#bea06d');}
  stall(-19,'#dfb65f','판매소 · SELL');stall(19,'#518f7b','상점 · SHOP');
- for(let i=0;i<10;i++)cylinder('stepping stone',Math.sin(i)*.5,.07,13+i*3.5,2.2,.12,'#d9cfac',null,2.2,7);
+ for(let i=0;i<10;i++)cylinder('stepping stone',Math.sin(i)*.5,-.05,13+i*3.5,2.2,.5,'#d9cfac',null,2.2,7);
  let seed=6742;const rand=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
  // 풍경은 템플릿 하나를 복제해 쓰고, 멀어지면 플레이어 주위로 옮겨 심는다.
  const treeTemplates=[0,1,2].map(v=>{
@@ -73,7 +75,7 @@ export function createWorld(canvas){
   box('backpack',0,1.9,-.8,1.2,1.35,.65,skin.pack,root);
   const legs=[-1,1].map(side=>box('boot',side*.4,.45,0,.6,.9,.75,'#3b5147',root));
   const arms=[-1,1].map(side=>box('arm',side*.94,1.75,0,.45,1.2,.5,'#d7a974',root));
-  const shadow=cylinder('explorer shadow',0,.03,0,3,.02,'#708663',null,3,24);
+  const shadow=cylinder('explorer shadow',0,.13,0,3,.02,'#708663',null,3,24);
   const ring=MeshBuilder.CreateTorus('selection',{diameter:4,thickness:.07,tessellation:40},scene);ring.material=mat(skin.ring,true);ring.setEnabled(false);ring.isPickable=false;
   const tag=label(skin.tag,0,5.4,0,8);tag.parent=root;tag.setEnabled(false);
   return {root,legs,arms,shadow,ring,tag};
@@ -145,7 +147,7 @@ export function createWorld(canvas){
     ore.mesh.scaling.setAll(size);ore.mesh.position.set(act.x+Math.sin(ang)*(3.6+size*1.4),1.5,act.z+Math.cos(ang)*(3.6+size*1.4));ore.mesh.rotation.y+=.004;
    }
    a.ring.setEnabled(!!act.nearest);
-   if(act.nearest){a.ring.position.set(act.nearest.x,.15,act.nearest.z);a.ring.scaling.setAll(radius(act.nearest)*.55+.5);}
+   if(act.nearest){a.ring.position.set(act.nearest.x,.28,act.nearest.z);a.ring.scaling.setAll(radius(act.nearest)*.55+.5);}
   }
   scene.render();
  },

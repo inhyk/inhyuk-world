@@ -22,7 +22,8 @@ try{
  await p.reload();await p.waitForFunction(()=>window.__mineralTest);
  let s=await read();assert.equal(s.event.active,true);assert.equal(s.event.stage,1);assert.equal(s.event.bonusOres,240);
  await p.evaluate(()=>{const t=window.__mineralTest;t.state.strength=42;const o=t.ores.find(o=>o.eventOre);t.player.x=o.x;t.player.z=o.z;});
- await p.waitForFunction(()=>JSON.parse(window.render_game_to_text()).nearest);
+ // 근처의 평범한 광물이 아니라 이벤트 광물이 대상이 될 때까지 기다린다.
+ await p.waitForFunction(()=>window.__mineralTest.P1.nearest?.eventOre===true);
  await p.keyboard.press('e');s=await read();assert.equal(s.carried.length,1);
  await p.evaluate(()=>window.__mineralTest.advanceEvents(60));
  s=await read();assert.equal(s.carried.length,1);assert.equal(s.event.bonusOres,1);
