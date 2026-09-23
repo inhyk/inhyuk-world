@@ -3,7 +3,7 @@ export const BASE_ORE_COUNT=1600;
 export const EVENT_ORE_COUNT=240;
 export const EVENT_INTERVAL=600;
 export const EVENT_DURATION=60;
-export const EVENT_CHANCES=[0,0,0,35.9,20,12,7,2,1,.4,16,3.5,2,.1,.05,.03,.015,.004,.001];
+export const EVENT_CHANCES=[0,0,0,35.8981,20,12,7,2,1,.4,16,3.5,2,.1,.05,.03,.015,.004,.001,.0008,.0005,.0003,.0002,.0001];
 export function eventStatus(seconds){
  const cycle=Math.floor(seconds/EVENT_INTERVAL);
  const elapsed=seconds-cycle*EVENT_INTERVAL;
@@ -26,3 +26,12 @@ export function dayPhase(seconds){
  const elapsed=t-index*PHASE_DURATION;
  return {...PHASES[index],index,day:Math.floor(Math.max(0,seconds)/DAY_LENGTH)+1,elapsed,remaining:PHASE_DURATION-elapsed,progress:elapsed/PHASE_DURATION};
 }
+// 풍선은 30,000m 계곡에 언제나 딱 하나. 터뜨리면 20초 뒤 다른 곳에 다시 뜬다.
+export const BALLOON_RESPAWN=20;
+// 5분마다 한 번씩 안내가 지나간다.
+export const AD_INTERVAL=300;
+export const AD_TEXT='seonn.dev 를 플레이 하세요!';
+// 몬스터는 밤에만 나온다.
+export const MONSTER_MAX=14;
+export const MONSTER_HP=3;
+export const MONSTER_REWARD=40000;

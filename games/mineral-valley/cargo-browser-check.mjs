@@ -9,7 +9,7 @@ try{
  await p.evaluate(()=>{const t=window.__mineralTest;t.state.strength=30;t.state.money=1e15;t.home();t.update();});
  assert.equal((await read()).capacity,1);
  await p.click('#shop');
- for(const expect of [2,3,4,5]){await p.click('[data-buy="cargo"]');assert.equal((await read()).capacity,expect);}
+ for(const expect of [2,3,4,5,6,7,8,9,10]){await p.click('[data-buy="cargo"]');assert.equal((await read()).capacity,expect);}
  assert.equal(await p.locator('[data-buy="cargo"]').isDisabled(),true);
  await p.click('[data-buy="strength"]');assert.ok((await read()).power>Math.floor(12*1.4**30));await p.click('#close');
  // 가격은 무게에 비례하고 초대형은 80배가 더 붙는다.
@@ -18,14 +18,15 @@ try{
  await p.evaluate(()=>{const t=window.__mineralTest;t.state.strength=42;t.update();});
  let spot=0;
  async function add(id){spot++;await p.evaluate(({id,spot})=>{const t=window.__mineralTest;t.player.x=400+spot*16;t.player.z=400;t.spawn(id,t.player.x,t.player.z);},{id,spot});await p.waitForFunction(id=>JSON.parse(window.render_game_to_text()).nearest?.id===id,id);await p.keyboard.press('e');}
- for(const id of [10,11,12,18,1])await add(id);
- let s=await read();assert.equal(s.carried.length,5);
- assert.equal(await p.locator('#cargo-items button').count(),5);
- assert.ok([10,11,12,18,1].every(id=>s.found[id]>0));
- // 여섯 번째는 칸이 없어 거절된다.
- await add(1);assert.equal((await read()).carried.length,5);
+ const haul=[10,11,12,18,1,2,3,4,5,6];
+ for(const id of haul)await add(id);
+ let s=await read();assert.equal(s.carried.length,10);
+ assert.equal(await p.locator('#cargo-items button').count(),10);
+ assert.ok(haul.every(id=>s.found[id]>0));
+ // 열한 번째는 칸이 없어 거절된다.
+ await add(1);assert.equal((await read()).carried.length,10);
  await p.locator('[data-drop="2"]').click();
- s=await read();assert.equal(s.carried.length,4);assert.equal(s.carried.some(o=>o.id===12),false);
+ s=await read();assert.equal(s.carried.length,9);assert.equal(s.carried.some(o=>o.id===12),false);
  const before=s.money,expected=s.carried.reduce((n,o)=>n+o.price,0);
  assert.ok(expected>1e14);
  await p.click('#return');await p.click('#sell');
@@ -37,10 +38,10 @@ try{
  await p.click('#reset');await p.click('#confirm-reset');
  s=await read();assert.equal(s.money,0);assert.equal(s.power,12);assert.equal(s.speed,22);assert.equal(s.capacity,1);assert.equal(s.carried.length,0);assert.equal(s.found.every(n=>n===0),true);assert.ok(s.event.playSeconds<3);assert.equal(s.ores,1612);assert.equal(s.day.name,'아침');
  await p.reload();await p.waitForFunction(()=>window.__mineralTest);assert.equal((await read()).money,0);assert.equal((await read()).capacity,1);
- await p.evaluate(()=>{const t=window.__mineralTest;t.state.strength=42;t.state.cargo=4;t.update();});
+ await p.evaluate(()=>{const t=window.__mineralTest;t.state.strength=42;t.state.cargo=9;t.update();});
  for(const id of [10,11,12,13,1])await add(id);
  await p.setViewportSize({width:390,height:844});await p.waitForTimeout(400);await p.screenshot({path:'/tmp/mineral-cargo-mobile.png'});
  assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  assert.deepEqual(errors,[]);
- console.log('PASS: one-slot start, four cargo upgrades to five, weight-based and giant pricing, fifth pickup and sixth rejection, selected drop, bulk sale total, strength limit, reset cancel/confirm/persistence, mobile inventory.');
+ console.log('PASS: one-slot start, nine cargo upgrades to ten, weight-based and giant pricing, tenth pickup and eleventh rejection, selected drop, bulk sale total, strength limit, reset cancel/confirm/persistence, mobile inventory.');
 }finally{await b.close();}

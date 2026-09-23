@@ -13,6 +13,7 @@ import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
 import { ORES,radius,rankIndex,MAP_SIZE,clampMap } from './core.mjs';
 import { PHASES } from './events.mjs';
+import { BALLOON_HEIGHT } from './life.mjs';
 // 안개 시야보다 넓게 깔아 두면 30,000m 계곡 어디를 걸어도 숲이 끊기지 않는다.
 const SCENERY_RADIUS=620;
 const SCENERY_KEEP=SCENERY_RADIUS+240;
@@ -56,7 +57,7 @@ export function createWorld(canvas){
  const rockTemplate=(()=>{const root=new TransformNode('outcrop template',scene);const r=sphere('valley outcrop',0,2,0,16,'#8c987a',root);r.scaling.set(1,.38,.9);root.setEnabled(false);return root;})();
  const props=[];
  function placeProp(p,cx,cz){
-  const a=rand()*6.283,d=95+Math.sqrt(rand())*SCENERY_RADIUS;
+  const a=rand()*6.283,d=45+rand()*SCENERY_RADIUS;
   let x=cx+Math.cos(a)*d,z=cz+Math.sin(a)*d;
   if(Math.hypot(x,z)<72){x+=(x<0?-1:1)*72;z+=(z<0?-1:1)*72;}
   p.node.position.set(clampMap(x),0,clampMap(z));p.node.scaling.setAll(p.scale);p.node.rotation.y=rand()*6.283;
@@ -75,6 +76,8 @@ export function createWorld(canvas){
   box('backpack',0,1.9,-.8,1.2,1.35,.65,skin.pack,root);
   const legs=[-1,1].map(side=>box('boot',side*.4,.45,0,.6,.9,.75,'#3b5147',root));
   const arms=[-1,1].map(side=>box('arm',side*.94,1.75,0,.45,1.2,.5,'#d7a974',root));
+  const handle=box('pick handle',0,-.85,.1,.16,1.7,.16,'#7d5a3a',arms[1]);handle.rotation.x=.25;
+  box('pick head',0,-1.6,.32,1.5,.22,.3,'#c9d2d8',arms[1]);
   const shadow=cylinder('explorer shadow',0,.13,0,3,.02,'#708663',null,3,24);
   const ring=MeshBuilder.CreateTorus('selection',{diameter:4,thickness:.07,tessellation:40},scene);ring.material=mat(skin.ring,true);ring.setEnabled(false);ring.isPickable=false;
   const tag=label(skin.tag,0,5.4,0,8);tag.parent=root;tag.setEnabled(false);
@@ -107,16 +110,37 @@ export function createWorld(canvas){
   for(const [color,list] of groups){const merged=Mesh.MergeMeshes(list,true,true,undefined,false,false);merged.material=mat(color,true);merged.isPickable=false;merged.convertToFlatShadedMesh();merged.parent=root;}
   root.setEnabled(false);return root;
  });
+ // 밤에만 계곡을 돌아다니는 그림자 몬스터
+ const monsterTemplate=(()=>{
+  const root=new TransformNode('monster template',scene);
+  const body=sphere('shadow body',0,2.3,0,4.2,'#2a2340',root,10);body.scaling.set(1,.85,1);
+  for(const side of [-1,1]){const eye=sphere('monster eye',side*.85,2.9,-1.7,.8,'#ff5b7a',root,8);eye.material=mat('#ff5b7a',true);}
+  for(let j=0;j<5;j++){const spike=cylinder('monster spike',Math.sin(j*1.3)*1.3,3.9,Math.cos(j*1.3)*1.3,.55,1.5,'#191533',root,0,5);spike.rotation.x=Math.sin(j)*.35;spike.rotation.z=Math.cos(j)*.35;}
+  for(const side of [-1,1])box('monster foot',side*1.15,.45,0,.95,.9,1.4,'#191533',root);
+  root.setEnabled(false);return root;
+ })();
+ const addMonster=()=>{const n=monsterTemplate.clone('monster',null);n.setEnabled(true);return n;};
+ // 계곡에 하나뿐인 풍선. 빛기둥이 땅까지 내려와 멀리서도 눈에 띈다.
+ const balloon=new TransformNode('balloon',scene);
+ const skin=sphere('balloon skin',0,0,0,9,'#ff5fa2',balloon,12);skin.scaling.set(1,1.25,1);skin.material=mat('#ff5fa2',true);
+ cylinder('balloon knot',0,-5.6,0,1.5,1.2,'#ffd166',balloon,.3,6);
+ cylinder('balloon string',0,-9.4,0,.18,6.6,'#fff3d0',balloon,.18,4);
+ box('balloon basket',0,-13.2,0,2.6,2,2.6,'#b98a52',balloon);
+ const beam=cylinder('balloon beam',0,-BALLOON_HEIGHT/2,0,1.2,BALLOON_HEIGHT,'#ffd9f2',balloon,1.2,6);beam.material=mat('#ffd9f2',true);
+ balloon.setEnabled(false);
  const oreScale=ore=>radius(ore)*.62;
  function addOre(ore){const root=templates[ore.id].clone('ore '+ore.uid,null);root.setEnabled(true);root.position.set(ore.x,0,ore.z);root.scaling.setAll(oreScale(ore));root.rotation.y=ore.turn;return root;}
  let zoom=53,split=false;const yaws=[0,0];
+ function showPartner(on){
+  avatars[1].root.setEnabled(on);avatars[1].shadow.setEnabled(on);
+  for(const a of avatars)a.tag.setEnabled(on);
+  if(!on)avatars[1].ring.setEnabled(false);
+ }
  function setSplit(on){
   split=on;
   cameras[0].viewport=new Viewport(0,0,on?.5:1,1);cameras[1].viewport=new Viewport(.5,0,.5,1);
   scene.activeCameras=on?cameras:[cameras[0]];
-  avatars[1].root.setEnabled(on);avatars[1].shadow.setEnabled(on);
-  for(const a of avatars)a.tag.setEnabled(on);
-  if(!on)avatars[1].ring.setEnabled(false);
+  showPartner(on);
  }
  function setDay(phase){
   const cur=DAY_LOOK[phase.key],next=DAY_LOOK[PHASES[(phase.index+1)%PHASES.length].key];
@@ -129,17 +153,25 @@ export function createWorld(canvas){
   const angle=(phase.index+phase.progress)/PHASES.length*Math.PI*2;
   sun.direction.set(Math.cos(angle)*.7,-.85,Math.sin(angle)*.7);
  }
- return {scene,engine,addOre,setSplit,setDay,streamScenery,
- setYaw:v=>yaws[0]+=v,setZoom:v=>zoom=Math.min(115,Math.max(22,zoom+v)),yaw:(i=0)=>yaws[i],
+ function setBalloon(spot,t){
+  balloon.setEnabled(!!spot);
+  if(!spot)return;
+  balloon.position.set(spot.x,BALLOON_HEIGHT+Math.sin(t*1.3)*1.6,spot.z);
+  balloon.rotation.y=t*.35;
+ }
+ return {scene,engine,addOre,addMonster,setBalloon,setSplit,showPartner,setDay,streamScenery,
+ setYaw:(v,i=0)=>yaws[i]+=v,setZoom:v=>zoom=Math.min(115,Math.max(22,zoom+v)),yaw:(i=0)=>yaws[i],
  update(actors,t){
   for(let i=0;i<avatars.length;i++){
    const a=avatars[i],act=actors[i];
    if(!act){a.ring.setEnabled(false);continue;}
    a.root.position.set(act.x,0,act.z);if(act.moving)a.root.rotation.y=act.facing;
-   for(let k=0;k<2;k++){a.legs[k].rotation.x=act.moving?Math.sin(t*10+k*Math.PI)*.5:0;a.arms[k].rotation.x=act.carried.length?-1.3:act.moving?Math.sin(t*10+k*Math.PI)*.4:0;}
+   for(let k=0;k<2;k++){
+    a.legs[k].rotation.x=act.moving?Math.sin(t*10+k*Math.PI)*.5:0;
+    // 곡괭이를 휘두르는 동안에는 오른팔이 크게 내려온다.
+    a.arms[k].rotation.x=act.swing>0&&k===1?-2.5+(1-act.swing)*3.4:act.carried.length?-1.3:act.moving?Math.sin(t*10+k*Math.PI)*.4:0;
+   }
    a.shadow.position.set(act.x,.03,act.z);
-   // 2P 카메라는 조작이 단순하도록 달리는 방향을 부드럽게 따라간다.
-   if(i===1){const want=-act.facing,d=Math.atan2(Math.sin(want-yaws[1]),Math.cos(want-yaws[1]));yaws[1]+=d*.07;}
    const cam=cameras[i],y=yaws[i];
    cam.position.set(act.x+Math.sin(y)*zoom,zoom*.8,act.z-Math.cos(y)*zoom);cam.setTarget(new Vector3(act.x,1,act.z));
    for(let k=0;k<act.carried.length;k++){

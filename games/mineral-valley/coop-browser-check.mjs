@@ -22,7 +22,7 @@ try{
  assert.ok(nearCamp.rare/nearCamp.all<.1,`캠프 희귀 비율 ${nearCamp.rare}/${nearCamp.all}`);
  assert.match(await p.locator('#rarity').innerText(),/×0\.25/);
  // 0.1% 초대형 광물은 훨씬 크고 훨씬 비싸다.
- await p.evaluate(()=>{const t=window.__mineralTest;t.state.strength=42;t.state.cargo=4;t.update();const o=t.spawn(13,t.player.x+10,t.player.z+10);Object.assign(o,{weight:32000*1.125*25,giant:true});});
+ await p.evaluate(()=>{const t=window.__mineralTest;t.state.strength=42;t.state.cargo=9;t.update();const o=t.spawn(13,t.player.x+10,t.player.z+10);Object.assign(o,{weight:32000*1.125*25,giant:true});});
  await p.waitForFunction(()=>JSON.parse(window.render_game_to_text()).nearest?.giant===true);
  let s=await read();
  assert.equal(s.nearest.price,5000000000*1.125*25*80);
