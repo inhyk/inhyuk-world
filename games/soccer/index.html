@@ -1,0 +1,54 @@
+<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101a36"><title>인혁이의 3D 축구 · INHYUK SOCCER</title></head>
+<body>
+<canvas id="game" tabindex="0" aria-label="3D 축구 경기 화면. WASD나 방향키로 움직이고, 스페이스로 슛, E로 패스합니다."></canvas>
+<div class="flash" id="flash"></div>
+<header class="hud">
+ <a class="back" href="/" target="_top">← 인혁이의 게임 세계</a>
+ <div class="scoreboard" aria-live="polite">
+  <div class="team home"><i></i><span id="home-name">인혁 FC</span></div>
+  <b class="score"><span id="score-home">0</span><em>:</em><span id="score-away">0</span></b>
+  <div class="team away"><span id="away-name">번개 유나이티드</span><i></i></div>
+  <div class="clock"><span id="clock">3:00</span><small id="phase"></small></div>
+ </div>
+ <div class="actions"><button id="sound" aria-pressed="true" aria-label="소리 끄기">🔊</button><button id="pause" aria-label="일시정지">⏸</button></div>
+</header>
+<div id="banner" aria-live="assertive"><b id="banner-big"></b><span id="banner-small"></span></div>
+<div id="toast" aria-live="polite"></div>
+<canvas id="radar" width="200" height="130" aria-hidden="true"></canvas>
+<div id="player-card"><small>조종 중</small><b id="player-num">10</b><div class="stamina" title="체력"><i id="stamina"></i></div></div>
+<p class="hint">WASD·방향키 이동 · Shift 달리기 · Space 슛(길게 누르면 세게) / 태클 · E 패스 / 선수 바꾸기</p>
+<div id="stick" aria-label="이동 조이스틱"><i></i></div>
+<div id="pad">
+ <button id="btn-sprint" aria-label="달리기">달리기</button>
+ <button id="btn-pass" aria-label="패스 또는 선수 바꾸기">패스</button>
+ <button id="btn-shoot" aria-label="슛 또는 태클">슛</button>
+</div>
+<section id="start" class="overlay">
+ <div class="panel">
+  <p class="eyebrow">INHYUK SOCCER 3D · 5 VS 5</p>
+  <h1>인혁이의 3D 축구</h1>
+  <p class="lead">파란색 <b>인혁 FC</b>를 이끌고 3분 경기에서 이겨라! ⚽</p>
+  <fieldset class="difficulty" aria-label="난이도">
+   <label><input type="radio" name="diff" value="easy"><span><b>쉬움</b><small>동네 친구들</small></span></label>
+   <label><input type="radio" name="diff" value="normal" checked><span><b>보통</b><small>번개 유나이티드</small></span></label>
+   <label><input type="radio" name="diff" value="hard"><span><b>어려움</b><small>월드 스타즈</small></span></label>
+  </fieldset>
+  <ul class="keys">
+   <li><kbd>WASD</kbd> 이동 <kbd>Shift</kbd> 달리기 (체력을 써요)</li>
+   <li><kbd>Space</kbd> 길게 눌렀다 떼면 슛 · 공이 없으면 태클</li>
+   <li><kbd>E</kbd> 패스 · 공이 없으면 공과 가까운 선수로 바꾸기</li>
+   <li>슛할 때 <kbd>W</kbd>/<kbd>S</kbd>를 같이 누르면 골대 위쪽·아래쪽 구석을 노려요</li>
+  </ul>
+  <button id="play" class="primary">경기 시작 ▶</button>
+  <p class="small" id="record-line"></p>
+ </div>
+</section>
+<dialog id="pause-dialog" aria-labelledby="pause-title"><p class="eyebrow">PAUSE</p><h2 id="pause-title">잠깐 쉬는 중</h2><div class="row col"><button id="resume" class="primary" autofocus>계속하기 ▶</button><button id="restart">↺ 이 경기 처음부터</button><button id="menu">🏠 난이도 고르기</button><button id="reset-records" class="danger">🗑 전적 지우기</button></div></dialog>
+<dialog id="records-dialog" aria-labelledby="records-title"><p class="eyebrow">RESET RECORDS</p><h2 id="records-title">전적을 모두 지울까요?</h2><p id="records-summary"></p><p>지운 전적은 되돌릴 수 없어요.</p><div class="row"><button id="cancel-records" autofocus>취소</button><button id="confirm-records" class="danger">전적 지우기</button></div></dialog>
+<dialog id="finish"><p class="eyebrow">FULL TIME</p><h2 id="result-title">승리!</h2>
+ <div class="final-score"><span>인혁 FC</span><b id="final-score">0 : 0</b><span id="final-away">상대</span></div>
+ <div class="result"><div><small>슈팅</small><b id="final-shots">0 : 0</b></div><div><small>점유율</small><b id="final-poss">50%</b></div><div><small>전적</small><b id="final-record">0승</b></div></div>
+ <p id="goal-list"></p><p id="new-best"></p>
+ <div class="row"><button id="to-menu">난이도 바꾸기</button><button id="again" class="primary">다시 경기 ↺</button></div></dialog>
+<script type="module" src="main.js"></script>
+</body></html>

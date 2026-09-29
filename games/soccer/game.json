@@ -1,0 +1,26 @@
+{
+  "slug": "soccer",
+  "title": "인혁이의 3D 축구 · INHYUK SOCCER",
+  "description": "파란색 인혁 FC를 이끌고 5 대 5 축구! 드리블하고 패스하고, 길게 눌러 강슛으로 골망을 흔들어요.",
+  "longDescription": "경기장과 관중석이 있는 3D 5 대 5 축구 게임입니다. 파란색 인혁 FC를 이끌고 3분 경기에서 이기세요. WASD 또는 방향키로 움직이고 Shift로 달립니다. 달리면 체력이 줄어요. Space를 길게 눌렀다 떼면 슛이고, 게이지가 빨개질 만큼 너무 세게 차면 골대를 넘어갑니다. 공이 없을 때 Space를 누르면 태클입니다. E로 패스하고, 공이 없을 때는 공과 가까운 선수로 바꿉니다. 상대 팀은 쉬움(동네 친구들), 보통(번개 유나이티드), 어려움(월드 스타즈) 세 단계입니다. 상대 AI는 압박·커버·마크 수비와 패스 길을 보는 공격을 하고, 태클을 피하기도 합니다. 골키퍼는 각도를 좁히고 몸을 날려 공을 막습니다. 스로인·코너킥·골킥, 골대 맞는 공, 골 세리머니와 꽃가루, 미니맵, 효과음이 있고 전적이 자동 저장됩니다. 모바일에서는 조이스틱과 슛·패스·달리기 버튼으로 플레이합니다.",
+  "emoji": "⚽",
+  "thumbnail": "/images/games/soccer-thumb.png",
+  "screenshots": [
+    "/images/games/soccer-thumb.png",
+    "/images/games/soccer-goal.png",
+    "/images/games/soccer-start.png",
+    "/images/games/soccer-mobile.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Babylon.js",
+    "WebGL",
+    "Web Audio"
+  ],
+  "category": "액션",
+  "playUrl": "/play/soccer",
+  "createdAt": "2026-09",
+  "featured": true,
+  "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/soccer",
+  "order": 40
+}

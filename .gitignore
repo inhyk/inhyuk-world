@@ -66,3 +66,6 @@ tools/node_modules/
 
 # Generated MINERAL VALLEY
 /public/play/mineral-valley/
+
+# Generated INHYUK SOCCER game
+/public/play/soccer/
