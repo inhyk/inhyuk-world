@@ -1,0 +1,141 @@
+// 챌린지(미션). 인혁이 기획서 7번: "챌린지는 타워에서 5번 연쇄하는 거야 (미션 같은 거)".
+// 이벤트(연쇄·터뜨림·전소·상쇄·승리·층·레벨·구매)가 들어오면 진행도를 올린다.
+// kind: 'max' = 가장 큰 값이 목표를 넘으면 완료, 'sum' = 모두 더해서 목표를 넘으면 완료.
+
+const tower = e => e.mode === 'tower';
+const m = (id, group, title, goal, event, value, reward, kind = 'max') => ({ id, group, title, goal, event, value, reward, kind });
+
+export const MISSIONS = [
+  m('tower-chain-2', 'tower', '타워에서 2연쇄 하기', 2, 'chain', e => (tower(e) ? e.chain : 0), { coins: 40, xp: 30 }),
+  m('tower-chain-3', 'tower', '타워에서 3연쇄 하기', 3, 'chain', e => (tower(e) ? e.chain : 0), { coins: 80, xp: 50 }),
+  m('tower-chain-5', 'tower', '타워에서 5연쇄 하기', 5, 'chain', e => (tower(e) ? e.chain : 0), { coins: 200, xp: 120 }),
+  m('tower-chain-7', 'tower', '타워에서 7연쇄 하기', 7, 'chain', e => (tower(e) ? e.chain : 0), { coins: 400, xp: 220 }),
+  m('tower-chain-10', 'tower', '타워에서 10연쇄 하기', 10, 'chain', e => (tower(e) ? e.chain : 0), { coins: 1000, xp: 500 }),
+  m('tower-allclear', 'tower', '타워에서 전소하기 (필드를 모두 지우기)', 1, 'allClear', e => (tower(e) ? 1 : 0), { coins: 200, xp: 100 }, 'sum'),
+  m('tower-offset', 'tower', '타워에서 상쇄 성공하기', 1, 'offset', e => (tower(e) ? 1 : 0), { coins: 120, xp: 60 }, 'sum'),
+  m('tower-rock', 'tower', '타워에서 한 번에 운석(방해뿌요 30개) 만들기', 30, 'chain', e => (tower(e) ? e.made : 0), { coins: 300, xp: 150 }),
+  m('tower-star', 'tower', '타워에서 한 번에 별(방해뿌요 180개) 만들기', 180, 'chain', e => (tower(e) ? e.made : 0), { coins: 1200, xp: 600 }),
+  m('tower-pop-100', 'tower', '타워에서 뿌요 100개 터뜨리기', 100, 'pop', e => (tower(e) ? e.puyos : 0), { coins: 100, xp: 60 }, 'sum'),
+  m('tower-pop-1000', 'tower', '타워에서 뿌요 1,000개 터뜨리기', 1000, 'pop', e => (tower(e) ? e.puyos : 0), { coins: 500, xp: 250 }, 'sum'),
+  m('tower-floor-1', 'tower', '1층 작은 뿌요 층 깨기', 1, 'tower', e => e.floor, { coins: 50, xp: 30 }),
+  m('tower-floor-3', 'tower', '3층 운석 층 깨기', 3, 'tower', e => e.floor, { coins: 150, xp: 80 }),
+  m('tower-floor-5', 'tower', '5층 달 층 깨기', 5, 'tower', e => e.floor, { coins: 300, xp: 150 }),
+  m('tower-floor-6', 'tower', '꼭대기 왕관 층 깨기', 6, 'tower', e => e.floor, { coins: 600, xp: 300 }),
+  m('tower-floor-7', 'tower', '비밀의 혜성 층 깨기', 7, 'tower', e => e.floor, { coins: 1500, xp: 700 }),
+
+  m('big-group', 'skill', '한 번에 8개 이상 이어서 터뜨리기', 8, 'pop', e => e.maxGroup, { coins: 120, xp: 60 }),
+  m('four-colors', 'skill', '4가지 색을 한 번에 터뜨리기', 4, 'pop', e => e.colors, { coins: 150, xp: 80 }),
+  m('chain-8', 'skill', '아무 모드에서 8연쇄 하기', 8, 'chain', e => e.chain, { coins: 500, xp: 250 }),
+  m('endless-10k', 'skill', '혼자 하기에서 10,000점', 10000, 'endless', e => e.score, { coins: 100, xp: 60 }),
+  m('endless-100k', 'skill', '혼자 하기에서 100,000점', 100000, 'endless', e => e.score, { coins: 500, xp: 250 }),
+
+  m('win-1', 'play', '대전에서 처음 이기기', 1, 'match', e => (e.win ? 1 : 0), { coins: 50, xp: 30 }, 'sum'),
+  m('win-10', 'play', '대전에서 10번 이기기', 10, 'match', e => (e.win ? 1 : 0), { coins: 300, xp: 150 }, 'sum'),
+  m('win-50', 'play', '대전에서 50번 이기기', 50, 'match', e => (e.win ? 1 : 0), { coins: 1000, xp: 500 }, 'sum'),
+  m('two-player', 'play', '2인 플레이 한 판 하기', 1, 'match', e => (e.mode === 'local' ? 1 : 0), { coins: 50, xp: 30 }, 'sum'),
+  m('online-play', 'play', '온라인 대전 한 판 하기', 1, 'match', e => (e.mode === 'online' ? 1 : 0), { coins: 80, xp: 50 }, 'sum'),
+  m('online-win', 'play', '온라인 대전에서 이기기', 1, 'match', e => (e.mode === 'online' && e.win ? 1 : 0), { coins: 200, xp: 100 }, 'sum'),
+
+  m('level-5', 'grow', '레벨 5 되기', 5, 'level', e => e.level, { coins: 150, xp: 0 }),
+  m('level-10', 'grow', '레벨 10 되기', 10, 'level', e => e.level, { coins: 300, xp: 0 }),
+  m('level-20', 'grow', '레벨 20 되기', 20, 'level', e => e.level, { coins: 800, xp: 0 }),
+  m('buy-skin', 'grow', '상점에서 스킨 사기', 1, 'buy', e => (e.kind === 'skin' ? 1 : 0), { coins: 60, xp: 30 }, 'sum'),
+  m('buy-effect', 'grow', '상점에서 터짐 효과 사기', 1, 'buy', e => (e.kind === 'effect' ? 1 : 0), { coins: 60, xp: 30 }, 'sum'),
+];
+
+export const GROUPS = { tower: '타워 챌린지', skill: '실력 챌린지', play: '놀이 챌린지', grow: '성장 챌린지' };
+
+// 오늘의 미션: 날짜마다 3개씩 바뀐다
+export const DAILY_POOL = [
+  m('d-chain3', 'daily', '오늘 3연쇄 이상을 3번 하기', 3, 'chain', e => (e.chain >= 3 ? 1 : 0), { coins: 60, xp: 40 }, 'sum'),
+  m('d-pop200', 'daily', '오늘 뿌요 200개 터뜨리기', 200, 'pop', e => e.puyos, { coins: 60, xp: 40 }, 'sum'),
+  m('d-win2', 'daily', '오늘 대전에서 2번 이기기', 2, 'match', e => (e.win ? 1 : 0), { coins: 80, xp: 50 }, 'sum'),
+  m('d-tower', 'daily', '오늘 타워에 2번 도전하기', 2, 'match', e => (e.mode === 'tower' ? 1 : 0), { coins: 50, xp: 40 }, 'sum'),
+  m('d-garbage', 'daily', '오늘 방해뿌요 60개 보내기', 60, 'chain', e => e.sent || 0, { coins: 70, xp: 50 }, 'sum'),
+  m('d-allclear', 'daily', '오늘 전소 1번 하기', 1, 'allClear', () => 1, { coins: 90, xp: 60 }, 'sum'),
+  m('d-chain5', 'daily', '오늘 5연쇄 하기', 5, 'chain', e => e.chain, { coins: 100, xp: 70 }),
+  m('d-endless', 'daily', '오늘 혼자 하기에서 5,000점', 5000, 'endless', e => e.score, { coins: 60, xp: 40 }),
+  m('d-games3', 'daily', '오늘 3판 하기', 3, 'match', () => 1, { coins: 50, xp: 40 }, 'sum'),
+  m('d-offset', 'daily', '오늘 상쇄 2번 하기', 2, 'offset', () => 1, { coins: 70, xp: 50 }, 'sum'),
+];
+
+export function todayKey(now = new Date()) {
+  const p = n => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+}
+function hash(text) {
+  let h = 2166136261;
+  for (const ch of text) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+export function dailyFor(date) {
+  const pool = DAILY_POOL.slice();
+  let h = hash(date);
+  const out = [];
+  while (out.length < 3) {
+    h = Math.imul(h ^ (h >>> 13), 1103515245) + 12345 >>> 0;
+    out.push(pool.splice(h % pool.length, 1)[0]);
+  }
+  return out;
+}
+export function ensureDaily(progress, date = todayKey()) {
+  if (!progress.daily || progress.daily.date !== date) {
+    progress.daily = { date, list: dailyFor(date).map(d => ({ id: d.id, v: 0, claimed: false })) };
+  }
+  return progress.daily;
+}
+const dailyDef = id => DAILY_POOL.find(d => d.id === id);
+
+function advance(def, slot, event) {
+  if (def.event !== event.type) return false;
+  const value = Number(def.value(event)) || 0;
+  if (!value) return false;
+  const before = slot.v >= def.goal;
+  slot.v = def.kind === 'sum' ? slot.v + value : Math.max(slot.v, value);
+  return !before && slot.v >= def.goal;
+}
+
+// 이벤트를 넣으면 방금 완료된 미션 목록을 돌려준다
+export function track(progress, event, date = todayKey()) {
+  const done = [];
+  progress.missions = progress.missions || {};
+  for (const def of MISSIONS) {
+    const slot = progress.missions[def.id] || (progress.missions[def.id] = { v: 0, claimed: false });
+    if (advance(def, slot, event)) done.push(def);
+  }
+  const daily = ensureDaily(progress, date);
+  for (const slot of daily.list) {
+    const def = dailyDef(slot.id);
+    if (def && advance(def, slot, event)) done.push(def);
+  }
+  return done;
+}
+
+export function missionView(progress, date = todayKey()) {
+  const daily = ensureDaily(progress, date);
+  const row = (def, slot) => ({ ...def, v: Math.min(slot?.v || 0, def.goal), done: (slot?.v || 0) >= def.goal, claimed: !!slot?.claimed });
+  return {
+    daily: daily.list.map(slot => row(dailyDef(slot.id), slot)),
+    list: MISSIONS.map(def => row(def, progress.missions?.[def.id])),
+  };
+}
+
+// 보상 받기. 받을 수 없으면 null
+export function claim(progress, id, date = todayKey()) {
+  const def = MISSIONS.find(d => d.id === id);
+  let slot;
+  if (def) slot = progress.missions?.[id];
+  else {
+    const daily = ensureDaily(progress, date);
+    slot = daily.list.find(s => s.id === id);
+  }
+  const d = def || dailyDef(id);
+  if (!d || !slot || slot.claimed || slot.v < d.goal) return null;
+  slot.claimed = true;
+  return d.reward;
+}
+
+export function unclaimedCount(progress, date = todayKey()) {
+  const view = missionView(progress, date);
+  return [...view.daily, ...view.list].filter(m => m.done && !m.claimed).length;
+}

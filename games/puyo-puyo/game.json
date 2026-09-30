@@ -1,0 +1,29 @@
+{
+  "slug": "puyo-puyo",
+  "title": "뿌요뿌요 타워 · PUYO PUYO TOWER",
+  "description": "작은 뿌요부터 왕관까지! AI를 이길 때마다 한 층씩 타워를 올라가고, 친구와 2인·온라인 대전도 하는 뿌요뿌요.",
+  "longDescription": "인혁이의 손글씨 기획서 12가지를 모두 담은 뿌요뿌요 팬 게임입니다. 뿌요뿌요 통의 규칙을 분석해 6×12 필드와 숨은 13번째 줄, 벽 차기·바닥 차기·퀵턴, 연쇄·색·연결 보너스 점수 공식, 70점당 방해뿌요와 상쇄, 전소 보너스, 96초 뒤 마진 타임까지 그대로 만들었습니다. 타워 모드에서는 AI를 한 번 이길 때마다 한 층씩 올라가며, 층은 방해뿌요 순서대로 작은 뿌요·큰 뿌요·운석·별·달·왕관 층이고 층마다 새 캐릭터가 기다립니다. 높은 층의 AI일수록 더 멀리 내다보고 더 큰 연쇄를 참았다가 터뜨리며 손도 빨라집니다. 꼭대기 왕관 층을 깨면 엔딩과 황금 왕관 스킨, 그리고 비밀의 혜성 층이 열립니다. 한 키보드 2인 플레이와 방 코드로 하는 온라인 대전, 점점 빨라지는 혼자 하기를 지원합니다. 이 기기에 저장되는 로그인 계정으로 레벨·코인·기록이 쌓이고, 타워에서 5연쇄 하기 같은 챌린지와 오늘의 미션을 깨서 보상을 받습니다. 상점에서 뿌요 스킨 12종과 터질 때 효과 13종을 살 수 있고, 돌릴 때와 터질 때 효과음, 직접 만든 배경음악, 휴대폰 버튼과 쓸기 조작을 지원합니다.",
+  "emoji": "🟢",
+  "thumbnail": "/images/games/puyo-puyo-thumb.png",
+  "screenshots": [
+    "/images/games/puyo-puyo-thumb.png",
+    "/images/games/puyo-puyo-tower.png",
+    "/images/games/puyo-puyo-ending.png",
+    "/images/games/puyo-puyo-shop.png",
+    "/images/games/puyo-puyo-mobile.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Canvas 2D",
+    "Web Audio",
+    "Web Worker",
+    "PeerJS",
+    "WebRTC",
+    "Vite"
+  ],
+  "category": "퍼즐",
+  "playUrl": "/play/puyo-puyo",
+  "createdAt": "2026-09",
+  "featured": true,
+  "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/puyo-puyo"
+}

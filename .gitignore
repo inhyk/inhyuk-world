@@ -69,3 +69,6 @@ tools/node_modules/
 
 # Generated INHYUK SOCCER game
 /public/play/soccer/
+
+# Generated PUYO PUYO TOWER game
+/public/play/puyo-puyo/

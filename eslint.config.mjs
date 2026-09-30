@@ -19,6 +19,7 @@ const eslintConfig = defineConfig([
     "public/play/blocktopia/**",
     "public/play/free-drive/**",
     "public/play/mineral-valley/**",
+    "public/play/puyo-puyo/**",
     "games/free-drive/public/models/draco/**",
     "public/play/deep-dig/**",
   ]),
@@ -27,7 +28,7 @@ const eslintConfig = defineConfig([
   // defined. `node --check` cannot see that, the bundler will not stop for
   // it, and it surfaces at runtime as a broken button.
   {
-    files: ["games/mineral-valley/main.js", "games/mineral-valley/core.mjs", "games/mineral-valley/events.mjs", "games/mineral-valley/world.mjs", "games/snowflow/src/**/*.js", "games/valorant/src/**/*.{js,mjs}", "games/blocktopia/main.js", "games/free-drive/main.js", "games/free-drive/core.mjs", "games/free-drive/places.mjs", "games/free-drive/school.mjs", "games/free-drive/world.mjs", "games/free-drive/journey.mjs", "games/free-drive/law.mjs", "games/free-drive/police.mjs", "games/free-drive/online.mjs", "games/free-drive/room.mjs", "games/free-drive/ferrari.js", "games/deep-dig/main.js", "games/deep-dig/world.mjs", "games/deep-dig/core.mjs", "games/deep-dig/movement.mjs"],
+    files: ["games/mineral-valley/main.js", "games/mineral-valley/core.mjs", "games/mineral-valley/events.mjs", "games/mineral-valley/world.mjs", "games/snowflow/src/**/*.js", "games/valorant/src/**/*.{js,mjs}", "games/blocktopia/main.js", "games/free-drive/main.js", "games/free-drive/core.mjs", "games/free-drive/places.mjs", "games/free-drive/school.mjs", "games/free-drive/world.mjs", "games/free-drive/journey.mjs", "games/free-drive/law.mjs", "games/free-drive/police.mjs", "games/free-drive/online.mjs", "games/free-drive/room.mjs", "games/free-drive/ferrari.js", "games/deep-dig/main.js", "games/deep-dig/world.mjs", "games/deep-dig/core.mjs", "games/deep-dig/movement.mjs", "games/puyo-puyo/main.js", "games/puyo-puyo/ai-worker.js", "games/puyo-puyo/ai.mjs", "games/puyo-puyo/audio.mjs", "games/puyo-puyo/characters.mjs", "games/puyo-puyo/core.mjs", "games/puyo-puyo/effects.mjs", "games/puyo-puyo/ending.mjs", "games/puyo-puyo/input.mjs", "games/puyo-puyo/match.mjs", "games/puyo-puyo/missions.mjs", "games/puyo-puyo/online.mjs", "games/puyo-puyo/profile.mjs", "games/puyo-puyo/render.mjs", "games/puyo-puyo/room.mjs", "games/puyo-puyo/shop.mjs", "games/puyo-puyo/skins.mjs", "games/puyo-puyo/tower.mjs"],
     languageOptions: {
       sourceType: "module",
       globals: { ...globals.browser, ...globals.es2022 },

@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 뿌요뿌요 타워 · PUYO PUYO TOWER
+
+`npm run dev` 후 http://localhost:3000/play/puyo-puyo 에서 플레이합니다. 인혁이의 손글씨 기획서 12가지로 만든 뿌요뿌요 팬 게임으로, 뿌요뿌요 통 규칙(연쇄 점수 공식, 방해뿌요, 상쇄, 전소, 마진 타임, 퀵턴)을 그대로 구현했습니다. AI를 이길 때마다 작은 뿌요·큰 뿌요·운석·별·달·왕관 층을 하나씩 올라가고, 층이 높을수록 AI가 세지며, 꼭대기를 깨면 엔딩과 비밀의 혜성 층이 열립니다. 2인·온라인 대전, 기기 로그인, 레벨, 챌린지, 스킨·터짐 효과 상점, 모바일 조작을 지원합니다. 조작과 기획서 대응표는 [게임 README](games/puyo-puyo/README.md), 원작 규칙 분석은 [ANALYSIS.md](games/puyo-puyo/ANALYSIS.md), 검증은 `npm run test:puyo-puyo`와 `node games/puyo-puyo/browser-check.mjs`를 참고하세요. 게임 전용 개발 서버는 `npm run puyo-puyo:dev`입니다.
+
 ## UNDERTALE · 세 갈래의 결말
 
 `npm run dev` 후 http://localhost:3000/play/undertale 에서 플레이합니다. 폐허에서 왕좌의 방까지 압축한 언더테일 팬 게임으로, 공격·행동·아이템·자비 전투와 빨강·파랑·초록 영혼 모드, 15종 몬스터와 9명의 보스를 갖추고 있습니다. 아무도 죽이지 않으면 불살, 지역마다 아무도 오지 않을 때까지 죽이면 몰살, 그 사이는 중립 결말이며 몰살 뒤에는 세계가 지워집니다. 이름 짓기, 세이브, 상점, 합성 음악, 모바일 터치를 지원합니다. 조작법은 [게임 README](games/undertale/README.md), 원작 시스템 분석은 [ANALYSIS.md](games/undertale/ANALYSIS.md), 전투·월드 검증은 `npm run test:undertale`을 참고하세요.
