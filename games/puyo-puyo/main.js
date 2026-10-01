@@ -9,8 +9,11 @@ import { SKINS, EFFECTS, canBuy, buy, equip, grant } from './shop.mjs';
 import { GROUPS, track, claim, missionView, unclaimedCount } from './missions.mjs';
 import {
   loadStore, saveStore, createAccount, login, logout, currentAccount, exportCode, importCode,
-  newProgress, addXp, xpToNext,
+  newProgress, xpToNext,
 } from './profile.mjs';
+import { calendarBonus, todayKey } from './calendar.mjs';
+import { DAILY_REWARDS, SPIN_PRIZES, TIME_REWARDS, rewardPreview, grantReward, rewardView, claimDaily, spin, addPlayTime, claimTime } from './rewards.mjs';
+import { createCreatorSession } from './creator.mjs';
 import { drawCharacter, drawGarbageIcon } from './characters.mjs';
 import { drawPreview } from './skins.mjs';
 import { Effects } from './effects.mjs';
@@ -22,6 +25,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => Number(n || 0).toLocaleString('ko-KR');
 const TEST = new URLSearchParams(location.search).has('test');
+const creator = createCreatorSession();
 
 // ---------- 저장 ----------
 let storage = null;
@@ -66,7 +70,7 @@ function toast(text, gold = false) {
 }
 
 // ---------- 화면 ----------
-const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'online', 'missions', 'shop', 'profile', 'help'];
+const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'online', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards'];
 function show(name) {
   screen = name;
   for (const s of SCREENS) $(`scr-${s}`).hidden = s !== name;
@@ -90,6 +94,8 @@ function renderScreen(name) {
   if (name === 'shop') renderShop();
   if (name === 'profile') renderProfile();
   if (name === 'help') renderHelp();
+  if (name === 'creator') renderCreator();
+  if (name === 'rewards') renderRewards();
 }
 
 document.querySelectorAll('[data-go]').forEach(btn => btn.addEventListener('click', () => {
@@ -164,6 +170,10 @@ $('import-form').onsubmit = e => {
   renderLogin();
 };
 function afterLogin() {
+  creator.lock();
+  pendingPlay = 0; unsavedPlay = 0;
+  $('creator-result').textContent = '';
+  $('spin-result').textContent = '';
   sound.sfx('coin');
   startDemo();
   show('menu');
@@ -181,6 +191,11 @@ function renderMenu() {
   const n = unclaimedCount(p);
   $('mission-badge').hidden = !n;
   $('mission-badge').textContent = n;
+  $('menu-event').textContent = eventText();
+  const rewards = rewardView(p);
+  const gifts = Number(!rewards.dailyClaimed) + Number(!rewards.spinClaimed) + rewards.time.filter(r => r.ready && !r.claimed).length;
+  $('reward-badge').hidden = !gifts;
+  $('reward-badge').textContent = gifts;
 }
 $('profile-chip').onclick = () => { sound.sfx('click'); show('profile'); };
 
@@ -217,8 +232,10 @@ function renderTower() {
     list.append(li);
   }
   $('tower-ending').hidden = !t.cleared;
+  $('tower-comet-ending').hidden = !t.comet;
 }
 $('tower-ending').onclick = () => runEnding(() => show('tower'));
+$('tower-comet-ending').onclick = () => runEnding(() => show('tower'), 'comet');
 
 // ---------- AI 대전 설정 ----------
 let vsLevel = 3;
@@ -409,6 +426,7 @@ function retry() {
 // ---------- 매 프레임 ----------
 let last = performance.now(), acc = 0;
 function loop(now) {
+  recordPlayTime(Math.max(0, Math.min(0.25, (now - last) / 1000)));
   acc += Math.min(250, now - last);
   last = now;
   const step = 1000 / 60;
@@ -509,7 +527,8 @@ function finishMatch() {
       coins += r.coins; xp += r.xp;
       const res = clearFloor(p.tower, g.floor);
       trackEvent({ type: 'tower', floor: g.floor });
-      if (res.ending) { grant(p, 'skin', 'crown'); ending = true; }
+      if (res.ending) { grant(p, 'skin', 'crown'); ending = 'crown'; }
+      if (res.cometEnding) ending = 'comet';
       if (info.secret && res.secretFirst) { grant(p, 'effect', 'comet'); toast('✨ 혜성 꼬리 효과를 얻었어!', true); }
       title = info.secret ? '혜성 층 정복!' : g.floor === TOP_FLOOR ? '타워 정복!' : `${g.floor}층 클리어!`;
       sub = r.first ? `${info.name}을(를) 처음 깼어!` : `${info.name} 다시 클리어`;
@@ -558,17 +577,17 @@ function finishMatch() {
   s.maxChain = Math.max(s.maxChain, totals.maxChain);
   s.maxScore = Math.max(s.maxScore, totals.maxScore);
   s.popped += totals.popped; s.allClears += totals.allClears; s.offsets += totals.offsets; s.garbageSent += totals.garbageSent;
-  s.playSeconds += Math.round((performance.now() - g.started) / 1000);
-  if (guest && !account) { coins = Math.round(coins); }
-  p.coins += coins;
   const before = { level: p.level, xp: p.xp };
-  const lv = addXp(p, xp);
+  const reward = grantReward(p, { coins, xp });
+  coins = reward.coins; xp = reward.xp;
+  const lv = reward.lv;
+  if (reward.bonus.birthday || reward.bonus.holidays.length) sub += ` · ${eventText(reward.bonus)}`;
   for (const level of lv.levels) trackEvent({ type: 'level', level });
   save();
   const show = () => showResult({ title, sub, win: g.mode === 'solo' || g.mode === 'local' ? true : win, totals, coins, xp, lv, before, buttons, mode: g.mode, score: m.players[0].score });
   if (g.mode === 'tower') {
     const info = FLOORS[g.floor - 1];
-    setTimeout(() => talk(info, win ? info.win : info.lose, () => (ending ? runEnding(show) : show())), 900);
+    setTimeout(() => talk(info, win ? info.win : info.lose, () => (ending ? runEnding(show, ending) : show())), 900);
   } else setTimeout(show, 700);
 }
 
@@ -608,24 +627,146 @@ function showResult(r) {
 function closeResult() { $('result').hidden = true; }
 
 // ---------- 엔딩 ----------
-function runEnding(done) {
+function runEnding(done, kind = 'crown') {
   $('ending').hidden = false;
+  $('ending').dataset.kind = kind;
+  $('ending').setAttribute('aria-label', kind === 'comet' ? '혜성 엔딩 · 우주의 친구들' : '왕관 엔딩');
   hideScreens();
   $('hud').hidden = true; $('touch').hidden = true;
   controls.enabled = false;
   sound.play('ending');
   P().tower.endings = (P().tower.endings || 0) + 1;
+  if (kind === 'comet') P().tower.cometEndings = (P().tower.cometEndings || 0) + 1;
   save();
-  const stop = playEnding($('ending-canvas'), { name: me()?.name || '나', skin: P().equip.skin, sound, onDone: finish });
+  const stop = playEnding($('ending-canvas'), { name: me()?.name || '나', kind, sound, onDone: finish });
   $('ending-skip').onclick = () => { stop(); finish(); };
   function finish() {
     if ($('ending').hidden) return;
     $('ending').hidden = true;
-    toast('👑 황금 왕관 뿌요 스킨을 받았어! 상점에서 장착해 봐.', true);
-    toast('✨ 탑 너머 비밀의 혜성 층이 열렸어!', true);
+    if (kind === 'comet') toast('🌠 우주의 친구들 엔딩! 코멧과 함께 진짜 타워 챔피언이 됐어!', true);
+    else {
+      toast('👑 황금 왕관 뿌요 스킨을 상점에서 장착해 봐.', true);
+      toast('✨ 탑 너머 비밀의 혜성 층이 열렸어!', true);
+    }
     done?.();
   }
 }
+
+// ---------- 제작자 모드 ----------
+function renderCreator() {
+  $('creator-form').hidden = creator.unlocked;
+  $('creator-tools').hidden = !creator.unlocked;
+  $('creator-account').textContent = `${me()?.name || '손님'} · Lv.${P().level}`;
+  $('creator-error').textContent = '';
+  $('creator-password').value = '';
+}
+$('creator-form').onsubmit = e => {
+  e.preventDefault();
+  const ok = creator.unlock($('creator-password').value);
+  $('creator-password').value = '';
+  if (!ok) { $('creator-error').textContent = '비밀번호가 달라. 다시 입력해 줘!'; sound.sfx('bump'); return; }
+  sound.sfx('coin'); renderCreator();
+};
+$('creator-lock').onclick = () => { creator.lock(); renderCreator(); };
+document.querySelectorAll('[data-creator]').forEach(button => {
+  button.onclick = () => {
+    const message = creator.apply(P(), button.dataset.creator);
+    if (!message) return;
+    save(); sound.sfx('mission'); renderCreator();
+    $('creator-result').textContent = message;
+    toast(message, true);
+  };
+});
+
+// ---------- 매일 보상 ----------
+function eventText(bonus = calendarBonus()) {
+  const lines = [];
+  if (bonus.birthday) lines.push('🎂 인혁이 생일! 포인트(코인) ×10');
+  if (bonus.holidays.length) lines.push(`🎉 ${bonus.holidays.join(' · ')} 경험치 ×2`);
+  return lines.length ? lines.join(' · ') : '🎂 매년 5월 12일 코인 ×10 · 🎉 한국 공휴일 경험치 ×2';
+}
+function rewardText(r) {
+  return [r.coins ? `🪙 ${fmt(r.coins)}` : '', r.xp ? `경험치 ${fmt(r.xp)}` : ''].filter(Boolean).join(' · ');
+}
+function received(result) {
+  if (!result) return;
+  for (const level of result.lv.levels) trackEvent({ type: 'level', level });
+  sound.sfx(result.lv.levels.length ? 'level' : 'coin');
+  toast(`🎁 ${rewardText(result)} 받았어!${result.lv.levels.length ? ` Lv.${P().level}!` : ''}`, true);
+  save();
+}
+let spinning = false;
+function renderRewards() {
+  const view = rewardView(P());
+  $('reward-event').textContent = eventText();
+  $('daily-rewards').innerHTML = DAILY_REWARDS.map((reward, i) => `<div class="daily-gift${i === view.day ? ' active' : ''}${i < view.day || (i === view.day && view.dailyClaimed) ? ' received' : ''}"><b>${i + 1}일째 ${i === 6 ? '🎁' : '✨'}</b><small>${rewardText(rewardPreview(reward))}</small></div>`).join('');
+  $('daily-button').disabled = view.dailyClaimed;
+  $('daily-button').textContent = view.dailyClaimed ? '✔ 오늘 선물 받음 · 내일 또 만나!' : `${view.day + 1}일째 선물 받기`;
+  $('spin-button').disabled = view.spinClaimed || spinning;
+  $('spin-button').textContent = spinning ? '두근두근…' : view.spinClaimed ? '✔ 오늘 스핀 완료 · 내일 다시!' : '무료로 돌리기!';
+  const wheel = $('spin-wheel');
+  if (!wheel.childElementCount) {
+    wheel.innerHTML = SPIN_PRIZES.map((r, i) => `<span class="spin-label" style="transform:rotate(${i * 60}deg) translateY(-87px) rotate(${-i * 60}deg)">${r.coins ? `🪙${r.coins}` : `XP ${r.xp}`}${r.coins && r.xp ? `<small>+${r.xp} XP</small>` : ''}</span>`).join('');
+  }
+  if (!spinning) {
+    wheel.classList.remove('spinning');
+    wheel.style.transform = `rotate(${-(view.spinIndex ?? 0) * 60}deg)`;
+    $('spin-result').textContent = view.spinClaimed && view.spinIndex !== null ? `오늘 당첨: ${rewardText(rewardPreview(SPIN_PRIZES[view.spinIndex]))}` : '어느 선물이 나올까?';
+  }
+  $('spin-prizes').textContent = `룰렛에는 기본 보상이 표시돼. 오늘 받을 보상: ${SPIN_PRIZES.map(r => rewardText(rewardPreview(r))).join(' / ')}`;
+  const minutes = Math.floor(view.playSeconds / 60), seconds = Math.floor(view.playSeconds % 60);
+  $('play-time').textContent = `오늘 게임한 시간: ${minutes}분 ${seconds}초`;
+  $('time-rewards').innerHTML = view.time.map(r => `<div class="time-gift"><b>${r.seconds / 60}분 선물</b><p class="fine">${rewardText(r)}</p><button data-time="${r.id}" ${r.ready && !r.claimed ? 'class="primary"' : 'disabled'}>${r.claimed ? '✔ 받음' : r.ready ? '선물 받기!' : `${Math.ceil((r.seconds - view.playSeconds) / 60)}분 더!`}</button></div>`).join('');
+  $('time-rewards').querySelectorAll('button').forEach(button => { button.onclick = () => {
+    received(claimTime(P(), button.dataset.time)); renderScreen('rewards');
+  }; });
+}
+$('daily-button').onclick = () => { received(claimDaily(P())); renderScreen('rewards'); };
+$('spin-button').onclick = () => {
+  if (spinning) return;
+  const result = spin(P());
+  if (!result) return;
+  // 먼저 결과를 지급·저장하므로 애니메이션 중 새로고침해도 선물이 사라지지 않는다.
+  received(result);
+  const owner = me();
+  spinning = true;
+  renderScreen('rewards');
+  $('spin-result').textContent = '빙글빙글… 선물을 고르는 중!';
+  const wheel = $('spin-wheel');
+  wheel.classList.remove('spinning');
+  wheel.style.transform = 'rotate(0deg)';
+  void wheel.offsetWidth;
+  wheel.classList.add('spinning');
+  wheel.style.transform = `rotate(${1800 - result.index * 60}deg)`;
+  setTimeout(() => {
+    spinning = false;
+    if (owner !== me()) return;
+    if (screen === 'rewards') renderScreen('rewards');
+    toast(`🎡 당첨! ${rewardText(result)}`, true); sound.sfx('mission');
+  }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 150 : 3100);
+};
+
+let pendingPlay = 0, unsavedPlay = 0;
+function recordPlayTime(seconds) {
+  if (!match || !game || game.finished || match.phase !== 'play' || paused || talking || screen || document.hidden || !$('ending').hidden) return;
+  pendingPlay += seconds;
+  if (pendingPlay < 1) return;
+  const p = P(), before = rewardView(p).playSeconds;
+  const elapsed = pendingPlay;
+  addPlayTime(p, elapsed);
+  p.stats.playSeconds += elapsed;
+  pendingPlay = 0; unsavedPlay += elapsed;
+  for (const reward of TIME_REWARDS) if (before < reward.seconds && p.rewards.playSeconds >= reward.seconds) toast(`🎁 ${reward.seconds / 60}분 선물을 받을 수 있어! 메뉴 → 보상 받기`, true);
+  if (unsavedPlay >= 15) { save(); unsavedPlay = 0; }
+}
+// 열린 화면도 자정이 지나면 출석·미션·배율을 갱신한다.
+let displayedDate = todayKey();
+setInterval(() => {
+  const date = todayKey();
+  if (date !== displayedDate) { displayedDate = date; if (screen) renderScreen(screen); }
+}, 1000);
+addEventListener('pagehide', save);
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
 
 // ---------- 챌린지 ----------
 function renderMissions() {
@@ -643,12 +784,11 @@ function renderMissions() {
       d.className = `mission${m.done ? ' done' : ''}${m.claimed ? ' claimed' : ''}${m.id === 'tower-chain-5' ? ' kid' : ''}`;
       const pct = Math.round((m.v / m.goal) * 100);
       d.innerHTML = `<b>${m.id === 'tower-chain-5' ? '<span class="star">★</span> ' : ''}${esc(m.title)}</b><button ${m.done && !m.claimed ? 'class="primary"' : 'disabled'}>${m.claimed ? '✔ 받음' : m.done ? '받기!' : `${fmt(m.v)}/${fmt(m.goal)}`}</button>
-        <div class="bar"><i style="width:${pct}%"></i></div><span class="rw">보상 🪙${fmt(m.reward.coins)}${m.reward.xp ? ` · 경험치 ${m.reward.xp}` : ''}</span>`;
+        <div class="bar"><i style="width:${pct}%"></i></div><span class="rw">보상 ${rewardText(rewardPreview(m.reward))}</span>`;
       d.querySelector('button').onclick = () => {
         const reward = claim(p, m.id);
         if (!reward) return;
-        p.coins += reward.coins;
-        const lv = addXp(p, reward.xp || 0);
+        const { lv } = grantReward(p, reward);
         for (const level of lv.levels) { trackEvent({ type: 'level', level }); toast(`🎉 레벨 업! Lv.${level}`, true); }
         sound.sfx(lv.levels.length ? 'level' : 'coin');
         save();
@@ -769,7 +909,9 @@ $('export-copy').onclick = async () => {
   try { await navigator.clipboard.writeText(code); toast('📋 기록 코드를 복사했어!'); } catch { $('export-code').select(); toast('코드를 길게 눌러 복사해 줘.'); }
 };
 $('logout').onclick = () => {
-  if (account) { logout(store); account = null; save(); }
+  creator.lock();
+  save();
+  if (account) { logout(store); saveStore(storage, store); account = null; }
   guest = null;
   show('login');
 };
@@ -819,6 +961,7 @@ portraitQuery.addEventListener?.('change', e => {
 window.render_game_to_text = () => JSON.stringify({
   screen, paused, talking,
   account: me()?.name || null, level: P().level, coins: P().coins, tower: P().tower,
+  rewards: P().rewards, creatorUnlocked: creator.unlocked, ending: $('ending').hidden ? null : $('ending').dataset.kind,
   mode: game?.mode || null,
   match: match ? {
     phase: match.phase, round: match.round, wins: match.wins, frame: match.frame,
@@ -826,7 +969,7 @@ window.render_game_to_text = () => JSON.stringify({
   } : null,
 });
 if (TEST) {
-  window.__puyo = { get match() { return match; }, get game() { return game; }, P, store, startTower, startVs, startSolo, startLocal, show, finishMatch, renderer, online, runEnding };
+  window.__puyo = { get match() { return match; }, get game() { return game; }, P, store, startTower, startVs, startSolo, startLocal, show, finishMatch, renderer, online, runEnding, recordPlayTime, pause, save };
 }
 
 // ---------- 시작 ----------

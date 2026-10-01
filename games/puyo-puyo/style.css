@@ -275,3 +275,52 @@ body.duo #touch button { width: 52px; height: 52px; font-size: 22px; }
   .chip .xpbar { display: none; }
 }
 @media (hover: hover) and (pointer: fine) { #touch { display: none !important; } }
+
+/* 제작자 작업실 · 매일 선물 */
+.event-banner { margin: 12px auto; padding: 12px 16px; border: 2px solid #fff; border-radius: 16px; background: linear-gradient(110deg, #fff0b2, #ffe0ef, #ded5ff); text-align: center; line-height: 1.6; font-size: 16px; }
+.menu-btn.gifts { background: linear-gradient(135deg, #daffe9, #d7eeff); }
+.creator-lock { max-width: 420px; margin-top: 30px; }
+.creator-lock h3, .creator-lock .lead { text-align: center; }
+.lock-icon { text-align: center; font-size: 64px; margin-bottom: 12px; }
+.creator-lock input { margin: 8px 0 16px; text-align: center; letter-spacing: 5px; }
+.creator-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px auto; }
+.creator-grid button { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 12px; border: 3px solid #fff; background: linear-gradient(145deg, #fff, #eee6ff); }
+.creator-grid span { font-size: 40px; }
+.creator-grid b { font-weight: 400; font-size: 22px; }
+.creator-grid small { font-family: 'Noto Sans KR', sans-serif; font-size: 12px; color: var(--soft); line-height: 1.6; }
+.reward-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.reward-panels .card { min-width: 0; padding: 20px 16px; }
+.reward-panels h3, .time-card h3 { font-size: 24px; }
+.spin-card { text-align: center; }
+.spin-card .lead { min-height: 2em; margin-bottom: 0; }
+.wheel-wrap { width: 260px; height: 260px; position: relative; margin: 22px auto; }
+.spin-wheel { position: absolute; inset: 0; border-radius: 50%; border: 6px solid #fff; box-shadow: 0 0 0 4px #9970e5, 0 10px 24px #8a5cff40; background: conic-gradient(from -30deg, #ffd878 0deg 60deg, #a6eaff 60deg 120deg, #ffbad8 120deg 180deg, #beefb6 180deg 240deg, #c9bbff 240deg 300deg, #ffc18a 300deg 360deg); }
+.spin-wheel.spinning { transition: transform 3s cubic-bezier(.12,.72,.16,1); }
+.spin-label { position: absolute; left: 50%; top: 50%; width: 68px; height: 42px; margin: -21px -34px; font-size: 17px; line-height: 1.15; }
+.spin-label small { display: block; font-size: 12px; }
+.wheel-pointer { position: absolute; z-index: 2; top: -22px; left: calc(50% - 16px); width: 32px; color: #7436c7; font-size: 34px; text-shadow: 0 2px #fff; }
+.wheel-center { position: absolute; left: calc(50% - 27px); top: calc(50% - 27px); border-radius: 50%; width: 54px; height: 54px; line-height: 54px; font-size: 30px; background: #fff; color: #9259db; box-shadow: 0 3px 8px #6537a344; pointer-events: none; }
+.daily-rewards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 18px 0; }
+.daily-gift { padding: 10px 8px; border: 2px solid #e9dffa; border-radius: 14px; text-align: center; background: #f9f5ff; }
+.daily-gift:last-child { grid-column: span 2; background: #fff2bd; }
+.daily-gift.active { border-color: #9760ee; box-shadow: 0 0 0 2px #d6c0ff; }
+.daily-gift.received { background: #e2fbe9; }
+.daily-gift b, .daily-gift small { display: block; font-weight: 400; }
+.daily-gift small { margin-top: 4px; color: var(--soft); font-size: 12px; }
+.time-card { margin-top: 16px; }
+.time-rewards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.time-gift { border: 2px solid #e9dffa; border-radius: 16px; padding: 12px; background: #f9f5ff; }
+.time-gift b { font-size: 20px; font-weight: 400; }
+.time-gift .fine { margin: 8px 0; }
+.time-gift button { width: 100%; padding: 10px 6px; font-size: 14px; }
+@media (max-width: 660px) {
+  .reward-panels { grid-template-columns: 1fr; }
+  .creator-grid { grid-template-columns: 1fr; }
+  .time-rewards { grid-template-columns: 1fr; }
+  .time-gift { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+  .time-gift button { grid-column: 2; grid-row: 1 / 3; min-width: 92px; }
+  .time-gift .fine { margin: 0; }
+  #scr-rewards .head { gap: 8px; }
+  #scr-rewards .head h2 { font-size: 21px; }
+}
+@media (prefers-reduced-motion: reduce) { .spin-wheel.spinning { transition-duration: .1s; } }

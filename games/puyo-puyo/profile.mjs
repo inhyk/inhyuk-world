@@ -10,9 +10,10 @@ export function newProgress() {
     level: 1, xp: 0, coins: 100,
     owned: { skin: ['classic'], effect: ['sparkle'] },
     equip: { skin: 'classic', effect: 'sparkle' },
-    tower: { best: 0, cleared: false, comet: false, losses: {}, endings: 0 },
+    tower: { best: 0, cleared: false, comet: false, losses: {}, endings: 0, cometEndings: 0 },
     missions: {},
     daily: null,
+    rewards: { dailyDate: '', dailyStreak: 0, spinDate: '', spinIndex: null, date: '', playSeconds: 0, claimedTime: [] },
     stats: {
       games: 0, wins: 0, losses: 0, maxChain: 0, maxScore: 0, popped: 0, allClears: 0, offsets: 0,
       garbageSent: 0, onlineGames: 0, onlineWins: 0, localGames: 0, endlessBest: 0, playSeconds: 0,
@@ -41,6 +42,14 @@ export function sanitize(p) {
   out.stats = { ...base.stats, ...(out.stats || {}) };
   out.settings = { ...base.settings, ...(out.settings || {}) };
   out.missions = out.missions && typeof out.missions === 'object' ? out.missions : {};
+  const r = out.rewards || {};
+  const date = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '';
+  out.rewards = {
+    dailyDate: date(r.dailyDate), dailyStreak: clampInt(r.dailyStreak, 0, 1e6),
+    spinDate: date(r.spinDate), spinIndex: Number.isInteger(r.spinIndex) && r.spinIndex >= 0 && r.spinIndex < 6 ? r.spinIndex : null,
+    date: date(r.date), playSeconds: Math.max(0, Math.min(86400, Number(r.playSeconds) || 0)),
+    claimedTime: uniq(arr(r.claimedTime).filter(id => ['5m', '15m', '30m'].includes(id))),
+  };
   return out;
 }
 const arr = v => (Array.isArray(v) ? v.filter(x => typeof x === 'string') : []);
@@ -52,7 +61,7 @@ export const xpToNext = level => 100 + (level - 1) * 40;
 export const levelReward = level => 50 + level * 10;
 
 // 경험치를 더하고, 오른 레벨들과 레벨업 보상 코인을 돌려준다
-export function addXp(p, amount) {
+export function addXp(p, amount, coinMultiplier = 1) {
   const levels = [];
   let coins = 0;
   p.xp += Math.max(0, Math.round(amount));
@@ -60,7 +69,7 @@ export function addXp(p, amount) {
     p.xp -= xpToNext(p.level);
     p.level++;
     levels.push(p.level);
-    const bonus = levelReward(p.level);
+    const bonus = levelReward(p.level) * coinMultiplier;
     coins += bonus;
     p.coins += bonus;
   }

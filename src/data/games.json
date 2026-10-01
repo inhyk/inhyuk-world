@@ -1,5 +1,35 @@
 [
   {
+    "slug": "puyo-puyo",
+    "title": "뿌요뿌요 타워 · PUYO PUYO TOWER",
+    "description": "타워와 혜성에 도전! 제작자 모드, 무료 스핀·출석·시간 보상, 생일 코인 10배와 두 가지 엔딩을 만나요.",
+    "longDescription": "같은 색 뿌요를 이어 연쇄를 만들고 작은 뿌요·큰 뿌요·운석·별·달·왕관 층의 AI를 차례대로 이기는 퍼즐 게임입니다. 왕관 층에서는 황금 왕관 엔딩, 비밀의 혜성 층에서는 코멧과 우주를 여행하는 「우주의 친구들」 엔딩을 볼 수 있습니다. 한 키보드 2인 플레이와 방 코드 온라인 대전, 혼자 연습하기, 계정별 레벨·코인·챌린지·스킨 저장을 지원합니다. 제작자 모드에서는 비밀번호로 작업실을 열어 타워 클리어, 레벨 50, 모든 챌린지 완료, 모든 스킨·터짐 효과 해제를 사용할 수 있습니다. 매년 5월 12일에는 획득 코인이 10배, 한국 공휴일에는 경험치가 2배이며 한국 시간 자정을 기준으로 바뀝니다. 하루 한 번 무료 스핀, 7일 순환 출석 선물, 실제 플레이 5·15·30분 선물을 받을 수 있고 PC와 휴대폰에서 모두 즐길 수 있습니다.",
+    "emoji": "🟢",
+    "thumbnail": "/images/games/puyo-puyo-thumb.png",
+    "screenshots": [
+      "/images/games/puyo-puyo-thumb.png",
+      "/images/games/puyo-puyo-rewards.png",
+      "/images/games/puyo-puyo-comet-ending.png",
+      "/images/games/puyo-puyo-creator.png",
+      "/images/games/puyo-puyo-mobile.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio",
+      "Web Worker",
+      "PeerJS",
+      "WebRTC",
+      "Vite"
+    ],
+    "category": "퍼즐",
+    "playUrl": "/play/puyo-puyo",
+    "createdAt": "2026-09",
+    "featured": true,
+    "order": 43,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/puyo-puyo"
+  },
+  {
     "slug": "pad-shop",
     "title": "패드 작업실 · PAD ATELIER",
     "description": "곡괭이 20종과 패드 60종! 알에서 행운 펫을 뽑고, 환생해서 패드를 여러 개씩 만들고, 지붕 색을 찾아 배달도 가요.",
@@ -22,36 +52,6 @@
     "createdAt": "2026-10",
     "featured": true,
     "order": 42
-  },
-  {
-    "slug": "puyo-puyo",
-    "title": "뿌요뿌요 타워 · PUYO PUYO TOWER",
-    "description": "작은 뿌요부터 왕관까지! AI를 이길 때마다 한 층씩 타워를 올라가고, 친구와 2인·온라인 대전도 하는 뿌요뿌요.",
-    "longDescription": "인혁이의 손글씨 기획서 12가지를 모두 담은 뿌요뿌요 팬 게임입니다. 뿌요뿌요 통의 규칙을 분석해 6×12 필드와 숨은 13번째 줄, 벽 차기·바닥 차기·퀵턴, 연쇄·색·연결 보너스 점수 공식, 70점당 방해뿌요와 상쇄, 전소 보너스, 96초 뒤 마진 타임까지 그대로 만들었습니다. 타워 모드에서는 AI를 한 번 이길 때마다 한 층씩 올라가며, 층은 방해뿌요 순서대로 작은 뿌요·큰 뿌요·운석·별·달·왕관 층이고 층마다 새 캐릭터가 기다립니다. 높은 층의 AI일수록 더 멀리 내다보고 더 큰 연쇄를 참았다가 터뜨리며 손도 빨라집니다. 꼭대기 왕관 층을 깨면 엔딩과 황금 왕관 스킨, 그리고 비밀의 혜성 층이 열립니다. 한 키보드 2인 플레이와 방 코드로 하는 온라인 대전, 점점 빨라지는 혼자 하기를 지원합니다. 이 기기에 저장되는 로그인 계정으로 레벨·코인·기록이 쌓이고, 타워에서 5연쇄 하기 같은 챌린지와 오늘의 미션을 깨서 보상을 받습니다. 상점에서 뿌요 스킨 12종과 터질 때 효과 13종을 살 수 있고, 돌릴 때와 터질 때 효과음, 직접 만든 배경음악, 휴대폰 버튼과 쓸기 조작을 지원합니다.",
-    "emoji": "🟢",
-    "thumbnail": "/images/games/puyo-puyo-thumb.png",
-    "screenshots": [
-      "/images/games/puyo-puyo-thumb.png",
-      "/images/games/puyo-puyo-tower.png",
-      "/images/games/puyo-puyo-ending.png",
-      "/images/games/puyo-puyo-shop.png",
-      "/images/games/puyo-puyo-mobile.png"
-    ],
-    "techStack": [
-      "JavaScript",
-      "Canvas 2D",
-      "Web Audio",
-      "Web Worker",
-      "PeerJS",
-      "WebRTC",
-      "Vite"
-    ],
-    "category": "퍼즐",
-    "playUrl": "/play/puyo-puyo",
-    "createdAt": "2026-09",
-    "featured": true,
-    "order": 41,
-    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/puyo-puyo"
   },
   {
     "slug": "soccer",

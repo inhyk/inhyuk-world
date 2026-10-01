@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "뿌요뿌요 타워 · PUYO PUYO TOWER",
   description:
-    "작은 뿌요부터 왕관까지 AI를 이기며 타워를 올라가는 뿌요뿌요. 2인·온라인 대전, 로그인, 레벨, 챌린지, 상점, 엔딩을 지원합니다.",
+    "타워와 혜성에 도전! 제작자 모드, 무료 스핀·출석·시간 보상과 두 가지 엔딩이 있는 뿌요뿌요 팬 게임.",
 };
 
 export default function PuyoPuyoPage() {

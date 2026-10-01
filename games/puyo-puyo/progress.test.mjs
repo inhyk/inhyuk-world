@@ -143,6 +143,10 @@ test('타워: 작은→큰→운석→별→달→왕관 순서, 꼭대기에서
   assert.equal(floorState(t, 7), 'open');
   assert.equal(clearFloor(t, 6).ending, false);
   assert.equal(floorReward(t, 2).first, false);
-  assert.equal(clearFloor(t, 7).secretFirst, true);
-  assert.equal(floorState(t, 7), 'open');
+  const comet = clearFloor(t, 7);
+  assert.equal(comet.secretFirst, true);
+  assert.equal(comet.cometEnding, true);
+  assert.equal(floorState(t, 7), 'cleared');
+  assert.equal(clearFloor(t, 7).secretFirst, false);
+  assert.equal(clearFloor(t, 7).cometEnding, true);
 });

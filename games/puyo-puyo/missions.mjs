@@ -2,6 +2,8 @@
 // 이벤트(연쇄·터뜨림·전소·상쇄·승리·층·레벨·구매)가 들어오면 진행도를 올린다.
 // kind: 'max' = 가장 큰 값이 목표를 넘으면 완료, 'sum' = 모두 더해서 목표를 넘으면 완료.
 
+import { todayKey } from './calendar.mjs';
+export { todayKey } from './calendar.mjs';
 const tower = e => e.mode === 'tower';
 const m = (id, group, title, goal, event, value, reward, kind = 'max') => ({ id, group, title, goal, event, value, reward, kind });
 
@@ -59,10 +61,6 @@ export const DAILY_POOL = [
   m('d-offset', 'daily', '오늘 상쇄 2번 하기', 2, 'offset', () => 1, { coins: 70, xp: 50 }, 'sum'),
 ];
 
-export function todayKey(now = new Date()) {
-  const p = n => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
-}
 function hash(text) {
   let h = 2166136261;
   for (const ch of text) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }

@@ -61,6 +61,7 @@ export function floorState(tower, floor) {
   const info = FLOORS[floor - 1];
   if (!info) return 'none';
   if (info.secret && !tower.cleared) return 'hidden';
+  if (info.secret && tower.comet) return 'cleared';
   if (floor <= tower.best) return 'cleared';
   if (info.secret ? tower.cleared : floor === tower.best + 1) return 'open';
   return 'locked';
@@ -89,7 +90,7 @@ export function clearFloor(tower, floor) {
   const info = FLOORS[floor - 1];
   tower.losses = tower.losses || {};
   delete tower.losses[floor];
-  if (info.secret) { const first = !tower.comet; tower.comet = true; return { ending: false, secretFirst: first }; }
+  if (info.secret) { const first = !tower.comet; tower.comet = true; return { ending: false, secretFirst: first, cometEnding: true }; }
   tower.best = Math.max(tower.best, floor);
   if (floor === TOP_FLOOR && !tower.cleared) { tower.cleared = true; return { ending: true }; }
   return { ending: false };
