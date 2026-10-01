@@ -20,6 +20,7 @@ const eslintConfig = defineConfig([
     "public/play/free-drive/**",
     "public/play/mineral-valley/**",
     "public/play/puyo-puyo/**",
+    "public/play/soccer/**",
     "games/free-drive/public/models/draco/**",
     "public/play/deep-dig/**",
   ]),
