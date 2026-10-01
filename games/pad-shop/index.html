@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#f5f3ed"><title>패드 작업실 · 패드 팔기 게임</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='13' fill='%232c6657'/%3E%3Crect x='10' y='14' width='28' height='20' rx='4' fill='%23e7e8cb'/%3E%3C/svg%3E"></head>
+<body>
+  <svg class="svg-defs" aria-hidden="true"><defs>
+    <symbol id="icon-pad" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M17.5 11v2M6 8h8"/></symbol>
+    <symbol id="icon-pick" viewBox="0 0 24 24"><path d="m5 21 9-13M3 5c7-5 15-1 18 7-5-5-10-7-18-7Z"/></symbol>
+    <symbol id="icon-book" viewBox="0 0 24 24"><path d="M12 6c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Z M12 6v15"/></symbol>
+    <symbol id="icon-spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol>
+    <symbol id="icon-skip" viewBox="0 0 24 24"><path d="m5 5 11 7L5 19ZM20 5v14"/></symbol>
+    <symbol id="icon-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9ZM17 8c3 2 3 6 0 8m3-11c5 4 5 10 0 14"/></symbol>
+  </defs></svg>
+  <div class="app">
+    <header class="topbar">
+      <a class="back-link" href="/" target="_top" aria-label="인혁이의 게임 모음으로">←</a>
+      <div class="brand-icon"><svg><use href="#icon-pad"/></svg></div>
+      <div class="brand"><h1>패드 작업실<span>PAD ATELIER</span></h1><p>작은 두드림으로 만드는 나만의 가게</p></div>
+      <span class="open-label"><i></i> 영업 중</span>
+      <div class="wallet"><span class="coin">₩</span><div><small>내 지갑</small><strong id="money">0원</strong></div></div>
+      <button class="icon-button" id="sound" aria-label="소리 끄기" title="소리"><svg><use href="#icon-sound"/></svg></button>
+      <button class="icon-button" id="help" aria-label="튜토리얼 열기" title="튜토리얼">?</button>
+    </header>
+    <main>
+      <div class="workshop-heading"><div><span class="eyebrow">MADE BY YOU, LOVED BY SOMEONE</span><h2>오늘도, 멋진 패드 하나.</h2></div><div class="day-label"><span class="sun">☀</span> <span id="shop-name">인혁이의 작은 작업실</span><button id="rename" class="rename-button" aria-label="닉네임 바꾸기" title="닉네임 바꾸기">✎</button></div></div>
+      <section class="workshop" aria-label="3D 패드 제작 작업실">
+        <canvas id="workbench" tabindex="0" aria-label="패드 작업대. 누르고 있거나 스페이스 키를 눌러 패드를 만드세요."></canvas>
+        <div class="workshop-tint"></div>
+        <div class="scene-top"><span class="live-dot"></span><span>MY LITTLE WORKSHOP</span><span class="scene-number">01 / CRAFT & SELL</span></div>
+        <div class="side-tools">
+          <button id="shop" class="tool-button"><span class="tool-icon"><svg><use href="#icon-pick"/></svg></span><span>곡괭이 상점</span><b id="shop-dot" hidden>!</b></button>
+          <button id="collection" class="tool-button"><span class="tool-icon"><svg><use href="#icon-book"/></svg></span><span>패드 도감</span></button>
+          <button id="eggs" class="tool-button"><span class="tool-icon emoji-icon" id="eggs-icon">🥚</span><span>알 부화소</span><b id="egg-dot" hidden>!</b></button>
+          <button id="rebirth" class="tool-button"><span class="tool-icon emoji-icon">♻️</span><span>환생 <small id="rebirth-count">0/5</small></span><b id="rebirth-dot" hidden>!</b></button>
+        </div>
+        <button id="delivery-banner" class="delivery-banner" hidden><span class="delivery-box">📦</span><b>배달이 왔어요!</b><span id="delivery-info"></span><kbd>M</kbd></button>
+        <aside class="order-card" aria-label="손님 주문">
+          <div class="order-top"><span id="order-type">새로운 주문</span><span id="order-number">NO. 001</span></div>
+          <div class="customer-row"><div class="avatar" id="avatar">봄</div><div><h3 id="customer">봄이 손님</h3><span>천천히 만들어 주셔도 좋아요.</span></div></div>
+          <div class="order-message"><span id="customer-message">“첫 패드, 사장님께 맡길게요!”</span></div>
+          <div class="order-item"><div class="mini-pad" id="order-mini"><i></i></div><div><span id="order-grade" class="grade-label">일반</span><h4 id="order-name">클래식 패드</h4></div></div>
+          <div class="price-line"><span>완성하면</span><strong id="order-price">1,000원</strong></div>
+          <button id="skip" class="skip-button"><svg><use href="#icon-skip"/></svg> 손님 건너뛰기 <span>−100원</span></button>
+        </aside>
+        <div class="scene-caption"><span class="tiny-dot"></span><span id="scene-caption">손끝에서 시작되는 작은 작품</span></div>
+        <section id="town" class="town" hidden aria-label="배달 마을">
+          <div class="town-sky"><span class="cloud c1"></span><span class="cloud c2"></span><span class="town-sun"></span></div>
+          <div class="town-hint"><span class="eyebrow">DELIVERY TIME</span><strong id="town-hint">파란색 지붕이에요!</strong><span id="town-pad"></span></div>
+          <div class="street" id="street">
+            <div class="home-shop" data-slot="0"><span class="awning"></span><span class="shop-body"><i>PAD</i></span></div>
+          </div>
+          <div class="road"></div>
+          <div id="courier" class="courier" aria-hidden="true"><span class="courier-box">📦</span><span class="courier-ride">🛵</span></div>
+          <div class="town-controls"><span><kbd>←</kbd><kbd>→</kbd> 이동 · <kbd>ENTER</kbd> 배달 · 집을 눌러도 돼요</span><button id="go-home" class="secondary-button">작업실로 돌아가기 <kbd>M</kbd></button></div>
+        </section>
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+        <div id="load-error" class="load-error" hidden><h2>작업실을 여는 중 문제가 생겼어요.</h2><p>브라우저의 그래픽 가속을 켜고 다시 열어 주세요.</p><button onclick="location.reload()">다시 열기</button></div>
+      </section>
+      <section class="craft-bar" aria-label="패드 제작 조작">
+        <div class="equipped"><span class="equipped-icon" id="equipped-icon"><svg><use href="#icon-pick"/></svg></span><div><small>지금 사용하는 도구</small><strong id="equipped-name">일반 곡괭이</strong><span id="power">제작 힘 12</span><span id="buffs" class="buffs">펫 없음</span></div></div>
+        <div class="craft-progress"><div class="progress-label"><span id="craft-stage">패드 제작 준비</span><b id="progress-label">0%</b></div><div class="progress-track" role="progressbar" aria-label="패드 제작 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress-track"><div id="progress-fill"></div></div><p id="craft-hint">작업대나 제작 버튼을 꾹 눌러 주세요.</p></div>
+        <button id="craft" class="primary-button"><svg><use href="#icon-pick"/></svg><span>꾹 눌러 만들기</span><kbd>SPACE</kbd></button>
+        <button id="sell" class="primary-button sell-button" hidden><svg><use href="#icon-spark"/></svg><span>손님에게 판매하기</span><kbd>ENTER</kbd></button>
+      </section>
+      <section class="bottom-row">
+        <div class="next-goal"><span class="goal-icon"><svg><use href="#icon-spark"/></svg></span><div><small id="goal-caption">다음 작은 목표</small><span id="goal-text">고급 곡괭이로 더 멋진 패드 만들기</span></div><span class="goal-money" id="goal-money">0 / 10,000원</span><div class="goal-track"><i id="goal-fill"></i></div></div>
+        <div class="stat"><span>판매한 패드</span><strong><b id="sold">0</b><small>개</small></strong></div><div class="stat"><span>발견한 패드</span><strong><b id="found">0</b><small id="found-total">/ 60</small></strong></div>
+      </section>
+      <footer><span id="save-status"><i></i> 작업 기록 자동 저장</span><span>클릭 / 터치로 제작 <em>·</em> Enter로 판매 <em>·</em> B로 상점 <em>·</em> M으로 배달</span><button id="reset">처음부터</button></footer>
+    </main>
+  </div>
+  <dialog id="shop-dialog"><div class="dialog-header"><div><span class="eyebrow">BETTER TOOLS, BIGGER DREAMS</span><h2>곡괭이 상점</h2></div><button class="close-button" data-close aria-label="상점 닫기">×</button></div><p class="dialog-description">20가지 곡괭이로 더 빠르게, 더 높은 등급의 패드를 만들어요.</p><div class="shop-wallet">내 지갑 <strong id="shop-money"></strong></div><div class="catalog-toolbar"><div class="catalog-tabs" role="group" aria-label="곡괭이 종류"><button data-shop-filter="all" aria-pressed="true">전체</button><button data-shop-filter="owned" aria-pressed="false">보유</button><button data-shop-filter="new" aria-pressed="false">새 곡괭이</button></div><span id="shop-owned"></span></div><p id="rarity-note" class="rarity-note"></p><div id="shop-list" class="shop-list"></div></dialog>
+  <dialog id="collection-dialog"><div class="dialog-header"><div><span class="eyebrow">YOUR LITTLE MASTERPIECES</span><h2>패드 도감</h2></div><button class="close-button" data-close aria-label="도감 닫기">×</button></div><p class="dialog-description">20등급 × 기본·미니·프로, 나만의 패드 60종을 모아 보세요.</p><div class="catalog-toolbar"><label>등급 <select id="grade-filter" aria-label="패드 등급"></select></label><label>모델 <select id="model-filter" aria-label="패드 모델"><option value="all">모든 모델</option><option value="0">기본</option><option value="1">미니</option><option value="2">프로</option></select></label></div><p id="collection-summary" class="collection-summary"></p><div id="collection-list" class="collection-list"></div><p class="odds-note" id="odds-note"></p></dialog>
+  <dialog id="tutorial-dialog" class="tutorial-dialog"><span class="eyebrow">WELCOME TO YOUR ATELIER</span><div class="tutorial-art"><div class="tutorial-pad"><span>hello.</span></div><span class="art-spark">✧</span></div><div class="tutorial-dots" id="tutorial-dots"></div><h2 id="tutorial-title"></h2><p id="tutorial-text"></p><button id="tutorial-next" class="primary-button"></button><button id="tutorial-close" class="text-button">바로 시작할게요</button></dialog>
+  <dialog id="reset-dialog" class="small-dialog"><h2>새 작업실을 열까요?</h2><p>모은 돈, 곡괭이, 패드 도감과 제작 중인 패드가 초기화돼요.</p><div class="dialog-actions"><button id="cancel-reset" class="secondary-button" autofocus>돌아가기</button><button id="confirm-reset" class="primary-button">처음부터 시작</button></div></dialog>
+  <dialog id="victory-dialog" class="small-dialog"><span class="eyebrow">MASTER CRAFTER</span><div class="victory-star">✦</div><h2 id="victory-title">EX 장인이 되었어요!</h2><p id="victory-text">이제 크리스탈부터 유니버스까지 새로운 곡괭이에도 도전해 보세요.</p><button class="primary-button" data-close>계속 만들어 볼게요</button></dialog>
+  <dialog id="name-dialog" class="small-dialog name-dialog"><span class="eyebrow">WELCOME, NEW CRAFTER</span><div class="name-sign"><span id="name-preview">○○의 작은 작업실</span></div><h2>닉네임을 정해 주세요</h2><p>가게 간판에 “닉네임의 작은 작업실”로 걸려요.</p><form id="name-form"><input id="name-input" maxlength="10" autocomplete="off" placeholder="예: 인혁이" aria-label="닉네임"><button class="primary-button" id="name-submit">이 이름으로 가게 열기</button></form></dialog>
+  <dialog id="egg-dialog"><div class="dialog-header"><div><span class="eyebrow">LUCKY PETS</span><h2>알 부화소</h2></div><button class="close-button" data-close aria-label="부화소 닫기">×</button></div><p class="dialog-description">알을 깨면 펫이 나와요. 함께하는 펫의 행운 배수만큼 비싼 패드와 프로 모델이 더 자주 찾아와요.</p><div class="egg-stage"><div id="egg-art" class="egg-art">🥚</div><div><strong id="egg-result">어떤 펫이 나올까요?</strong><span id="egg-sub">지금 행운 ×1</span><button id="hatch" class="primary-button">알 깨기 · 10,000원</button></div></div><div id="pet-list" class="pet-list"></div><p class="odds-note">확률은 강아지 70 · 고양이 50 · 새 30 · 햄스터 10 · 코끼리 1 · 늑대 0.5 · 피카츄 0.01의 비율로 뽑아요. 더 좋은 펫이 나오면 자동으로 함께해요.</p></dialog>
+  <dialog id="rebirth-dialog" class="small-dialog rebirth-dialog"><span class="eyebrow">REBIRTH</span><div class="rebirth-steps" id="rebirth-steps"></div><h2 id="rebirth-title">환생하기</h2><p id="rebirth-text"></p><div class="rebirth-cost"><span>필요한 돈</span><strong id="rebirth-cost">100만 원</strong></div><div class="goal-track rebirth-track"><i id="rebirth-fill"></i></div><div class="dialog-actions"><button class="secondary-button" data-close>나중에</button><button id="confirm-rebirth" class="primary-button">환생하기</button></div></dialog>
+  <script type="module" src="./main.js"></script>
+</body></html>

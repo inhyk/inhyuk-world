@@ -1,0 +1,24 @@
+{
+  "slug": "pad-shop",
+  "title": "패드 작업실 · PAD ATELIER",
+  "description": "곡괭이 20종과 패드 60종! 알에서 행운 펫을 뽑고, 환생해서 패드를 여러 개씩 만들고, 지붕 색을 찾아 배달도 가요.",
+  "longDescription": "인혁이의 손그림에서 시작한 3D 패드 팔기 게임입니다. 두 손과 곡괭이로 패드를 만들고 손님에게 판매하세요. 기존 일반·고급·에픽·레전더리·매직·인피니티·EX에 크리스탈·루비·블리자드·드래곤·코스믹·셀레스티얼·네뷸라·오메가를 더해 곡괭이가 15종으로 늘었고, 갤럭시·레인보우·블랙홀·크로노스·유니버스까지 더해 이제 20종입니다. 각 등급에 기본·미니·프로 모델이 있어 패드 도감은 60종입니다. 모델마다 크기·제작량·가격이 다르고 프로에는 펜과 스피커가 달려 있습니다. 보석·용의 날개·회전 고리로 꾸민 새 곡괭이와 크리스탈·불꽃·우주 화면을 만나 보세요. Space 또는 터치로 제작하고 Enter로 판매합니다. 100원 건너뛰기, 상점·도감 필터, 튜토리얼, 효과음, 자동 저장을 지원하며 기존 진행 기록도 이어집니다. 처음에 닉네임을 정하면 ‘닉네임의 작은 작업실’이 되고, 펫 이름으로 지으면 그 펫과 함께 시작해요. 알 부화소에서 강아지부터 피카츄까지 행운 펫을 뽑고, 최대 5번 환생해 패드를 한 번에 최대 6개씩 만들 수 있어요. 배달 주문이 오면 M 키로 마을에 나가 지붕 색이 맞는 집에 패드를 배달하세요.",
+  "emoji": "📱",
+  "thumbnail": "/images/games/pad-shop-thumb.png",
+  "screenshots": [
+    "/images/games/pad-shop-delivery.png",
+    "/images/games/pad-shop-pets.png",
+    "/images/games/pad-shop-universe.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Babylon.js",
+    "WebGL",
+    "Web Audio"
+  ],
+  "category": "시뮬레이션",
+  "playUrl": "/play/pad-shop",
+  "createdAt": "2026-10",
+  "featured": true,
+  "order": 42
+}

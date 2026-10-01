@@ -72,3 +72,6 @@ tools/node_modules/
 
 # Generated PUYO PUYO TOWER game
 /public/play/puyo-puyo/
+
+# Generated PAD ATELIER game
+/public/play/pad-shop/
