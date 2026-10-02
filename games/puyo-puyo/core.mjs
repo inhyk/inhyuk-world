@@ -130,7 +130,7 @@ export function isEmpty(cells) {
 
 // 4개 이상 이어진 같은 색 무리 (보이는 12줄 안에서만)
 const seenBuf = new Uint8Array(W * VISIBLE), stackBuf = new Int16Array(W * VISIBLE);
-export function findGroups(cells) {
+export function findGroups(cells, minGroup = 4) {
   seenBuf.fill(0);
   const groups = [];
   for (let i = 0; i < W * VISIBLE; i++) {
@@ -148,7 +148,7 @@ export function findGroups(cells) {
       if (j >= W && !seenBuf[j - W] && cells[j - W] === c) { seenBuf[j - W] = 1; stackBuf[top++] = j - W; }
       if (j + W < W * VISIBLE && !seenBuf[j + W] && cells[j + W] === c) { seenBuf[j + W] = 1; stackBuf[top++] = j + W; }
     }
-    if (group.length >= 4) groups.push(group);
+    if (group.length >= minGroup) groups.push(group);
   }
   return groups;
 }
@@ -193,10 +193,10 @@ export function applyGravity(cells) {
 }
 
 // 연쇄를 끝까지 계산한다 (AI 평가·테스트용, 애니메이션 없음)
-export function resolveChain(cells, target = TARGET_POINTS) {
+export function resolveChain(cells, target = TARGET_POINTS, minGroup = 4) {
   let chain = 0, score = 0;
   for (;;) {
-    const groups = findGroups(cells);
+    const groups = findGroups(cells, minGroup);
     if (!groups.length) break;
     chain++;
     score += stepScore(chain, groups, cells).score;
@@ -234,7 +234,8 @@ export function restY(h, x, rot) {
 }
 
 export class Player {
-  constructor({ seq, seed = 1, timing = {} } = {}) {
+  constructor({ seq, seed = 1, timing = {}, minGroup = 4 } = {}) {
+    this.minGroup = minGroup;
     this.seq = seq;
     this.t = { ...TIMING, ...timing };
     this.cells = new Uint8Array(W * H);
@@ -451,7 +452,7 @@ export class Player {
   }
 
   check(ctx) {
-    const groups = findGroups(this.cells);
+    const groups = findGroups(this.cells, this.minGroup);
     if (groups.length) {
       this.chain++;
       if (this.chain === 1) { this.chaining = true; this.chainTotal = 0; this.chainSent = 0; this.emit('chainStart'); }

@@ -126,6 +126,8 @@
   <!-- 2인 플레이 -->
   <section id="scr-local" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>👥 2인 플레이</h2></div>
+    <h3>어디에서 대결할까?</h3><div id="local-maps" class="map-grid" aria-label="2인용 맵 선택"></div>
+    <p id="local-map-tip" class="event-banner" aria-live="polite"></p>
     <div class="keys two">
       <div><h3>1P (왼쪽)</h3><p><kbd>A</kbd><kbd>D</kbd> 이동 · <kbd>S</kbd> 빨리 내리기</p><p><kbd>W</kbd> 오른쪽 돌리기 · <kbd>Q</kbd> 왼쪽 돌리기</p><p><kbd>Space</kbd> 바로 떨어뜨리기</p></div>
       <div><h3>2P (오른쪽)</h3><p><kbd>←</kbd><kbd>→</kbd> 이동 · <kbd>↓</kbd> 빨리 내리기</p><p><kbd>↑</kbd> 오른쪽 돌리기 · <kbd>/</kbd> 왼쪽 돌리기</p><p><kbd>Enter</kbd> 바로 떨어뜨리기</p></div>
@@ -184,10 +186,11 @@
   <section id="scr-rewards" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🎁 보상 받기</h2><span class="coins">🪙 <b class="coin-count">0</b></span></div>
     <div id="reward-event" class="event-banner"></div>
+    <div class="gift-wallet"><b>내 선물 주머니</b><p id="reward-inventory"></p><button class="ghost" data-go="shop">교환권 쓰러 상점 가기 →</button><small>교환권으로 보스 보상을 제외한 판매 상품을 레벨·코인 없이 골라 받을 수 있어.</small></div>
     <p class="fine">한국 시간 밤 12시에 새 하루 시작! 계정에 보상이 저장돼. 손님 기록은 창을 닫으면 사라져.</p>
     <div class="reward-panels">
       <article class="card spin-card">
-        <h3>🎡 행운의 무료 스핀</h3><p class="fine">하루 한 번! 각 칸 당첨 확률은 1/6이야.</p>
+        <h3>🎡 행운의 무료 스핀</h3><p class="fine">하루 한 번 무료! 추가 스핀권으로 더 돌릴 수 있어. 각 칸 확률은 1/6이야.</p>
         <div class="wheel-wrap"><div class="wheel-pointer" aria-hidden="true">▼</div><div id="spin-wheel" class="spin-wheel" aria-hidden="true"></div><div class="wheel-center" aria-hidden="true">★</div></div>
         <button id="spin-button" class="primary big">무료로 돌리기!</button>
         <p id="spin-result" class="lead" role="status" aria-live="polite"></p>
@@ -209,6 +212,7 @@
   <!-- 챌린지 -->
   <section id="scr-missions" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🎯 챌린지</h2><span class="coins">🪙 <b class="coin-count">0</b></span></div>
+    <div class="mission-toolbar"><p id="mission-count"></p><label>도전 종류 <select id="mission-filter"><option value="all">전체 도전</option><option value="ready">보상 받을 도전</option><option value="daily">오늘의 미션</option><option value="tower">타워</option><option value="skill">실력</option><option value="play">놀이</option><option value="grow">성장 · 수집</option><option value="maps">맵 탐험</option><option value="gifts">선물</option></select></label></div>
     <div id="mission-list"></div>
   </section>
 
@@ -216,6 +220,8 @@
   <section id="scr-shop" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🛍️ 상점</h2><span class="coins">🪙 <b class="coin-count">0</b></span></div>
     <div class="seg tabs" id="shop-tabs"><button data-v="skin" class="on">🟢 뿌요 스킨</button><button data-v="effect">✨ 터질 때 효과</button></div>
+    <p id="shop-inventory" class="event-banner"></p>
+    <p class="fine">🎟️ 교환권은 판매 상품 하나와 교환할 수 있어. 보스 전용 스킨·효과는 해당 보스를 이기면 받아!</p>
     <div id="shop-grid" class="shop-grid"></div>
   </section>
 
@@ -242,7 +248,7 @@
   <section id="scr-help" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>❓ 하는 방법</h2></div>
     <div class="help">
-      <div class="tip"><b>1. 같은 색 4개를 붙이면 퐁!</b><p>떨어지는 뿌요 두 개를 돌리고 옮겨서 같은 색을 위아래·옆으로 4개 이상 이어 붙이면 터져.</p></div>
+      <div class="tip"><b>1. 같은 색 4개를 붙이면 퐁!</b><p>떨어지는 뿌요 두 개를 돌리고 옮겨서 같은 색을 위아래·옆으로 4개 이상 이어 붙이면 터져. 2인용 쫀득 연구소에서는 6개 이상이 필요해!</p></div>
       <div class="tip"><b>2. 연쇄를 만들자</b><p>터진 자리로 위의 뿌요가 떨어져서 또 4개가 이어지면 <b>연쇄</b>! 연쇄가 길수록 점수가 쑥쑥 커져.</p></div>
       <div class="tip"><b>3. 방해뿌요 보내기 · 상쇄</b><p>점수 70점마다 상대에게 방해뿌요가 1개씩 날아가. 나한테 오는 방해뿌요는 내가 연쇄를 터뜨리면 <b>상쇄</b>해서 막을 수 있어.</p><div id="help-icons" class="icons"></div></div>
       <div class="tip"><b>4. X에 쌓이면 끝</b><p>왼쪽에서 세 번째 줄 맨 위 <b style="color:#ff6f86">X</b> 칸까지 뿌요가 쌓이면 져. 가운데는 비워 두자!</p></div>
@@ -292,6 +298,12 @@
   <canvas id="ending-canvas"></canvas>
   <button id="ending-skip" class="ghost">건너뛰기 ▶▶</button>
 </div>
+
+<!-- 기획서 6번 그림: 5판마다 나오는 seonn 광고. 오른쪽 위 단추는 "5초 뒤에 ✕"에서 1초씩 줄어든다 -->
+<dialog id="seonn-promo" aria-labelledby="promo-title" aria-describedby="promo-description">
+  <div class="promo-top"><span>📢 광고</span><button id="promo-close" class="ghost waiting" aria-disabled="true" autofocus>5초 뒤에 ✕</button></div>
+  <div class="promo-poster"><span class="promo-stars" aria-hidden="true">✦ 🎮 ✦</span><h2 id="promo-title"><strong>seonn</strong>을<br>플레이하세요!</h2><p id="promo-description">40개의 게임을 <b>무료로</b><br>플레이하실 수 있습니다!</p><a href="https://seonn.dev" target="_blank" rel="noopener" class="promo-play">seonn.dev 구경하러 가기 ▶</a></div>
+</dialog>
 
 <div id="toasts" aria-live="polite"></div>
 <script type="module" src="./main.js"></script>

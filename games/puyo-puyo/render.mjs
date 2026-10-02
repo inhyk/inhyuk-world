@@ -70,6 +70,9 @@ const THEMES = {
   moon: ['#221a4a', '#4b3a8c', '#9a86d9'],
   palace: ['#5a1020', '#a62a3a', '#ffcf6a'],
   space: ['#05030f', '#170b3a', '#0f3b5a'],
+  ice: ['#7fbada', '#d5f5ff', '#edfaff'],
+  lab: ['#123f47', '#287367', '#91e4c3'],
+  nova: ['#120e35', '#344c71', '#9adebc'],
   ending: ['#ff9ec7', '#ffd88a', '#8fd8ff'],
 };
 
@@ -80,7 +83,7 @@ function paintBackground(ctx, theme, w, h, seed = 7) {
   ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
   let s = seed;
   const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-  const dark = ['crater', 'starry', 'moon', 'space'].includes(theme);
+  const dark = ['crater', 'starry', 'moon', 'space', 'nova', 'lab'].includes(theme);
   if (dark) {
     for (let i = 0; i < 160; i++) { ctx.fillStyle = `rgba(255,255,255,${0.2 + rnd() * 0.7})`; const r = rnd() * 1.6 + 0.3; ctx.beginPath(); ctx.arc(rnd() * w, rnd() * h * 0.85, r, 0, TAU); ctx.fill(); }
   }
@@ -116,6 +119,18 @@ function paintBackground(ctx, theme, w, h, seed = 7) {
       ctx.fillStyle = pg; ctx.fillRect(x - 25, 0, 50, h);
       ctx.fillStyle = 'rgba(255,215,100,.35)'; ctx.beginPath(); ctx.moveTo(x - 40, 0); ctx.lineTo(x + 40, 0); ctx.lineTo(x + 40, h * 0.18); ctx.lineTo(x, h * 0.24); ctx.lineTo(x - 40, h * 0.18); ctx.fill();
     }
+  }
+  if (theme === 'ice') {
+    ctx.fillStyle = '#ffffff70';
+    for (let i = 0; i < 14; i++) { const x = i * w / 13; ctx.beginPath(); ctx.moveTo(x - 65, h); ctx.lineTo(x, h * (.5 + rnd() * .3)); ctx.lineTo(x + 70, h); ctx.fill(); }
+  }
+  if (theme === 'lab') {
+    ctx.strokeStyle = '#b7fff026'; ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 40) for (let y = 0; y < h; y += 40) ctx.strokeRect(x, y, 40, 40);
+    for (let i = 0; i < 18; i++) { ctx.beginPath(); ctx.arc(rnd() * w, rnd() * h, 12 + rnd() * 24, 0, TAU); ctx.stroke(); }
+  }
+  if (theme === 'nova') {
+    for (let i = 0; i < 7; i++) { ctx.strokeStyle = ['#92ffd52a', '#b9a2ff30'][i % 2]; ctx.lineWidth = 24; ctx.beginPath(); ctx.moveTo(-50, h * .15 + i * 28); ctx.bezierCurveTo(w * .3, -50, w * .65, h * .6, w + 50, h * .05 + i * 35); ctx.stroke(); }
   }
   if (theme === 'space') {
     for (let i = 0; i < 3; i++) {
@@ -280,7 +295,7 @@ export class Renderer {
   }
 
   drawAmbient(ctx, time) {
-    const dark = ['crater', 'starry', 'moon', 'space'].includes(this.theme);
+    const dark = ['crater', 'starry', 'moon', 'space', 'nova', 'lab'].includes(this.theme);
     if (dark) {
       for (let i = 0; i < 18; i++) {
         const x = ((i * 137.5) % 100) / 100 * this.w, y = ((i * 71.3) % 100) / 100 * this.h * 0.8;

@@ -52,6 +52,13 @@ export const FLOORS = [
     win: '크르릉… 너야말로 진짜 뿌요 챔피언이다!',
     lose: '크아앙! 혜성은 멈추지 않는다!',
   },
+  {
+    floor: 8, icon: 'nova', name: '초신성 층', boss: '별의 수호자 노바', char: 'nova', ai: 8, theme: 'nova', secret: true,
+    coins: 3500, xp: 1200,
+    intro: '코멧과 함께 별의 문을 열었구나. 나는 노바! 우주의 가장 빛나는 연쇄를 보여 줘!',
+    win: '눈부셔… 네 용기와 코멧의 우정이 별들을 지켰어! 이 오로라 갑옷을 받아 줘.',
+    lose: '별은 한 번에 태어나지 않아. 다시 도전해 봐! 나는 여기서 기다릴게.',
+  },
 ];
 
 export const TOP_FLOOR = 6;
@@ -60,8 +67,8 @@ export const TOP_FLOOR = 6;
 export function floorState(tower, floor) {
   const info = FLOORS[floor - 1];
   if (!info) return 'none';
-  if (info.secret && !tower.cleared) return 'hidden';
-  if (info.secret && tower.comet) return 'cleared';
+  if (floor === 8) return !tower.comet ? 'hidden' : tower.nova ? 'cleared' : 'open';
+  if (floor === 7) return !tower.cleared ? 'hidden' : tower.comet ? 'cleared' : 'open';
   if (floor <= tower.best) return 'cleared';
   if (info.secret ? tower.cleared : floor === tower.best + 1) return 'open';
   return 'locked';
@@ -70,7 +77,7 @@ export function floorState(tower, floor) {
 export function currentFloor(tower) {
   if (tower.best < TOP_FLOOR) return tower.best + 1;
   if (!tower.comet) return 7;
-  return 7;
+  return 8;
 }
 
 // 같은 층에서 여러 번 지면 AI 손이 조금씩 느려진다 (최대 4단계)
@@ -81,16 +88,16 @@ export function helpLevel(tower, floor) {
 // 이긴 뒤 보상. 처음 깬 층은 크게, 다시 깨면 조금.
 export function floorReward(tower, floor) {
   const info = FLOORS[floor - 1];
-  const first = floor > tower.best && !(info.secret && tower.comet);
+  const first = floor === 8 ? !tower.nova : floor === 7 ? !tower.comet : floor > tower.best;
   return first ? { coins: info.coins, xp: info.xp, first } : { coins: Math.round(info.coins / 5), xp: Math.round(info.xp / 3), first };
 }
 
 // 이겼을 때 기록 갱신. 엔딩을 봐야 하면 true
 export function clearFloor(tower, floor) {
-  const info = FLOORS[floor - 1];
   tower.losses = tower.losses || {};
   delete tower.losses[floor];
-  if (info.secret) { const first = !tower.comet; tower.comet = true; return { ending: false, secretFirst: first, cometEnding: true }; }
+  if (floor === 8) { const first = !tower.nova; tower.nova = true; return { ending: false, novaFirst: first }; }
+  if (floor === 7) { const first = !tower.comet; tower.comet = true; return { ending: false, secretFirst: first, cometEnding: true }; }
   tower.best = Math.max(tower.best, floor);
   if (floor === TOP_FLOOR && !tower.cleared) { tower.cleared = true; return { ending: true }; }
   return { ending: false };

@@ -15,6 +15,7 @@ export const AI_LEVELS = [
   { id: 5, name: '달', depth: 3, think: 24, interval: 7, soft: 0.5, drop: false, fire: 7, mistake: 0.02, potential: 1, counter: true, kill: true, danger: 10 },
   { id: 6, name: '왕관', depth: 3, think: 18, interval: 6, soft: 0.8, drop: false, fire: 8, mistake: 0, potential: 1, counter: true, kill: true, danger: 10 },
   { id: 7, name: '혜성', depth: 3, think: 10, interval: 4, soft: 1, drop: true, fire: 10, mistake: 0, potential: 1, counter: true, kill: true, danger: 10 },
+  { id: 8, name: '초신성', depth: 3, think: 6, interval: 2, soft: 1, drop: true, fire: 11, mistake: 0, potential: 1.15, counter: true, kill: true, danger: 10 },
 ];
 
 // ---------- 빠른 필드 계산 ----------

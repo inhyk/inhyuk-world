@@ -10,7 +10,9 @@ export function newProgress() {
     level: 1, xp: 0, coins: 100,
     owned: { skin: ['classic'], effect: ['sparkle'] },
     equip: { skin: 'classic', effect: 'sparkle' },
-    tower: { best: 0, cleared: false, comet: false, losses: {}, endings: 0, cometEndings: 0 },
+    tower: { best: 0, cleared: false, comet: false, nova: false, losses: {}, endings: 0, cometEndings: 0 },
+    tickets: { skin: 0, effect: 0, spin: 0 },
+    promo: { lastGame: 0 },
     missions: {},
     daily: null,
     rewards: { dailyDate: '', dailyStreak: 0, spinDate: '', spinIndex: null, date: '', playSeconds: 0, claimedTime: [] },
@@ -18,7 +20,7 @@ export function newProgress() {
       games: 0, wins: 0, losses: 0, maxChain: 0, maxScore: 0, popped: 0, allClears: 0, offsets: 0,
       garbageSent: 0, onlineGames: 0, onlineWins: 0, localGames: 0, endlessBest: 0, playSeconds: 0,
     },
-    settings: { ghost: true, shake: true },
+    settings: { ghost: true, shake: true, localMap: 'garden' },
   };
 }
 
@@ -39,6 +41,8 @@ export function sanitize(p) {
   };
   out.tower = { ...base.tower, ...(out.tower || {}) };
   out.tower.best = clampInt(out.tower.best, 0, 6);
+  out.tickets = Object.fromEntries(['skin', 'effect', 'spin'].map(k => [k, clampInt(out.tickets?.[k], 0, 1e6)]));
+  out.promo = { lastGame: clampInt(out.promo?.lastGame, 0, 1e9) };
   out.stats = { ...base.stats, ...(out.stats || {}) };
   out.settings = { ...base.settings, ...(out.settings || {}) };
   out.missions = out.missions && typeof out.missions === 'object' ? out.missions : {};

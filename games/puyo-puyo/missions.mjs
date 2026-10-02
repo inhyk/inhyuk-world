@@ -2,6 +2,7 @@
 // 이벤트(연쇄·터뜨림·전소·상쇄·승리·층·레벨·구매)가 들어오면 진행도를 올린다.
 // kind: 'max' = 가장 큰 값이 목표를 넘으면 완료, 'sum' = 모두 더해서 목표를 넘으면 완료.
 
+import { MAPS } from './maps.mjs';
 import { todayKey } from './calendar.mjs';
 export { todayKey } from './calendar.mjs';
 const tower = e => e.mode === 'tower';
@@ -45,7 +46,37 @@ export const MISSIONS = [
   m('buy-effect', 'grow', '상점에서 터짐 효과 사기', 1, 'buy', e => (e.kind === 'effect' ? 1 : 0), { coins: 60, xp: 30 }, 'sum'),
 ];
 
-export const GROUPS = { tower: '타워 챌린지', skill: '실력 챌린지', play: '놀이 챌린지', grow: '성장 챌린지' };
+// 기존 ID를 유지하고, 짧은 목표부터 오래 즐길 목표까지 새 도전을 더한다.
+const prize = n => ({ coins: 40 + n * 35, xp: 20 + n * 15 });
+for (const [i, n] of [2, 3, 4, 5, 6, 7, 9, 10, 11, 12].entries())
+  MISSIONS.push(m(`chain-master-${n}`, 'skill', `${n}연쇄 달성하기`, n, 'chain', e => e.chain, prize(i + 1)));
+for (const [key, title, values, event, value] of [
+  ['pop-total', '뿌요 터뜨리기', [50, 200, 500, 1500, 3000, 5000, 10000, 20000], 'pop', e => e.puyos],
+  ['send-total', '방해뿌요 보내기', [30, 100, 300, 720, 1440, 3000, 10000], 'chain', e => e.sent],
+  ['clear-total', '전소 성공하기', [1, 3, 5, 10, 25, 50, 100], 'allClear', () => 1],
+  ['offset-total', '상쇄 성공하기', [3, 5, 10, 25, 50, 100, 200], 'offset', () => 1],
+]) for (const [i, n] of values.entries()) MISSIONS.push(m(`${key}-${n}`, 'skill', `${title} · 누적 ${n.toLocaleString('ko-KR')}${key.includes('total') && ['pop-total', 'send-total'].includes(key) ? '개' : '번'}`, n, event, value, prize(i + 1), 'sum'));
+for (const [key, title, values] of [
+  ['games', '게임 완료', [3, 5, 10, 20, 30, 50, 100, 200, 500]],
+  ['wins', '대전 승리', [3, 5, 20, 30, 75, 100, 200]],
+  ['localGames', '2인 플레이 완료', [3, 10, 25, 50]],
+  ['onlineGames', '온라인 대전 완료', [3, 10, 25, 50]],
+]) for (const [i, n] of values.entries()) MISSIONS.push(m(`career-${key}-${n}`, 'play', `${title} ${n}번`, n, 'career', e => e[key], prize(i + 1)));
+for (const [i, n] of [1000, 5000, 25000, 50000, 200000].entries())
+  MISSIONS.push(m(`solo-score-${n}`, 'skill', `혼자 하기 ${n.toLocaleString('ko-KR')}점 달성`, n, 'endless', e => e.score, prize(i + 1)));
+for (const n of [2, 3, 7, 15, 25, 30, 40, 50])
+  MISSIONS.push(m(`grow-level-${n}`, 'grow', `레벨 ${n} 달성`, n, 'level', e => e.level, { coins: n * 30, xp: 0 }));
+for (const map of MAPS) for (const n of [1, 5, 15])
+  MISSIONS.push(m(`map-${map.id}-${n}`, 'maps', `${map.name}에서 ${n}번 대전 완료`, n, 'match', e => e.mode === 'local' && e.map === map.id ? 1 : 0, prize(n), 'sum'));
+for (const [kind, title] of [['daily', '출석 선물'], ['spin', '스핀 선물'], ['time', '시간 선물']]) for (const n of [1, 5, 15])
+  MISSIONS.push(m(`gift-${kind}-${n}`, 'gifts', `${title} ${n}번 받기`, n, 'gift', e => e.kind === kind ? 1 : 0, { ...prize(n), tickets: n === 15 ? { skin: 1 } : { spin: 1 } }, 'sum'));
+for (const [kind, title] of [['skin', '스킨'], ['effect', '터짐 효과']]) for (const n of [3, 5, 10, 15, 18])
+  MISSIONS.push(m(`collect-${kind}-${n}`, 'grow', `${title} ${n}개 모으기`, n, 'collection', e => e[kind], prize(n)));
+MISSIONS.push(m('tower-floor-8', 'tower', '별의 수호자 노바 이기기', 8, 'tower', e => e.floor, { coins: 2500, xp: 1000, tickets: { skin: 1, effect: 1 } }));
+for (const n of [2, 4]) MISSIONS.push(m(`tower-floor-${n}`, 'tower', `${n}층 처음 깨기`, n, 'tower', e => e.floor, prize(n)));
+for (const n of [5, 20, 50]) MISSIONS.push(m(`tower-win-${n}`, 'tower', `타워에서 ${n}번 승리`, n, 'match', e => tower(e) && e.win ? 1 : 0, prize(n), 'sum'));
+
+export const GROUPS = { tower: '타워 챌린지', skill: '실력 챌린지', play: '놀이 챌린지', grow: '성장 챌린지', maps: '맵 탐험 챌린지', gifts: '선물 챌린지' };
 
 // 오늘의 미션: 날짜마다 3개씩 바뀐다
 export const DAILY_POOL = [

@@ -50,6 +50,26 @@ export class Effects {
     const boost = Math.min(1.6, 1 + chain * 0.06);
     const s = size;
     switch (kind) {
+      case 'butterfly':
+        for (let i = 0; i < 5; i++) this.add({ kind: 'butterfly', x, y, vx: rand(-1.8, 1.8), vy: rand(-2.2, -.7), size: s * .18, color: pick(RAINBOW), wob: i, life: 70 });
+        break;
+      case 'confetti':
+        for (let i = 0; i < 16; i++) this.add({ kind: 'ribbon', x, y, vx: rand(-3, 3) * s / 40, vy: rand(-4, -1) * s / 40, g: .12, size: s * .13, color: pick(RAINBOW), vr: rand(-.2, .2), life: 65 });
+        break;
+      case 'flame':
+        for (let i = 0; i < 9; i++) this.add({ kind: 'flame', x: x + rand(-.3, .3) * s, y, vx: rand(-.7, .7), vy: rand(-3.5, -1.3) * s / 40, size: s * rand(.12, .23), color: pick(['#ff6f37', '#ffbd3c', '#fff6aa']), life: 40 });
+        break;
+      case 'musicbox':
+        this.pop('note', x, y, color, size, chain); this.pop('star', x, y, color, size * .7, chain);
+        break;
+      case 'portal':
+        for (const [i, col] of ['#b98bff', '#8effdf'].entries()) this.rings.push({ x, y, r: s * (.7 - i * .4), grow: s * (i ? .045 : -.016), life: 45, t: 0, color: col, width: s * .1, delay: i * 8 });
+        for (let i = 0; i < 6; i++) { const a = i * TAU / 6; this.add({ kind: 'orbit', cx: x, cy: y, x, y, ang: a, dist: s, size: s * .08, color: i % 2 ? '#d7b8ff' : '#aaffdf', life: 40 }); }
+        break;
+      case 'nova':
+        this.rings.push({ x, y, r: s * .1, grow: s * .09, life: 34, t: 0, color: '#9ffff1', width: s * .09 });
+        for (let i = 0; i < 12; i++) { const a = i * TAU / 12; this.add({ kind: 'star', x, y, vx: Math.cos(a) * s * .09, vy: Math.sin(a) * s * .09, size: s * .12, color: i % 2 ? '#fff1a5' : '#c5b7ff', vr: .08, life: 40, trail: [] }); }
+        break;
       case 'star':
         for (let i = 0; i < 5; i++) { const a = rand(0, TAU), v = rand(1.5, 3.5) * s / 40 * boost; this.add({ kind: 'star', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, g: 0.08 * s / 40, size: rand(0.12, 0.2) * s, color: i % 2 ? '#ffe45c' : c, vr: rand(-0.2, 0.2), life: 42 }); }
         break;
@@ -190,6 +210,12 @@ export class Effects {
       ctx.fillStyle = p.color;
       const s = p.size * (p.kind === 'sparkle' ? 1 - k * 0.5 : 1);
       switch (p.kind) {
+        case 'butterfly':
+          for (const sign of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sign * s * .5, 0, s * (.3 + .3 * Math.abs(Math.sin(p.t * .3))), s * .85, sign * .4, 0, TAU); ctx.fill(); }
+          ctx.fillStyle = '#fff6ca'; ctx.fillRect(-s * .08, -s * .7, s * .16, s * 1.4); break;
+        case 'ribbon': ctx.fillRect(-s * .7, -s * .2, s * 1.4, s * .4); break;
+        case 'flame':
+          ctx.beginPath(); ctx.moveTo(0, -s * 1.5); ctx.quadraticCurveTo(s * 1.4, s, 0, s); ctx.quadraticCurveTo(-s * 1.2, s, 0, -s * 1.5); ctx.fill(); break;
         case 'star': starPath(ctx, s); ctx.fill(); break;
         case 'heart': heartPath(ctx, s); ctx.fill(); break;
         case 'bubble':

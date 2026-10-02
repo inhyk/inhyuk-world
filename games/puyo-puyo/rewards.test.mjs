@@ -137,7 +137,10 @@ test('기록 코드에도 보상 수령 내역이 보존되어 가져온 뒤 재
   const imported = importCode(emptyStore(), exportCode(account));
   assert.equal(imported.ok, true);
   const p = imported.account.progress;
-  assert.equal(claimDaily(p, normal), null); assert.equal(spin(p, normal), null); assert.equal(claimTime(p, '5m', normal), null);
+  assert.equal(claimDaily(p, normal), null);
+  assert.equal(p.tickets.spin, 1); // 5분 선물의 추가 스핀권도 코드로 옮겨진다.
+  assert.ok(spin(p, normal)); assert.equal(p.tickets.spin, 0);
+  assert.equal(spin(p, normal), null); assert.equal(claimTime(p, '5m', normal), null);
 });
 
 test('제작자 비밀번호가 맞아야 변경, 잠그기·새 세션 후 다시 인증', () => {

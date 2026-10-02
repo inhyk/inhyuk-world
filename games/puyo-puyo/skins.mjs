@@ -393,6 +393,70 @@ const SKINS = {
   },
 };
 
+// 새 스킨도 다섯 기본 색을 그대로 써서 게임 중 색 구별이 쉽다.
+for (const kind of ['bunny', 'bear', 'robot', 'donut', 'flower', 'dragon', 'astronaut', 'aurora']) {
+  SKIN_STYLE[kind] = { connect: false };
+  SKINS[kind] = (ctx, c, r, layer, v) => {
+    const pal = PALETTE[c];
+    if (layer === 'body') {
+      if (kind === 'bunny' || kind === 'bear') {
+        for (const sign of [-1, 1]) {
+          const ey = kind === 'bunny' ? -.85 : -.64, ry = kind === 'bunny' ? .55 : .35;
+          ctx.fillStyle = pal.base; ctx.strokeStyle = pal.deep; ctx.lineWidth = r * .065;
+          ellipse(ctx, sign * r * .6, ey * r, r * .29, ry * r, sign * .15); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = '#ffbed9'; ellipse(ctx, sign * r * .6, ey * r, r * .14, ry * r * .68, sign * .15); ctx.fill();
+        }
+      }
+      if (kind === 'flower') for (let i = 0; i < 8; i++) {
+        const a = i * TAU / 8; ctx.fillStyle = i % 2 ? pal.base : pal.light;
+        ellipse(ctx, Math.cos(a) * r * .7, Math.sin(a) * r * .7, r * .38, r * .38); ctx.fill();
+      }
+      if (kind === 'dragon') for (const sign of [-1, 1]) {
+        ctx.fillStyle = pal.dark; ctx.beginPath(); ctx.moveTo(sign * r * .5, r * .2); ctx.lineTo(sign * r * 1.22, -r * .58); ctx.lineTo(sign * r * 1.02, r * .45); ctx.closePath(); ctx.fill();
+      }
+      if (kind === 'robot') {
+        ctx.fillStyle = pal.base; ctx.strokeStyle = pal.deep; ctx.lineWidth = r * .08;
+        ctx.beginPath(); ctx.roundRect(-r * .87, -r * .8, r * 1.74, r * 1.65, r * .25); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, -r * .8); ctx.lineTo(0, -r * 1.12); ctx.stroke();
+        ctx.fillStyle = '#ffec85'; ellipse(ctx, 0, -r * 1.12, r * .12, r * .12); ctx.fill();
+      } else if (kind === 'donut') {
+        ctx.fillStyle = '#d49048'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.arc(0, 0, r * .35, 0, TAU, true); ctx.fill();
+        ctx.fillStyle = pal.base; ctx.beginPath(); ctx.arc(0, -r * .03, r * .87, 0, TAU); ctx.arc(0, 0, r * .35, 0, TAU, true); ctx.fill();
+        // 시곗바늘처럼 줄 서지 않게, 스프링클을 이리저리 흩뿌린다 (황금각 2.4rad씩 돌며 안팎으로)
+        for (let i = 0; i < 11; i++) {
+          const a = i * 2.4 + .5, d = r * (.5 + (i * 7 % 5) * .07);
+          ctx.save(); ctx.translate(Math.cos(a) * d, Math.sin(a) * d); ctx.rotate(i * 1.9);
+          ctx.fillStyle = ['#fff6c9', '#ffffff', pal.light][i % 3];
+          ctx.beginPath(); ctx.roundRect(-r * .1, -r * .035, r * .2, r * .07, r * .035); ctx.fill(); ctx.restore();
+        }
+        ctx.strokeStyle = pal.dark; ctx.lineWidth = r * .05; ctx.beginPath(); ctx.arc(0, 0, r * .37, 0, TAU); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = r * .09; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(0, -r * .03, r * .72, Math.PI * 1.1, Math.PI * 1.4); ctx.stroke();
+      } else {
+        roundBody(ctx, pal, r * (kind === 'flower' ? .66 : kind === 'astronaut' ? .8 : .88));
+      }
+      if (kind === 'astronaut' || kind === 'aurora') {
+        ctx.strokeStyle = kind === 'astronaut' ? '#e9f8ff' : '#aaffef'; ctx.lineWidth = r * .16;
+        ellipse(ctx, 0, 0, r * .94, r * .94); ctx.stroke();
+        ctx.strokeStyle = kind === 'astronaut' ? '#57789c' : '#815fea'; ctx.lineWidth = r * .04; ctx.stroke();
+        if (kind === 'astronaut') { ctx.fillStyle = '#d5e7f7'; ctx.fillRect(-r * .65, r * .69, r * 1.3, r * .2); }
+      }
+      return;
+    }
+    if (kind === 'donut') { eyes(ctx, r, v, { spread: .52, y: -.2, size: .5 }); return; }
+    if (kind === 'robot') {
+      ctx.fillStyle = '#19394a'; ctx.beginPath(); ctx.roundRect(-r * .68, -r * .4, r * 1.36, r * .65, r * .13); ctx.fill();
+      ctx.fillStyle = '#b4fff1'; for (const sign of [-1, 1]) ctx.fillRect(sign * r * .31 - r * .1, -r * .22, r * .2, r * (v === 1 ? .07 : .22));
+      ctx.strokeStyle = pal.deep; ctx.lineWidth = r * .06; ctx.beginPath(); ctx.moveTo(-r * .3, r * .52); ctx.lineTo(r * .3, r * .52); ctx.stroke(); return;
+    }
+    shine(ctx, r * .8, .6); eyes(ctx, r, v, { size: .72, spread: .26, y: .02 });
+    if (kind === 'bear') { ctx.fillStyle = pal.light; ellipse(ctx, 0, r * .33, r * .28, r * .19); ctx.fill(); ctx.fillStyle = pal.deep; ellipse(ctx, 0, r * .23, r * .1, r * .07); ctx.fill(); }
+    if (kind === 'dragon') for (const sign of [-1, 1]) { ctx.fillStyle = '#fff0a1'; ctx.beginPath(); ctx.moveTo(sign * r * .28, -r * .65); ctx.lineTo(sign * r * .57, -r * 1.13); ctx.lineTo(sign * r * .67, -r * .55); ctx.closePath(); ctx.fill(); }
+    if (kind === 'aurora') { ctx.save(); ctx.translate(0, -r * .7); symbolPath(ctx, 'star', r * .36); ctx.fillStyle = '#fff1a1'; ctx.fill(); ctx.restore(); }
+    if (kind === 'astronaut') { ctx.strokeStyle = '#fff9'; ctx.lineWidth = r * .08; ctx.beginPath(); ctx.arc(0, 0, r * .8, 3.4, 4.3); ctx.stroke(); }
+  };
+}
+
 export const SKIN_IDS = Object.keys(SKINS);
 
 // 스킨 하나의 한 층을 (0,0) 가운데에 반지름 r로 그린다

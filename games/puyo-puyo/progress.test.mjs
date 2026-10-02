@@ -127,7 +127,7 @@ test('상점: 코인·레벨이 되어야 사고, 산 건 바로 장착', () => 
 
 test('타워: 작은→큰→운석→별→달→왕관 순서, 꼭대기에서 엔딩, 그다음 비밀 혜성 층', () => {
   assert.deepEqual(FLOORS.slice(0, 6).map(f => f.icon), ['small', 'big', 'rock', 'star', 'moon', 'crown']);
-  assert.deepEqual(FLOORS.map(f => f.ai), [1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(FLOORS.map(f => f.ai), [1, 2, 3, 4, 5, 6, 7, 8]);
   const t = newProgress().tower;
   assert.equal(floorState(t, 1), 'open');
   assert.equal(floorState(t, 2), 'locked');

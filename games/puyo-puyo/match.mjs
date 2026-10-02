@@ -8,11 +8,14 @@ export const ROUND_PAUSE = 180; // 한 판이 끝나고 다음 판까지
 
 // spec: { kind: 'human' | 'ai' | 'remote', level, name }
 export class Match {
-  constructor({ seed = 1, colors = 4, specs, firstTo = 1, solo = false, timing = {}, random = Math.random, online = null, makeRemote = null, brain = null } = {}) {
+  constructor({ seed = 1, colors = 4, minGroup = 4, gravityScale = 1, target = 70, specs, firstTo = 1, solo = false, timing = {}, random = Math.random, online = null, makeRemote = null, brain = null } = {}) {
     this.online = online;         // 'host' | 'guest' | null
     this.makeRemote = makeRemote; // 온라인 상대 화면을 만드는 함수
     this.seed = seed >>> 0;
     this.colors = colors;
+    this.minGroup = minGroup;
+    this.gravityScale = gravityScale;
+    this.baseTarget = target;
     this.specs = specs;
     this.firstTo = firstTo;
     this.solo = solo || specs.length === 1;
@@ -31,7 +34,7 @@ export class Match {
     this.roundSeed = seed ?? ((this.seed + this.round * 7919) >>> 0);
     const seq = makeSequence(this.roundSeed, this.colors);
     this.seq = seq;
-    this.players = this.specs.map((s, i) => (s.kind === 'remote' && this.makeRemote ? this.makeRemote(seq) : new Player({ seq, seed: this.roundSeed + i * 101 + 1, timing: this.timing })));
+    this.players = this.specs.map((s, i) => (s.kind === 'remote' && this.makeRemote ? this.makeRemote(seq) : new Player({ seq, seed: this.roundSeed + i * 101 + 1, timing: this.timing, minGroup: this.minGroup })));
     this.phase = 'countdown';
     this.timer = COUNTDOWN;
     this.frame = 0;
@@ -42,12 +45,12 @@ export class Match {
 
   emit(p, type, data = {}) { this.events.push({ p, type, ...data }); }
   get over() { return this.phase === 'over'; }
-  get target() { return targetPoints(this.frame); }
+  get target() { return targetPoints(this.frame, this.baseTarget); }
   // 끝없이 모드는 시간이 갈수록 빨라진다
   gravity() {
-    if (!this.solo) return TIMING.gravity * (this.frame > 180 * 60 ? 1.6 : this.frame > 120 * 60 ? 1.3 : 1);
+    if (!this.solo) return (this.timing.gravity ?? TIMING.gravity) * this.gravityScale * (this.frame > 180 * 60 ? 1.6 : this.frame > 120 * 60 ? 1.3 : 1);
     const level = Math.min(15, Math.floor(this.players[0].stats.pieces / 25));
-    return TIMING.gravity * (1 + level * 0.28);
+    return (this.timing.gravity ?? TIMING.gravity) * this.gravityScale * (1 + level * 0.28);
   }
 
   // inputs[i]: 사람 입력 (AI·원격은 무시)

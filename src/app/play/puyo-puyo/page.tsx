@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "뿌요뿌요 타워 · PUYO PUYO TOWER",
   description:
-    "타워와 혜성에 도전! 제작자 모드, 무료 스핀·출석·시간 보상과 두 가지 엔딩이 있는 뿌요뿌요 팬 게임.",
+    "혜성 너머 새 보스 노바, 2인용 맵 6개, 챌린지 151개와 새 스킨·터짐 효과가 있는 뿌요뿌요 팬 게임.",
 };
 
 export default function PuyoPuyoPage() {

@@ -1,11 +1,13 @@
 import './style.css';
+import { MAPS, getMap } from './maps.mjs';
+import { consumePromo } from './promo.mjs';
 import { Match } from './match.mjs';
 import { Renderer } from './render.mjs';
 import { Sound } from './audio.mjs';
 import { Controls } from './input.mjs';
 import { AI_LEVELS, createBrain } from './ai.mjs';
 import { FLOORS, TOP_FLOOR, floorState, currentFloor, helpLevel, floorReward, clearFloor, loseFloor } from './tower.mjs';
-import { SKINS, EFFECTS, canBuy, buy, equip, grant } from './shop.mjs';
+import { SKINS, EFFECTS, canBuy, buy, equip, grant, canRedeem, redeem } from './shop.mjs';
 import { GROUPS, track, claim, missionView, unclaimedCount } from './missions.mjs';
 import {
   loadStore, saveStore, createAccount, login, logout, currentAccount, exportCode, importCode,
@@ -90,6 +92,7 @@ function renderScreen(name) {
   if (name === 'menu') renderMenu();
   if (name === 'tower') renderTower();
   if (name === 'vs') renderVs();
+  if (name === 'local') renderLocal();
   if (name === 'missions') renderMissions();
   if (name === 'shop') renderShop();
   if (name === 'profile') renderProfile();
@@ -187,7 +190,7 @@ function renderMenu() {
   $('chip-coins').textContent = fmt(p.coins);
   $('chip-xp').style.width = `${Math.min(100, (p.xp / xpToNext(p.level)) * 100)}%`;
   const f = currentFloor(p.tower);
-  $('menu-tower-sub').textContent = p.tower.cleared ? (p.tower.comet ? '👑 타워 정복! 다시 올라가 볼까?' : '✨ 탑 너머에 혜성이 보여…') : `${f}층 ${FLOORS[f - 1].name} 도전 중`;
+  $('menu-tower-sub').textContent = p.tower.cleared ? (p.tower.comet ? (p.tower.nova ? '🌟 초신성까지 모두 정복!' : '🌟 혜성 너머 초신성 층이 열렸어!') : '✨ 탑 너머에 혜성이 보여…') : `${f}층 ${FLOORS[f - 1].name} 도전 중`;
   const n = unclaimedCount(p);
   $('mission-badge').hidden = !n;
   $('mission-badge').textContent = n;
@@ -220,7 +223,7 @@ function renderTower() {
     const help = helpLevel(t, floor);
     const label = state === 'cleared' ? '✔ 클리어' : state === 'open' ? '▶ 도전 가능' : '🔒 잠김';
     li.innerHTML = `<div class="num">${info.secret ? '★' : floor}<small>${info.secret ? '비밀' : '층'}</small></div><div class="ic"></div>
-      <div><h3>${esc(info.name)}</h3><p>${esc(info.boss)} · AI 레벨 ${info.ai}${help ? ` · 도움 ${help}단계` : ''}</p><p class="state">${label}${state === 'cleared' && info.secret && t.comet ? ' · 혜성 꼬리 효과 획득' : ''}</p></div>`;
+      <div><h3>${esc(info.name)}</h3><p>${esc(info.boss)} · AI 레벨 ${info.ai}${help ? ` · 도움 ${help}단계` : ''}</p><p class="state">${label}${state === 'cleared' && info.secret ? (floor === 8 ? ' · 오로라 갑옷 + 초신성 효과 획득' : ' · 혜성 꼬리 효과 획득') : ''}</p></div>`;
     li.querySelector('.ic').append(iconCanvas(info.icon, 32));
     if (state === 'open' || state === 'cleared') {
       const b = document.createElement('button');
@@ -248,14 +251,14 @@ function faceCanvas(char, size = 72, mood = 'idle') {
 function renderVs() {
   const grid = $('vs-levels');
   grid.innerHTML = '';
-  for (let lv = 1; lv <= 7; lv++) {
+  for (let lv = 1; lv <= FLOORS.length; lv++) {
     const info = FLOORS[lv - 1];
-    const locked = lv === 7 && !P().tower.cleared;
+    const locked = floorState(P().tower, lv) === 'hidden';
     const b = document.createElement('button');
     b.className = `level${vsLevel === lv ? ' on' : ''}`;
     b.disabled = locked;
     b.append(faceCanvas(info.char, 36));
-    b.insertAdjacentHTML('beforeend', `<b>${locked ? '???' : esc(info.boss)}</b><small>AI 레벨 ${lv} · ${locked ? '타워를 깨면 열려' : esc(AI_LEVELS[lv].name)}</small>`);
+    b.insertAdjacentHTML('beforeend', `<b>${locked ? '???' : esc(info.boss)}</b><small>AI 레벨 ${lv} · ${locked ? (lv === 8 ? '혜성을 깨면 열려' : '타워를 깨면 열려') : esc(AI_LEVELS[lv].name)}</small>`);
     b.onclick = () => { vsLevel = lv; sound.sfx('click'); renderVs(); };
     grid.append(b);
   }
@@ -283,10 +286,11 @@ function myView(extra = {}) {
   return { name: me()?.name || '나', level: P().level, skin: P().equip.skin, effect: P().equip.effect, char: 'hero', color: '#ffe45c', ...extra };
 }
 function startGame(cfg) {
+  closePromo(true);
   demo = null;
   game = { ...cfg, tracked: 0, started: performance.now(), warned: false };
   const seed = cfg.seed ?? ((Math.random() * 2 ** 31) | 0);
-  match = new Match({ seed, specs: cfg.specs, firstTo: cfg.firstTo || 1, solo: cfg.mode === 'solo', online: cfg.online || null, makeRemote: cfg.makeRemote, brain });
+  match = new Match({ seed, colors: cfg.colors, minGroup: cfg.minGroup, gravityScale: cfg.gravityScale, target: cfg.target, specs: cfg.specs, firstTo: cfg.firstTo || 1, solo: cfg.mode === 'solo', online: cfg.online || null, makeRemote: cfg.makeRemote, brain });
   if (cfg.slow && match.ai[1]) match.ai[1].slow = cfg.slow;
   renderer.setTheme(cfg.theme || 'default');
   renderer.setup(cfg.views, { solo: cfg.mode === 'solo', ghost: P().settings.ghost !== false, insets: computeInsets() });
@@ -322,10 +326,20 @@ function startVs(level, firstTo) {
     views: [myView(), { name: info.boss, level: 0, skin: 'classic', effect: 'sparkle', char: info.char, color: '#ffb3c8' }],
   });
 }
-function startLocal(firstTo) {
+function renderLocal() {
+  const current = getMap(P().settings.localMap);
+  $('local-maps').innerHTML = MAPS.map(map => `<button class="map-card${map.id === current.id ? ' selected' : ''}" data-map="${map.id}" style="--map-color:${map.tint}" aria-pressed="${map.id === current.id}"><span>${map.emoji}</span><b>${map.name}</b><small>${map.desc}</small></button>`).join('');
+  $('local-map-tip').textContent = `${current.emoji} ${current.tip}`;
+  $('local-maps').querySelectorAll('button').forEach(button => { button.onclick = () => {
+    P().settings.localMap = button.dataset.map; save(); sound.sfx('click'); renderLocal();
+  }; });
+}
+function startLocal(firstTo, mapId = P().settings.localMap) {
+  const arena = getMap(mapId);
   const name2 = ($('local-name').value || '2P').slice(0, 10);
   startGame({
-    mode: 'local', title: '2인 플레이', theme: 'sky', music: 'battle', firstTo,
+    mode: 'local', map: arena.id, title: `${arena.emoji} ${arena.name} · ${arena.minGroup}개 연결 · ${arena.colors}색`, theme: arena.theme, music: 'battle', firstTo,
+    colors: arena.colors, minGroup: arena.minGroup, gravityScale: arena.gravityScale, target: arena.target,
     specs: [{ kind: 'human' }, { kind: 'human' }],
     views: [myView({ char: null }), { name: name2, skin: 'classic', effect: 'sparkle', char: null, color: '#9fe3ff' }],
   });
@@ -395,6 +409,7 @@ updateHudButtons();
 document.addEventListener('visibilitychange', () => { if (document.hidden && match && !paused && game?.mode !== 'online' && match.phase !== 'over') pause(true); });
 
 controls.onKey = e => {
+  if ($('seonn-promo').open) return true;
   if (talking && (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyZ')) { e.preventDefault(); closeTalk(); return true; }
   if (!$('result').hidden && (e.code === 'Enter')) { e.preventDefault(); $('result-buttons').querySelector('button')?.click(); return true; }
   if (match && (e.code === 'Escape' || e.code === 'KeyP') && !talking && $('result').hidden) { e.preventDefault(); pause(!paused); return true; }
@@ -418,7 +433,7 @@ function retry() {
   match = null;
   if (g.mode === 'tower') startTower(g.floor);
   else if (g.mode === 'vs') startVs(g.level, g.firstTo);
-  else if (g.mode === 'local') startLocal(g.firstTo);
+  else if (g.mode === 'local') startLocal(g.firstTo, g.map);
   else if (g.mode === 'solo') startSolo();
   else if (g.mode === 'online') online.rematch();
 }
@@ -515,6 +530,7 @@ function finishMatch() {
   const m = match, g = game;
   if (!m || !g || g.finished) return;
   g.finished = true;
+  controls.enabled = false;
   const p = P();
   const win = m.winner() === 0;
   const totals = m.totals(0);
@@ -530,11 +546,11 @@ function finishMatch() {
       if (res.ending) { grant(p, 'skin', 'crown'); ending = 'crown'; }
       if (res.cometEnding) ending = 'comet';
       if (info.secret && res.secretFirst) { grant(p, 'effect', 'comet'); toast('✨ 혜성 꼬리 효과를 얻었어!', true); }
-      title = info.secret ? '혜성 층 정복!' : g.floor === TOP_FLOOR ? '타워 정복!' : `${g.floor}층 클리어!`;
+      if (res.novaFirst) { grant(p, 'skin', 'aurora'); grant(p, 'effect', 'nova'); toast('🌟 오로라 갑옷과 초신성 폭발을 얻었어!', true); }
+      title = info.secret ? `${info.name} 정복!` : g.floor === TOP_FLOOR ? '타워 정복!' : `${g.floor}층 클리어!`;
       sub = r.first ? `${info.name}을(를) 처음 깼어!` : `${info.name} 다시 클리어`;
-      const next = g.floor < TOP_FLOOR ? g.floor + 1 : null;
-      if (next) buttons.push(['primary', `${next}층 도전 ▶`, () => { closeResult(); startTower(next); }]);
-      else if (p.tower.cleared && !info.secret && !p.tower.comet) buttons.push(['primary', '비밀의 층으로 ★', () => { closeResult(); startTower(7); }]);
+      const next = g.floor < FLOORS.length ? g.floor + 1 : null;
+      if (next) buttons.push(['primary', `${FLOORS[next - 1].name} 도전 ▶`, () => { closeResult(); startTower(next); }]);
       buttons.push(['ghost', '타워로', () => { closeResult(); quitGame(); }]);
     } else {
       loseFloor(p.tower, g.floor);
@@ -567,7 +583,7 @@ function finishMatch() {
     buttons.push(['primary', '다시 하기', () => { closeResult(); retry(); }], ['ghost', '메뉴로', () => { closeResult(); quitGame(); }]);
   }
   xp += totals.maxChain * 5;
-  if (g.mode !== 'solo') trackEvent({ type: 'match', mode: g.mode, win });
+  if (g.mode !== 'solo') trackEvent({ type: 'match', mode: g.mode, map: g.map, win });
   else trackEvent({ type: 'match', mode: 'solo', win: false });
   const s = p.stats;
   s.games++;
@@ -577,6 +593,8 @@ function finishMatch() {
   s.maxChain = Math.max(s.maxChain, totals.maxChain);
   s.maxScore = Math.max(s.maxScore, totals.maxScore);
   s.popped += totals.popped; s.allClears += totals.allClears; s.offsets += totals.offsets; s.garbageSent += totals.garbageSent;
+  trackEvent({ type: 'career', ...s });
+  trackEvent({ type: 'collection', skin: p.owned.skin.length, effect: p.owned.effect.length });
   const before = { level: p.level, xp: p.xp };
   const reward = grantReward(p, { coins, xp });
   coins = reward.coins; xp = reward.xp;
@@ -623,8 +641,36 @@ function showResult(r) {
     b.onclick = () => { sound.sfx('click'); fn(); };
     row.append(b);
   }
+  if (consumePromo(P())) { save(); openPromo(); }
 }
 function closeResult() { $('result').hidden = true; }
+
+// ---------- seonn 광고 (기획서 6번 그림) ----------
+// 오른쪽 위 단추는 "5초 뒤에 ✕"에서 1초씩 줄어들다가, 0이 되면 눌러서 닫는 ✕가 된다.
+const PROMO_WAIT = 5;
+let promoLeft = 0, promoTimer = null;
+function paintPromoClose() {
+  const b = $('promo-close'), waiting = promoLeft > 0;
+  b.textContent = waiting ? `${promoLeft}초 뒤에 ✕` : '✕ 닫기';
+  b.classList.toggle('waiting', waiting);
+  b.setAttribute('aria-disabled', String(waiting));
+  b.setAttribute('aria-label', waiting ? `광고는 ${promoLeft}초 뒤에 닫을 수 있어` : '광고 닫기');
+}
+function openPromo() {
+  clearInterval(promoTimer);
+  promoLeft = PROMO_WAIT;
+  paintPromoClose();
+  promoTimer = setInterval(() => { promoLeft--; paintPromoClose(); if (promoLeft <= 0) clearInterval(promoTimer); }, 1000);
+  $('seonn-promo').showModal();
+}
+// force: 온라인 상대가 먼저 다음 판을 시작했을 때처럼 기다리지 않고 닫아야 할 때
+function closePromo(force = false) {
+  if (promoLeft > 0 && !force) return;
+  if ($('seonn-promo').open) $('seonn-promo').close();
+}
+$('promo-close').onclick = () => { sound.sfx(promoLeft > 0 ? 'bump' : 'click'); closePromo(); };
+$('seonn-promo').addEventListener('cancel', e => { if (promoLeft > 0) e.preventDefault(); });
+$('seonn-promo').addEventListener('close', () => { clearInterval(promoTimer); promoLeft = 0; });
 
 // ---------- 엔딩 ----------
 function runEnding(done, kind = 'crown') {
@@ -643,7 +689,7 @@ function runEnding(done, kind = 'crown') {
   function finish() {
     if ($('ending').hidden) return;
     $('ending').hidden = true;
-    if (kind === 'comet') toast('🌠 우주의 친구들 엔딩! 코멧과 함께 진짜 타워 챔피언이 됐어!', true);
+    if (kind === 'comet') toast('🌠 우주의 친구들 엔딩! 코멧과 함께 별빛을 되찾았어! 초신성 층이 열렸어!', true);
     else {
       toast('👑 황금 왕관 뿌요 스킨을 상점에서 장착해 봐.', true);
       toast('✨ 탑 너머 비밀의 혜성 층이 열렸어!', true);
@@ -685,11 +731,17 @@ function eventText(bonus = calendarBonus()) {
   if (bonus.holidays.length) lines.push(`🎉 ${bonus.holidays.join(' · ')} 경험치 ×2`);
   return lines.length ? lines.join(' · ') : '🎂 매년 5월 12일 코인 ×10 · 🎉 한국 공휴일 경험치 ×2';
 }
-function rewardText(r) {
-  return [r.coins ? `🪙 ${fmt(r.coins)}` : '', r.xp ? `경험치 ${fmt(r.xp)}` : ''].filter(Boolean).join(' · ');
+const ticketNames = { skin: '🎨 스킨 교환권', effect: '✨ 효과 교환권', spin: '🎟️ 추가 스핀' };
+function ticketText(tickets) {
+  return Object.entries(ticketNames).filter(([key]) => tickets?.[key] > 0).map(([key, title]) => `${title} ${fmt(tickets[key])}장`).join(' · ');
 }
-function received(result) {
+function rewardText(r) {
+  return [r.coins ? `🪙 ${fmt(r.coins)}` : '', r.xp ? `경험치 ${fmt(r.xp)}` : '', ticketText(r.tickets)].filter(Boolean).join(' · ');
+}
+function inventoryText() { return ticketText(P().tickets) || '아직 교환권이 없어. 출석·스핀·시간 선물에서 받아 봐!'; }
+function received(result, kind) {
   if (!result) return;
+  if (kind) trackEvent({ type: 'gift', kind });
   for (const level of result.lv.levels) trackEvent({ type: 'level', level });
   sound.sfx(result.lv.levels.length ? 'level' : 'coin');
   toast(`🎁 ${rewardText(result)} 받았어!${result.lv.levels.length ? ` Lv.${P().level}!` : ''}`, true);
@@ -699,35 +751,36 @@ let spinning = false;
 function renderRewards() {
   const view = rewardView(P());
   $('reward-event').textContent = eventText();
+  $('reward-inventory').textContent = inventoryText();
   $('daily-rewards').innerHTML = DAILY_REWARDS.map((reward, i) => `<div class="daily-gift${i === view.day ? ' active' : ''}${i < view.day || (i === view.day && view.dailyClaimed) ? ' received' : ''}"><b>${i + 1}일째 ${i === 6 ? '🎁' : '✨'}</b><small>${rewardText(rewardPreview(reward))}</small></div>`).join('');
   $('daily-button').disabled = view.dailyClaimed;
   $('daily-button').textContent = view.dailyClaimed ? '✔ 오늘 선물 받음 · 내일 또 만나!' : `${view.day + 1}일째 선물 받기`;
   $('spin-button').disabled = view.spinClaimed || spinning;
-  $('spin-button').textContent = spinning ? '두근두근…' : view.spinClaimed ? '✔ 오늘 스핀 완료 · 내일 다시!' : '무료로 돌리기!';
+  $('spin-button').textContent = spinning ? '두근두근…' : view.spinClaimed ? '✔ 오늘 스핀 완료 · 내일 다시!' : view.freeSpinClaimed ? `🎟️ 추가 스핀 사용 (${P().tickets.spin}장)` : '무료로 돌리기!';
   const wheel = $('spin-wheel');
   if (!wheel.childElementCount) {
-    wheel.innerHTML = SPIN_PRIZES.map((r, i) => `<span class="spin-label" style="transform:rotate(${i * 60}deg) translateY(-87px) rotate(${-i * 60}deg)">${r.coins ? `🪙${r.coins}` : `XP ${r.xp}`}${r.coins && r.xp ? `<small>+${r.xp} XP</small>` : ''}</span>`).join('');
+    wheel.innerHTML = SPIN_PRIZES.map((r, i) => `<span class="spin-label" style="transform:rotate(${i * 60}deg) translateY(-87px) rotate(${-i * 60}deg)">${r.tickets?.skin && r.tickets?.effect ? '🎁 꾸미기' : r.tickets?.skin ? '🎨 스킨권' : r.tickets?.effect ? '✨ 효과권' : r.coins ? `🪙${r.coins}` : `XP ${r.xp}`}<small>${r.tickets ? '+ 코인 / XP' : '선물'}</small></span>`).join('');
   }
   if (!spinning) {
     wheel.classList.remove('spinning');
     wheel.style.transform = `rotate(${-(view.spinIndex ?? 0) * 60}deg)`;
-    $('spin-result').textContent = view.spinClaimed && view.spinIndex !== null ? `오늘 당첨: ${rewardText(rewardPreview(SPIN_PRIZES[view.spinIndex]))}` : '어느 선물이 나올까?';
+    $('spin-result').textContent = view.spinIndex !== null ? `최근 당첨: ${rewardText(rewardPreview(SPIN_PRIZES[view.spinIndex]))}` : '어느 선물이 나올까?';
   }
   $('spin-prizes').textContent = `룰렛에는 기본 보상이 표시돼. 오늘 받을 보상: ${SPIN_PRIZES.map(r => rewardText(rewardPreview(r))).join(' / ')}`;
   const minutes = Math.floor(view.playSeconds / 60), seconds = Math.floor(view.playSeconds % 60);
   $('play-time').textContent = `오늘 게임한 시간: ${minutes}분 ${seconds}초`;
   $('time-rewards').innerHTML = view.time.map(r => `<div class="time-gift"><b>${r.seconds / 60}분 선물</b><p class="fine">${rewardText(r)}</p><button data-time="${r.id}" ${r.ready && !r.claimed ? 'class="primary"' : 'disabled'}>${r.claimed ? '✔ 받음' : r.ready ? '선물 받기!' : `${Math.ceil((r.seconds - view.playSeconds) / 60)}분 더!`}</button></div>`).join('');
   $('time-rewards').querySelectorAll('button').forEach(button => { button.onclick = () => {
-    received(claimTime(P(), button.dataset.time)); renderScreen('rewards');
+    received(claimTime(P(), button.dataset.time), 'time'); renderScreen('rewards');
   }; });
 }
-$('daily-button').onclick = () => { received(claimDaily(P())); renderScreen('rewards'); };
+$('daily-button').onclick = () => { received(claimDaily(P()), 'daily'); renderScreen('rewards'); };
 $('spin-button').onclick = () => {
   if (spinning) return;
   const result = spin(P());
   if (!result) return;
   // 먼저 결과를 지급·저장하므로 애니메이션 중 새로고침해도 선물이 사라지지 않는다.
-  received(result);
+  received(result, 'spin');
   const owner = me();
   spinning = true;
   renderScreen('rewards');
@@ -769,9 +822,15 @@ addEventListener('pagehide', save);
 document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
 
 // ---------- 챌린지 ----------
+let missionFilter = 'all';
+$('mission-filter').onchange = e => { missionFilter = e.target.value; renderMissions(); };
 function renderMissions() {
   const p = P();
+  track(p, { type: 'career', ...p.stats });
+  track(p, { type: 'level', level: p.level });
+  track(p, { type: 'collection', skin: p.owned.skin.length, effect: p.owned.effect.length });
   const view = missionView(p);
+  $('mission-count').textContent = `전체 ${view.list.length}개 · 완료 ${view.list.filter(m => m.done).length}개 · 받을 보상 ${unclaimedCount(p)}개`;
   const root = $('mission-list');
   root.innerHTML = '';
   const section = (title, rows) => {
@@ -797,8 +856,14 @@ function renderMissions() {
       root.append(d);
     }
   };
-  section('📅 오늘의 미션', view.daily);
-  for (const [key, title] of Object.entries(GROUPS)) section(title, view.list.filter(m => m.group === key));
+  const eligible = rows => missionFilter === 'ready' ? rows.filter(m => m.done && !m.claimed) : rows;
+  if (['all', 'daily', 'ready'].includes(missionFilter)) section('📅 오늘의 미션', eligible(view.daily));
+  for (const [key, title] of Object.entries(GROUPS)) {
+    if (!['all', 'ready', key].includes(missionFilter)) continue;
+    const rows = eligible(view.list.filter(m => m.group === key));
+    if (rows.length) section(title, rows);
+  }
+  if (missionFilter === 'ready' && !unclaimedCount(p)) root.insertAdjacentHTML('beforeend', '<p class="lead">아직 받을 보상이 없어. 다른 도전에 도전해 봐!</p>');
 }
 
 // ---------- 상점 ----------
@@ -813,6 +878,7 @@ $('shop-tabs').addEventListener('click', e => {
 });
 function renderShop() {
   const p = P();
+  $('shop-inventory').textContent = inventoryText();
   const grid = $('shop-grid');
   grid.innerHTML = '';
   const items = shopTab === 'skin' ? SKINS : EFFECTS;
@@ -830,7 +896,7 @@ function renderShop() {
     const b = document.createElement('button');
     if (on) { b.textContent = '✔ 장착 중'; b.disabled = true; }
     else if (owned) { b.textContent = '장착하기'; b.className = 'ghost'; }
-    else if (state === 'reward') { b.textContent = item.reward === 'tower' ? '🗼 타워 정복 보상' : '★ 비밀 층 보상'; b.disabled = true; }
+    else if (state === 'reward') { b.textContent = item.reward === 'tower' ? '🗼 타워 정복 보상' : item.reward === 'nova' ? '🌟 노바 클리어 보상' : '☄️ 혜성 클리어 보상'; b.disabled = true; }
     else if (state === 'level') { b.innerHTML = `🔒 Lv.${item.level}부터 · <span class="price">🪙${fmt(item.price)}</span>`; b.disabled = true; }
     else { b.innerHTML = `<span class="price">🪙${fmt(item.price)}</span> 사기`; b.className = state === 'ok' ? 'primary' : ''; b.disabled = state !== 'ok'; }
     b.onclick = () => {
@@ -847,6 +913,14 @@ function renderShop() {
       document.querySelectorAll('.coin-count').forEach(el => { el.textContent = fmt(p.coins); });
     };
     card.append(b);
+    if (canRedeem(p, shopTab, item.id)) {
+      const gift = document.createElement('button'); gift.className = 'ticket-button'; gift.textContent = '🎟️ 교환권 1장으로 받기';
+      gift.onclick = () => {
+        if (!redeem(p, shopTab, item.id)) return;
+        trackEvent({ type: 'collection', skin: p.owned.skin.length, effect: p.owned.effect.length });
+        save(); sound.sfx('coin'); toast(`🎁 ${item.name} 교환하고 장착했어!`, true); renderScreen('shop');
+      }; card.append(gift);
+    }
     grid.append(card);
     previews.push({ cv, item });
   }
@@ -884,7 +958,7 @@ function renderProfile() {
   const s = p.stats;
   const t = p.tower;
   $('profile-stats').innerHTML = [
-    ['타워', t.cleared ? (t.comet ? '👑 + ★ 정복' : '👑 정복') : `${t.best}층까지`], ['판 수', `${fmt(s.games)}판`], ['승리', `${fmt(s.wins)}승 ${fmt(s.losses)}패`],
+    ['타워', t.cleared ? (t.nova ? '🌟 우주 정복' : t.comet ? '👑 + ☄️ 정복' : '👑 정복') : `${t.best}층까지`], ['판 수', `${fmt(s.games)}판`], ['승리', `${fmt(s.wins)}승 ${fmt(s.losses)}패`],
     ['최대 연쇄', `${s.maxChain}연쇄`], ['최고 점수', fmt(s.maxScore)], ['혼자 하기 최고', fmt(s.endlessBest)],
     ['터뜨린 뿌요', `${fmt(s.popped)}개`], ['보낸 방해뿌요', `${fmt(s.garbageSent)}개`], ['전소', `${fmt(s.allClears)}번`],
     ['상쇄', `${fmt(s.offsets)}번`], ['온라인', `${fmt(s.onlineWins)}승 / ${fmt(s.onlineGames)}판`], ['엔딩 본 횟수', `${t.endings || 0}번`],

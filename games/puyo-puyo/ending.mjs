@@ -163,75 +163,83 @@ export function playEnding(canvas, { name = '나', kind = 'crown', sound, onDone
   return stop;
 }
 
-// 두 번째 엔딩: 혜성 드래곤과 친구가 되어 별빛을 되찾고 타워로 돌아온다.
+// 7장, 70초의 혜성 엔딩. 마지막 장면이 다음 보스의 도전으로 이어진다.
+export const COMET_ENDING_SECONDS = 70;
 function playCometEnding(canvas, { name, sound, onDone }) {
   const ctx = canvas.getContext('2d'), fx = new Effects();
   const start = performance.now();
   let raf = 0, stopped = false, lastSpark = 0;
+  const chapters = [
+    ['혜성 너머, 새로운 친구', '코멧: 네 연쇄가 내 마음까지 밝혔어!', '함께 사라진 별빛을 찾으러 가자.'],
+    ['은하수를 건너서', '두 친구는 일곱 빛깔 꼬리를 따라 날아갔어.', '멀리서 작은 별의 목소리가 들렸지.'],
+    ['잠들어 버린 별들', '별들은 빛을 잃고 조용히 잠들어 있었어.', '한 사람의 힘만으로는 깨울 수 없었지.'],
+    ['우정의 일곱 빛깔 연쇄', '너와 코멧이 힘을 합쳐 큰 연쇄를 만들자…', '별빛이 하나둘 우주로 돌아왔어!'],
+    ['타워에 돌아온 영웅들', `${name}, 모두가 너희를 기다렸어!`, '이제 코멧도 우리 타워의 소중한 친구야.'],
+    ['별의 문이 열리다', '그때, 가장 먼 하늘에서 새로운 빛이 나타났어.', '노바: 별을 깨운 친구들, 나에게 와 보겠니?'],
+    ['우주의 친구들', '혜성의 모험은 끝! 다음 모험은 초신성 층에서.', `기획 · 서인혁 / 고마워, ${name}!`],
+  ];
   function resize() {
     const dpr = Math.min(2, devicePixelRatio || 1);
-    canvas.width = Math.round(canvas.clientWidth * dpr);
-    canvas.height = Math.round(canvas.clientHeight * dpr);
+    canvas.width = Math.round(canvas.clientWidth * dpr); canvas.height = Math.round(canvas.clientHeight * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   function frame(now) {
     if (stopped) return;
-    const t = (now - start) / 1000;
+    const t = (now - start) / 1000, scene = Math.min(6, Math.floor(t / 10)), local = t % 10;
     const w = canvas.clientWidth, h = canvas.clientHeight, s = Math.min(w, h);
-    sky(ctx, w, h, '#070b27', t < 13 ? '#382065' : '#60549e');
-    stars(ctx, w, h, t, 160);
-    if (t < 6) {
-      const glow = ctx.createRadialGradient(w / 2, h * .55, 0, w / 2, h * .55, s * .6);
-      glow.addColorStop(0, '#68dfff55'); glow.addColorStop(1, '#68dfff00');
-      ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
-      drawCharacter(ctx, 'hero', w * .3, h * .58, s * .3, 'happy', t, { crown: true });
-      drawCharacter(ctx, 'comet', w * .7, h * .55, s * .44, 'happy', t);
-      text(ctx, '혜성 너머, 새로운 친구', w / 2, h * .15, s * .065, '#a7f3ff', fade(t, .2, 6));
-      text(ctx, '코멧: 네 연쇄가 내 마음까지 밝혔어!', w / 2, h * .79, s * .039, '#fff', fade(t, 1, 6));
-      text(ctx, '함께 우주의 별빛을 되찾으러 가자!', w / 2, h * .86, s * .037, '#ffe58d', fade(t, 2, 6));
-    } else if (t < 13) {
-      const k = (t - 6) / 7, x = w * (.2 + k * .6), y = h * (.62 - Math.sin(k * Math.PI) * .17);
-      for (let i = 0; i < 5; i++) {
-        ctx.strokeStyle = ['#96eeff88', '#b5a2ff88', '#ffa9d688', '#ffed9b88', '#9affd288'][i];
-        ctx.lineWidth = s * .012; ctx.beginPath();
-        ctx.moveTo(x - s * .08, y + i * s * .016);
-        ctx.quadraticCurveTo(x - s * .25, y + s * .1, x - s * .6, y + s * .15 + i * s * .02); ctx.stroke();
+    canvas.dataset.chapter = String(scene + 1);
+    sky(ctx, w, h, scene === 4 ? '#322b66' : '#070b27', scene === 5 ? '#437d79' : '#48366f');
+    stars(ctx, w, h, t, 140);
+    const alpha = fade(local, 0, 10, .8);
+    ctx.save(); ctx.globalAlpha = alpha;
+    if (scene === 0) {
+      drawCharacter(ctx, 'hero', w * .3, h * .52, s * .3, 'happy', t, { crown: true });
+      drawCharacter(ctx, 'comet', w * .7, h * .51, s * .4, 'happy', t);
+    } else if (scene === 1) {
+      const x = w * (.2 + local / 10 * .6), y = h * .5 - Math.sin(local / 10 * Math.PI) * s * .1;
+      for (let i = 0; i < 7; i++) { ctx.strokeStyle = ['#ffb2d7', '#ffe79e', '#a7ffdf', '#a7e8ff', '#c9b4ff'][i % 5] + '88'; ctx.lineWidth = s * .012; ctx.beginPath(); ctx.moveTo(x, y + i * s * .015); ctx.quadraticCurveTo(x - s * .3, y + s * .12, x - s * .7, y + i * s * .03); ctx.stroke(); }
+      drawCharacter(ctx, 'comet', x, y, s * .34, 'happy', t);
+      drawCharacter(ctx, 'hero', x, y - s * .13, s * .19, 'happy', t, { crown: true });
+    } else if (scene === 2 || scene === 3) {
+      for (let i = 0; i < 7; i++) {
+        ctx.save(); ctx.globalAlpha = alpha * (scene === 2 ? .2 + .15 * Math.sin(t + i) : Math.min(1, .2 + local / 5));
+        drawGarbageIcon(ctx, 'star', w * (.12 + i * .126), h * .36 + Math.sin(i * 1.7 + t) * s * .06, s * .09, t); ctx.restore();
       }
-      drawCharacter(ctx, 'comet', x, y, s * .37, 'happy', t);
-      drawCharacter(ctx, 'hero', x, y - s * .14, s * .2, 'happy', t, { crown: true });
-      for (let i = 0; i < 7; i++) drawGarbageIcon(ctx, 'star', w * (.1 + i * .13), h * .28 + Math.sin(t + i) * s * .05, s * .05, t);
-      text(ctx, '일곱 빛깔 연쇄가 우주를 밝히고…', w / 2, h * .13, s * .048, '#ffe58d', fade(t, 6.2, 13));
-      text(ctx, '작은 뿌요의 용기가 별들까지 닿았어.', w / 2, h * .83, s * .038, '#d3faff', fade(t, 7, 13));
-    } else if (t < 21) {
-      const base = h * .92, floorH = s * .05;
-      tower(ctx, w / 2, base, s * .36, floorH, t);
-      FLOORS.forEach((floor, i) => {
-        const angle = Math.PI + i / 6 * Math.PI;
-        drawCharacter(ctx, floor.char, w / 2 + Math.cos(angle) * s * .37, h * .53 + Math.sin(angle) * s * .16,
-          s * .135, 'happy', t + i);
+      drawCharacter(ctx, 'hero', w * .35, h * .59, s * .24, scene === 2 ? 'sad' : 'attack', t, { crown: true });
+      drawCharacter(ctx, 'comet', w * .65, h * .56, s * .3, scene === 2 ? 'sad' : 'attack', t);
+      if (scene === 3 && t - lastSpark > .55) { lastSpark = t; fx.pop('nova', w * (.15 + Math.random() * .7), h * .36, 4, s * .12, 7); sound?.sfx('pop', 1 + Math.floor(local) % 7); }
+    } else if (scene === 4) {
+      tower(ctx, w / 2, h * .69, s * .3, s * .045, t);
+      // 탑 양옆에 세 명씩 서고 코멧은 오른쪽 위를 난다. 서로도, 탑 위의 주인공도 가리지 않는 자리.
+      const spots = [[-.4, .06], [-.27, -.02], [-.4, -.14], [.27, -.02], [.4, .06], [.4, -.14], [.24, -.25]];
+      FLOORS.slice(0, 7).forEach((f, i) => {
+        drawCharacter(ctx, f.char, w / 2 + spots[i][0] * s, h * .6 + spots[i][1] * s, s * .13, 'happy', t + i);
       });
-      drawCharacter(ctx, 'hero', w / 2, base - floorH * 6 - s * .08, s * .22, 'happy', t, { crown: true });
-      text(ctx, `${name}, 우주까지 정복!`, w / 2, h * .12, s * .062, '#ffe58d', fade(t, 13.2, 21));
-      text(ctx, '이제 코멧도 우리 타워의 친구야!', w / 2, h * .22, s * .04, '#d3faff', fade(t, 14, 21));
-      if (t - lastSpark > .5) {
-        lastSpark = t; fx.pop('firework', w * (.15 + Math.random() * .7), h * (.25 + Math.random() * .3), 1 + (t | 0) % 5, s * .16, 6);
-        sound?.sfx('burst');
-      }
+      drawCharacter(ctx, 'hero', w / 2, h * .69 - s * .33, s * .2, 'happy', t, { crown: true });
+      if (t - lastSpark > .6) { lastSpark = t; fx.pop('confetti', w * (.15 + Math.random() * .7), h * .28, 1, s * .15, 6); sound?.sfx('burst'); }
+    } else if (scene === 5) {
+      // 별의 문 고리는 제목 글자를 가리지 않는 크기로
+      for (let i = 0; i < 4; i++) { ctx.strokeStyle = ['#bb9bff', '#a7ffdd'][i % 2]; ctx.lineWidth = s * .006; ctx.beginPath(); ctx.ellipse(w / 2, h * .47, s * (.2 + i * .018), s * (.215 + i * .018), t * .05, 0, TAU); ctx.stroke(); }
+      drawCharacter(ctx, 'nova', w / 2, h * .45, s * .36 * Math.min(1, .4 + local / 4), 'idle', t);
+      drawCharacter(ctx, 'hero', w * .23, h * .65, s * .16, 'happy', t, { crown: true });
+      drawCharacter(ctx, 'comet', w * .77, h * .62, s * .2, 'happy', t);
     } else {
-      drawGarbageIcon(ctx, 'comet', w / 2, h * .39, s * .23, t);
-      text(ctx, 'THE TRUE END', w / 2, h * .14, s * .075, '#a7f3ff', fade(t, 21.2, 32));
-      text(ctx, '우주의 친구들', w / 2, h * .24, s * .05, '#ffe58d', fade(t, 21.6, 32));
-      text(ctx, '🌟', w / 2, h * .53, s * .05, '#ffe58d');
-      text(ctx, '혜성 꼬리 효과와 함께 모험은 계속돼!', w / 2, h * .63, s * .038, '#fff', fade(t, 22, 32));
-      text(ctx, '기획 · 서인혁', w / 2, h * .73, s * .039, '#ffb9dd', fade(t, 23, 32));
-      text(ctx, `끝까지 함께해 줘서 고마워, ${name}!`, w / 2, h * .82, s * .037, '#fff', fade(t, 24, 32));
+      drawCharacter(ctx, 'hero', w * .35, h * .43, s * .26, 'happy', t, { crown: true });
+      drawCharacter(ctx, 'comet', w * .65, h * .4, s * .3, 'happy', t);
+      text(ctx, 'COMET STORY · END', w / 2, h * .63, s * .045, '#aaffec');
+      text(ctx, '★ 초신성 층이 열렸어 · 별의 수호자 노바 ★', w / 2, h * .71, s * .035, '#ffe9a7');
     }
+    ctx.restore();
+    const [title, line1, line2] = chapters[scene];
+    text(ctx, `${scene + 1} / 7`, w / 2, h * .07, s * .026, '#d6c6ff', alpha);
+    text(ctx, title, w / 2, h * .15, s * .058, '#ffe7a5', alpha);
+    text(ctx, line1, w / 2, h * .82, s * .036, '#fff', alpha);
+    text(ctx, line2, w / 2, h * .89, s * .033, '#b4f6ff', alpha);
     fx.update(); fx.draw(ctx);
-    if (t >= 30) { stop(); onDone?.(); return; }
+    if (t >= COMET_ENDING_SECONDS) { stop(); onDone?.(); return; }
     raf = requestAnimationFrame(frame);
   }
   function stop() { stopped = true; cancelAnimationFrame(raf); removeEventListener('resize', resize); }
-  resize(); addEventListener('resize', resize);
-  raf = requestAnimationFrame(frame);
+  resize(); addEventListener('resize', resize); raf = requestAnimationFrame(frame);
   return stop;
 }

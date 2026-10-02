@@ -198,6 +198,22 @@ const CHARS = {
   },
 };
 
+CHARS.nova = (ctx, x, y, s, mood, t) => {
+  const r = s * .3, by = y + Math.sin(t * 2) * s * .025;
+  ctx.save(); ctx.translate(x, by);
+  for (let i = 0; i < 3; i++) {
+    ctx.save(); ctx.rotate(t * .25 + i * TAU / 3); ctx.strokeStyle = ['#b5ffe0', '#d1bdff', '#fff0a5'][i]; ctx.lineWidth = s * .015;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 1.65, r * .7, 0, 0, TAU); ctx.stroke(); star(ctx, r * 1.65, 0, s * .04, '#fff5c5'); ctx.restore();
+  }
+  ctx.fillStyle = '#8262c7'; ctx.beginPath(); ctx.moveTo(-r * .7, -r * .2); ctx.lineTo(-r * 1.25, r * 1.4); ctx.quadraticCurveTo(0, r * .9, r * 1.25, r * 1.4); ctx.lineTo(r * .7, -r * .2); ctx.fill();
+  body(ctx, 0, 0, r, r, '#f0fff9', '#8adfcb', '#586ebe', '#3c3a75');
+  ctx.fillStyle = '#ebefff'; ctx.strokeStyle = '#685598'; ctx.lineWidth = s * .01;
+  ctx.beginPath(); ctx.moveTo(-r, -r * .35); ctx.lineTo(-r * .7, -r * 1.05); ctx.lineTo(-r * .25, -r * .85); ctx.lineTo(0, -r * 1.45); ctx.lineTo(r * .25, -r * .85); ctx.lineTo(r * .7, -r * 1.05); ctx.lineTo(r, -r * .35); ctx.lineTo(0, -r * .62); ctx.closePath(); ctx.fill(); ctx.stroke();
+  star(ctx, 0, -r * .88, r * .25, '#ffe585');
+  face(ctx, 0, r * .06, r * .85, mood, t, { pupil: '#433371' });
+  ctx.restore();
+};
+
 export const CHARACTER_IDS = Object.keys(CHARS);
 
 // (x, y)를 가운데로 size 크기 상자 안에 그린다
@@ -247,6 +263,9 @@ export function drawGarbageIcon(ctx, id, x, y, size, t = 0) {
     ctx.fillStyle = '#7a5a00'; ctx.beginPath(); ctx.arc(-s * 0.45, s * 0.05, s * 0.08, 0, TAU); ctx.fill();
   } else if (id === 'crown') {
     crownShape(ctx, 0, s * 0.6, s * 1.8, s * 1.3);
+  } else if (id === 'nova') {
+    ctx.rotate(t * .2); star(ctx, 0, 0, s, '#a0f5e4'); ctx.rotate(Math.PI / 5); star(ctx, 0, 0, s * .65, '#c9b8ff');
+    ctx.fillStyle = '#fff5ba'; ctx.beginPath(); ctx.arc(0, 0, s * .24, 0, TAU); ctx.fill();
   } else if (id === 'comet') {
     const g = ctx.createLinearGradient(s, -s, -s * 0.2, s * 0.2);
     g.addColorStop(0, 'rgba(120,220,255,0)'); g.addColorStop(1, 'rgba(160,235,255,.95)');

@@ -11,6 +11,14 @@ export const SKINS = [
   { id: 'planet', name: '행성 뿌요', price: 1700, level: 9, desc: '고리를 두른 작은 행성들.' },
   { id: 'neon', name: '네온 뿌요', price: 2100, level: 11, desc: '어둠 속에서 빛나는 네온사인.' },
   { id: 'ghost', name: '유령 뿌요', price: 2600, level: 13, desc: '흐물흐물 꼬리가 달린 유령.' },
+  { id: 'bunny', name: '토끼 뿌요', price: 700, level: 4, desc: '길쭉한 두 귀가 쫑긋!' },
+  { id: 'bear', name: '곰돌이 뿌요', price: 900, level: 5, desc: '동그란 귀와 작은 코의 곰돌이.' },
+  { id: 'robot', name: '로봇 뿌요', price: 1400, level: 7, desc: '안테나와 반짝이는 전자 눈.' },
+  { id: 'donut', name: '도넛 뿌요', price: 1600, level: 8, desc: '알록달록 토핑을 올린 도넛.' },
+  { id: 'flower', name: '꽃송이 뿌요', price: 1800, level: 9, desc: '다섯 가지 색으로 피어나는 꽃.' },
+  { id: 'dragon', name: '꼬마 드래곤', price: 2400, level: 12, desc: '작은 뿔과 날개를 가진 용.' },
+  { id: 'astronaut', name: '우주인 뿌요', price: 3000, level: 15, desc: '동그란 헬멧을 쓰고 별로 출발!' },
+  { id: 'aurora', name: '오로라 갑옷', price: -1, level: 1, desc: '초신성 층 노바를 이기면 받는 별빛 갑옷.', reward: 'nova' },
   { id: 'crown', name: '황금 왕관 뿌요', price: -1, level: 1, desc: '타워 꼭대기를 깬 사람만 받는 왕관.', reward: 'tower' },
 ];
 
@@ -27,6 +35,12 @@ export const EFFECTS = [
   { id: 'lightning', name: '번개', price: 1900, level: 10, desc: '찌릿찌릿 번개가 쳐요.' },
   { id: 'rainbow', name: '무지개 링', price: 2300, level: 12, desc: '무지개 고리가 퍼져요.' },
   { id: 'blackhole', name: '블랙홀', price: 3000, level: 15, desc: '빨려 들어갔다가 펑!' },
+  { id: 'butterfly', name: '나비 정원', price: 900, level: 5, desc: '색색의 나비들이 날갯짓해요.' },
+  { id: 'confetti', name: '축하 폭죽', price: 1300, level: 7, desc: '알록달록 종이 꽃가루가 펑!' },
+  { id: 'flame', name: '드래곤 불꽃', price: 1800, level: 9, desc: '금빛 불씨가 뜨겁게 솟아올라요.' },
+  { id: 'musicbox', name: '별빛 오르골', price: 2200, level: 11, desc: '별과 음표가 함께 춤을 춰요.' },
+  { id: 'portal', name: '차원 문', price: 2700, level: 14, desc: '보라와 민트색 문이 열려요.' },
+  { id: 'nova', name: '초신성 폭발', price: -1, level: 1, desc: '노바를 이기면 얻는 별빛 대폭발.', reward: 'nova' },
   { id: 'comet', name: '혜성 꼬리', price: -1, level: 1, desc: '비밀의 혜성 층을 깨면 받아요.', reward: 'comet' },
 ];
 
@@ -62,4 +76,17 @@ export function equip(progress, kind, id) {
 
 export function grant(progress, kind, id) {
   if (!progress.owned[kind].includes(id)) progress.owned[kind].push(id);
+}
+
+// 교환권은 코인/레벨 없이 원하는 판매 상품을 하나 고를 수 있다. 보스 전용 보상은 제외.
+export function canRedeem(progress, kind, id) {
+  const item = findItem(kind, id);
+  return !!item && item.price > 0 && !progress.owned[kind].includes(id) && (progress.tickets?.[kind] || 0) > 0;
+}
+export function redeem(progress, kind, id) {
+  if (!canRedeem(progress, kind, id)) return false;
+  progress.tickets[kind]--;
+  grant(progress, kind, id);
+  equip(progress, kind, id);
+  return true;
 }

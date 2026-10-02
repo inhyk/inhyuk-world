@@ -1,6 +1,8 @@
 // 제작자·날짜 이벤트·보상 저장·혜성 엔딩을 실제 Chrome UI에서 확인한다.
 import { chromium } from '../../tools/node_modules/playwright/index.mjs';
 import assert from 'node:assert/strict';
+import { SKINS, EFFECTS } from './shop.mjs';
+import { COMET_ENDING_SECONDS } from './ending.mjs';
 import { mkdir } from 'node:fs/promises';
 const base = process.env.PUYO_URL || 'http://127.0.0.1:5190/';
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -44,8 +46,8 @@ try {
   for (const action of ['tower', 'level', 'missions', 'skins']) await page.click(`[data-creator="${action}"]`);
   let state = await read(page);
   assert.equal(state.tower.best, 6); assert.equal(state.level, 50); assert.equal(state.tower.comet, false);
-  assert.equal(await page.evaluate(() => window.__puyo.P().owned.skin.length), 12);
-  assert.equal(await page.evaluate(() => window.__puyo.P().owned.effect.length), 13);
+  assert.equal(await page.evaluate(() => window.__puyo.P().owned.skin.length), SKINS.length);
+  assert.equal(await page.evaluate(() => window.__puyo.P().owned.effect.length), EFFECTS.length);
   await page.screenshot({ path: `${screenshotDir}/creator.png` });
   await page.click('#creator-lock'); assert.equal(await page.locator('#creator-tools').isVisible(), false);
   await page.click('#scr-creator [data-go="menu"]');
@@ -117,12 +119,12 @@ try {
   await page.screenshot({ path: `${screenshotDir}/comet-ending.png` });
   await page.click('#ending-skip'); await page.waitForSelector('#result:not([hidden])');
   assert.match(await page.textContent('#result-title'), /혜성 층 정복/);
-  await page.click('#result-buttons button');
+  await page.getByRole('button', { name: '타워로', exact: true }).click();
   assert.ok(await page.locator('.floor.secret.cleared').count());
   assert.equal(await page.locator('#tower-comet-ending').isVisible(), true);
   await page.clock.install();
   await page.click('#tower-comet-ending');
-  await page.clock.runFor(30050); // 자동으로 마지막 장면을 끝내도 타워로 돌아온다.
+  await page.clock.runFor(COMET_ENDING_SECONDS * 1000 + 50); // 자동으로 마지막 장면을 끝내도 타워로 돌아온다.
   assert.equal(await page.locator('#ending').isVisible(), false);
   assert.equal((await read(page)).screen, 'tower');
   assert.equal((await read(page)).tower.cometEndings, 2);
