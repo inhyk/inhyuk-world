@@ -84,6 +84,10 @@ try {
       await page.screenshot({ path: `${shots}/seonn-promo.png` });
       await page.click('#promo-close', { force: true }); await page.keyboard.press('Escape'); await page.keyboard.press('Enter');
       assert.equal(await page.locator('#seonn-promo').isVisible(), true);
+      // Esc를 연달아 누르면 브라우저가 강제로 닫지만, 다 세기 전에는 곧바로 다시 열린다.
+      for (let n = 0; n < 4; n++) { await page.keyboard.press('Escape'); await page.waitForTimeout(120); }
+      await page.waitForSelector('#seonn-promo[open]');
+      assert.match(await page.textContent('#promo-close'), /^[1-5]초 뒤에 ✕$/);
       assert.equal(await page.locator('#promo-close').getAttribute('aria-disabled'), 'true');
       await page.waitForFunction(() => document.getElementById('promo-close').textContent === '✕ 닫기', null, { timeout: 8000 });
       assert.equal(await page.locator('#promo-close').getAttribute('aria-disabled'), 'false');

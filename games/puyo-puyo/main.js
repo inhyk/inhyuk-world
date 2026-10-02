@@ -666,11 +666,13 @@ function openPromo() {
 // force: 온라인 상대가 먼저 다음 판을 시작했을 때처럼 기다리지 않고 닫아야 할 때
 function closePromo(force = false) {
   if (promoLeft > 0 && !force) return;
+  clearInterval(promoTimer); promoLeft = 0;
   if ($('seonn-promo').open) $('seonn-promo').close();
 }
 $('promo-close').onclick = () => { sound.sfx(promoLeft > 0 ? 'bump' : 'click'); closePromo(); };
 $('seonn-promo').addEventListener('cancel', e => { if (promoLeft > 0) e.preventDefault(); });
-$('seonn-promo').addEventListener('close', () => { clearInterval(promoTimer); promoLeft = 0; });
+// Esc를 연달아 누르면 브라우저가 막아 둔 창도 닫아 버린다. 다 세기 전이라면 남은 시간 그대로 다시 연다.
+$('seonn-promo').addEventListener('close', () => { if (promoLeft > 0) $('seonn-promo').showModal(); });
 
 // ---------- 엔딩 ----------
 function runEnding(done, kind = 'crown') {
