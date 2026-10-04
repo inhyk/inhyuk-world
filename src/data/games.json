@@ -1,5 +1,34 @@
 [
   {
+    "slug": "sky-obby",
+    "title": "하늘 점프맵 · SKY OBBY",
+    "description": "구름 위 100개 스테이지를 점프로 넘어 트로피까지! 10스테이지마다 하늘이 바뀌고 뒤로 갈수록 어려워져요.",
+    "longDescription": "구름 위에 떠 있는 3D 점프맵입니다. 100개 스테이지를 넘어 무지개 정상의 황금 트로피에 도착하세요. 1~15 스테이지는 손으로 만든 입문 코스이고, 16~100 스테이지는 징검다리 블록, 용암 징검다리, 흔들 발판, 앞뒤 발판, 엘리베이터 발판, 회전 막대 다리, 사라지는 블록, 점프대, 얼음길, 컨베이어 벨트, 나선 계단, 용암 미로, 쌍둥이 막대, 좁은 다리 14가지 장애물을 섞어 만든 코스입니다. 뒤로 갈수록 발판이 작아지고 간격이 넓어지며 장치가 빨라집니다. 10스테이지마다 새벽 하늘, 노을 하늘, 별빛 밤하늘, 오로라 빙하, 화산 하늘, 사탕 구름, 폭풍 구름, 우주 정거장, 무지개 정상으로 하늘이 바뀝니다. 용암이나 빨간 회전 막대에 닿거나 아래로 떨어지면 마지막 체크포인트에서 다시 시작합니다. WASD 또는 방향키로 달리고 Space로 점프, 마우스 드래그로 시점을 돌리고 휠로 확대합니다. 모바일에서는 조이스틱과 점프 버튼을 사용합니다. 체크포인트·기록·넘어진 횟수·최고 기록이 자동 저장되고, 기록 리셋 버튼으로 모두 지울 수 있습니다.",
+    "emoji": "🦘",
+    "thumbnail": "/images/games/sky-obby-thumb.png",
+    "screenshots": [
+      "/images/games/sky-obby-thumb.png",
+      "/images/games/sky-obby-spiral.png",
+      "/images/games/sky-obby-lava-maze.png",
+      "/images/games/sky-obby-night.png",
+      "/images/games/sky-obby-volcano.png",
+      "/images/games/sky-obby-space.png",
+      "/images/games/sky-obby-final.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Babylon.js",
+      "WebGL",
+      "Web Audio"
+    ],
+    "category": "액션",
+    "playUrl": "/play/sky-obby",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 44,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/sky-obby"
+  },
+  {
     "slug": "puyo-puyo",
     "title": "뿌요뿌요 타워 · PUYO PUYO TOWER",
     "description": "혜성 너머 새 보스 노바에 도전! 2인용 맵 6개(6개 모아야 터지는 맵도!), 챌린지 151개, 새 스킨·터짐 효과와 교환권 선물을 만나요.",

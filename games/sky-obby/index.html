@@ -1,0 +1,36 @@
+<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#8fd3ff"><title>하늘 점프맵 · SKY OBBY</title></head>
+<body>
+<canvas id="game" tabindex="0" aria-label="점프맵 게임 화면. WASD나 방향키로 움직이고 스페이스로 점프합니다. 드래그해서 시점을 돌릴 수 있습니다."></canvas>
+<div class="flash" id="flash"></div>
+<header class="hud">
+ <a class="back" href="/" target="_top">← 인혁이의 게임 세계</a>
+ <div class="stage-card"><small>STAGE</small><b><span id="stage-num">1</span><em id="stage-total">/ 15</em></b><span id="stage-name">첫 점프</span><div class="progress" aria-hidden="true"><i id="progress"></i></div></div>
+ <div class="stats"><div><small>기록</small><b id="timer">0:00.0</b></div><div><small>넘어짐</small><b id="deaths">0</b></div><div><small>최고 기록</small><b id="best">—</b></div></div>
+ <div class="actions"><button id="sound" aria-pressed="true" aria-label="소리 끄기">🔊</button><button id="restart">↺ 처음부터</button><button id="reset-records">🗑 기록 리셋</button></div>
+</header>
+<div id="toast" aria-live="polite"></div>
+<p class="hint">WASD·방향키 이동 · Space 점프 · 드래그 시점 · 휠 확대</p>
+<div id="stick" aria-label="이동 조이스틱"><i></i></div>
+<button id="jump" aria-label="점프">점프</button>
+<section id="start" class="overlay">
+ <div class="panel">
+  <p class="eyebrow">SKY OBBY · 100 STAGES</p>
+  <h1>하늘 점프맵</h1>
+  <p class="lead">구름 위 100개의 스테이지를 뛰어넘어 🏆 트로피까지! 10스테이지마다 하늘이 바뀌어요.</p>
+  <ul class="legend">
+   <li><i style="background:#ff5a1f"></i>용암과 빨간 막대에 닿으면 체크포인트로</li>
+   <li><i style="background:#ffcc33"></i>노란 발판은 움직여요. 타면 함께 이동</li>
+   <li><i style="background:#66e0ff"></i>하늘색 블록은 밟으면 곧 사라져요</li>
+   <li><i style="background:#40c057"></i>초록 점프대는 높이 튕겨 올려요</li>
+   <li><i style="background:#a5e3ff;box-shadow:inset 0 0 0 1px #4c8fb3"></i>얼음 위에서는 쭉 미끄러져요</li>
+   <li><i style="background:#495057"></i>컨베이어 벨트는 화살표 방향으로 밀어요</li>
+  </ul>
+  <button id="play" class="primary">시작하기 ▶</button>
+  <p class="small" id="resume-note"></p>
+ </div>
+</section>
+<dialog id="finish"><p class="eyebrow">COURSE CLEAR</p><h2>🏆 트로피 도착!</h2><div class="result"><div><small>기록</small><b id="final-time">0:00.0</b></div><div><small>넘어짐</small><b id="final-deaths">0</b></div><div><small>최고 기록</small><b id="final-best">—</b></div></div><p id="new-best"></p><div class="row"><button id="stay">트로피 구경하기</button><button id="again" class="primary">다시 도전 ↺</button></div></dialog>
+<dialog id="reset-dialog" aria-labelledby="reset-title"><p class="eyebrow">NEW RUN</p><h2 id="reset-title">처음부터 다시 할까요?</h2><p>체크포인트·기록·넘어짐이 초기화되고 STAGE 1부터 시작해요. 최고 기록은 남아요.</p><div class="row"><button id="cancel-reset" autofocus>취소</button><button id="confirm-reset" class="primary">처음부터</button></div></dialog>
+<dialog id="records-dialog" aria-labelledby="records-title"><p class="eyebrow">RESET RECORDS</p><h2 id="records-title">기록을 모두 지울까요?</h2><p>최고 기록 <b id="records-best">—</b>과 현재 기록·넘어짐·체크포인트가 모두 지워지고 STAGE 1부터 다시 시작해요. 지운 기록은 되돌릴 수 없어요.</p><div class="row"><button id="cancel-records" autofocus>취소</button><button id="confirm-records" class="danger">기록 지우기</button></div></dialog>
+<script type="module" src="main.js"></script>
+</body></html>

@@ -75,3 +75,6 @@ tools/node_modules/
 
 # Generated PAD ATELIER game
 /public/play/pad-shop/
+
+# Generated SKY OBBY game (npm run sky-obby:build)
+/public/play/sky-obby/

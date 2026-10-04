@@ -7,9 +7,9 @@
     "games/valorant"
   ],
   "scripts": {
-    "predev": "npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build",
+    "predev": "npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build",
     "dev": "next dev",
-    "build": "npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && next build",
+    "build": "npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && next build",
     "start": "next start",
     "lint": "eslint",
     "snowflow:dev": "npm run dev --workspace=@inhyuk/snowflow",
@@ -17,7 +17,7 @@
     "valorant:dev": "npm run dev --workspace=@inhyuk/valorant-protocol",
     "valorant:build": "npm run build --workspace=@inhyuk/valorant-protocol",
     "test:valorant": "npm run test --workspace=@inhyuk/valorant-protocol",
-    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\" \"games/orbit-breaker/*.test.mjs\" \"games/undertale/*.test.mjs\" \"games/valorant/tests/*.test.mjs\" \"games/deep-dig/*.test.mjs\" \"games/free-drive/*.test.mjs\" \"games/mineral-valley/*.test.mjs\" \"games/soccer/*.test.mjs\" \"games/puyo-puyo/*.test.mjs\" \"games/pad-shop/*.test.mjs\"",
+    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\" \"games/orbit-breaker/*.test.mjs\" \"games/undertale/*.test.mjs\" \"games/valorant/tests/*.test.mjs\" \"games/deep-dig/*.test.mjs\" \"games/free-drive/*.test.mjs\" \"games/mineral-valley/*.test.mjs\" \"games/soccer/*.test.mjs\" \"games/puyo-puyo/*.test.mjs\" \"games/pad-shop/*.test.mjs\" \"games/sky-obby/*.test.mjs\"",
     "test:orbit-breaker": "node --test \"games/orbit-breaker/*.test.mjs\"",
     "test:mettaton": "node --test \"games/mettaton/*.test.mjs\"",
     "test:undertale": "node --test \"games/undertale/*.test.mjs\"",
@@ -41,7 +41,10 @@
     "test:puyo-puyo": "node --test \"games/puyo-puyo/*.test.mjs\"",
     "pad-shop:dev": "vite --config games/pad-shop/vite.config.js --host 127.0.0.1",
     "pad-shop:build": "vite build --config games/pad-shop/vite.config.js",
-    "test:pad-shop": "node --test games/pad-shop/core.test.mjs"
+    "test:pad-shop": "node --test games/pad-shop/core.test.mjs",
+    "sky-obby:build": "vite build --config games/sky-obby/vite.config.js",
+    "sky-obby:dev": "vite --config games/sky-obby/vite.config.js --host 127.0.0.1",
+    "test:sky-obby": "node --test games/sky-obby/core.test.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
