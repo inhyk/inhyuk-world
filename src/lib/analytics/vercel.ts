@@ -2,12 +2,12 @@ import "server-only";
 
 import {
   analyticsGameProjects,
+  SITE_PROJECT_NAME,
   type AnalyticsGameProject,
 } from "@/lib/analytics/projects";
 
 const ANALYTICS_API_URL =
   "https://api.vercel.com/v1/query/web-analytics/visits";
-const SITE_PROJECT_NAME = "inhyuk-world";
 const REPORTING_DAYS = 30;
 const CACHE_SECONDS = 60 * 60;
 
@@ -74,6 +74,20 @@ class AnalyticsRequestError extends Error {
   }
 }
 
+type AnalyticsSource = Pick<
+  AnalyticsGameProject,
+  "pathname" | "teamId" | "tokenEnv"
+>;
+
+function getAnalyticsCredentials(source: AnalyticsSource = {}) {
+  return {
+    token:
+      (source.tokenEnv ? process.env[source.tokenEnv] : undefined) ??
+      process.env.DASHBOARD_VERCEL_TOKEN,
+    teamId: source.teamId ?? process.env.DASHBOARD_VERCEL_TEAM_ID,
+  };
+}
+
 function createReportingPeriod(now = new Date()) {
   const until = new Date(now);
   until.setUTCHours(23, 59, 59, 999);
@@ -129,10 +143,10 @@ async function requestAnalytics<T>(
   path: "aggregate" | "count",
   projectName: string,
   since: Date,
-  until: Date
+  until: Date,
+  source: AnalyticsSource = {}
 ): Promise<T> {
-  const token = process.env.DASHBOARD_VERCEL_TOKEN;
-  const teamId = process.env.DASHBOARD_VERCEL_TEAM_ID;
+  const { token, teamId } = getAnalyticsCredentials(source);
   if (!token || !teamId) throw new AnalyticsRequestError(401);
 
   const params = new URLSearchParams({
@@ -147,6 +161,11 @@ async function requestAnalytics<T>(
     params.set("limit", String(REPORTING_DAYS));
   }
 
+  if (source.pathname) {
+    const pathname = source.pathname.replaceAll("'", "''");
+    params.set("filter", `requestPath eq '${pathname}'`);
+  }
+
   const response = await fetch(`${ANALYTICS_API_URL}/${path}?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
     next: {
@@ -159,24 +178,24 @@ async function requestAnalytics<T>(
   return (await response.json()) as T;
 }
 
-function hasAnalyticsCredentials() {
-  return Boolean(
-    process.env.DASHBOARD_VERCEL_TOKEN &&
-      process.env.DASHBOARD_VERCEL_TEAM_ID
-  );
+function hasAnalyticsCredentials(source: AnalyticsSource = {}) {
+  const { token, teamId } = getAnalyticsCredentials(source);
+  return Boolean(token && teamId);
 }
 
 async function getDailyTraffic(
   projectName: string,
   since: Date,
   until: Date,
-  dates: string[]
+  dates: string[],
+  source: AnalyticsSource = {}
 ) {
   const response = await requestAnalytics<AnalyticsAggregateResponse>(
     "aggregate",
     projectName,
     since,
-    until
+    until,
+    source
   );
 
   if (!Array.isArray(response.data)) throw new AnalyticsRequestError(502);
@@ -261,7 +280,8 @@ async function getGameTraffic(
       project.projectName,
       since,
       until,
-      dates
+      dates,
+      project
     );
     const today = daily.at(-1);
     const totals = daily.reduce(
@@ -284,7 +304,7 @@ async function getGameTraffic(
   } catch (error) {
     return {
       ...project,
-      status: hasAnalyticsCredentials() ? getStatus(error) : "not-configured",
+      status: hasAnalyticsCredentials(project) ? getStatus(error) : "not-configured",
       daily: emptyDailyTraffic(dates),
       todayVisitors: 0,
       todayPageviews: 0,

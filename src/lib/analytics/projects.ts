@@ -1,6 +1,9 @@
 import "server-only";
 
 import { games } from "@/data/games";
+import { siteConfig } from "@/lib/site";
+
+export const SITE_PROJECT_NAME = "inhyuk-world";
 
 const projectNamesByGame: Record<string, string | null> = {
   ginginbam: "ginginbam-game-v2",
@@ -14,7 +17,7 @@ const projectNamesByGame: Record<string, string | null> = {
   "voxel-survival": "voxel-survival",
   "find-the-ending": "find-the-ending",
   "lucky-machine": "lucky-machine",
-  modongsup: null,
+  modongsup: "modongsup",
   "mtt-final-spotlight": "mtt-final-spotlight",
   "earthquake-drill-vn": "earthquake-drill-vn",
   "jump-map": "inh-jump-map",
@@ -39,13 +42,36 @@ export interface AnalyticsGameProject {
   title: string;
   emoji: string;
   projectName: string | null;
+  pathname?: string;
+  teamId?: string;
+  tokenEnv?: string;
 }
 
-export const analyticsGameProjects: AnalyticsGameProject[] = games.map(
-  (game) => ({
+export const analyticsGameProjects: AnalyticsGameProject[] = games.map((game) => {
+  const project: AnalyticsGameProject = {
     slug: game.slug,
     title: game.title,
     emoji: game.emoji,
     projectName: projectNamesByGame[game.slug] ?? null,
-  })
-);
+  };
+
+  // Games hosted inside the hub share its project, but have their own pageviews.
+  if (game.playUrl) {
+    const playUrl = new URL(game.playUrl, siteConfig.url);
+    if (
+      playUrl.origin === new URL(siteConfig.url).origin &&
+      playUrl.pathname.startsWith("/play/")
+    ) {
+      project.projectName = SITE_PROJECT_NAME;
+      project.pathname = playUrl.pathname.replace(/\/$/, "");
+    }
+  }
+
+  // Modongsup belongs to kubony's team, rather than the hub's team.
+  if (game.slug === "modongsup") {
+    project.teamId = "team_vtqKQtYcdLc1SLSGPcIvs2sT";
+    project.tokenEnv = "DASHBOARD_MODONGSUP_VERCEL_TOKEN";
+  }
+
+  return project;
+});

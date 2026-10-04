@@ -73,3 +73,14 @@ DASHBOARD_VERCEL_TEAM_ID
 
 토큰에는 팀 프로젝트의 Web Analytics 조회 권한이 필요합니다.
 `DASHBOARD_VERCEL_TOKEN`에 `NEXT_PUBLIC_` 접두사를 붙이지 마세요.
+
+`seonn.dev/play/...` 게임은 `inhyuk-world` 프로젝트에서 실행 주소별로
+조회합니다. 상대 주소와 절대 주소 모두 자동으로 연결되므로 새 내부 게임을
+추가할 때 통계 프로젝트 목록을 따로 수정할 필요가 없습니다.
+외부 게임은 `src/lib/analytics/projects.ts`의 프로젝트 설정을 사용합니다.
+
+모동숲은 `kubonys-projects` 팀에 있습니다. 기본 토큰에 해당 팀 조회 권한이
+없으면 서버 전용 `DASHBOARD_MODONGSUP_VERCEL_TOKEN`에 그 팀의 Web Analytics를
+조회할 수 있는 토큰을 설정하세요. 팀 ID는 프로젝트 설정에서 지정합니다.
+
+통계 연결 회귀 검증: `node --test tools/analytics.test.mjs`.
