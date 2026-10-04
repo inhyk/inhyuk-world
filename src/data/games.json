@@ -1009,5 +1009,33 @@
     "createdAt": "2026-09",
     "featured": true,
     "order": 34
+  },
+  {
+    "slug": "keycap-tower",
+    "title": "키캡 타워 · KEYCAP TOWER",
+    "description": "키캡을 밟을 때마다 스피드 +1! 러닝머신과 스탯으로 빨라져서 네 개 월드의 3D 키캡 타워를 올라가요.",
+    "longDescription": "로블록스 키보드 타워류 게임을 분석해서 새로 만든 3D 성장 점프맵입니다. 기둥을 감고 올라가는 나선 타워의 키캡을 밟을 때마다 스피드가 오르고, 스피드가 쌓이면 레벨이 올라 더 높은 스테이지의 문이 열립니다. 스테이지 끝의 노란 버튼을 밟으면 윈을 받고, 윈으로 발걸음 힘·윈 배수·러닝머신 효율·달리기·점프력 다섯 가지 스탯을 올립니다. 로비의 러닝머신 위에 서 있으면 스피드가 자동으로 오르고, 월드마다 세 대씩 모두 열두 대의 러닝머신이 있습니다. 1월드 캔디 타워(8스테이지), 2월드 네온 타워, 3월드 용암 타워, 4월드 은하 타워(각 6스테이지)가 레벨 0·120·400·1000에 열립니다. 움직이는 키, 오르내리는 키, 사라지는 ? 키, 빨간 DEL 키, 회전 막대, 쫓아오는 ESC 괴물, 황금 키캡이 나옵니다. 환생하면 스피드가 0이 되는 대신 얻는 스피드가 영원히 2배가 되고, 트레일을 끼우면 배수가 더 붙습니다. WASD 또는 방향키로 달리고 Space로 점프, 드래그로 시점을 돌립니다. 모바일은 조이스틱과 점프 버튼을 쓰고 진행은 자동 저장됩니다. 원작의 이미지·모델·음원 없이 만든 비공식 팬 게임입니다.",
+    "emoji": "⌨️",
+    "thumbnail": "/images/games/keycap-tower-thumb.png",
+    "screenshots": [
+      "/images/games/keycap-tower-thumb.png",
+      "/images/games/keycap-tower-treadmill.png",
+      "/images/games/keycap-tower-stats.png",
+      "/images/games/keycap-tower-neon.png",
+      "/images/games/keycap-tower-lava.png",
+      "/images/games/keycap-tower-galaxy.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Babylon.js",
+      "WebGL",
+      "Web Audio"
+    ],
+    "category": "액션",
+    "playUrl": "/play/keycap-tower",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 45,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/keycap-tower"
   }
 ]

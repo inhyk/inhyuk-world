@@ -78,3 +78,6 @@ tools/node_modules/
 
 # Generated SKY OBBY game (npm run sky-obby:build)
 /public/play/sky-obby/
+
+# Generated KEYCAP TOWER game (npm run keycap-tower:build)
+/public/play/keycap-tower/
