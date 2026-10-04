@@ -1,0 +1,18 @@
+{
+  "appId": "dev.seonn.jellytower",
+  "appName": "젤리 타워",
+  "webDir": "www",
+  "backgroundColor": "#b9a6ff",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#b9a6ff"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#b9a6ff",
+      "showSpinner": false
+    }
+  }
+}

@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "뿌요뿌요 타워 · PUYO PUYO TOWER",
+  title: "젤리 타워 · JELLY TOWER",
   description:
-    "혜성 너머 새 보스 노바, 2인용 맵 6개, 챌린지 151개와 새 스킨·터짐 효과가 있는 뿌요뿌요 팬 게임.",
+    "같은 색 젤리 4개를 이어 터뜨리는 퍼즐 게임. 연습하기, 타워와 혜성 너머 노바, 2인용 맵 6개, 챌린지 151개.",
 };
 
 export default function PuyoPuyoPage() {
   return (
     <iframe
-      title="뿌요뿌요 타워 · 뿌요 퍼즐 대전"
+      title="젤리 타워 · 젤리 퍼즐 대전"
       src="/play/puyo-puyo/index.html"
       allow="autoplay; fullscreen; clipboard-write"
       className="fixed inset-0 z-[100] h-dvh w-screen border-0 bg-[#b9a6ff]"

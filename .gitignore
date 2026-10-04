@@ -81,3 +81,7 @@ tools/node_modules/
 
 # Generated KEYCAP TOWER game (npm run keycap-tower:build)
 /public/play/keycap-tower/
+
+# 젤리 타워 아이폰 앱 (apps/jelly-tower): 설치 패키지와 빌드해서 넣는 웹 파일
+/apps/jelly-tower/node_modules/
+/apps/jelly-tower/www/

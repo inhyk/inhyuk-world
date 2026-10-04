@@ -34,20 +34,24 @@ test('계정 만들기 → 로그아웃 → 비밀번호로 로그인', async ()
 
 test('기록 코드로 다른 기기에 옮기면 레벨·코인이 그대로, 비밀번호도 그대로', async () => {
   const a = emptyStore();
-  const { account } = await createAccount(a, '뿌요왕', 'puyo');
+  const { account } = await createAccount(a, '젤리왕', 'puyo');
   account.progress.level = 7;
   account.progress.coins = 4321;
   account.progress.tower.best = 3;
   const code = exportCode(account);
-  assert.match(code, /^PUYO1\./);
+  assert.match(code, /^JELLY1\./);
   const b = emptyStore();
   const imported = importCode(b, code);
   assert.equal(imported.ok, true);
   assert.equal(imported.account.progress.level, 7);
   assert.equal(imported.account.progress.coins, 4321);
-  assert.equal((await login(b, '뿌요왕', 'puyo')).ok, true);
+  assert.equal((await login(b, '젤리왕', 'puyo')).ok, true);
   assert.equal(importCode(b, code.slice(0, -3) + 'zzz').ok, false);
   assert.equal(importCode(b, 'hello').ok, false);
+  // 이름을 바꾸기 전(뿌요 타워 시절)에 복사해 둔 PUYO1 코드도 그대로 들어온다
+  const old = importCode(emptyStore(), code.replace(/^JELLY1\./, 'PUYO1.'));
+  assert.equal(old.ok, true);
+  assert.equal(old.account.progress.coins, 4321);
 });
 
 test('레벨: 경험치가 차면 오르고 코인을 받는다', () => {

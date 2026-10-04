@@ -127,7 +127,7 @@ try {
   await page.click('#scr-tower [data-go="menu"]'); await unlock(page); await page.click('[data-creator="skins"]');
   await page.click('#scr-creator [data-go="menu"]'); await page.click('[data-go="shop"]');
   await page.click('#shop-tabs [data-v="skin"]'); assert.equal(await page.locator('.item').count(), 20);
-  await page.locator('.item').filter({ has: page.getByText('토끼 뿌요', { exact: true }) }).scrollIntoViewIfNeeded();
+  await page.locator('.item').filter({ has: page.getByText('토끼 젤리', { exact: true }) }).scrollIntoViewIfNeeded();
   await shot(page, 'skins');
   await page.click('#shop-tabs [data-v="effect"]'); assert.equal(await page.locator('.item').count(), 19);
   await page.locator('.item').filter({ has: page.getByText('나비 정원', { exact: true }) }).scrollIntoViewIfNeeded();

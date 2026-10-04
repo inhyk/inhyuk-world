@@ -22,7 +22,7 @@ test('대전 시작: 준비 → 3 → 2 → 1 → 시작, 두 사람이 같은 �
   assert.deepEqual(m.players[0].next, m.players[1].next);
 });
 
-test('연쇄로 만든 방해뿌요는 상대에게 가고, 상대 연쇄가 끝나야 떨어진다', () => {
+test('연쇄로 만든 방해 젤리는 상대에게 가고, 상대 연쇄가 끝나야 떨어진다', () => {
   const m = new Match({ seed: 9, specs: [{ kind: 'human' }, { kind: 'human' }] });
   runUntil(m, x => x.phase === 'play', 400);
   runUntil(m, x => x.players[0].state === 'control', 50);

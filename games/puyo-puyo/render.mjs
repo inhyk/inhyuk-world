@@ -5,7 +5,7 @@ import { Effects } from './effects.mjs';
 import { drawCharacter, drawGarbageIcon } from './characters.mjs';
 
 const TAU = Math.PI * 2;
-const FONT = "Jua, 'Noto Sans KR', sans-serif";
+const FONT = "Jua, 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
 
 // ---------- 배치 ----------
 export function computeLayout(w, h, opt = {}) {
@@ -582,7 +582,7 @@ export class Renderer {
     // 마진 타임
     if (match.frame > 96 * 60 && match.phase === 'play') {
       ctx.font = `${Math.round(c * 0.32)}px ${FONT}`; ctx.fillStyle = '#ff9fb0';
-      ctx.fillText(`마진 타임! 방해뿌요 ×${(70 / match.target).toFixed(1)}`, box.x + box.w / 2, box.y + c * 8.4);
+      ctx.fillText(`마진 타임! 방해 젤리 ×${(70 / match.target).toFixed(1)}`, box.x + box.w / 2, box.y + c * 8.4);
     }
     ctx.restore();
   }
@@ -605,9 +605,9 @@ export class Renderer {
     ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = '#fff';
     const lines = [
       ['속도', `${Math.min(16, Math.floor(p.stats.pieces / 25) + 1)}단계`],
-      ['놓은 뿌요', `${p.stats.pieces}쌍`],
+      ['놓은 젤리', `${p.stats.pieces}쌍`],
       ['최대 연쇄', `${p.stats.maxChain}연쇄`],
-      ['터뜨린 뿌요', `${p.stats.popped}개`],
+      ['터뜨린 젤리', `${p.stats.popped}개`],
       ['전소', `${p.stats.allClears}번`],
     ];
     lines.forEach(([k, val], n) => {

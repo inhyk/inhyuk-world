@@ -8,6 +8,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/games",
     "/stats",
     "/about",
+    "/jelly-tower",
+    "/jelly-tower/privacy",
   ].map((path) => ({ url: absoluteUrl(path) }));
 
   const gamePages: MetadataRoute.Sitemap = games.map((game) => ({

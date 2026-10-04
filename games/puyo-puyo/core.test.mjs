@@ -29,7 +29,7 @@ test('통 점수 공식: 4개 40점, 2연쇄 360점, 연결·색 보너스', () 
   assert.equal(r.score, 40 + 320);
 });
 
-test('3연쇄 계단: 40 + 320 + 640 = 1000점, 방해뿌요 14개', () => {
+test('3연쇄 계단: 40 + 320 + 640 = 1000점, 방해 젤리 14개', () => {
   const cells = parseField([
     'GB....',
     'RGB...',
@@ -43,7 +43,7 @@ test('3연쇄 계단: 40 + 320 + 640 = 1000점, 방해뿌요 14개', () => {
   assert.equal(r.allClear, true);
 });
 
-test('방해뿌요는 터지는 뿌요 옆에서만 사라지고 13번째 줄은 터지지 않는다', () => {
+test('방해 젤리는 터지는 젤리 옆에서만 사라지고 13번째 줄은 터지지 않는다', () => {
   const cells = parseField(['O.....', 'O.....', 'RRRR.O']);
   resolveChain(cells);
   assert.deepEqual(fieldRows(cells, 1), ['......', 'O....O']);
@@ -53,7 +53,7 @@ test('방해뿌요는 터지는 뿌요 옆에서만 사라지고 13번째 줄은
   assert.equal(findGroups(hidden).length, 0);
 });
 
-test('방해뿌요 예고 아이콘은 작은·큰·운석·별·달·왕관 순서로 커진다', () => {
+test('방해 젤리 예고 아이콘은 작은·큰·운석·별·달·왕관 순서로 커진다', () => {
   assert.deepEqual(garbageIcons(0), []);
   assert.deepEqual(garbageIcons(45), ['rock', 'big', 'big', 'small', 'small', 'small']);
   assert.deepEqual(garbageIcons(720 + 360 + 180 + 30 + 6 + 1), ['crown', 'moon', 'star', 'rock', 'big', 'small']);
@@ -68,7 +68,7 @@ test('마진 타임이 지나면 목표 점수가 줄어든다', () => {
   assert.equal(targetPoints(MARGIN_FRAMES + MARGIN_STEP * 40), 1);
 });
 
-test('뿌요 순서: 같은 씨앗이면 같고, 첫 두 짝은 3색 이하, 색은 고르게', () => {
+test('젤리 순서: 같은 씨앗이면 같고, 첫 두 짝은 3색 이하, 색은 고르게', () => {
   for (let seed = 1; seed < 40; seed++) {
     const a = makeSequence(seed), b = makeSequence(seed);
     assert.deepEqual(a.puyos, b.puyos);
@@ -121,7 +121,7 @@ test('바닥 차기: 바닥에서 아래로 돌리면 한 칸 올라간다', () 
   assert.equal(p.piece.y, 1);
 });
 
-test('놓고, 흩어지고, 14번째 줄에 놓인 뿌요는 사라진다', () => {
+test('놓고, 흩어지고, 14번째 줄에 놓인 젤리는 사라진다', () => {
   const p = new Player({ seq: seqOf([1, 2], [3, 4], [1, 2]) });
   p.cells = parseField(['.O....', '.O....', '.O....', '.O....', '.O....']);
   p.start();
@@ -144,7 +144,7 @@ test('놓고, 흩어지고, 14번째 줄에 놓인 뿌요는 사라진다', () =
   assert.equal(heights(q.cells)[0], 13);
 });
 
-test('13번째 줄 위에 놓인 뿌요는 사라진다', () => {
+test('13번째 줄 위에 놓인 젤리는 사라진다', () => {
   const q = new Player({ seq: seqOf([1, 2], [3, 4]) });
   for (let y = 0; y < 12; y++) q.cells[idx(1, y)] = y % 2 ? 3 : 4;
   q.cells[idx(1, 12)] = GARBAGE;   // 열 1이 13칸 가득
@@ -157,7 +157,7 @@ test('13번째 줄 위에 놓인 뿌요는 사라진다', () => {
   assert.equal(heights(q.cells)[1], 13);
 });
 
-test('방해뿌요 8개: 한 줄 가득 + 서로 다른 두 열에 하나씩, 최대 30개씩', () => {
+test('방해 젤리 8개: 한 줄 가득 + 서로 다른 두 열에 하나씩, 최대 30개씩', () => {
   const p = new Player({ seq: seqOf([1, 2], [3, 4]), seed: 9 });
   p.receive(38);
   p.start();
@@ -185,7 +185,7 @@ test('3열 12번째 줄이 막히면 진다', () => {
   assert.equal(p.cells[idx(SPAWN_X, SPAWN_Y)], GARBAGE);
 });
 
-test('연쇄를 터뜨리면 점수·방해뿌요·상쇄가 계산된다', () => {
+test('연쇄를 터뜨리면 점수·방해 젤리·상쇄가 계산된다', () => {
   // 이미 불이 붙은 3연쇄 계단 옆(열 5)에 노랑 짝을 떨어뜨린다
   const p = new Player({ seq: seqOf([4, 4], [2, 2], [1, 1]) });
   p.cells = parseField(['GB....', 'RGB...', 'RGB...', 'RRGB..']);
@@ -210,7 +210,7 @@ test('연쇄를 터뜨리면 점수·방해뿌요·상쇄가 계산된다', () =
   assert.deepEqual(events(p, 'pop').map(e => e.chain), [1, 2, 3]);
 });
 
-test('전소하면 다음 연쇄에 2100점(방해뿌요 30개)이 더해진다', () => {
+test('전소하면 다음 연쇄에 2100점(방해 젤리 30개)이 더해진다', () => {
   const p = new Player({ seq: seqOf([1, 1], [2, 2], [3, 3]) });
   p.cells = parseField(['RR....']);
   p.start();
@@ -233,7 +233,7 @@ test('전소하면 다음 연쇄에 2100점(방해뿌요 30개)이 더해진다'
   assert.equal(p.stats.allClears, 2);
 });
 
-test('상대가 연쇄 중이면 방해뿌요가 떨어지지 않는다', () => {
+test('상대가 연쇄 중이면 방해 젤리가 떨어지지 않는다', () => {
   const p = new Player({ seq: seqOf([1, 2], [3, 4], [1, 2]) });
   p.receive(12);
   p.start();

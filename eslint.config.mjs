@@ -29,6 +29,8 @@ const eslintConfig = defineConfig([
     "public/play/keycap-tower/**",
     "games/keycap-tower/browser-check.mjs",
     "games/sky-obby/browser-check.mjs",
+    "apps/jelly-tower/www/**",
+    "apps/jelly-tower/ios/**",
   ]),
   // The game is plain browser JavaScript with no React. It gets one rule that
   // matters more there than anywhere else: a name that is used but never

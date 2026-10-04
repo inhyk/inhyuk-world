@@ -13,6 +13,7 @@ export function newProgress() {
     tower: { best: 0, cleared: false, comet: false, nova: false, losses: {}, endings: 0, cometEndings: 0 },
     tickets: { skin: 0, effect: 0, spin: 0 },
     promo: { lastGame: 0 },
+    tutorial: false, // 연습하기를 끝냈는지 (처음 끝내면 선물)
     missions: {},
     daily: null,
     rewards: { dailyDate: '', dailyStreak: 0, spinDate: '', spinIndex: null, date: '', playSeconds: 0, claimedTime: [] },
@@ -43,6 +44,7 @@ export function sanitize(p) {
   out.tower.best = clampInt(out.tower.best, 0, 6);
   out.tickets = Object.fromEntries(['skin', 'effect', 'spin'].map(k => [k, clampInt(out.tickets?.[k], 0, 1e6)]));
   out.promo = { lastGame: clampInt(out.promo?.lastGame, 0, 1e9) };
+  out.tutorial = out.tutorial === true;
   out.stats = { ...base.stats, ...(out.stats || {}) };
   out.settings = { ...base.settings, ...(out.settings || {}) };
   out.missions = out.missions && typeof out.missions === 'object' ? out.missions : {};
@@ -188,12 +190,13 @@ function checksum(text) {
 }
 export function exportCode(account) {
   const body = toBase64(JSON.stringify({ n: account.name, s: account.salt, h: account.hash, c: account.created, p: account.progress }));
-  return `PUYO1.${body}.${checksum(body)}`;
+  return `JELLY1.${body}.${checksum(body)}`;
 }
 export function importCode(store, code) {
   const text = String(code ?? '').replace(/\s+/g, '');
   const parts = text.split('.');
-  if (parts.length !== 3 || parts[0] !== 'PUYO1') return { ok: false, error: '기록 코드 모양이 이상해. 처음부터 끝까지 다 복사했는지 확인해 줘.' };
+  // 젤리 타워로 이름을 바꾸기 전에 만든 PUYO1 코드도 그대로 가져올 수 있다
+  if (parts.length !== 3 || !['JELLY1', 'PUYO1'].includes(parts[0])) return { ok: false, error: '기록 코드 모양이 이상해. 처음부터 끝까지 다 복사했는지 확인해 줘.' };
   if (checksum(parts[1]) !== parts[2]) return { ok: false, error: '기록 코드가 중간에 잘렸거나 바뀌었어.' };
   let data;
   try { data = JSON.parse(fromBase64(parts[1])); } catch { return { ok: false, error: '기록 코드를 읽을 수 없어.' }; }
