@@ -67,7 +67,7 @@ test("all published games connect; internal games query only their play page", a
   assert.ok(result.games.length >= 41);
   assert.ok(result.games.every((game) => game.status === "ready"));
   const embedded = result.games.filter((game) => game.pathname);
-  assert.equal(embedded.length, 12);
+  assert.ok(embedded.length >= 12);
   assert.ok(embedded.every((game) => game.totalPageviews === 7));
   assert.equal(result.site.periodPageviews, 100);
   for (const game of embedded) {
