@@ -58,8 +58,8 @@ npm test
 | 게임 | 온라인 방식 |
 |---|---|
 | 젤리 타워 `puyo-puyo` | 온라인 계정: 게임 찾기, 친구, 채팅, 클라우드 저장. 기기 계정: 예전 친구 코드와 PeerJS 방 코드 |
-| Free Drive `free-drive` | 공용 서버 방 코드로 옮기는 중 (2026-10-06) |
-| 미네랄 밸리 `mineral-valley` | 공용 서버 방 코드로 옮기는 중 (2026-10-06) |
-| SNOWFLOW `snowflow` | 공용 서버 방 코드로 옮기는 중 (2026-10-06) |
+| Free Drive `free-drive` | 공용 서버 방 코드(`Room`, 2명). 계정, 게임 찾기, 채팅 없음 |
+| 미네랄 밸리 `mineral-valley` | 공용 서버 방 코드(`Room`, 2명). 계정, 게임 찾기, 채팅 없음 |
+| SNOWFLOW `snowflow` | 공용 서버 방 코드(`Room`, 4명까지). 계정, 게임 찾기, 채팅 없음. 플레이어가 쓴 이름(10글자)이 친구끼리 오감 |
 
 방 코드로 옮긴 게임에 게임 찾기나 친구 초대를 더하려면 위 표의 `Social` 을 쓰고, 젤리 타워의 `online.mjs` 와 `social-ui.mjs` 를 보고 만듭니다. 결정 근거는 `requirements/matchmaking-chat-friends.md`.
