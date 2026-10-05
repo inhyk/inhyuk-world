@@ -5,13 +5,32 @@
   "main": "src/index.js",
   "compatibility_date": "2026-08-01",
   "durable_objects": {
-    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+    "bindings": [
+      { "name": "ROOMS", "class_name": "Room" },     // 방 하나 = 하나
+      { "name": "LOBBY", "class_name": "Lobby" },    // 접속 상태, 알림, 초대 (전체에 하나)
+      { "name": "MATCH", "class_name": "Matchmaker" } // 랜덤 매칭 줄 (게임마다 하나)
+    ]
   },
   // 무료 요금제에서도 되도록 SQLite 저장소를 쓰는 Durable Object로 만든다.
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Room"] },
+    { "tag": "v2", "new_sqlite_classes": ["Lobby", "Matchmaker"] }
+  ],
+  // 계정, 친구, 1:1 대화, 차단, 신고. 표 구조는 migrations/ 에 있다.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "net",
+      // 2026-10-05 `npx wrangler d1 create net --location apac` 로 만든 DB.
+      "database_id": "5ff14c58-17fb-4cbb-af5d-bc0b933fb964",
+      "migrations_dir": "migrations"
+    }
+  ],
   "vars": {
-    // 여기에 적힌 주소의 게임만 방에 들어올 수 있다. http://localhost, http://127.0.0.1 은 언제나 허용.
+    // 여기에 적힌 주소의 게임만 서버를 쓸 수 있다. http://localhost, http://127.0.0.1 은 언제나 허용.
     "ALLOWED_ORIGINS": "https://seonn.dev,https://www.seonn.dev,capacitor://localhost,https://localhost"
+    // 관리 페이지(/admin) 비밀번호는 여기 적지 않고 Worker secret 으로 둔다: npx wrangler secret put ADMIN_PASSWORD
+    // 없거나 12글자보다 짧으면 관리 페이지는 닫혀 있다(403).
   }
   // net.seonn.dev 를 쓰려면 seonn.dev DNS가 Cloudflare에 있어야 한다. README의 "배포" 참고.
   // "routes": [{ "pattern": "net.seonn.dev", "custom_domain": true }]

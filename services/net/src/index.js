@@ -1,17 +1,23 @@
-// 모든 게임이 같이 쓰는 멀티플레이 중계 서버 (Cloudflare Worker + Durable Object).
-// 서버는 게임 내용을 모른다. 방에 들어온 사람에게 번호를 주고, 들어오고 나간 걸 알리고,
-// 게임이 보낸 JSON을 그대로 다른 사람에게 전해 줄 뿐이다. 메시지 내용은 저장하거나 로그로 남기지 않는다.
+// 모든 게임이 같이 쓰는 멀티플레이 서버 (Cloudflare Worker + Durable Object + D1).
+// 방(Room): 서버는 게임 내용을 모른다. 방에 들어온 사람에게 번호를 주고, 들어오고 나간 걸 알리고,
+// 게임이 보낸 JSON을 그대로 다른 사람에게 전해 준다. 단, 채팅 글(data.chat)만은 거르개를 거쳐 보내고
+// 신고에 쓰려고 마지막 50줄을 잠깐 기억한다. 랜덤 매칭, 초대로 만든 방(members)은 data 안의 모든 글자열을 거른다.
+// 게임 데이터는 저장하거나 로그로 남기지 않는다.
+// 계정, 친구, 1:1 대화, 차단, 신고는 social.js, 게임 저장은 saves.js, 접속 상태와 초대는 lobby.js, 랜덤 매칭은 match.js, 관리 페이지는 admin.js.
 import { DurableObject } from 'cloudflare:workers';
+import { allowedOrigin, cors, json, HttpError, internalRequest, readJson, clientIp } from './http.js';
+import { CODE_RE, GAME_RE, DEFAULT_PLAYERS, clampPlayers, createRoom, roomStub, MAX_MESSAGE_BYTES, PING, PONG, CHAT_LINES } from './rooms.js';
+import { filterText, maskText, maskSplitPhone } from './filter.js';
+import * as auth from './auth.js';
+import * as social from './social.js';
+import * as saves from './saves.js';
+import { handleAdmin } from './admin.js';
 
-export const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-export const CODE_LENGTH = 6;
-export const GAME_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
-export const CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4,8}$/;
-export const DEFAULT_PLAYERS = 2;
-export const MAX_PLAYERS = 8;
-export const MAX_MESSAGE_BYTES = 16 * 1024;
-export const PING = '{"t":"ping"}';
-export const PONG = '{"t":"pong"}';
+// 이 파일은 Worker 의 시작점이라 default 와 Durable Object 클래스만 내보낸다.
+// 글자나 숫자를 내보내면 wrangler dev / deploy 의 workerd 가 "not of type 'function or ExportedHandler'" 로 뜨지 않는다.
+// 상수는 rooms.js 에서 가져다 쓴다.
+export { Lobby } from './lobby.js';
+export { Matchmaker } from './match.js';
 
 // 방을 만들고 아무도 안 들어오면 2분 뒤 지운다.
 const RESERVE_MS = 2 * 60 * 1000;
@@ -21,80 +27,132 @@ const STALE_MS = 30 * 1000;
 // 한 연결이 1초에 보낼 수 있는 메시지: 평소 30개, 몰아서 60개까지.
 const RATE_PER_SECOND = 30;
 const RATE_BURST = 60;
+// 채팅은 따로 1초에 1줄, 몰아서 5줄까지.
+const CHAT_PER_SECOND = 1;
+const CHAT_BURST = 5;
+// 모두 나간 뒤에도 신고할 수 있게 채팅 기록은 10분 더 둔다.
+const CHAT_KEEP_MS = 10 * 60 * 1000;
+// 나눠 보낸 전화번호를 찾을 때 볼 같은 사람의 앞줄: 30초 안의 2줄 (이번 줄까지 3줄)
+const SPLIT_LINES = 2, SPLIT_MS = 30 * 1000;
+// 관계자 방에서 data 를 거를 때 들어갈 깊이
+const DATA_DEPTH = 8;
+// 방 만들기: IP 하나에서 1분에 60번까지
+const ROOMS_PER_MINUTE = 60;
 
-const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+const ROUTES = [
+  ['POST', 'auth/signup', (r, e) => auth.signup(r, e)],
+  ['POST', 'auth/login', (r, e) => auth.login(r, e)],
+  ['POST', 'auth/logout', (r, e) => auth.logout(r, e)],
+  ['POST', 'auth/ticket', (r, e) => auth.ticket(r, e)],
+  ['GET', 'me', (r, e) => auth.me(r, e)],
+  ['GET', 'users/search', social.search],
+  ['GET', 'friends', social.listFriends],
+  ['DELETE', 'friends/:id', social.removeFriend],
+  ['GET', 'friends/requests', social.listRequests],
+  ['POST', 'friends/requests', social.sendRequest],
+  ['POST', 'friends/requests/:id/accept', social.acceptRequest],
+  ['POST', 'friends/requests/:id/decline', social.declineRequest],
+  ['DELETE', 'friends/requests/:id', social.cancelRequest],
+  ['GET', 'blocks', social.listBlocks],
+  ['POST', 'blocks/:id', social.block],
+  ['DELETE', 'blocks/:id', social.unblock],
+  ['GET', 'dm', social.unread],
+  ['GET', 'dm/:id', social.history],
+  ['POST', 'dm/:id', social.sendDm],
+  ['POST', 'dm/:id/read', social.markRead],
+  ['POST', 'invites', social.invite],
+  ['POST', 'invites/:id/accept', social.acceptInvite],
+  ['POST', 'invites/:id/decline', social.declineInvite],
+  ['DELETE', 'invites/:id', social.cancelInvite],
+  ['POST', 'reports', social.report],
+  ['GET', 'saves/:game', saves.load],
+  ['PUT', 'saves/:game', saves.store],
+];
 
-export function allowedOrigin(origin, env) {
-  if (!origin) return false;
-  if (LOCAL_ORIGIN.test(origin)) return true;
-  const list = String(env?.ALLOWED_ORIGINS ?? '').split(',').map(s => s.trim()).filter(Boolean);
-  return list.includes(origin);
+function route(method, parts) {
+  let allowed = false;
+  for (const [m, pattern, handler] of ROUTES) {
+    const want = pattern.split('/');
+    if (want.length !== parts.length) continue;
+    const params = {};
+    if (!want.every((w, i) => (w.startsWith(':') ? ((params[w.slice(1)] = parts[i]), true) : w === parts[i]))) continue;
+    if (m === method) return { handler, params };
+    allowed = true;
+  }
+  return allowed ? { method: true } : null;
 }
 
-export function clampPlayers(value) {
-  const n = Math.floor(Number(value));
-  if (!Number.isFinite(n)) return DEFAULT_PLAYERS;
-  return Math.min(MAX_PLAYERS, Math.max(2, n));
-}
-
-function randomCode() {
-  const bytes = new Uint8Array(CODE_LENGTH);
-  crypto.getRandomValues(bytes);
-  return [...bytes].map(n => ALPHABET[n % ALPHABET.length]).join('');
-}
-
-function cors(origin) {
-  return {
-    'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Max-Age': '86400',
-    Vary: 'Origin',
-  };
-}
-
-function json(body, status, headers = {}) {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
-}
+const isWebSocket = request => request.method === 'GET' && request.headers.get('Upgrade')?.toLowerCase() === 'websocket';
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const origin = request.headers.get('Origin') ?? '';
-    const parts = url.pathname.split('/').filter(Boolean);
+    const parts = url.pathname.split('/').filter(Boolean).map(p => { try { return decodeURIComponent(p); } catch { return p; } });
 
     if (parts.length === 0 && request.method === 'GET') return new Response('inhyuk net ok\n');
-    if (parts[0] !== 'rooms' || parts.length < 2 || parts.length > 3) return new Response('not found', { status: 404 });
+    // 관리 페이지는 관리자 비밀번호로 들어가고, 같은 주소에서만 부른다 (CORS 없음).
+    if (parts[0] === 'admin') return handleAdmin(request, env, parts.slice(1));
+
+    const special = { rooms: parts.length >= 2 && parts.length <= 3, live: parts.length === 1, match: parts.length === 2 };
+    const isSpecial = Object.hasOwn(special, parts[0] ?? '');
+    const api = isSpecial ? null : route(request.method, parts);
+    if (isSpecial ? !special[parts[0]] : !api) return new Response('not found', { status: 404 });
     if (!allowedOrigin(origin, env)) return new Response('origin not allowed', { status: 403 });
     const headers = cors(origin);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
 
-    const game = parts[1];
-    if (!GAME_RE.test(game)) return json({ error: 'bad-game' }, 400, headers);
-
-    // POST /rooms/:game  → 아직 아무도 안 쓰는 새 방 코드를 하나 잡아 준다.
-    if (parts.length === 2) {
-      if (request.method !== 'POST') return json({ error: 'method' }, 405, headers);
-      let body = {};
-      try { body = await request.json(); } catch { /* 빈 몸이면 기본값 */ }
-      const maxPlayers = clampPlayers(body?.maxPlayers ?? DEFAULT_PLAYERS);
-      for (let tries = 0; tries < 5; tries++) {
-        const code = randomCode();
-        const stub = env.ROOMS.get(env.ROOMS.idFromName(`${game}:${code}`));
-        if (await stub.reserve(maxPlayers)) return json({ code, maxPlayers }, 200, headers);
-      }
-      return json({ error: 'busy' }, 503, headers);
+    try {
+      if (parts[0] === 'rooms') return await rooms(request, env, parts, url, headers);
+      if (parts[0] === 'live' || parts[0] === 'match') return await sockets(request, env, parts, url, headers);
+      if (api.method) return json({ error: 'method' }, 405, headers);
+      const response = await api.handler(request, env, api.params, url);
+      for (const [k, v] of Object.entries(headers)) response.headers.set(k, v);
+      return response;
+    } catch (error) {
+      if (error instanceof HttpError) return json({ error: error.code, ...error.extra }, error.status, headers);
+      console.error('net error', error?.stack ?? error);
+      return json({ error: 'server' }, 500, headers);
     }
-
-    // GET /rooms/:game/:code (WebSocket) → 그 방에 들어간다.
-    const code = parts[2];
-    if (!CODE_RE.test(code)) return json({ error: 'bad-code' }, 400, headers);
-    if (request.method !== 'GET' || request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') {
-      return json({ error: 'websocket-only' }, 426, headers);
-    }
-    return env.ROOMS.get(env.ROOMS.idFromName(`${game}:${code}`)).fetch(request);
   },
 };
+
+async function rooms(request, env, parts, url, headers) {
+  const game = parts[1];
+  if (!GAME_RE.test(game)) return json({ error: 'bad-game' }, 400, headers);
+
+  // POST /rooms/:game  → 아직 아무도 안 쓰는 새 방 코드를 하나 잡아 준다.
+  if (parts.length === 2) {
+    if (request.method !== 'POST') return json({ error: 'method' }, 405, headers);
+    await auth.limit(env, `rooms:${clientIp(request)}`, 60 * 1000, ROOMS_PER_MINUTE);
+    const body = await readJson(request);
+    const maxPlayers = clampPlayers(body?.maxPlayers ?? DEFAULT_PLAYERS);
+    const code = await createRoom(env, game, { maxPlayers });
+    return code ? json({ code, maxPlayers }, 200, headers) : json({ error: 'busy' }, 503, headers);
+  }
+
+  // GET /rooms/:game/:code (WebSocket) → 그 방에 들어간다. ?ticket= 이 있으면 누가 들어왔는지 방이 안다.
+  const code = parts[2];
+  if (!CODE_RE.test(code)) return json({ error: 'bad-code' }, 400, headers);
+  if (!isWebSocket(request)) return json({ error: 'websocket-only' }, 426, headers);
+  let user = null;
+  if (url.searchParams.has('ticket')) {
+    user = await auth.useTicket(env, url.searchParams.get('ticket'));
+    if (!user) return json({ error: 'bad-ticket' }, 401, headers);
+  }
+  return roomStub(env, game, code).fetch(internalRequest(request, { 'X-Net-User': user?.id }));
+}
+
+// GET /live?ticket=  (접속 상태와 알림),  GET /match/:game?ticket=  (랜덤 매칭 줄)
+async function sockets(request, env, parts, url, headers) {
+  if (!isWebSocket(request)) return json({ error: 'websocket-only' }, 426, headers);
+  if (parts[0] === 'match' && !GAME_RE.test(parts[1])) return json({ error: 'bad-game' }, 400, headers);
+  const user = await auth.useTicket(env, url.searchParams.get('ticket'));
+  if (!user) return json({ error: 'bad-ticket' }, 401, headers);
+  const forwarded = internalRequest(request, { 'X-Net-User': user.id, 'X-Net-Nick': encodeURIComponent(user.nickname), 'X-Net-Game': parts[1] });
+  const stub = parts[0] === 'live' ? social.lobby(env) : env.MATCH.get(env.MATCH.idFromName(parts[1]));
+  return stub.fetch(forwarded);
+}
 
 export class Room extends DurableObject {
   constructor(ctx, env) {
@@ -104,39 +162,70 @@ export class Room extends DurableObject {
     this.buckets = new Map();
   }
 
-  async reserve(maxPlayers) {
+  // members: 이 사용자 번호들만 들어올 수 있다 (랜덤 매칭, 친구 초대로 만든 방). 없으면 코드를 아는 누구나.
+  // name: '<게임>:<코드>' (정지할 때 이 방을 찾아오려고 기억한다)
+  async reserve(maxPlayers, members = null, name = '') {
     if (this.peers().length || (await this.ctx.storage.get('room'))) return false;
-    await this.ctx.storage.put('room', { max: clampPlayers(maxPlayers), host: '', next: 1, reservedAt: Date.now() });
+    const room = { max: clampPlayers(maxPlayers), host: '', next: 1, reservedAt: Date.now(), name };
+    if (Array.isArray(members) && members.length) room.members = members.map(Number);
+    await this.ctx.storage.delete('chat'); // 같은 코드를 예전에 쓴 방의 채팅 기록은 버린다
+    await this.ctx.storage.put('room', room);
     await this.ctx.storage.setAlarm(Date.now() + RESERVE_MS);
     return true;
   }
 
-  async fetch() {
+  async fetch(request) {
     const [client, server] = Object.values(new WebSocketPair());
     const room = await this.ctx.storage.get('room');
     const peers = this.peers();
-    const refusal = !room ? 'not-found' : peers.length >= room.max ? 'full' : '';
+    const uid = Number(request.headers.get('X-Net-User')) || null;
+    // 한 사람(사용자 번호)은 자리 하나. 같은 사람이 또 들어오면 새 자리를 주지 않고 예전 연결을 바꿔 낀다.
+    const seat = uid ? peers.find(p => p.uid === uid) : null;
+    const refusal = !room ? 'not-found' : room.members && !room.members.includes(uid) ? 'not-member' : !seat && peers.length >= room.max ? 'full' : '';
     if (refusal) {
       // 거절할 연결은 잠들기(hibernation) 목록에 넣지 않고 이유만 알려 주고 닫는다.
       server.accept();
       server.send(JSON.stringify({ t: 'error', code: refusal, max: room?.max }));
-      server.close(refusal === 'full' ? 4403 : 4404, refusal);
+      server.close(refusal === 'full' ? 4403 : refusal === 'not-member' ? 4401 : 4404, refusal);
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    const member = !!room.members;
+    if (seat) {
+      // 번호(p1, p2)와 방장 자리는 그대로 두고 연결만 바꾼다. 남은 사람에게 rejoin 을 알려 게임이 화면을 다시 맞추게 한다.
+      const old = seat.ws.deserializeAttachment();
+      try { seat.ws.serializeAttachment({ ...old, gone: true }); } catch { /* 이미 닫힘 */ }
+      this.buckets.delete(seat.ws);
+      safeSend(seat.ws, JSON.stringify({ t: 'error', code: 'replaced' }));
+      this.close(seat.ws, 4409, 'replaced');
+      this.ctx.acceptWebSocket(server);
+      server.serializeAttachment({ id: old.id, joined: old.joined, uid, member });
+      const others = peers.filter(p => p.ws !== seat.ws);
+      server.send(JSON.stringify({ t: 'welcome', id: old.id, host: room.host, max: room.max, peers: others.map(p => p.id) }));
+      this.broadcast({ t: 'rejoin', id: old.id }, server);
+      await this.ctx.storage.setAlarm(Date.now() + SWEEP_MS);
       return new Response(null, { status: 101, webSocket: client });
     }
     const id = `p${room.next++}`;
     if (!room.host) room.host = id;
     await this.ctx.storage.put('room', room);
+    if (uid) {
+      // 신고할 때 "이 방에 있었던 사람"인지 확인하려고 기억한다.
+      const chat = (await this.ctx.storage.get('chat')) ?? { lines: [], users: [] };
+      if (!chat.users.includes(uid)) { chat.users.push(uid); await this.ctx.storage.put('chat', chat); }
+    }
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ id, joined: Date.now() });
+    server.serializeAttachment({ id, joined: Date.now(), uid, member });
     server.send(JSON.stringify({ t: 'welcome', id, host: room.host, max: room.max, peers: peers.map(p => p.id) }));
     this.broadcast({ t: 'join', id }, server);
     await this.ctx.storage.setAlarm(Date.now() + SWEEP_MS);
+    // 정지할 때 이 방의 연결도 끊을 수 있게 로비에 적어 둔다.
+    if (uid && room.name) await social.track(this.env, uid, 'room', room.name);
     return new Response(null, { status: 101, webSocket: client });
   }
 
   async webSocketMessage(ws, message) {
     const me = ws.deserializeAttachment();
-    if (!me) return;
+    if (!me || me.gone) return; // 바뀌어 나간 예전 연결이 보내는 것은 버린다
     this.lastHeard(ws, true);
     if (typeof message !== 'string') return this.warn(ws, 'bad');
     if (message.length > MAX_MESSAGE_BYTES || (message.length * 3 > MAX_MESSAGE_BYTES && new TextEncoder().encode(message).length > MAX_MESSAGE_BYTES)) {
@@ -149,7 +238,22 @@ export class Room extends DurableObject {
     if (msg.t === 'ping') return ws.send(PONG);
     if (msg.t === 'bye') { this.close(ws, 1000, 'bye'); return this.departed(ws); }
     if (msg.t !== 'send' || msg.data === undefined) return this.warn(ws, 'bad');
-    const out = JSON.stringify({ t: 'msg', from: me.id, data: msg.data });
+    let data = msg.data;
+    // 채팅 약속: 사람이 쓴 글은 data.chat (문자열) 에 넣는다. 서버가 걸러서 보낸다.
+    if (data && typeof data === 'object' && !Array.isArray(data) && 'chat' in data) {
+      if (typeof data.chat !== 'string') return this.warn(ws, 'bad');
+      if (!this.allowChat(ws)) return;
+      let { text } = filterText(data.chat);
+      if (!text) return;
+      text = maskSplitPhone(await this.recentLines(me.id), text);
+      data = { ...data, chat: text };
+      await this.remember({ from: me.id, uid: me.uid ?? null, text, at: Date.now() });
+    }
+    // 관계자 방(랜덤 매칭, 초대)에서는 이름 같은 글이 다른 칸으로 와도 거른다. 공개 방(코드 방)은 채팅만 거른다.
+    if (me.member) {
+      try { data = cleanData(data); } catch { return this.warn(ws, 'bad'); }
+    }
+    const out = JSON.stringify({ t: 'msg', from: me.id, data });
     if (typeof msg.to === 'string') {
       const target = this.peers().find(p => p.id === msg.to);
       if (target) safeSend(target.ws, out);
@@ -169,7 +273,13 @@ export class Room extends DurableObject {
 
   async alarm() {
     const room = await this.ctx.storage.get('room');
-    if (!room) return;
+    if (!room) {
+      // 방은 없어졌고 신고용 채팅 기록만 남은 경우
+      const chat = await this.ctx.storage.get('chat');
+      if (chat && Date.now() >= (chat.until ?? 0)) await this.ctx.storage.deleteAll();
+      else if (chat) await this.ctx.storage.setAlarm(chat.until);
+      return;
+    }
     const now = Date.now();
     let peers = this.peers();
     for (const p of peers) {
@@ -193,7 +303,7 @@ export class Room extends DurableObject {
     for (const ws of this.ctx.getWebSockets()) {
       if (ws.readyState !== WebSocket.OPEN) continue;
       const a = ws.deserializeAttachment();
-      if (a?.id && !a.gone) list.push({ ws, id: a.id, joined: a.joined });
+      if (a?.id && !a.gone) list.push({ ws, id: a.id, joined: a.joined, uid: a.uid ?? null });
     }
     return list.sort((a, b) => a.joined - b.joined || Number(a.id.slice(1)) - Number(b.id.slice(1)));
   }
@@ -223,8 +333,57 @@ export class Room extends DurableObject {
 
   async clear() {
     this.buckets.clear();
+    const chat = await this.ctx.storage.get('chat');
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
+    if (chat?.lines?.length) {
+      const until = Date.now() + CHAT_KEEP_MS;
+      await this.ctx.storage.put('chat', { ...chat, until });
+      await this.ctx.storage.setAlarm(until);
+    }
+  }
+
+  // 채팅 줄을 마지막 CHAT_LINES 줄까지 기억한다 (거른 글만).
+  async remember(line) {
+    const chat = (await this.ctx.storage.get('chat')) ?? { lines: [], users: [] };
+    chat.lines.push(line);
+    if (chat.lines.length > CHAT_LINES) chat.lines.splice(0, chat.lines.length - CHAT_LINES);
+    await this.ctx.storage.put('chat', chat);
+  }
+
+  // 같은 사람(번호 from)이 30초 안에 보낸 마지막 줄들 (나눠 보낸 전화번호 찾기용)
+  async recentLines(from) {
+    const chat = await this.ctx.storage.get('chat');
+    const since = Date.now() - SPLIT_MS;
+    return (chat?.lines ?? []).filter(l => l.from === from && l.at >= since).slice(-SPLIT_LINES).map(l => l.text);
+  }
+
+  // 정지된 사람의 연결을 끊는다 (로비가 부른다).
+  async kickUser(uid) {
+    for (const ws of this.ctx.getWebSockets()) {
+      const a = ws.deserializeAttachment();
+      if (!a?.id || a.gone || a.uid !== uid) continue;
+      safeSend(ws, JSON.stringify({ t: 'error', code: 'suspended' }));
+      await this.departed(ws);
+      this.close(ws, 4403, 'suspended');
+    }
+  }
+
+  // 신고용: 이 방의 채팅 기록과 들어왔던 사용자 번호들
+  async chatLog() {
+    const chat = await this.ctx.storage.get('chat');
+    return { lines: chat?.lines ?? [], users: chat?.users ?? [] };
+  }
+
+  allowChat(ws) {
+    const bucket = this.buckets.get(ws);
+    const now = Date.now();
+    bucket.chat ??= { tokens: CHAT_BURST, at: now };
+    bucket.chat.tokens = Math.min(CHAT_BURST, bucket.chat.tokens + ((now - bucket.chat.at) / 1000) * CHAT_PER_SECOND);
+    bucket.chat.at = now;
+    if (bucket.chat.tokens >= 1) { bucket.chat.tokens -= 1; return true; }
+    this.warn(ws, 'chat-rate');
+    return false;
   }
 
   // 마지막으로 소식을 들은 때. 잠들었다 깨면 메모리 기록은 사라지므로 자동 핑 시각도 같이 본다.
@@ -253,3 +412,14 @@ export class Room extends DurableObject {
 }
 
 function safeSend(ws, text) { try { ws.send(text); } catch { /* 닫히는 중 */ } }
+
+// data 안의 모든 글자열(이름표 포함)을 거른다. 너무 깊으면 던진다(→ 'bad').
+function cleanData(value, depth = 0) {
+  if (typeof value === 'string') return maskText(value);
+  if (!value || typeof value !== 'object') return value;
+  if (depth >= DATA_DEPTH) throw Error('too deep');
+  if (Array.isArray(value)) return value.map(v => cleanData(v, depth + 1));
+  const out = Object.create(null);
+  for (const [key, v] of Object.entries(value)) out[maskText(key)] = cleanData(v, depth + 1);
+  return out;
+}

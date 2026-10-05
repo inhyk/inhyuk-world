@@ -7,7 +7,11 @@
 //   depart(peerId)           친구가 나감 (peerId 없이 불리면 내가 방을 나간 것)
 //   message(data, fromId)    친구가 보낸 메시지
 //   host(peerId)             방장이 바뀜 (방장이 나가면 가장 먼저 들어온 사람이 방장)
-//   error(code)              too-big | rate | bad  (메시지가 너무 크거나 너무 자주 보냄)
+//   error(code)              too-big | rate | chat-rate | bad  (메시지가 너무 크거나 너무 자주 보냄)
+//
+// 채팅 약속: 사람이 쓴 글은 room.chat('안녕') 또는 send({ chat: '안녕', ... }) 처럼 data.chat 에만 넣는다.
+// 서버가 욕설, 전화번호, 링크를 가려서 보낸다(200글자까지, 1초에 1줄). 다른 칸은 그대로 전달된다.
+// 계정, 친구, 1:1 대화, 초대, 랜덤 매칭은 social.mjs (Account, Social).
 export const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const DEFAULT_SERVER = 'wss://net.seonn.workers.dev';
 export const PING = '{"t":"ping"}';
@@ -27,13 +31,16 @@ export const MESSAGES = {
   network: '방 서버에 연결하지 못했어. 인터넷을 확인해 줘.',
   timeout: '연결 시간이 너무 오래 걸려. 인터넷을 확인해 줘.',
   notFound: '그 코드의 방을 찾을 수 없어.',
+  notMember: '이 방에는 들어갈 수 없어.',
   full: max => `이 방은 벌써 ${max ?? 2}명이야. 다른 방을 만들어 줘.`,
   lost: '방 서버와 연결이 끊겼어. 다시 해 볼래?',
   left: '친구가 나갔어. 새 친구가 같은 코드로 들어올 수 있어.',
+  replaced: '다른 곳에서 이 방에 다시 들어갔어.',
+  suspended: '이 계정은 정지됐어.',
 };
 
-const httpBase = server => server.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/+$/, '');
-const wsBase = server => server.replace(/^http(s?):\/\//, 'ws$1://').replace(/\/+$/, '');
+export const httpBase = server => server.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/+$/, '');
+export const wsBase = server => server.replace(/^http(s?):\/\//, 'ws$1://').replace(/\/+$/, '');
 
 export class Room {
   // options: game(필수, 예 'puyo-tower'), maxPlayers(2~8, 방장만), server, fetch, connect(url) → WebSocket
@@ -52,7 +59,8 @@ export class Room {
   get server() { return this.options.server ?? DEFAULT_SERVER; }
   statusChanged(status, message = '') { this.status = status; this.hooks.status?.(status, message); }
 
-  async open(code) {
+  // extra.ticket: 로그인한 사람의 한 번짜리 표 (랜덤 매칭, 초대로 만든 방은 이게 있어야 들어간다)
+  async open(code, extra = {}) {
     this.leave();
     const generation = this.generation;
     this.role = code ? 'guest' : 'host';
@@ -62,7 +70,8 @@ export class Room {
     try {
       if (this.host) await this.create();
       if (generation !== this.generation) return;
-      const url = `${wsBase(this.server)}/rooms/${this.options.game}/${this.code}`;
+      const query = extra?.ticket ? `?ticket=${encodeURIComponent(extra.ticket)}` : '';
+      const url = `${wsBase(this.server)}/rooms/${this.options.game}/${this.code}${query}`;
       let socket;
       try { socket = await (this.options.connect ?? defaultConnect)(url); } catch { throw Error(MESSAGES.network); }
       if (generation !== this.generation) { try { socket.close(); } catch { /* 무시 */ } return; }
@@ -142,12 +151,18 @@ export class Room {
         this.role = msg.id === this.id ? 'host' : 'guest';
         this.hooks.host?.(msg.id);
         return;
+      case 'rejoin': // 같은 사람이 다른 연결로 다시 들어왔다 (번호는 그대로). 게임 상태를 다시 보내 줄 때 쓴다.
+        this.hooks.rejoin?.(msg.id);
+        return;
       case 'msg':
         if (this.ready) this.hooks.message?.(msg.data, msg.from);
         return;
       case 'error':
-        if (this.settle && (msg.code === 'not-found' || msg.code === 'full')) {
-          this.settle.reject(Error(msg.code === 'full' ? MESSAGES.full(msg.max) : MESSAGES.notFound));
+        if (this.settle && (msg.code === 'not-found' || msg.code === 'full' || msg.code === 'not-member')) {
+          this.settle.reject(Error(msg.code === 'full' ? MESSAGES.full(msg.max) : msg.code === 'not-member' ? MESSAGES.notMember : MESSAGES.notFound));
+        } else if (msg.code === 'replaced' || msg.code === 'suspended') {
+          this.hooks.error?.(msg.code);
+          this.fail(MESSAGES[msg.code]);
         } else this.hooks.error?.(msg.code);
         return;
       default:
@@ -165,6 +180,8 @@ export class Room {
     try { this.socket.send(text); return true; } catch { return false; }
   }
   send(message) { return this.ready && this.raw(JSON.stringify({ t: 'send', data: message })); }
+  // 채팅 한 줄 (서버가 걸러서 보낸다). 받는 쪽은 message hook 의 data.chat 으로 받는다.
+  chat(text, extra = {}) { return this.send({ ...extra, chat: String(text ?? '') }); }
   sendTo(peerId, message) { return this.ready && this.raw(JSON.stringify({ t: 'send', to: peerId, data: message })); }
   fail(message) { this.leave(); this.statusChanged('error', message); }
 
@@ -183,8 +200,10 @@ export class Room {
   }
 }
 
-function defaultConnect(url) {
+export function defaultConnect(url) {
   const WS = globalThis.WebSocket;
   if (!WS) throw Error('WebSocket not available');
   return new WS(url);
 }
+
+export { Account, Social, NetError, memoryStorage, SOCIAL_MESSAGES } from './social.mjs';
