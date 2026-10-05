@@ -6,6 +6,7 @@
 //   const social = new Social(account, { dm: msg => ..., invite: inv => ..., online: id => ... });
 //   social.live();                               // 접속 상태와 알림 받기 (끊기면 다시 붙음)
 //   const { room, opponent } = await social.findMatch('puyo-tower', roomHooks);
+//   const save = await account.loadSave('jelly-tower');      // 게임 저장 (다른 기기에서 이어 하기)
 import { Room, DEFAULT_SERVER, httpBase, wsBase, defaultConnect, PING } from './index.mjs';
 
 const STORAGE_KEY = 'inhyuk-net-session';
@@ -36,6 +37,10 @@ export const SOCIAL_MESSAGES = {
   empty: '할 말을 적어 줘.',
   'too-long': '글이 너무 길어.',
   busy: '방을 만들지 못했어. 다시 해 볼래?',
+  conflict: '다른 기기에서 먼저 저장했어.',
+  'too-big': '저장할 내용이 너무 커.',
+  'bad-save': '저장할 내용이 잘못됐어.',
+  'bad-game': '게임 이름이 잘못됐어.',
 };
 const message = code => SOCIAL_MESSAGES[code] ?? SOCIAL_MESSAGES.server;
 
@@ -89,7 +94,9 @@ export class Account {
     if (!response.ok) {
       const code = data?.error ?? 'server';
       if (code === 'login-required' || code === 'suspended') this.save('', null);
-      throw new NetError(code, response.status, code === 'suspended' ? { reason: data.reason ?? '' } : {});
+      const extra = code === 'suspended' ? { reason: data.reason ?? '' }
+        : code === 'conflict' ? { server: { data: data.data ?? null, revision: data.revision ?? 0, updated: data.updated ?? null } } : {};
+      throw new NetError(code, response.status, extra);
     }
     return data;
   }
@@ -114,6 +121,28 @@ export class Account {
   }
   // WebSocket 에 들어갈 한 번짜리 표 (60초)
   async ticket() { return (await this.request('POST', '/auth/ticket')).ticket; }
+
+  // ---- 게임 저장 (클라우드 세이브) ----
+  // 서버에 있는 저장 { data, revision, updated }. 없으면 null.
+  async loadSave(game) {
+    try { return await this.request('GET', `/saves/${game}`); } catch (error) {
+      if (error instanceof NetError && error.code === 'no-save') return null;
+      throw error;
+    }
+  }
+  // baseRevision: 마지막으로 읽거나 쓴 revision (처음이면 0). 맞으면 { ok: true, revision, updated },
+  // 그 사이 다른 기기가 먼저 썼으면 { conflict: true, server: { data, revision, updated } }. 합치지 않는다:
+  // 게임별 adapter 가 충돌 시 어떤 값을 쓸지 정한 뒤 server.revision 으로 다시 putSave 한다.
+  // importId: 기기에 있던 저장을 처음 올릴 때 한 번 (같은 것을 또 보내면 { ok, duplicate: true }).
+  async putSave(game, data, baseRevision = 0, { importId } = {}) {
+    try {
+      const result = await this.request('PUT', `/saves/${game}`, { data, baseRevision, ...(importId ? { importId } : {}) });
+      return { ok: true, ...result };
+    } catch (error) {
+      if (error instanceof NetError && error.code === 'conflict') return { conflict: true, server: error.server };
+      throw error;
+    }
+  }
 }
 
 const camel = type => type.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -151,6 +180,10 @@ export class Social {
   history(id, before) { return this.req('GET', `/dm/${id}${before ? `?before=${before}` : ''}`); }
   async sendDm(id, body) { return (await this.req('POST', `/dm/${id}`, { body })).message; }
   markRead(id) { return this.req('POST', `/dm/${id}/read`); }
+
+  // ---- 게임 저장 (Account 와 같음) ----
+  loadSave(game) { return this.account.loadSave(game); }
+  putSave(game, data, baseRevision, options) { return this.account.putSave(game, data, baseRevision, options); }
 
   // ---- 신고 ----  context: { kind: 'dm' } 또는 { kind: 'room', game, room: 방 코드 }
   report({ target, context, reason, messages }) { return this.req('POST', '/reports', { target, context, reason, messages }); }

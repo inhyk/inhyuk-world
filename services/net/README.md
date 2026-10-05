@@ -6,7 +6,7 @@ seonn.dev 게임들이 같이 놀 때 쓰는 서버입니다. Cloudflare Worker 
 - 서버는 게임 내용을 모릅니다. 들어온 사람에게 번호(`p1`, `p2`, ...)를 주고, 들어오고 나간 걸 알리고, 게임이 보낸 JSON을 다른 사람에게 그대로 전합니다. 게임 데이터는 저장하지도, 로그로 남기지도 않습니다.
 - 예외는 채팅 글(`data.chat`)입니다. 서버가 욕설, 전화번호, 링크, 메신저 아이디를 가려서 보내고, 신고에 쓰려고 방마다 거른 글 마지막 50줄을 기억합니다(모두 나간 뒤 10분까지).
 - 랜덤 매칭과 친구 초대로 만든 방(관계자 방)에서는 `data` 안의 모든 글자열(칸 이름 포함)을 거릅니다. 아래 "관계자 방에서 거르는 것".
-- 계정(닉네임+비밀번호, 이메일 없음), 친구, 1:1 대화, 차단, 신고는 D1 에 저장합니다. 접속 상태와 알림은 `Lobby`(전체에 하나), 랜덤 매칭 줄은 `Matchmaker`(게임마다 하나)가 맡습니다.
+- 계정(닉네임+비밀번호, 이메일 없음), 친구, 1:1 대화, 차단, 신고, 게임 저장(클라우드 세이브)은 D1 에 저장합니다. 접속 상태와 알림은 `Lobby`(전체에 하나), 랜덤 매칭 줄은 `Matchmaker`(게임마다 하나)가 맡습니다.
 
 예전 게임들(뿌요 타워, 프리 드라이브, 미네랄 밸리, 스노우플로우)은 아직 PeerJS 공용 서버를 씁니다. 이 PR은 서버와 클라이언트만 추가하고 게임은 바꾸지 않습니다.
 
@@ -145,6 +145,32 @@ const { room, opponent } = await social.acceptInvite(inv.id, roomHooks);        
 
 랜덤 매칭은 먼저 기다린 사람부터 봅니다. 서로 차단한 사이, 정지된 사람, 30초 넘게 소식 없는 사람은 건너뜁니다. 연결이 끊기면 줄에서 빠집니다.
 
+## 게임 저장 (클라우드 세이브)
+
+같은 계정으로 다른 기기에서 이어 하려고, 게임 진행(레벨, 코인 등)을 사람마다, 게임마다 하나씩 서버에 저장합니다. 서버는 내용을 모르고, 합치지도 않습니다. 게임별 adapter가 충돌 시 어떤 값을 쓸지 정한다(라이브러리는 정하지 않음).
+
+```js
+const save = await account.loadSave('jelly-tower');          // { data, revision, updated } 또는 null (아직 없음)
+const result = await account.putSave('jelly-tower', data, save?.revision ?? 0);
+if (result.ok) remember(result.revision);                      // 다음 putSave 의 baseRevision
+else if (result.conflict) resolve(result.server);              // 다른 기기가 먼저 씀: { data, revision, updated }
+// 기기에 있던 저장을 처음 올릴 때는 importId 를 한 번 붙인다. 응답을 못 받고 다시 보내도 두 번 쓰지 않는다.
+await account.putSave('jelly-tower', localData, 0, { importId: 'device-1234abcd' });
+```
+
+`Social` 에도 같은 `loadSave`, `putSave` 가 있습니다.
+
+| 방법 | 길 | 🔑 | 보내는 것 | 받는 것 |
+|---|---|---|---|---|
+| GET | `/saves/:game` | 🔑 | | `{data, revision, updated}`. 없으면 404 `no-save` |
+| PUT | `/saves/:game` | 🔑 | `{data, baseRevision, importId?}` | `{revision, updated}`. `baseRevision` 이 지금 revision 과 다르면 409 `{error:'conflict', data, revision, updated}`(서버 쪽 저장, 없으면 `data:null, revision:0`). 이미 쓴 `importId` 면 쓰지 않고 `{revision, updated, duplicate:true}` |
+
+- `baseRevision`: 마지막으로 읽거나 쓴 revision. 저장이 없을 때는 `0` 또는 `null`. revision 은 1부터 쓸 때마다 1씩 오릅니다.
+- 자동으로 합치지 않습니다. 특히 코인을 큰 값으로 고르는 식의 합치기는 하지 않습니다(두 기기에서 코인을 불릴 수 있음).
+- `data` 는 JSON 객체(배열 아님), 32KB 까지(413 `too-big`, 400 `bad-save`). `importId` 는 영어, 숫자, `_`, `-` 8~64글자(400 `bad-import`). `game` 은 방과 같은 규칙(400 `bad-game`).
+- 쓰기는 1분에 30번까지(429). 정지된 계정은 다른 🔑 길처럼 403.
+- 표: `saves(user_id, game, data, revision, updated_at)`, `save_imports(user_id, game, import_id, created)` (`migrations/0002_saves.sql`).
+
 ## 관리 페이지
 
 `https://net.seonn.workers.dev/admin` 에서 신고(서버가 모은 기록과 신고자가 보낸 기록)를 보고 계정을 정지하거나 풀고, 신고를 무시하고, 닉네임으로 사용자를 찾습니다. 정지하면 그 계정의 로그인과 아직 안 쓴 표가 모두 지워지고, `/live` 연결, 들어가 있는 방, 매칭 줄이 바로 끊기며, 로그인과 매칭, 표로 방 들어가기가 거부됩니다. 방과 매칭 줄을 찾으려고 `Lobby` 가 사람마다 하루 안에 들어간 방과 줄을 20곳까지 적어 둡니다(방, 매칭 줄에 표로 들어올 때 적음). 코드로 만든 공개 방에 표 없이 들어간 연결은 누구인지 모르므로 끊지 못합니다. 관리 동작은 `admin_actions` 표에 남습니다.
@@ -184,7 +210,10 @@ npm run check     # 배포 없이 빌드만 확인 (wrangler deploy --dry-run)
    npx wrangler d1 create net
    npx wrangler d1 migrations apply net --remote
    ```
-   나중에 `migrations/` 에 파일이 늘면 `migrations apply net --remote` 만 다시 합니다.
+   나중에 `migrations/` 에 파일이 늘면 `migrations apply net --remote` 만 다시 합니다. 이미 배포한 뒤 게임 저장(`0002_saves.sql`)을 더할 때도 배포 전에 이것만 하면 됩니다(적용 안 된 것만 적용).
+   ```bash
+   npx wrangler d1 migrations apply net --remote
+   ```
 4. 배포합니다. 끝나면 `https://net.<계정 서브도메인>.workers.dev` 주소가 나옵니다. 지금 계정의 서브도메인은 `seonn` 이라서 `https://net.seonn.workers.dev` 입니다. 이번 배포에서 Durable Object 마이그레이션 `v2`(`Lobby`, `Matchmaker`)가 같이 적용됩니다.
    ```bash
    npx wrangler deploy

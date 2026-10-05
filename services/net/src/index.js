@@ -3,13 +3,14 @@
 // 게임이 보낸 JSON을 그대로 다른 사람에게 전해 준다. 단, 채팅 글(data.chat)만은 거르개를 거쳐 보내고
 // 신고에 쓰려고 마지막 50줄을 잠깐 기억한다. 랜덤 매칭, 초대로 만든 방(members)은 data 안의 모든 글자열을 거른다.
 // 게임 데이터는 저장하거나 로그로 남기지 않는다.
-// 계정, 친구, 1:1 대화, 차단, 신고는 social.js, 접속 상태와 초대는 lobby.js, 랜덤 매칭은 match.js, 관리 페이지는 admin.js.
+// 계정, 친구, 1:1 대화, 차단, 신고는 social.js, 게임 저장은 saves.js, 접속 상태와 초대는 lobby.js, 랜덤 매칭은 match.js, 관리 페이지는 admin.js.
 import { DurableObject } from 'cloudflare:workers';
 import { allowedOrigin, cors, json, HttpError, internalRequest, readJson, clientIp } from './http.js';
 import { CODE_RE, GAME_RE, DEFAULT_PLAYERS, clampPlayers, createRoom, roomStub } from './rooms.js';
 import { filterText, maskText, maskSplitPhone } from './filter.js';
 import * as auth from './auth.js';
 import * as social from './social.js';
+import * as saves from './saves.js';
 import { handleAdmin } from './admin.js';
 
 export { ALPHABET, CODE_LENGTH, GAME_RE, CODE_RE, DEFAULT_PLAYERS, MAX_PLAYERS, clampPlayers } from './rooms.js';
@@ -68,6 +69,8 @@ const ROUTES = [
   ['POST', 'invites/:id/decline', social.declineInvite],
   ['DELETE', 'invites/:id', social.cancelInvite],
   ['POST', 'reports', social.report],
+  ['GET', 'saves/:game', saves.load],
+  ['PUT', 'saves/:game', saves.store],
 ];
 
 function route(method, parts) {

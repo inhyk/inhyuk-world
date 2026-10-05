@@ -275,3 +275,23 @@ test('Room handles rejoin and being replaced by another connection', async () =>
   assert.equal(room.status, 'error');
   assert.equal(seen.status.at(-1)[1], '다른 곳에서 이 방에 다시 들어갔어.');
 });
+
+test('loadSave and putSave return plain results, and a conflict carries the server copy', async () => {
+  let revision = 0;
+  const { options, calls } = setup({
+    'GET /saves/jelly-tower': () => (revision ? [200, { data: { level: 2 }, revision, updated: 5 }] : [404, { error: 'no-save' }]),
+    'PUT /saves/jelly-tower': (_path, init) => {
+      const body = JSON.parse(init.body);
+      if (body.baseRevision !== revision) return [409, { error: 'conflict', data: { level: 2 }, revision, updated: 5 }];
+      revision++;
+      return [200, { revision, updated: 6 }];
+    },
+  });
+  const account = new Account(options);
+  await account.login('인혁', '1234');
+  assert.equal(await account.loadSave('jelly-tower'), null);
+  assert.deepEqual(await account.putSave('jelly-tower', { level: 2 }, 0, { importId: 'abcdefgh' }), { ok: true, revision: 1, updated: 6 });
+  assert.deepEqual(calls.at(-1).body, { data: { level: 2 }, baseRevision: 0, importId: 'abcdefgh' });
+  assert.deepEqual(await account.putSave('jelly-tower', { level: 3 }, 0), { conflict: true, server: { data: { level: 2 }, revision: 1, updated: 5 } });
+  assert.deepEqual(await new Social(account).loadSave('jelly-tower'), { data: { level: 2 }, revision: 1, updated: 5 });
+});
