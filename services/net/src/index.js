@@ -6,22 +6,18 @@
 // 계정, 친구, 1:1 대화, 차단, 신고는 social.js, 게임 저장은 saves.js, 접속 상태와 초대는 lobby.js, 랜덤 매칭은 match.js, 관리 페이지는 admin.js.
 import { DurableObject } from 'cloudflare:workers';
 import { allowedOrigin, cors, json, HttpError, internalRequest, readJson, clientIp } from './http.js';
-import { CODE_RE, GAME_RE, DEFAULT_PLAYERS, clampPlayers, createRoom, roomStub } from './rooms.js';
+import { CODE_RE, GAME_RE, DEFAULT_PLAYERS, clampPlayers, createRoom, roomStub, MAX_MESSAGE_BYTES, PING, PONG, CHAT_LINES } from './rooms.js';
 import { filterText, maskText, maskSplitPhone } from './filter.js';
 import * as auth from './auth.js';
 import * as social from './social.js';
 import * as saves from './saves.js';
 import { handleAdmin } from './admin.js';
 
-export { ALPHABET, CODE_LENGTH, GAME_RE, CODE_RE, DEFAULT_PLAYERS, MAX_PLAYERS, clampPlayers } from './rooms.js';
-export { allowedOrigin } from './http.js';
+// 이 파일은 Worker 의 시작점이라 default 와 Durable Object 클래스만 내보낸다.
+// 글자나 숫자를 내보내면 wrangler dev / deploy 의 workerd 가 "not of type 'function or ExportedHandler'" 로 뜨지 않는다.
+// 상수는 rooms.js 에서 가져다 쓴다.
 export { Lobby } from './lobby.js';
 export { Matchmaker } from './match.js';
-
-export const MAX_MESSAGE_BYTES = 16 * 1024;
-export const PING = '{"t":"ping"}';
-export const PONG = '{"t":"pong"}';
-export const CHAT_LINES = 50;
 
 // 방을 만들고 아무도 안 들어오면 2분 뒤 지운다.
 const RESERVE_MS = 2 * 60 * 1000;
