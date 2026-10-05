@@ -48,6 +48,7 @@ dialog::backdrop{background:#2b214055}
 .item.now{outline:3px solid #ffd43b}
 .item .icon{font-size:26px;width:36px;text-align:center}.item .info{flex:1;min-width:0}.item .info b{display:block;font-size:15px}.item .info span{display:block;font-size:12px;color:#6b5f85}
 .item button{white-space:nowrap;font-size:14px;padding:9px 12px}.item button.buy{background:#ffd43b;color:#5c3b00;box-shadow:0 4px 0 #c28f00}
+.item .bar{display:block;height:6px;border-radius:3px;background:#e3dcf0;margin-top:5px;overflow:hidden}.item .bar i{display:block;height:100%;background:linear-gradient(90deg,#ff8fab,#ffd43b)}
 .note{font-size:13px;color:#6b5f85;margin:4px 0 12px}
 .warps{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 14px}.warps button{font-size:13px;padding:8px 10px;background:#e7f5ff}
 .big{font-size:20px;text-align:center;margin:10px 0}

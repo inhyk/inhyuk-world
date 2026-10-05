@@ -22,6 +22,13 @@ try{
  let st;for(let i=0;i<40;i++){await page.waitForTimeout(150);st=await state(page);if(st.player.grounded&&st.pathS>-2&&st.player.groundId==='lobby'&&i%2===0)await page.keyboard.press('Space');if(st.speed>=2)break;}
  await page.keyboard.up('KeyW');assert.ok(st.speed>=2,`speed ${st.speed}`);
  await page.screenshot({path:`${out}/keycap-tower-thumb.png`});
+ // 미션: 처음엔 받을 게 없고, 목표를 채우면 받기 버튼이 켜진다
+ await page.locator('.actions [data-tab=mission]').click();assert.equal(await page.locator('#menu-body .item').count(),11);assert.equal(await page.locator('[data-act^="mission:"]:not([disabled])').count(),0);
+ await page.screenshot({path:`${out}/keycap-tower-missions.png`});await page.locator('#menu-close').click();
+ await page.evaluate(()=>window.keycap_tower_debug.set({count:{keys:60,buttons:0,stages:0,tread:0,gold:0}}));await page.waitForTimeout(300);
+ assert.equal((await state(page)).missionsReady,1);assert.match(await page.locator('#mission-button').getAttribute('class'),/ready/);
+ await page.locator('.actions [data-tab=mission]').click({force:true});const mw=(await state(page)).wins;await page.locator('[data-act="mission:keys"]').click();
+ st=await state(page);assert.equal(st.wins,mw+20);assert.equal(st.missions.keys,1);assert.equal(st.missionsReady,0);await page.locator('#menu-close').click();
  // 러닝머신: 초콜릿은 바로 달리고, 골드는 사야 한다
  await page.evaluate(()=>window.keycap_tower_debug.tread(0));const before=(await state(page)).speed;await page.waitForTimeout(1500);
  st=await state(page);assert.equal(st.onTread,0);assert.ok(st.speed>before+3,`treadmill ${before} -> ${st.speed}`);

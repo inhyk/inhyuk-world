@@ -91,6 +91,27 @@ export const SKINS=[
  {name:'용암',cost:5e9,hoodie:'#ff6b35',pants:'#3a2420',hair:'#ffd43b',skin:'#ffb38a'},
  {name:'황금 키캡',cost:5e12,hoodie:'#fcc419',pants:'#e67700',hair:'#fff3bf',skin:'#ffe8a1'},
 ];
+// 미션: 목표를 채우면 트로피 보상을 받고 다음 단계로 넘어간다.
+const WORLD_GOALS=[2,3,4,5,10,20,30,40,50];
+export const MISSIONS=[
+ {id:'keys',icon:'⌨️',name:'키캡 밟기',unit:'번',goals:[50,300,1500,1e4,1e5,1e6],rewards:[20,200,3000,5e4,1e6,5e7],value:s=>s.count.keys},
+ {id:'buttons',icon:'🟡',name:'노란 버튼 밟기',unit:'번',goals:[3,15,60,300,1500],rewards:[10,150,2000,4e4,1e6],value:s=>s.count.buttons},
+ {id:'stages',icon:'🚩',name:'스테이지 클리어',unit:'번',goals:[5,30,100,500,2000],rewards:[30,1000,5e4,5e6,5e8],value:s=>s.count.stages},
+ {id:'tread',icon:'🏃',name:'러닝머신에서 달리기',unit:'초',goals:[30,180,600,3600],rewards:[15,200,3000,1e5],value:s=>Math.floor(s.count.tread)},
+ {id:'gold',icon:'⭐',name:'황금 키캡 밟기',unit:'번',goals:[1,5,25,100],rewards:[10,200,5000,2e5],value:s=>s.count.gold},
+ {id:'level',icon:'📈',name:'레벨 올리기',unit:'레벨',goals:[5,20,50,100],rewards:[5,50,400,3000],value:s=>levelOf(s.speed)},
+ {id:'world',icon:'🌍',name:'월드 열기',unit:'월드',goals:WORLD_GOALS,rewards:WORLD_GOALS.map(g=>WORLDS[g-1].wins[0]*5),value:s=>s.unlocked+1},
+ {id:'rebirth',icon:'🔁',name:'환생하기',unit:'번',goals:[1,3,10,30],rewards:[500,5e4,5e7,5e11],value:s=>s.rebirths},
+ {id:'items',icon:'🛒',name:'아이템 모으기',unit:'개',goals:[1,2,3],rewards:[1000,5e4,5e5],value:s=>s.items.length},
+ {id:'skins',icon:'👕',name:'스킨 모으기',unit:'개',goals:[2,4,8],rewards:[50,5e4,5e9],value:s=>s.skins.length},
+ {id:'egg',icon:'🥚',name:'2월드 어딘가의 비밀 찾기',unit:'번',goals:[1],rewards:[5000],value:s=>s.eggs},
+];
+export function missionState(s,m){
+ const tier=Math.min(m.goals.length,s.missions[m.id]??0),done=tier>=m.goals.length,goal=m.goals[Math.min(tier,m.goals.length-1)],value=m.value(s);
+ return {tier,tiers:m.goals.length,done,goal,value,reward:done?0:m.rewards[tier],ready:!done&&value>=goal};
+}
+export const missionsReady=s=>MISSIONS.filter(m=>missionState(s,m).ready).length;
+export function claimMission(s,id){const m=MISSIONS.find(x=>x.id===id);if(!m)return 0;const st=missionState(s,m);if(!st.ready)return 0;s.missions[id]=st.tier+1;s.wins+=st.reward;s.totalWins+=st.reward;return st.reward;}
 
 // 숫자
 const UNITS=[[1e68,'무량대수'],[1e64,'불가사의'],[1e60,'나유타'],[1e56,'아승기'],[1e52,'항하사'],[1e48,'극'],[1e44,'재'],[1e40,'정'],[1e36,'간'],[1e32,'구'],[1e28,'양'],[1e24,'자'],[1e20,'해'],[1e16,'경'],[1e12,'조'],[1e8,'억'],[1e4,'만']];
@@ -183,17 +204,19 @@ export const buttonWait=(s,w,k)=>Math.max(0,(s.cool[`b${w}-${k}`]??-1e9)+BUTTON_
 
 // 상태
 export function fresh(){
- const s={version:1,world:0,checkpoint:0,speed:0,wins:0,totalWins:0,rebirths:0,stats:{power:0,wins:0,tread:0,run:0,jump:0},treads:[],trails:[],trail:-1,items:[],skins:[0],skin:0,unlocked:0,reached:WORLDS.map(()=>0),deaths:0,eggs:0,sound:true,music:true,winBoost:1,
+ const s={version:1,world:0,checkpoint:0,speed:0,wins:0,totalWins:0,rebirths:0,stats:{power:0,wins:0,tread:0,run:0,jump:0},treads:[],trails:[],trail:-1,items:[],skins:[0],skin:0,unlocked:0,reached:WORLDS.map(()=>0),deaths:0,eggs:0,count:{keys:0,buttons:0,stages:0,tread:0,gold:0},missions:{},sound:true,music:true,winBoost:1,
   x:0,y:0,z:0,vx:0,vy:0,vz:0,facing:0,grounded:true,groundId:'lobby',lastKey:null,lastGroundY:0,clock:0,vanish:{},cool:{},chaser:null};
  respawn(s);return s;
 }
-const SAVED=['version','world','checkpoint','speed','wins','totalWins','rebirths','stats','treads','trails','trail','items','skins','skin','unlocked','reached','deaths','eggs','sound','music'];
+const SAVED=['version','world','checkpoint','speed','wins','totalWins','rebirths','stats','treads','trails','trail','items','skins','skin','unlocked','reached','deaths','eggs','count','missions','sound','music'];
 export function serialize(s){const o={};for(const k of SAVED)o[k]=s[k];return o;}
 export function restore(raw){
  const s=fresh();let d;try{d=typeof raw==='string'?JSON.parse(raw):raw;}catch{d=null;}
  if(!d||d.version!==1)return s;
  const num=(v,min,max,dflt=min)=>Number.isFinite(v)?Math.min(max,Math.max(min,v)):dflt,int=(v,min,max)=>Math.floor(num(v,min,max));
  s.speed=num(d.speed,0,1e300);s.wins=num(d.wins,0,1e300);s.totalWins=num(d.totalWins,0,1e300);s.rebirths=int(d.rebirths,0,MAX_REBIRTH);s.deaths=int(d.deaths,0,1e9);s.eggs=int(d.eggs,0,1e9);
+ for(const k of Object.keys(s.count))s.count[k]=num(d.count?.[k],0,1e15);
+ for(const m of MISSIONS)if(d.missions?.[m.id]>0)s.missions[m.id]=int(d.missions[m.id],0,m.goals.length);
  for(const k of Object.keys(STATS))s.stats[k]=int(d.stats?.[k],0,STATS[k].max);
  s.unlocked=int(d.unlocked,0,WORLDS.length-1);s.world=int(d.world,0,s.unlocked);
  s.reached=WORLDS.map((W,i)=>int(d.reached?.[i],0,W.levels.length));s.checkpoint=int(d.checkpoint,0,s.reached[s.world]);
@@ -262,22 +285,22 @@ export function step(s,input,dt){
   if(t==='del')return die(s,ev,'del');
   if(ground.id!==s.lastKey){
    s.lastKey=ground.id;
-   if(KEYLIKE.has(t)){const gain=keyGain(s,ground);s.speed+=gain;ev.push({t:'speed',gain,id:ground.id});}
-   else if(t==='gold'&&(s.cool[ground.id]??-1e9)+GOLD_CD<=s.clock){s.cool[ground.id]=s.clock;const gain=Math.max(1,Math.round(winAmount(s,s.world,ground.stage)*.3));addWins(s,gain);ev.push({t:'gold',gain});}
+   if(KEYLIKE.has(t)){const gain=keyGain(s,ground);s.speed+=gain;s.count.keys++;ev.push({t:'speed',gain,id:ground.id});}
+   else if(t==='gold'&&(s.cool[ground.id]??-1e9)+GOLD_CD<=s.clock){s.cool[ground.id]=s.clock;s.count.gold++;const gain=Math.max(1,Math.round(winAmount(s,s.world,ground.stage)*.3));addWins(s,gain);ev.push({t:'gold',gain});}
   }
   if(t==='lobby'&&W.egg&&Math.hypot(s.x-W.egg.x,s.z-W.egg.z)<EGG.r&&(s.cool.egg??-1e9)+EGG.cd<=s.clock){s.cool.egg=s.clock;s.eggs++;addWins(s,EGG.gain);ev.push({t:'egg',gain:EGG.gain});}
   if(t==='blink')s.vanish[ground.id]??=s.clock;
   else if(t==='safe'){
-   if(ground.cp>s.checkpoint){s.checkpoint=ground.cp;s.reached[s.world]=Math.max(s.reached[s.world],ground.cp);ev.push({t:'checkpoint',cp:ground.cp});}
+   if(ground.cp>s.checkpoint){s.checkpoint=ground.cp;s.reached[s.world]=Math.max(s.reached[s.world],ground.cp);s.count.stages++;ev.push({t:'checkpoint',cp:ground.cp});}
    if(ground.cp>=s.checkpoint)s.chaser=null;
    const b=ground.button,k=ground.stage;
    if(Math.hypot(s.x-b.x,s.z-b.z)<BUTTON_R&&buttonReady(s,s.world,k)){
-    s.cool[`b${s.world}-${k}`]=s.clock;const gain=winAmount(s,s.world,k);addWins(s,gain);
+    s.cool[`b${s.world}-${k}`]=s.clock;s.count.buttons++;const gain=winAmount(s,s.world,k);addWins(s,gain);
     ev.push({t:'win',gain,stage:k,crown:k===W.stages.length-1});
    }
   }
   else if(t==='tread'){
-   if(ownsTread(s,s.world,ground.index)){const gain=treadRate(s,W.def.treads[ground.index])*dt;s.speed+=gain;ev.push({t:'tread',gain,index:ground.index});}
+   if(ownsTread(s,s.world,ground.index)){const gain=treadRate(s,W.def.treads[ground.index])*dt;s.speed+=gain;s.count.tread+=dt;ev.push({t:'tread',gain,index:ground.index});}
    else ev.push({t:'locked',index:ground.index});
   }
  }

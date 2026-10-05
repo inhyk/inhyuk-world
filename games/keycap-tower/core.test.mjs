@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EGG,PILLAR_R,ITEMS,SKINS,EVENT_EVERY,EVENT_LENGTH,buyItem,buySkin,eventInfo,globalMult,WORLDS,STATS,TRAILS,AIR,JUMP_VY,GRAVITY,BUTTON_CD,fmt,needSpeed,levelOf,runSpeed,getWorld,pathPoint,pathS,boxAt,fresh,restore,serialize,step,respawn,toLobby,warpStage,enterWorld,buyStat,buyTread,buyTrail,rebirth,canRebirth,rebirthReq,keyGain,treadRate,winAmount,ownsTread,refreshUnlock} from './core.mjs';
+import {MISSIONS,missionState,missionsReady,claimMission,EGG,PILLAR_R,ITEMS,SKINS,EVENT_EVERY,EVENT_LENGTH,buyItem,buySkin,eventInfo,globalMult,WORLDS,STATS,TRAILS,AIR,JUMP_VY,GRAVITY,BUTTON_CD,fmt,needSpeed,levelOf,runSpeed,getWorld,pathPoint,pathS,boxAt,fresh,restore,serialize,step,respawn,toLobby,warpStage,enterWorld,buyStat,buyTread,buyTrail,rebirth,canRebirth,rebirthReq,keyGain,treadRate,winAmount,ownsTread,refreshUnlock} from './core.mjs';
 
 const DT=1/60;
 const idle=(s,sec,input={})=>{const all=[];for(let i=0;i<sec*60;i++)all.push(...step(s,input,DT));return all;};
@@ -148,7 +148,7 @@ test('쫓아오는 괴물은 서 있으면 잡고, 안전지대에 닿으면 사
 });
 
 test('저장과 불러오기, 망가진 저장은 새로 시작',()=>{
- const s=fresh();s.speed=12345;s.wins=99;s.stats.power=5;s.treads=['0-1'];s.trails=[1];s.trail=1;s.unlocked=1;s.world=1;s.reached[0]=8;s.reached[1]=2;s.items=['chocolate'];s.skins=[0,2];s.skin=2;s.music=false;s.checkpoint=2;s.rebirths=2;
+ const s=fresh();s.speed=12345;s.wins=99;s.stats.power=5;s.treads=['0-1'];s.trails=[1];s.trail=1;s.unlocked=1;s.world=1;s.reached[0]=8;s.reached[1]=2;s.items=['chocolate'];s.skins=[0,2];s.skin=2;s.music=false;s.count.keys=77;s.count.tread=12.5;s.missions={keys:1,egg:1};s.checkpoint=2;s.rebirths=2;
  const r=restore(JSON.stringify(serialize(s)));assert.deepEqual(serialize(r),serialize(s));assert.equal(r.groundId,getWorld(1).stages[1].safe.id);
  assert.deepEqual(serialize(restore('{bad')),serialize(fresh()));
  const odd=restore({version:1,world:3,unlocked:0,speed:-5,stats:{power:999},treads:['9-9',3],trail:4,checkpoint:50});
@@ -180,4 +180,19 @@ test('이스터 에그: 2월드 기둥의 알에 닿으면 트로피 1000',()=>{
  const ev=idle(s,2,{x:-egg.x,z:-egg.z});assert.equal(ev.filter(e=>e.t==='egg').length,1);assert.equal(s.wins,1000,'배수와 상관없이 딱 1000');assert.equal(s.eggs,1);
  // 알 앞에 그대로 서 있으면 60초 뒤에 다시 받는다
  idle(s,EGG.cd-5);assert.equal(s.wins,1000);idle(s,6);assert.equal(s.wins,2000);assert.equal(s.eggs,2);
+});
+
+test('미션: 목표를 채우면 보상을 받고 다음 단계로 넘어간다',()=>{
+ for(const m of MISSIONS){assert.equal(m.goals.length,m.rewards.length,m.id);for(let i=1;i<m.goals.length;i++)assert.ok(m.goals[i]>m.goals[i-1]&&m.rewards[i]>m.rewards[i-1],m.id);}
+ const s=fresh(),keys=MISSIONS.find(m=>m.id==='keys');assert.equal(missionsReady(s),0);assert.equal(claimMission(s,'keys'),0);
+ // 키캡 두 개를 번갈아 50번 밟는다
+ const [a,b]=getWorld(0).objects.filter(o=>o.type==='key');for(let i=0;i<50;i++){putOn(s,i%2?a:b);s.y+=.1;idle(s,.1);}
+ assert.equal(s.count.keys,50);let st=missionState(s,keys);assert.deepEqual([st.tier,st.goal,st.value,st.reward,st.ready],[0,50,50,20,true]);assert.equal(missionsReady(s),1);
+ assert.equal(claimMission(s,'keys'),20);assert.equal(s.wins,20);assert.equal(claimMission(s,'keys'),0,'같은 단계는 한 번만');
+ st=missionState(s,keys);assert.deepEqual([st.tier,st.goal,st.ready],[1,300,false]);
+ // 버튼·스테이지·러닝머신·알도 센다
+ const safe=getWorld(0).stages[0].safe;s.x=safe.button.x;s.z=safe.button.z;s.y=safe.top;s.lastGroundY=s.y;idle(s,.5);assert.deepEqual([s.count.buttons,s.count.stages],[1,1]);
+ putOn(s,getWorld(0).objects.find(o=>o.type==='tread'));idle(s,31);assert.ok(missionState(s,MISSIONS.find(m=>m.id==='tread')).ready);
+ s.eggs=1;assert.equal(claimMission(s,'egg'),5000);assert.equal(missionState(s,MISSIONS.find(m=>m.id==='egg')).done,true);
+ s.unlocked=1;assert.equal(claimMission(s,'world'),WORLDS[1].wins[0]*5);
 });
