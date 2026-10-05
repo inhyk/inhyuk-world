@@ -29,11 +29,9 @@ try {
   await page.waitForFunction(() => window.__puyo, null, { timeout: 60000 });
   assert.equal((await read(page)).screen, 'login');
 
-  // 1. 계정 만들기 → 로그아웃 → 비밀번호 틀림 → 로그인
-  await page.click('#go-signup');
-  await page.fill('#signup-name', '인혁');
-  await page.fill('#signup-pass', '1234');
-  await page.click('#signup-form button[type=submit]');
+  // 1. (이 기기) 계정 만들기 → 로그아웃 → 비밀번호 틀림 → 로그인
+  // 새 계정은 이제 서버(온라인 계정)에 만든다. 서버 없이 확인하려고 예전 방식의 이 기기 계정을 테스트용 함수로 만든다.
+  await page.evaluate(() => window.__puyo.localSignup('인혁', '1234'));
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).screen === 'menu');
   await page.evaluate(() => window.__puyo.show('profile'));
   await page.click('#logout');

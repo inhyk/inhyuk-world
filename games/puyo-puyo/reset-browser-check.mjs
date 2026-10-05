@@ -14,8 +14,8 @@ try {
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   await page.goto(`${base}?test`); await page.waitForFunction(() => window.__puyo);
   // 레벨 55 "안녕" 계정을 만들고 나간다 (비밀번호 abcd를 잊었다고 치자)
-  await page.click('#go-signup'); await page.fill('#signup-name', '안녕'); await page.fill('#signup-pass', 'abcd');
-  await page.click('#signup-form button[type=submit]'); await page.waitForSelector('#scr-menu:not([hidden])');
+  // 친구 코드와 우체통은 이 기기 계정의 기능이다. 화면의 「새 계정 만들기」는 온라인 계정이라 검사용 기기 계정을 바로 만든다.
+  await page.evaluate(n => window.__puyo.localSignup(n, 'abcd'), '안녕'); await page.waitForSelector('#scr-menu:not([hidden])');
   await page.evaluate(() => { const p = window.__puyo.P(); p.level = 55; p.coins = 25069; window.__puyo.save(); });
   await page.click('#profile-chip'); await page.click('#logout'); await page.waitForSelector('#scr-login:not([hidden])');
   // 손님으로 들어가서 제작자 모드 열기

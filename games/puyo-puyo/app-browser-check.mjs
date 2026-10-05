@@ -45,13 +45,14 @@ try {
   assert.equal(await page.evaluate(() => document.body.classList.contains('app')), true);
   // 개발 서버는 처음 열 때 한 번 새로고침할 수 있으므로, 이 페이지에서 걷기가 일어날 때까지 기다린다
   await page.waitForFunction(() => window.__calls.some(c => c.plugin === 'SplashScreen' && c.method === 'hide'));
-  // 기록·기기 설정을 되살리려고 한 번씩 물어본 다음에 시작 그림을 걷는다
-  assert.deepEqual((await page.evaluate(() => window.__calls.map(c => `${c.plugin}.${c.method}:${c.options.key || ''}`))).slice(0, 3),
-    [`Preferences.get:${STORE_KEY}`, `Preferences.get:${DEVICE_KEY}`, 'SplashScreen.hide:']);
+  // 기록·기기 설정·온라인 계정(로그인, 클라우드 저장, 옮기던 표시)을 되살리려고 한 번씩 물어본 다음에 시작 그림을 걷는다
+  const order = await page.evaluate(() => window.__calls.map(c => `${c.plugin}.${c.method}:${c.options.key || ''}`));
+  assert.deepEqual(order.slice(0, order.indexOf('SplashScreen.hide:') + 1),
+    [...[STORE_KEY, DEVICE_KEY, 'inhyuk-net-session', 'jelly-cloud-v1', 'jelly-migrating'].map(k => `Preferences.get:${k}`), 'SplashScreen.hide:']);
 
   // 2) 계정을 만들면 기기 저장소에도 똑같이 적힌다.
-  await page.click('#go-signup'); await page.fill('#signup-name', '앱젤리'); await page.fill('#signup-pass', 'abcd');
-  await page.click('#signup-form button[type=submit]'); await page.waitForSelector('#scr-menu:not([hidden])');
+  // 새 계정은 이제 서버(온라인 계정)에 만든다. 서버 없이 확인하려고 예전 방식의 이 기기 계정을 테스트용 함수로 만든다.
+  await page.evaluate(() => window.__puyo.localSignup('앱젤리', 'abcd')); await page.waitForSelector('#scr-menu:not([hidden])');
   assert.equal(await page.locator('.back-site').isVisible(), false);
   await page.waitForFunction(key => (window.__prefs[key] || '').includes('앱젤리'), STORE_KEY);
   assert.equal((await prefs(page))[STORE_KEY], await page.evaluate(key => localStorage.getItem(key), STORE_KEY));

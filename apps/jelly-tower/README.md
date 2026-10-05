@@ -199,7 +199,8 @@ adb shell am start -n dev.seonn.jellytower/.MainActivity
 - 인터넷 없이도 된다: 글꼴(Jua)까지 앱 안에 들어 있다. 온라인 대전만 인터넷이 필요하다.
 - 앱에는 돌아갈 사이트가 없으므로 「← 인혁 월드」 링크를 숨긴다. seonn 안내의 단추는 사파리(안드로이드는 기본 브라우저)로 열린다.
 - 안드로이드 권한은 인터넷과 진동뿐이다. 평문 HTTP는 꺼 두었다 (`usesCleartextTraffic="false"`).
-- 친구 우체통: 앱은 `https://seonn.dev/api/jelly-mail`을 부른다 (사이트가 `capacitor://localhost`를 CORS로 허용). 게임을 꺼 둔 친구에게 보낸 메시지를 서버(Vercel Blob 비공개 저장소)에 잠깐 맡기므로 개인정보 매니페스트와 앱스토어 개인정보 라벨에 "문자 메시지·사용자 ID 수집(앱 기능, 추적 안 함)"을 적었다.
+- 친구 우체통: 앱은 `https://seonn.dev/api/jelly-mail`을 부른다 (사이트가 `capacitor://localhost`를 CORS로 허용). 게임을 꺼 둔 친구에게 보낸 메시지를 서버(Vercel Blob 비공개 저장소)에 잠깐 맡기므로 개인정보 매니페스트와 앱스토어 개인정보 라벨에 "문자 메시지·사용자 ID 수집(앱 기능, 추적 안 함)"을 적었다. 이 우체통은 온라인 계정으로 옮기지 않은 기기 계정만 쓴다.
+- 온라인 계정: 앱은 `wss://net.seonn.workers.dev`(Cloudflare)에 계정, 게임 저장, 닉네임 친구, 1:1 대화, 신고를 둔다. 그래서 매니페스트에 "게임 플레이 콘텐츠"(게임 저장)도 적었다.
 
 ## 확인 방법
 

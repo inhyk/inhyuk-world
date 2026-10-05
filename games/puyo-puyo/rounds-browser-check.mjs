@@ -1,5 +1,6 @@
 // 판 수 고르기: AI 대전·2인 플레이·온라인 대전에서 10·25·30·40·50판까지 고르고 그대로 시작되는지 본다.
-// 온라인은 두 창을 PeerJS 연결 서버로 실제로 이어 본다 (서버에 닿지 못하면 건너뛰었다고 알려 준다).
+// 온라인은 PUYO_NET(로컬 net 서버 주소, 예 http://127.0.0.1:8787)이 있으면 두 창을 "게임 찾기"로 실제로 이어 본다.
+// 없으면 건너뛰었다고 알려 준다 (net 서버 띄우는 법은 online-browser-check.mjs).
 import { chromium } from '../../tools/node_modules/playwright/index.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -16,8 +17,8 @@ async function open(name, options = { viewport: { width: 1280, height: 860 } }) 
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error' && !/peerjs|PeerJS|ICE|webrtc/i.test(m.text())) errors.push(m.text()); });
   await page.goto(`${base}?test`); await page.waitForFunction(() => window.__puyo);
-  await page.click('#go-signup'); await page.fill('#signup-name', name); await page.fill('#signup-pass', 'abcd');
-  await page.click('#signup-form button[type=submit]'); await page.waitForSelector('#scr-menu:not([hidden])');
+  // 새 계정은 이제 서버(온라인 계정)에 만든다. 서버 없이 확인하려고 예전 방식의 이 기기 계정을 테스트용 함수로 만든다.
+  await page.evaluate(n => window.__puyo.localSignup(n, 'abcd'), name); await page.waitForSelector('#scr-menu:not([hidden])');
   return page;
 }
 const labels = (page, id) => page.locator(`#${id} button`).allTextContents();
@@ -59,28 +60,38 @@ try {
   await phone.close();
 
   // 온라인: 방장이 40판을 고르면 손님 화면에도 40판, 둘 다 40선승으로 시작
-  let online = 'PASS';
-  const host = page;
-  const guest = await open('손님판수');
-  await host.click('[data-go="online"]'); await guest.click('[data-go="online"]');
-  await host.click('#room-host');
-  try {
-    await host.waitForFunction(() => /^[A-Z0-9]{6}$/.test(document.getElementById('room-code').textContent), null, { timeout: 25000 });
-  } catch { online = 'SKIPPED (PeerJS 연결 서버에 닿지 못함)'; }
-  if (online === 'PASS') {
-    const code = await host.textContent('#room-code');
-    await guest.fill('#room-input', code); await guest.click('#room-join button[type=submit]');
+  let online = 'SKIPPED (PUYO_NET 로컬 net 서버 주소가 없음)';
+  if (process.env.PUYO_NET) {
+    online = 'PASS';
+    const tag = Math.random().toString(36).slice(2, 6);
+    const netPage = async nick => {
+      const p = await browser.newPage({ viewport: { width: 1280, height: 860 } });
+      p.on('pageerror', e => errors.push(e.message));
+      // 새 계정은 서버 저장이 아직 없어서 404 no-save 가 정상인데 Chrome 이 콘솔 오류로 찍는다
+      p.on('console', m => { if (m.type() === 'error' && !/status of 404/.test(m.text())) errors.push(m.text()); });
+      await p.goto(`${base}?test&net=${encodeURIComponent(process.env.PUYO_NET)}`); await p.waitForFunction(() => window.__puyo);
+      await p.click('#go-signup'); await p.fill('#signup-name', nick); await p.fill('#signup-pass', 'abcd');
+      await p.click('#signup-form button[type=submit]'); await p.waitForSelector('#scr-menu:not([hidden])');
+      await p.click('[data-go="online"]');
+      return p;
+    };
+    const host = await netPage(`판수${tag}`);
+    const guest = await netPage(`손님${tag}`);
+    await host.click('#online-find');
+    await host.waitForFunction(() => window.__puyo.online.searching);
+    await guest.click('#online-find');
     await host.waitForSelector('#online-lobby:not([hidden])', { timeout: 30000 });
     await guest.waitForSelector('#online-lobby:not([hidden])', { timeout: 30000 });
     assert.deepEqual(await labels(host, 'online-first'), LABELS);
+    await host.waitForFunction(() => !document.getElementById('online-start').disabled, null, { timeout: 15000 });
     await host.click('#online-first [data-v="40"]');
     await guest.waitForFunction(() => document.getElementById('online-wait').textContent.includes('40판'), null, { timeout: 15000 });
     await host.screenshot({ path: `${shots}/online-host.png` });
     await host.click('#online-start');
     await host.waitForFunction(() => window.__puyo.match?.firstTo === 40 && window.__puyo.game.mode === 'online', null, { timeout: 15000 });
     await guest.waitForFunction(() => window.__puyo.match?.firstTo === 40 && window.__puyo.game.mode === 'online', null, { timeout: 15000 });
+    await host.close(); await guest.close();
   }
-  await guest.close();
 
   assert.deepEqual(errors, []);
   console.log(`PASS: AI 대전 50판·2인 플레이 25판(다시 하기 유지, 5승에도 계속), 휴대폰 단추 줄바꿈 — 오류 없음 / 온라인 40판: ${online}`);

@@ -38,8 +38,8 @@ async function shot(page, name) {
 }
 try {
   const page = await setup();
-  await page.click('#go-signup'); await page.fill('#signup-name', '새모험검증'); await page.fill('#signup-pass', 'abcd');
-  await page.click('#signup-form button[type=submit]'); await page.waitForSelector('#scr-menu:not([hidden])');
+  // 새 계정은 이제 서버(온라인 계정)에 만든다. 서버 없이 확인하려고 예전 방식의 이 기기 계정을 테스트용 함수로 만든다.
+  await page.evaluate(() => window.__puyo.localSignup('새모험검증', 'abcd')); await page.waitForSelector('#scr-menu:not([hidden])');
   // 출석 → 교환권 → 레벨 제한 없이 실제 새 상품 교환 → 계정 저장.
   await page.click('[data-go="rewards"]'); await page.click('#daily-button');
   assert.equal(await page.evaluate(() => window.__puyo.P().tickets.effect), 1);

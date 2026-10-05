@@ -1,12 +1,23 @@
-// 온라인 대전. 각자 자기 필드를 계산하고, 상대에게는 필드 모습(초당 20번)과
-// 방해뿌요·연쇄 시작/끝·쓰러짐만 보낸다. 판정(누가 이겼나)은 방장이 한다.
-import { PuyoRoom, normaliseCode } from './room.mjs';
-import { clampFirstTo } from './match.mjs';
-import { QUICK, cleanChat, rateLimiter, validSticker } from './chat.mjs';
+// 온라인 대전. 방 코드 없이 "게임 찾기"(랜덤 매칭)나 친구 초대로 같은 방(@inhyuk/net Room)에 들어간다.
+// 각자 자기 필드를 계산하고, 상대에게는 필드 모습(초당 12번)과 방해 젤리, 연쇄 시작/끝, 쓰러짐만 보낸다.
+// 판정(누가 이겼나)은 방장(먼저 들어온 사람)이 한다.
+// - 상대 이름은 서버가 준 opponent.nickname 만 쓴다. 상대가 보낸 글자는 이름으로 쓰지 않는다 (hello 에 이름을 넣지도 않는다).
+// - 매칭, 초대 방에서는 서버가 data 안의 모든 글자열을 거르고 숫자 8개 이상을 가린다.
+//   그래서 필드 모습은 글자열이 아니라 숫자 배열로 보낸다.
+// - 서버는 한 연결에서 1초에 30개(몰아서 60개)까지만 전한다. 필드 모습을 초당 12번으로 줄여 공격 메시지가 버려지지 않게 한다.
+// - 직접 쓴 채팅은 room.chat(text) (data.chat) 으로만 보낸다. 빠른 말과 젤리 이모티콘은 번호만 보낸다
+//   ({ t: 'say', quick: n } / { t: 'say', sticker: n }). 번호라서 거를 글자가 없고, 받는 쪽이 정해진 말과 그림으로 바꾼다.
+// - 다시 접속(rejoin): 상대 계정이 다른 연결로 다시 들어오면 판을 맞추지 않고 이번 대전을 끝낸다(둘 다 온라인 화면으로).
+//   필드를 다시 맞추려면 양쪽 젤리 순서와 방해 젤리 수를 모두 다시 보내야 해서, 끝내는 쪽이 간단하고 어긋나지 않는다.
+//   내 연결이 끊기거나(lost) 다른 기기에서 같은 계정이 들어오면(replaced) 지금처럼 대전을 끝내고 온라인 화면으로 돌아간다.
+import { clampFirstTo, emptyTotals } from './match.mjs';
 import { W, H, heights } from './core.mjs';
-import { emptyTotals } from './match.mjs';
+import { NET_GAME } from './net.mjs';
+import { QUICK, STICKERS, validSticker } from './chat.mjs';
 
-const SEND_EVERY = 3;   // 3프레임마다 (초당 20번)
+const SEND_EVERY = 5;        // 5프레임마다 (초당 12번)
+export const CHAT_MAX = 60;  // 짧은 말만 (서버는 200글자까지)
+const LINES_KEEP = 50;
 
 // 상대 필드: 받은 모습 그대로 그리기만 한다
 export class RemoteView {
@@ -22,8 +33,8 @@ export class RemoteView {
   get next() { return this.nextPairs; }
   ghost() { return null; }
   apply(s) {
-    if (typeof s.c === 'string' && s.c.length === W * H) {
-      for (let i = 0; i < W * H; i++) { const v = s.c.charCodeAt(i) - 48; this.cells[i] = v >= 0 && v <= 6 ? v : 0; }
+    if (Array.isArray(s.c) && s.c.length === W * H) {
+      for (let i = 0; i < W * H; i++) { const v = s.c[i]; this.cells[i] = Number.isInteger(v) && v >= 0 && v <= 6 ? v : 0; }
       heights(this.cells, this.h);
     }
     const n = v => (Number.isFinite(v) ? v : 0);
@@ -35,7 +46,7 @@ export class RemoteView {
     this.state = typeof s.st === 'string' ? s.st.slice(0, 10) : 'control';
     this.timer = n(s.pt);
     this.popping = Array.isArray(s.pop) ? { cells: new Set(s.pop.filter(Number.isInteger)), garbage: Array.isArray(s.pg) ? s.pg.filter(Number.isInteger) : [] } : null;
-    this.falling = Array.isArray(s.fl) ? s.fl.slice(0, 90).map(f => ({ x: n(f[0]), to: n(f[1]), y: n(f[2]), color: n(f[3]) })) : [];
+    this.falling = Array.isArray(s.fl) ? s.fl.slice(0, 90).map(f => ({ x: n(f?.[0]), to: n(f?.[1]), y: n(f?.[2]), color: n(f?.[3]) })) : [];
     this.chaining = !!s.ch;
     this.dead = !!s.d;
     if (this.dead) this.state = 'dead';
@@ -43,11 +54,12 @@ export class RemoteView {
   }
 }
 
-function snapshot(p) {
+// 필드 모습. 칸은 숫자 배열로 보낸다 (관계자 방에서 숫자 8개 넘는 글자열은 가려짐).
+export function snapshot(p) {
   const r = v => Math.round(v * 100) / 100;
   return {
     t: 's',
-    c: Array.from(p.cells, v => String.fromCharCode(48 + v)).join(''),
+    c: Array.from(p.cells),
     p: p.piece && p.state === 'control' ? [p.piece.x, r(p.piece.y), p.piece.rot, p.piece.a, p.piece.c] : 0,
     n: p.next.flat(),
     sc: p.score, in: p.incoming, st: p.state, pt: p.timer,
@@ -58,87 +70,126 @@ function snapshot(p) {
   };
 }
 
-const cleanPeer = m => ({
-  name: String(m?.name || '친구').replace(/[<>]/g, '').slice(0, 10),
+// 메시지 안의 글자열(칸 이름 포함)에 숫자가 8개 이상 들어 있는지. 들어 있으면 서버가 가려 버린다 (테스트에서 확인).
+export function hasLongDigits(value, depth = 0) {
+  if (typeof value === 'string') return (value.match(/\d/g)?.length ?? 0) >= 8;
+  if (depth > 8 || !value || typeof value !== 'object') return false;
+  return Object.entries(value).some(([k, v]) => hasLongDigits(k) || hasLongDigits(v, depth + 1));
+}
+
+// 상대가 보낸 hello: 레벨과 꾸미기만 (이름은 서버가 준 것을 쓴다)
+export const cleanPeer = m => ({
   level: Math.max(1, Math.min(99, Number(m?.level) | 0)),
   skin: typeof m?.skin === 'string' ? m.skin.slice(0, 20) : 'classic',
   effect: typeof m?.effect === 'string' ? m.effect.slice(0, 20) : 'sparkle',
 });
 
-export function createOnline(api) {
-  const { $, toast, sound } = api;
-  let peer = null, firstTo = 2, remote = null, clock = 0, last = '', lastRound = 0;
-  let wantAgain = false, peerAgain = false, inGame = false;
-  let chatIn = rateLimiter(6, 5000); // 상대가 너무 빨리 보내면 넘친 건 버린다
-  const options = import.meta.env?.DEV && new URLSearchParams(location.search).has('localPeer') ? { host: location.hostname, port: 9003, path: '/puyo', secure: false } : {};
-  const room = new PuyoRoom({ status, join, depart, message }, options);
+// 판 이벤트 → 보내는 메시지 (글자열은 종류 이름만)
+export function eventMessage(e) {
+  if (e.type === 'pop') return { t: 'e', e: { type: 'pop', chain: e.chain, score: e.score, puyos: e.puyos, colors: e.colors, groups: e.groups } };
+  return { t: 'e', e: { type: e.type, amount: e.amount || 0, count: e.count || 0 } };
+}
 
-  function status(state, msg = '') {
-    const label = {
-      offline: '각자 기기에서 같은 방 코드로 들어와. 방을 만들면 코드가 나와!',
-      connecting: '방에 연결하는 중…',
-      waiting: `방 코드 ${room.code} · 친구를 기다리는 중 (1/2)`,
-      connected: `방 코드 ${room.code} · 친구가 들어왔어! (2/2)`,
-      error: '연결을 확인하고 다시 해 봐.',
-    }[state];
-    $('online-status').textContent = msg || label;
-    $('room-code').textContent = room.code || '------';
-    $('room-host').hidden = room.active;
-    $('room-join').hidden = room.active;
-    $('room-leave').hidden = !room.active;
-    $('room-copy').hidden = !room.code || !room.host;
-    if (state !== 'connected') { $('online-lobby').hidden = true; }
-    if (msg && state === 'error') { toast(msg); if (inGame) api.quit(); inGame = false; }
+// api: $, toast, sound, social() → Social | null, me() → { level, skin, effect }, start({ seed, firstTo, opponent, peer, role, makeRemote }),
+//      match() → 지금 판, isFinished() → 결과가 나왔는지, quit() → 판을 접고 온라인 화면으로,
+//      render() 온라인 화면 다시 그리기, chatLine(entry) 대화 한 줄({ who, text } 또는 { who, sticker }), chatReset()
+export function createOnline(api) {
+  const { toast, sound } = api;
+  let room = null, opponent = null, peer = null, firstTo = 2, remote = null, clock = 0, last = '', lastRound = 0;
+  let wantAgain = false, peerAgain = false, inGame = false, searching = false, inviting = null, helloPending = false;
+  let lines = [], recent = null; // recent: 방금 같이 한 사람 { id, nickname, room } (방을 나간 뒤에도 친구 요청, 신고에 씀)
+
+  const hooks = {
+    status(state, msg = '') {
+      if (state === 'error' && msg && room) { toast(msg); endRoom(); }
+    },
+    join() { if (room) hello(); else helloPending = true; sound.sfx('coin'); },
+    depart(id) {
+      if (!id || !room) return; // 내가 나감
+      const name = opponent?.nickname || '친구';
+      toast(`${name}와 연결이 끊겼어.`);
+      endRoom();
+    },
+    rejoin() {
+      if (!room) return;
+      toast(`${opponent?.nickname || '친구'}가 다시 접속해서 이번 대전은 끝났어.`);
+      endRoom();
+    },
+    error(code) {
+      if (code === 'chat-rate') toast('채팅은 천천히! 1초에 한 줄씩 보낼 수 있어.');
+    },
+    message(m) { received(m); },
+  };
+
+  const render = () => api.render?.();
+
+  function hello() {
+    helloPending = false;
+    room?.send({ t: 'hello', ...api.me() });
   }
-  function join() {
-    chatIn = rateLimiter(6, 5000);
-    api.roomJoined?.();
-    room.send({ t: 'hello', ...api.me() });
+
+  function enter(result) {
+    searching = false; inviting = null;
+    room = result.room;
+    opponent = { id: Number(result.opponent?.id) || 0, nickname: String(result.opponent?.nickname || '친구') };
+    recent = { ...opponent, room: room.code };
+    lines = [];
+    peer = null; wantAgain = false; peerAgain = false; firstTo = 2;
+    api.chatReset?.();
+    if (helloPending || room.peers.length) hello();
     sound.sfx('coin');
+    render();
   }
-  function depart() {
-    const was = peer;
-    api.roomLeft?.();
-    peer = null; wantAgain = false; peerAgain = false;
-    $('online-lobby').hidden = true;
-    if (inGame) { toast(`${was?.name || '친구'}와 연결이 끊겼어.`); inGame = false; api.quit(); }
+
+  // 방을 나간다. 판이 진행 중이면 접고(결과가 이미 나왔으면 결과 화면은 그대로) 온라인 화면으로.
+  function endRoom() {
+    const playing = inGame && !api.isFinished();
+    const r = room;
+    room = null; peer = null; inGame = false; wantAgain = false; peerAgain = false; helloPending = false;
+    try { r?.leave(); } catch { /* 이미 닫힘 */ }
+    if (playing) api.quit();
+    render();
   }
-  function lobby() {
-    $('online-lobby').hidden = false;
-    const me = api.me();
-    $('lobby-me').textContent = `${me.name} Lv.${me.level}`;
-    $('lobby-you').textContent = peer ? `${peer.name} Lv.${peer.level}` : '…';
-    $('online-first-row').hidden = !room.host;
-    $('online-start').hidden = !room.host;
-    $('online-wait').hidden = room.host;
-    if (!room.host) $('online-wait').textContent = `방장이 시작하기를 기다리는 중… (${firstTo}판 먼저 이기면 승리)`;
-  }
+
   function begin(seed, role) {
     wantAgain = false; peerAgain = false; inGame = true; lastRound = 1; clock = 0; last = '';
-    api.start({ seed, firstTo, peer, role, makeRemote: seq => (remote = new RemoteView(seq)) });
+    api.start({ seed, firstTo, opponent, peer: peer || cleanPeer({}), role, makeRemote: seq => (remote = new RemoteView(seq)) });
   }
 
-  function message(m) {
+  function line(who, text, sticker) {
+    const entry = validSticker(sticker) ? { who, sticker, at: Date.now() } : { who, text: String(text).slice(0, 200), at: Date.now() };
+    lines.push(entry);
+    if (lines.length > LINES_KEEP) lines.shift();
+    api.chatLine?.(entry);
+  }
+
+  function received(m) {
+    if (!m || typeof m !== 'object') return;
+    if (typeof m.chat === 'string') { if (m.chat) line('them', m.chat); return; }
+    if (m.t === 'say') {
+      if (validSticker(m.sticker)) line('them', '', m.sticker);
+      else if (Number.isInteger(m.quick) && QUICK[m.quick]) line('them', QUICK[m.quick]);
+      return;
+    }
     const match = api.match();
     switch (m.t) {
       case 'hello':
         peer = cleanPeer(m);
-        if (!m.re) room.send({ t: 'hello', re: 1, ...api.me() });
-        if (room.host) room.send({ t: 'first', n: firstTo });
-        lobby();
-        toast(`🌐 ${peer.name}와 연결됐어!`);
+        if (!m.re) room?.send({ t: 'hello', re: 1, ...api.me() });
+        if (room?.host) room.send({ t: 'first', n: firstTo });
+        render();
         break;
       case 'first':
-        if (!room.host) { firstTo = clampFirstTo(m.n); lobby(); }
+        if (!room?.host) { firstTo = clampFirstTo(m.n); render(); }
         break;
       case 'start':
-        if (!room.host && Number.isFinite(m.seed)) { firstTo = clampFirstTo(m.first); begin(m.seed >>> 0, 'guest'); }
+        if (!room?.host && Number.isFinite(m.seed)) { firstTo = clampFirstTo(m.first); begin(m.seed >>> 0, 'guest'); }
         break;
       case 'atk':
         if (match && inGame && match.phase === 'play') { const n = Math.max(0, Math.min(2000, Number(m.n) | 0)); match.players[0].receive(n); match.remoteChaining = true; }
         break;
-      case 'cs': if (match) match.remoteChaining = true; break;
-      case 'ce': if (match) match.remoteChaining = false; break;
+      case 'cs': if (match && inGame) match.remoteChaining = true; break;
+      case 'ce': if (match && inGame) match.remoteChaining = false; break;
       case 's': if (remote && inGame) remote.apply(m); break;
       case 'e':
         if (match && inGame && m.e && typeof m.e === 'object') {
@@ -148,29 +199,21 @@ export function createOnline(api) {
         }
         break;
       case 'dead':
-        if (room.host && match && inGame) match.remoteDead();
+        if (room?.host && match && inGame) match.remoteDead();
         break;
       case 'result':
-        if (!room.host && match && inGame) {
+        if (!room?.host && match && inGame) {
           const winner = m.w === 'guest' ? 0 : m.w === 'host' ? 1 : -1;
           match.applyResult(winner, [Number(m.gw) | 0, Number(m.hw) | 0], !!m.final);
         }
         break;
       case 'next':
-        if (!room.host && match && inGame) match.nextRound();
+        if (!room?.host && match && inGame) match.nextRound();
         break;
-      case 'chat': {
-        // 방 채팅: 빠른 말은 번호로 오고, 직접 쓴 말은 받을 때도 나쁜 말을 다시 가린다
-        if (!chatIn()) break;
-        if (validSticker(m.st)) { api.roomChat?.({ name: peer?.name || '친구', sticker: m.st }); break; } // 젤리 이모티콘
-        const text = Number.isInteger(m.q) && QUICK[m.q] ? QUICK[m.q] : cleanChat(m.text);
-        if (text) api.roomChat?.({ name: peer?.name || '친구', text });
-        break;
-      }
       case 'again':
         peerAgain = true;
-        if (wantAgain && room.host) restart();
-        else toast(`${peer?.name || '친구'}가 한 판 더 하고 싶대!`);
+        if (wantAgain && room?.host) restart();
+        else toast(`${opponent?.nickname || '친구'}가 한 판 더 하고 싶대!`);
         break;
       default: break;
     }
@@ -181,33 +224,99 @@ export function createOnline(api) {
     begin(seed, 'host');
   }
 
-  $('room-host').onclick = async () => { sound.sfx('click'); try { await room.open(); } catch { /* 상태 글자로 알려 줌 */ } };
-  $('room-join').onsubmit = async e => {
-    e.preventDefault();
-    sound.sfx('click');
-    try { await room.open($('room-input').value); } catch { /* 상태 글자로 알려 줌 */ }
-  };
-  $('room-input').oninput = e => { e.target.value = normaliseCode(e.target.value); };
-  $('room-leave').onclick = () => { room.leave(); toast('방에서 나왔어.'); };
-  $('room-copy').onclick = async () => {
-    try { await navigator.clipboard.writeText(room.code); toast('📋 방 코드를 복사했어! 친구에게 알려 줘.'); } catch { toast(`친구에게 방 코드 ${room.code}를 알려 줘.`); }
-  };
-  $('online-start').onclick = () => {
-    if (!room.host || !peer) return;
-    sound.sfx('click');
-    restart();
-  };
-  addEventListener('pagehide', () => room.leave());
-
   return {
-    get active() { return room.active; },
-    send: m => room.send(m),
-    event(e) {
-      if (e.type === 'pop') room.send({ t: 'e', e: { type: 'pop', chain: e.chain, score: e.score, puyos: e.puyos, colors: e.colors, groups: e.groups } });
-      else room.send({ t: 'e', e: { type: e.type, amount: e.amount || 0, count: e.count || 0 } });
+    hooks,
+    get active() { return !!room; },
+    get searching() { return searching; },
+    get inviting() { return inviting; },
+    get opponent() { return opponent; },
+    get recent() { return recent; },
+    get peer() { return peer; },
+    get host() { return !!room?.host; },
+    get firstTo() { return firstTo; },
+    get lines() { return lines.slice(); },
+    get inGame() { return inGame; },
+
+    // "게임 찾기": 먼저 기다린 사람과 바로 붙는다
+    async find() {
+      const social = api.social();
+      if (!social || searching || room || inviting) return;
+      searching = true; render();
+      try {
+        const result = await social.findMatch(NET_GAME, hooks, undefined, { onQueued: render });
+        if (!result) { searching = false; render(); return; }
+        if (!searching) { result.room.leave(); return; } // 그사이 그만 찾기를 누름
+        enter(result);
+      } catch (error) {
+        searching = false; render();
+        toast(error.message || '게임을 찾지 못했어. 다시 해 볼래?');
+      }
     },
+    cancelFind() { searching = false; api.social()?.cancelMatch(); render(); },
+
+    // 친구 초대: 친구가 수락하면 같은 방에 들어간다
+    async invite(friend) {
+      const social = api.social();
+      if (!social || room || inviting || searching) return;
+      const mine = inviting = { id: friend.id, nickname: friend.nickname, until: Date.now() + 60000 };
+      render();
+      try {
+        const result = await social.invite(friend.id, NET_GAME, hooks);
+        if (inviting !== mine) { result.room.leave(); return; } // 취소한 뒤에 수락됨
+        enter(result);
+      } catch (error) {
+        if (inviting !== mine) return;
+        inviting = null; render();
+        toast(error.message || '초대하지 못했어.');
+      }
+    },
+    async cancelInvite() {
+      if (!inviting) return;
+      inviting = null; render();
+      try { await api.social()?.cancelInvite(); } catch { /* 이미 끝남 */ }
+    },
+    async accept(inv) {
+      const social = api.social();
+      if (!social) return false;
+      if (searching) this.cancelFind();
+      if (inviting) await this.cancelInvite();
+      if (room) endRoom();
+      try { enter(await social.acceptInvite(inv.id, hooks)); return true; } catch (error) { toast(error.message || '들어가지 못했어.'); return false; }
+    },
+
+    leave() { inGame = false; endRoom(); }, // 부르는 쪽이 판을 접는다 (quitGame)
+    start() {
+      if (!room?.host || !peer) return;
+      restart();
+    },
+    setFirstTo(n) { firstTo = clampFirstTo(n); if (room?.host) room.send({ t: 'first', n: firstTo }); },
+
+    chat(text) {
+      const t = String(text ?? '').trim().slice(0, CHAT_MAX);
+      if (!t || !room) return false;
+      if (!room.chat(t)) return false;
+      line('me', t);
+      return true;
+    },
+    // 빠른 말(quick)과 젤리 이모티콘(sticker)은 번호만 보낸다
+    say({ quick, sticker }) {
+      if (!room?.ready) return false;
+      if (validSticker(sticker)) { if (!room.send({ t: 'say', sticker })) return false; line('me', '', sticker); return true; }
+      if (Number.isInteger(quick) && QUICK[quick]) { if (!room.send({ t: 'say', quick })) return false; line('me', QUICK[quick]); return true; }
+      return false;
+    },
+    get connected() { return !!room?.ready; },
+    // 신고할 때 같이 보내는 대화 (서버도 그 방의 거른 채팅을 따로 모은다)
+    reportPayload(reason) {
+      const who = recent;
+      if (!who?.id) return null;
+      return { target: who.id, context: { kind: 'room', game: NET_GAME, room: who.room }, reason, messages: lines.map(l => ({ text: `${l.who === 'me' ? '나' : '상대'}: ${validSticker(l.sticker) ? `[젤리 이모티콘: ${STICKERS[l.sticker].text}]` : l.text}` })) };
+    },
+
+    send: m => room?.send(m),
+    event(e) { room?.send(eventMessage(e)); },
     tick(match) {
-      if (!inGame || !room.ready) return;
+      if (!inGame || !room?.ready) return;
       if (room.host && match.round > lastRound) { lastRound = match.round; room.send({ t: 'next', r: match.round }); }
       if (++clock % SEND_EVERY) return;
       const snap = snapshot(match.players[0]);
@@ -215,33 +324,18 @@ export function createOnline(api) {
       if (text !== last) { last = text; room.send(snap); }
     },
     roundOver(e, match) {
-      if (!room.host) return;
+      if (!room?.host) return;
       const final = match.wins.some(w => w >= match.firstTo);
       room.send({ t: 'result', w: e.winner === 0 ? 'host' : e.winner === 1 ? 'guest' : 'draw', hw: match.wins[0], gw: match.wins[1], final });
     },
     rematch() {
-      if (!room.ready) { toast('친구와 연결이 끊겼어.'); api.quit(); return; }
+      if (!room?.ready) { toast('친구와 연결이 끊겼어.'); api.quit(); return; }
       wantAgain = true;
       room.send({ t: 'again' });
       if (peerAgain && room.host) restart();
       else toast('친구를 기다리는 중… 친구도 “한 번 더!”를 누르면 시작해.');
     },
-    setFirstTo(n) { firstTo = n; if (room.host) room.send({ t: 'first', n }); },
-    // 방 채팅 보내기: 빠른 말 번호(q), 젤리 이모티콘 번호(sticker) 또는 직접 쓴 말(text)
-    say({ q, text, sticker }) {
-      if (!room.ready) return false;
-      if (validSticker(sticker)) room.send({ t: 'chat', st: sticker });
-      else if (Number.isInteger(q) && QUICK[q]) room.send({ t: 'chat', q });
-      else if (text) room.send({ t: 'chat', text: cleanChat(text) });
-      else return false;
-      return true;
-    },
-    get connected() { return room.ready; },
-    // 친구 초대: 방을 만들어 코드를 돌려주거나, 받은 코드로 들어간다
-    async host() { try { await room.open(); } catch { /* 상태 글자로 알려 줌 */ } return room.code; },
-    async join(code) { try { await room.open(code); } catch { /* 상태 글자로 알려 줌 */ } return room.active; },
-    peerName: () => peer?.name || '친구',
-    leave() { inGame = false; room.leave(); },
-    state: () => ({ role: room.role, code: room.code, status: room.status, peer }),
+    peerName: () => opponent?.nickname || '친구',
+    state: () => ({ active: !!room, searching, inviting: inviting?.nickname ?? null, host: !!room?.host, opponent, peer, inGame, firstTo }),
   };
 }
