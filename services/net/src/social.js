@@ -8,12 +8,18 @@ const DM_PER_MINUTE = 20;
 const PAGE = 50;
 const REQUESTS_PER_HOUR = 30;
 const REPORTS_PER_HOUR = 10;
+const SEARCHES_PER_MINUTE = 30;
+const REPORT_TEXT_MAX = 300;
 
 export const lobby = env => env.LOBBY.get(env.LOBBY.idFromName('lobby'));
 
 // 알림은 실패해도 요청 자체는 성공으로 둔다 (상대가 접속 안 했을 수도 있다).
 async function push(env, uid, event) {
   try { await lobby(env).push(uid, event); } catch (error) { console.error('push failed', error?.message); }
+}
+// 사람이 들어간 방과 매칭 줄을 로비에 적어 둔다 (정지할 때 그 연결들도 끊으려고).
+export async function track(env, uid, kind, name) {
+  try { await lobby(env).track(uid, kind, name); } catch (error) { console.error('track failed', error?.message); }
 }
 async function onlineIds(env, ids) {
   if (!ids.length) return [];
@@ -45,11 +51,13 @@ async function reachable(env, me, id) {
 
 // ---- 검색 ----
 
-// GET /users/search?q=  닉네임 앞부분이 같은 사람 20명까지
+// GET /users/search?q=  닉네임 앞부분이 같은 사람 20명까지 (q 는 두 글자 이상)
 export async function search(request, env, _params, url) {
   const me = await requireUser(request, env);
   const q = cleanNickname(url.searchParams.get('q')).slice(0, 10);
-  if (!q) return json({ users: [] });
+  // 한 글자로 훑어 모든 닉네임을 모으지 못하게 두 글자부터 찾는다. 1분에 30번까지.
+  if ([...q].length < 2) return json({ users: [] });
+  await limit(env, `search:${me.id}`, 60 * 1000, SEARCHES_PER_MINUTE);
   const like = q.replace(/[\\%_]/g, ch => `\\${ch}`) + '%';
   const { results } = await env.DB.prepare(`
     SELECT u.id, u.nickname,
@@ -227,12 +235,12 @@ export async function sendDm(request, env, params) {
   const body = await readJson(request);
   if (typeof body.body !== 'string') fail(400, 'empty');
   if ([...body.body.trim()].length > DM_MAX) fail(400, 'too-long');
-  if (await blockedEither(env, me.id, id)) fail(403, 'blocked');
-  if (!(await areFriends(env, me.id, id))) fail(403, 'not-friends');
+  // 내가 막은 사람이면 'blocked'. 상대가 나를 막았으면 친구가 아닌 것과 똑같이 'not-friends' (차단 사실을 알리지 않는다).
+  if (await env.DB.prepare('SELECT 1 FROM blocks WHERE blocker_id = ? AND blocked_id = ?').bind(me.id, id).first()) fail(403, 'blocked');
+  if ((await blockedEither(env, me.id, id)) || !(await areFriends(env, me.id, id))) fail(403, 'not-friends');
   const { text, kinds } = filterText(body.body, { max: DM_MAX });
   if (!text) fail(400, 'empty');
-  const recent = await env.DB.prepare('SELECT count(*) AS n FROM dms WHERE from_id = ? AND created > ?').bind(me.id, now() - 60 * 1000).first();
-  if (recent.n >= DM_PER_MINUTE) fail(429, 'rate');
+  await limit(env, `dm:${me.id}`, 60 * 1000, DM_PER_MINUTE);
   const row = await env.DB.prepare('INSERT INTO dms (from_id, to_id, body, created) VALUES (?, ?, ?, ?) RETURNING *').bind(me.id, id, text, now()).first();
   const message = dmRow(row);
   await push(env, id, { t: 'dm', message, from: { id: me.id, nickname: me.nickname } });
@@ -285,11 +293,13 @@ export async function cancelInvite(request, env, params) {
 
 // ---- 신고 ----
 
+// 신고한 사람이 보낸 기록은 글자만 { text } 로 남긴다 (마지막 50개, 한 줄 300글자).
 function clientMessages(value) {
   if (!Array.isArray(value)) return [];
-  const list = value.slice(-PAGE).map(m => (typeof m === 'string' ? m.slice(0, 500) : m && typeof m === 'object' ? m : String(m)));
-  const text = JSON.stringify(list);
-  return text.length > 20_000 ? JSON.parse(JSON.stringify(list.slice(-10))) : list;
+  return value.slice(-PAGE)
+    .map(m => (typeof m === 'string' ? m : typeof m?.text === 'string' ? m.text : null))
+    .filter(text => text !== null)
+    .map(text => ({ text: [...text].slice(0, REPORT_TEXT_MAX).join('') }));
 }
 
 // POST /reports { target, context: { kind: 'dm'|'room'|'profile', game, room }, reason, messages }
@@ -323,7 +333,8 @@ export async function report(request, env) {
   } else {
     evidence = { nickname: targetRow.nickname };
   }
-  const reason = typeof body.reason === 'string' ? filterText(body.reason, { max: 200 }).text : null;
+  // 이유는 관리자만 보므로 거르지 않고 그대로(200글자까지) 둔다.
+  const reason = typeof body.reason === 'string' ? [...body.reason].slice(0, 200).join('') : null;
   const row = await env.DB.prepare(`
     INSERT INTO reports (reporter_id, target_id, context, reason, client_messages, evidence, created)
     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`)

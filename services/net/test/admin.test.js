@@ -1,8 +1,10 @@
 // 관리 페이지: Cloudflare Access JWT 검사, 신고 보기, 정지
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { SELF, env } from 'cloudflare:test';
 import worker from '../src/index.js';
-import { api, signup, befriend, live, randomIp } from './helpers.js';
+import { api, signup, befriend, live, connect, ticketFor, randomIp } from './helpers.js';
+import { createRoom } from '../src/rooms.js';
+import { verifyAccessJwt } from '../src/admin.js';
 
 const TEAM = 'test-team.cloudflareaccess.com';
 const b64url = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -104,5 +106,43 @@ describe('admin actions', () => {
     expect((await api('/auth/login', { method: 'POST', body: { nickname: b.nickname, password: b.password }, ip: randomIp() })).status).toBe(200);
     const audit = await env.DB.prepare('SELECT action FROM admin_actions WHERE target_id = ? ORDER BY id').bind(b.id).all();
     expect(audit.results.map(r => r.action)).toEqual(['suspend', 'unsuspend']);
+  });
+});
+
+describe('suspension reaches every connection', () => {
+  it('closes the suspended user\'s live, room and match-queue sockets, and a room cannot be rejoined', async () => {
+    const token = await jwt();
+    const bad = await signup(), friend = await signup();
+    const g = 'suspend-room';
+    const code = await createRoom(env, g, { maxPlayers: 2, members: [bad.id, friend.id] });
+    const badLive = await live(bad);
+    const roomBad = await connect(`/rooms/${g}/${code}?ticket=${await ticketFor(bad)}`); await roomBad.next();
+    const roomFriend = await connect(`/rooms/${g}/${code}?ticket=${await ticketFor(friend)}`); await roomFriend.next();
+    const queue = await connect(`/match/suspend-queue?ticket=${await ticketFor(bad)}`);
+    expect(await queue.next()).toEqual({ t: 'queued', game: 'suspend-queue' });
+    const spare = await ticketFor(bad); // 정지 전에 받아 둔 표
+
+    expect((await admin(`/api/users/${bad.id}/suspend`, { token, method: 'POST', body: { reason: '욕설' } })).status).toBe(200);
+    expect(await badLive.until(m => m.t === '__closed')).toEqual({ t: '__closed', code: 4403 });
+    expect(await roomBad.until(m => m.t === 'error')).toEqual({ t: 'error', code: 'suspended' });
+    expect(await roomBad.until(m => m.t === '__closed')).toEqual({ t: '__closed', code: 4403 });
+    expect(await roomFriend.until(m => m.t === 'leave')).toEqual({ t: 'leave', id: 'p1' });
+    expect(await queue.until(m => m.t === 'error')).toEqual({ t: 'error', code: 'suspended' });
+    expect(await queue.until(m => m.t === '__closed')).toEqual({ t: '__closed', code: 4403 });
+    // 다시 들어올 수 없다: 받아 둔 표는 지워졌고, 새 표는 받을 수 없다
+    expect((await connect(`/rooms/${g}/${code}?ticket=${spare}`)).res.status).toBe(401);
+    expect((await api('/auth/ticket', { method: 'POST', token: bad.token })).status).toBe(401);
+    await admin(`/api/users/${bad.id}/unsuspend`, { token, method: 'POST', body: {} });
+  });
+});
+
+describe('Access public keys', () => {
+  it('refetches the keys at most once a minute for unknown key ids', async () => {
+    expect(await verifyAccessJwt(await jwt(), env)).toBe('kubony@gmail.com'); // 키를 받아 둔다
+    const spy = vi.spyOn(globalThis, 'fetch');
+    try {
+      for (let i = 0; i < 5; i++) expect(await verifyAccessJwt(await jwt({}, { kid: `unknown-${i}` }), env)).toBe('');
+      expect(spy.mock.calls.length).toBeLessThanOrEqual(1);
+    } finally { spy.mockRestore(); }
   });
 });

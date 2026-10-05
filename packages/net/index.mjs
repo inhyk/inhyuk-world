@@ -35,6 +35,8 @@ export const MESSAGES = {
   full: max => `이 방은 벌써 ${max ?? 2}명이야. 다른 방을 만들어 줘.`,
   lost: '방 서버와 연결이 끊겼어. 다시 해 볼래?',
   left: '친구가 나갔어. 새 친구가 같은 코드로 들어올 수 있어.',
+  replaced: '다른 곳에서 이 방에 다시 들어갔어.',
+  suspended: '이 계정은 정지됐어.',
 };
 
 export const httpBase = server => server.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/+$/, '');
@@ -149,12 +151,18 @@ export class Room {
         this.role = msg.id === this.id ? 'host' : 'guest';
         this.hooks.host?.(msg.id);
         return;
+      case 'rejoin': // 같은 사람이 다른 연결로 다시 들어왔다 (번호는 그대로). 게임 상태를 다시 보내 줄 때 쓴다.
+        this.hooks.rejoin?.(msg.id);
+        return;
       case 'msg':
         if (this.ready) this.hooks.message?.(msg.data, msg.from);
         return;
       case 'error':
         if (this.settle && (msg.code === 'not-found' || msg.code === 'full' || msg.code === 'not-member')) {
           this.settle.reject(Error(msg.code === 'full' ? MESSAGES.full(msg.max) : msg.code === 'not-member' ? MESSAGES.notMember : MESSAGES.notFound));
+        } else if (msg.code === 'replaced' || msg.code === 'suspended') {
+          this.hooks.error?.(msg.code);
+          this.fail(MESSAGES[msg.code]);
         } else this.hooks.error?.(msg.code);
         return;
       default:

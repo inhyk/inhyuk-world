@@ -7,6 +7,9 @@ import { lobby } from './social.js';
 
 const KEYS_TTL_MS = 10 * 60 * 1000;
 const keyCache = new Map(); // team → { at, keys: Map(kid → CryptoKey) }
+// 모르는 kid 가 와도 공개키를 다시 받아 오는 것은 1분에 한 번까지 (가짜 kid 로 바깥 요청을 늘리지 못하게).
+const REFRESH_MS = 60 * 1000;
+const lastRefresh = new Map(); // team → 마지막으로 억지로 다시 받은 때
 
 const b64urlBytes = text => {
   const s = text.replace(/-/g, '+').replace(/_/g, '/');
@@ -50,7 +53,10 @@ export async function verifyAccessJwt(token, env) {
     const payload = b64urlJson(parts[1]);
     if (header.alg !== 'RS256' || !header.kid) return '';
     let key = (await accessKeys(config.team)).get(header.kid);
-    if (!key) key = (await accessKeys(config.team, true)).get(header.kid); // 키가 바뀌었을 수 있다
+    if (!key && now() - (lastRefresh.get(config.team) ?? 0) >= REFRESH_MS) {
+      lastRefresh.set(config.team, now()); // 키가 바뀌었을 수 있다
+      key = (await accessKeys(config.team, true)).get(header.kid);
+    }
     if (!key) return '';
     const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64urlBytes(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
     if (!ok) return '';

@@ -1,6 +1,6 @@
 // 채팅 거르개
 import { describe, it, expect } from 'vitest';
-import { filterText, hasProfanity } from '../src/filter.js';
+import { filterText, hasProfanity, maskText, maskSplitPhone } from '../src/filter.js';
 
 const masked = text => filterText(text).text;
 
@@ -58,5 +58,36 @@ describe('filterText', () => {
     expect(hasProfanity('ssibal')).toBe(true);
     expect(hasProfanity('인혁')).toBe(false);
     expect(hasProfanity('Sussex_1')).toBe(false);
+  });
+
+  it('normalizes full-width letters, ideographic dots and spaced-out links before looking, and masks the original text', () => {
+    for (const [input, kind] of [
+      ['ｅｘａｍｐｌｅ．ｃｏｍ', 'link'], ['n a v e r . c o m', 'link'], ['naver。com', 'link'], ['ｈｔｔｐｓ://x', 'link'],
+      ['카톡아이디abc123', 'contact'], ['ktalk: abc123', 'contact'], ['디스코드 닉 abc', 'contact'],
+      ['공일공에 일이삼사에 오육칠팔', 'phone'], ['O1O-I234-5678', 'phone'], ['010\u200b1234\u200b5678', 'phone'], ['시바', 'profanity'],
+    ]) {
+      const r = filterText(input);
+      expect(r.kinds, input).toContain(kind);
+      expect(r.text.replace(/[*\s]/g, ''), input).toBe(''); // 가린 자리는 원래 글자 위치 그대로
+      expect([...r.text].length, input).toBe([...input.replace(/\u200b/g, '')].length);
+    }
+    expect(masked('ｅｘａｍｐｌｅ．ｃｏｍ 봐')).toBe('*********** 봐');
+    expect(masked('n a v e r . c o m 와')).toBe('* * * * * * * * * 와');
+    // 붙여 쓴 영어 낱말은 아이디로 보지 않는다
+    for (const ok of ['idea abc', 'ideas', 'a b c', 'www 와 ㅋㅋ', '시바견 귀여워']) expect(filterText(ok), ok).toEqual({ text: ok, kinds: [] });
+  });
+
+  it('maskText masks game strings in place without trimming or cutting', () => {
+    expect(maskText('  sibal010-1234-5678  ')).toBe('  ******************  ');
+    expect(maskText('a'.repeat(300))).toBe('a'.repeat(300));
+    expect(maskText('board:0102')).toBe('board:0102');
+  });
+
+  it('maskSplitPhone masks the line that completes a number split across lines', () => {
+    expect(maskSplitPhone(['010'], '1234')).toBe('1234'); // 아직 7개
+    expect(maskSplitPhone(['010', '1234'], '5678')).toBe('****');
+    expect(maskSplitPhone(['내 번호 010-1234'], '5678 맞아')).toBe('**** 맞아');
+    expect(maskSplitPhone([], '5678')).toBe('5678');
+    expect(maskSplitPhone(['3:2 이겼다'], '다시 하자 12')).toBe('다시 하자 12');
   });
 });

@@ -135,7 +135,8 @@ describe('direct messages', () => {
     expect((await api(`/dm/${b.id}`, { method: 'POST', token: a.token, body: { body: '가'.repeat(301) } })).data.error).toBe('too-long');
     expect((await api(`/dm/${b.id}`, { method: 'POST', token: a.token, body: { body: '가'.repeat(300) } })).status).toBe(201);
     await api(`/blocks/${a.id}`, { method: 'POST', token: b.token });
-    expect((await api(`/dm/${b.id}`, { method: 'POST', token: a.token, body: { body: 'hi' } })).data.error).toBe('blocked');
+    // 나를 차단한 사람에게는 친구가 아닌 것과 똑같이 답한다 (차단 사실을 알리지 않는다). 내가 차단한 사람에게는 'blocked'.
+    expect((await api(`/dm/${b.id}`, { method: 'POST', token: a.token, body: { body: 'hi' } })).data.error).toBe('not-friends');
     expect((await api(`/dm/${a.id}`, { method: 'POST', token: b.token, body: { body: 'hi' } })).data.error).toBe('blocked');
   });
 });
@@ -150,7 +151,7 @@ describe('reports', () => {
     const row = await env.DB.prepare('SELECT * FROM reports WHERE id = ?').bind(res.data.id).first();
     expect(row.status).toBe('open');
     expect(JSON.parse(row.evidence).messages.map(m => m.body)).toEqual(['나쁜 말 0', '나쁜 말 1', '나쁜 말 2']);
-    expect(JSON.parse(row.client_messages)).toEqual(['가짜로 꾸민 글']);
+    expect(JSON.parse(row.client_messages)).toEqual([{ text: '가짜로 꾸민 글' }]);
     expect(JSON.parse(row.context)).toEqual({ kind: 'dm' });
   });
 

@@ -6,7 +6,13 @@ export const BASE = 'https://net.test';
 
 let counter = 0;
 // 시험마다 겹치지 않는 닉네임과 IP (가입 횟수 제한에 걸리지 않게)
-export const uniqueNick = (prefix = 'u') => `${prefix}${Date.now().toString(36).slice(-4)}${(counter++).toString(36)}${Math.random().toString(36).slice(2, 4)}`.slice(0, 10);
+// 숫자가 7개 이상인 닉네임은 거절되므로(연락처 막기) 그런 것이 나오면 다시 만든다.
+export const uniqueNick = (prefix = 'u') => {
+  for (;;) {
+    const nick = `${prefix}${Date.now().toString(36).slice(-4)}${(counter++).toString(36)}${Math.random().toString(36).slice(2, 4)}`.slice(0, 10);
+    if ((nick.match(/[0-9]/g)?.length ?? 0) < 7) return nick;
+  }
+};
 export const randomIp = () => `10.${(Math.random() * 255) | 0}.${(Math.random() * 255) | 0}.${(Math.random() * 255) | 0}`;
 
 export async function api(path, { method = 'GET', body, token, origin = ORIGIN, ip, headers = {} } = {}) {

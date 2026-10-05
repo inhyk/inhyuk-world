@@ -182,6 +182,8 @@ export class Social {
     }
     if (!this.wanted) { try { socket.close(); } catch { /* 무시 */ } return; }
     this.socket = socket;
+    // hello 를 받거나, 그 전에 끊기거나 close() 하면 끝난다 (끊기면 뒤에서 다시 붙고, await live() 는 기다리지 않는다).
+    this.settleHello();
     const hello = new Promise(resolve => { this.helloed = resolve; });
     socket.addEventListener('message', event => this.received(socket, event.data));
     socket.addEventListener('close', () => this.dropped(socket));
@@ -202,14 +204,18 @@ export class Social {
     this.retryTimer = setTimeout(() => { if (this.wanted && !this.socket) { this.connecting = null; this.live(); } }, wait);
   }
 
+  settleHello() { const settle = this.helloed; this.helloed = null; settle?.(); }
+
   dropped(socket) {
     if (socket !== this.socket) return;
     this.onlineFriends.clear();
+    this.settleHello();
     this.retry();
   }
 
   close() {
     this.wanted = false;
+    this.settleHello();
     clearTimeout(this.retryTimer); clearInterval(this.pinger);
     const socket = this.socket; this.socket = null;
     try { socket?.close(1000, 'bye'); } catch { /* 이미 닫힘 */ }
@@ -225,7 +231,7 @@ export class Social {
       this.attempt = 0;
       this.onlineFriends = new Set(msg.online ?? []);
       this.setStatus('online');
-      this.helloed?.(); this.helloed = null;
+      this.settleHello();
     } else if (msg.t === 'online') this.onlineFriends.add(msg.id);
     else if (msg.t === 'offline') this.onlineFriends.delete(msg.id);
     else if (msg.t === 'kicked') { this.wanted = false; this.account.save('', null); }

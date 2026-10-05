@@ -11,7 +11,7 @@ export function allowedOrigin(origin, env) {
 export function cors(origin) {
   return {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
@@ -28,10 +28,30 @@ export class HttpError extends Error {
 }
 export const fail = (status, code, extra) => { throw new HttpError(status, code, extra); };
 
+export const BODY_MAX = 64 * 1024;
+
+// JSON 몸을 읽는다. Content-Length 를 믿지 않고 실제로 읽은 바이트를 세어 64KB 를 넘으면 그 자리에서 413.
 export async function readJson(request) {
-  if (Number(request.headers.get('Content-Length') ?? 0) > 64 * 1024) fail(413, 'too-big');
+  if (Number(request.headers.get('Content-Length') ?? 0) > BODY_MAX) fail(413, 'too-big');
+  if (!request.body) return {};
+  const reader = request.body.getReader();
+  const chunks = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > BODY_MAX) {
+      try { await reader.cancel(); } catch { /* 이미 끝남 */ }
+      fail(413, 'too-big');
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) { bytes.set(chunk, at); at += chunk.byteLength; }
   try {
-    const body = await request.json();
+    const body = JSON.parse(new TextDecoder().decode(bytes));
     return body && typeof body === 'object' ? body : {};
   } catch { return {}; }
 }

@@ -229,3 +229,49 @@ test('room refuses non-members with a clear message', async () => {
   sockets[0].serve({ t: 'error', code: 'not-member', max: 2 });
   await assert.rejects(opening, { message: '이 방에는 들어갈 수 없어.' });
 });
+
+test('live() and invite() do not hang when the socket drops before hello', async () => {
+  const { options, sockets, calls } = setup({ 'POST /invites': () => [409, { error: 'offline' }] });
+  const account = new Account(options);
+  await account.login('인혁', '1234');
+  const social = new Social(account);
+  const first = social.live();
+  await until(() => sockets.length === 1);
+  sockets[0].drop(); // hello 전에 끊김
+  await first; // 끝나야 한다 (예전에는 영원히 기다림)
+  assert.equal(social.status, 'connecting');
+  social.close();
+
+  const again = new Social(account);
+  const pending = again.live();
+  await until(() => sockets.length === 2);
+  again.close(); // close() 도 기다리던 live() 를 끝낸다
+  await pending;
+  assert.equal(again.status, 'offline');
+
+  const inviter = new Social(account);
+  const inviting = inviter.invite(7, 'jelly-tower');
+  await until(() => sockets.length === 3);
+  sockets[2].drop();
+  await assert.rejects(inviting, { code: 'offline' }); // live() 가 끝나 초대 요청까지 가서 서버 답으로 끝난다
+  assert.ok(calls.some(c => c.path === '/invites'));
+  inviter.close();
+});
+
+test('Room handles rejoin and being replaced by another connection', async () => {
+  const sockets = [];
+  const seen = { rejoin: [], status: [], error: [] };
+  const room = new Room({ rejoin: id => seen.rejoin.push(id), status: (s, m) => seen.status.push([s, m]), error: c => seen.error.push(c) }, {
+    game: 'g', server: 'wss://net.test', connect: url => { const s = new FakeSocket(url); sockets.push(s); return s; },
+  });
+  const opening = room.open('ABCDEF');
+  await until(() => sockets.length === 1);
+  sockets[0].serve({ t: 'welcome', id: 'p1', host: 'p1', max: 2, peers: ['p2'] });
+  await opening;
+  sockets[0].serve({ t: 'rejoin', id: 'p2' });
+  assert.deepEqual(seen.rejoin, ['p2']);
+  sockets[0].serve({ t: 'error', code: 'replaced' });
+  assert.deepEqual(seen.error, ['replaced']);
+  assert.equal(room.status, 'error');
+  assert.equal(seen.status.at(-1)[1], '다른 곳에서 이 방에 다시 들어갔어.');
+});

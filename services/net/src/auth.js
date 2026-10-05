@@ -1,6 +1,6 @@
 // 계정: 닉네임 + 비밀번호. 이메일은 받지 않고, 비밀번호를 잊으면 되찾을 수 없다.
 import { fail, json, now, clientIp, readJson } from './http.js';
-import { hasProfanity } from './filter.js';
+import { hasProfanity, filterText } from './filter.js';
 
 // Workers 의 WebCrypto 는 PBKDF2 반복을 100,000 번까지만 허용한다. 그 최댓값을 쓴다 (README "비밀번호 저장").
 // 무료 요금제 CPU 한도(요청당 10ms)에 걸리면 PBKDF2_ITERATIONS 변수로 낮출 수 있다. 사람마다 쓴 횟수를 저장하므로
@@ -15,8 +15,11 @@ export const PASS_MIN = 4, PASS_MAX = 16;
 const SESSION_IDLE_MS = 180 * 24 * 60 * 60 * 1000; // 180일 동안 안 쓰면 다시 로그인
 const SEEN_EVERY_MS = 60 * 60 * 1000;
 const TICKET_MS = 60 * 1000;
-// 로그인 실패: 닉네임+IP 마다 10분에 10번, IP 하나에서 10분에 30번까지. 가입: IP 하나에서 1시간에 10번.
+// 로그인 실패: 닉네임+IP 마다 10분에 10번, IP 하나에서 10분에 30번, 닉네임 하나에 (모든 IP 합쳐) 1시간에 30번까지.
+// 가입: IP 하나에서 1시간에 10번.
 const LOGIN_WINDOW_MS = 10 * 60 * 1000, LOGIN_FAILS = 10, LOGIN_FAILS_PER_IP = 30;
+const LOGIN_NICK_WINDOW_MS = 60 * 60 * 1000, LOGIN_FAILS_PER_NICK = 30;
+const THROTTLE_KEEP_MS = 24 * 60 * 60 * 1000;
 const SIGNUP_WINDOW_MS = 60 * 60 * 1000, SIGNUPS_PER_IP = 10;
 
 const enc = new TextEncoder();
@@ -50,6 +53,8 @@ export function checkNickname(value) {
   const nick = cleanNickname(value);
   if (!NICK_RE.test(nick)) return 'bad-nickname';
   if (hasProfanity(nick)) return 'bad-nickname-word';
+  // 닉네임으로 연락처를 알리지 못하게: 전화번호, 링크, 메신저 아이디, 숫자 7개 이상은 안 된다.
+  if (filterText(nick).kinds.length || (nick.match(/[0-9]/g)?.length ?? 0) >= 7) return 'bad-nickname-word';
   return '';
 }
 
@@ -58,22 +63,29 @@ export function checkPassword(value) {
   return '';
 }
 
-// 횟수 제한. 최근 windowMs 안에 key 로 기록된 수를 센다.
-export async function countRecent(env, key, windowMs) {
-  const row = await env.DB.prepare('SELECT count(*) AS n FROM throttle WHERE key = ? AND at > ?').bind(key, now() - windowMs).first();
-  return row?.n ?? 0;
+// 횟수 제한. 먼저 이번 시도를 적고(insert) 그다음 센다(count). 한꺼번에 몰려온 요청도 모두 세어진다.
+// 결과 { id: 적은 줄 번호, n: windowMs 안에 적힌 수(이번 것 포함) }
+export function hitStatements(env, key, windowMs, t) {
+  return [
+    env.DB.prepare('INSERT INTO throttle (key, at) VALUES (?, ?) RETURNING rowid AS id').bind(key, t),
+    env.DB.prepare('SELECT count(*) AS n FROM throttle WHERE key = ? AND at > ?').bind(key, t - windowMs),
+  ];
 }
-export async function record(env, key) {
+export async function hit(env, key, windowMs) {
   const t = now();
-  await env.DB.batch([
-    env.DB.prepare('INSERT INTO throttle (key, at) VALUES (?, ?)').bind(key, t),
-    // 하루 지난 기록은 버린다
-    env.DB.prepare('DELETE FROM throttle WHERE key = ? AND at < ?').bind(key, t - 24 * 60 * 60 * 1000),
-  ]);
+  const [inserted, counted] = await env.DB.batch(hitStatements(env, key, windowMs, t));
+  maybePrune(env);
+  return { id: inserted.results[0].id, n: counted.results[0].n };
 }
 export async function limit(env, key, windowMs, max) {
-  if ((await countRecent(env, key, windowMs)) >= max) fail(429, 'rate');
-  await record(env, key);
+  if ((await hit(env, key, windowMs)).n > max) fail(429, 'rate');
+}
+// 하루 지난 횟수 기록을 지운다. 요청 100번에 한 번쯤 한다.
+export async function pruneThrottle(env) {
+  await env.DB.prepare('DELETE FROM throttle WHERE at < ?').bind(now() - THROTTLE_KEEP_MS).run();
+}
+function maybePrune(env) {
+  if (Math.random() < 0.01) pruneThrottle(env).catch(error => console.error('throttle prune failed', error?.message));
 }
 
 async function newSession(env, userId) {
@@ -111,17 +123,20 @@ export async function login(request, env) {
   const nickname = cleanNickname(body.nickname);
   if (!nickname || typeof body.password !== 'string') fail(400, 'bad-login');
   const ip = clientIp(request);
-  const keys = [`login:${nickname.toLowerCase()}:${ip}`, `login-ip:${ip}`];
-  if ((await countRecent(env, keys[0], LOGIN_WINDOW_MS)) >= LOGIN_FAILS || (await countRecent(env, keys[1], LOGIN_WINDOW_MS)) >= LOGIN_FAILS_PER_IP) {
-    fail(429, 'rate');
-  }
+  const nick = nickname.toLowerCase();
+  // 비밀번호 계산(PBKDF2) 전에 시도를 먼저 적고 센다. 맞으면 적은 것을 지운다(실패만 남는다).
+  const limits = [[`login:${nick}:${ip}`, LOGIN_WINDOW_MS, LOGIN_FAILS], [`login-ip:${ip}`, LOGIN_WINDOW_MS, LOGIN_FAILS_PER_IP],
+    [`login-nick:${nick}`, LOGIN_NICK_WINDOW_MS, LOGIN_FAILS_PER_NICK]];
+  const t = now();
+  const results = await env.DB.batch(limits.flatMap(([key, windowMs]) => hitStatements(env, key, windowMs, t)));
+  maybePrune(env);
+  const ids = limits.map((_, i) => results[i * 2].results[0].id);
+  if (limits.some(([, , max], i) => results[i * 2 + 1].results[0].n > max)) fail(429, 'rate');
   const row = await env.DB.prepare('SELECT * FROM users WHERE nickname = ?').bind(nickname).first();
   // 없는 닉네임도 같은 시간을 들여 계산해서, 걸린 시간으로 닉네임이 있는지 알 수 없게 한다.
   const hash = await hashPassword(body.password.slice(0, PASS_MAX * 4), row?.salt ?? 'no-such-user', row?.iterations ?? iterationsFor(env));
-  if (!row || !sameText(hash, row.pass_hash)) {
-    for (const key of keys) await record(env, key);
-    fail(401, 'wrong-login');
-  }
+  if (!row || !sameText(hash, row.pass_hash)) fail(401, 'wrong-login');
+  await env.DB.prepare(`DELETE FROM throttle WHERE rowid IN (${ids.map(() => '?').join(', ')})`).bind(...ids).run();
   if (row.suspended_at) fail(403, 'suspended', { reason: row.suspended_reason ?? '' });
   return json({ token: await newSession(env, row.id), user: publicUser(row) });
 }

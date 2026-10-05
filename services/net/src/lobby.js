@@ -2,13 +2,15 @@
 // 누가 접속 중인지 알고, 친구 요청, 1:1 대화, 초대, 매칭 소식을 바로 보내 준다.
 // 사람이 아주 많아지면 사람별로 나누면 되지만, 지금 규모에서는 하나로 충분하다 (README "구조").
 import { DurableObject } from 'cloudflare:workers';
-import { createRoom } from './rooms.js';
+import { createRoom, roomStub } from './rooms.js';
 
 export const PING = '{"t":"ping"}';
 export const PONG = '{"t":"pong"}';
 export const INVITE_MS = 60 * 1000;
 const SWEEP_MS = 30 * 1000;
 const STALE_MS = 90 * 1000; // 클라이언트는 25초마다 핑을 보낸다
+// 사람마다 최근에 들어간 방과 매칭 줄 (정지할 때 끊을 곳). 하루 지난 것은 버리고 20곳까지만.
+const TRACK_MS = 24 * 60 * 60 * 1000, TRACK_MAX = 20;
 
 function safeSend(ws, text) { try { ws.send(text); } catch { /* 닫히는 중 */ } }
 function randomId() {
@@ -80,6 +82,7 @@ export class Lobby extends DurableObject {
       if (now - heard > STALE_MS) await this.gone(s.ws);
     }
     const invites = await this.openInvites(true);
+    if (Math.random() < 0.02) await this.pruneTracks();
     if (this.sockets().length || invites.length) await this.ctx.storage.setAlarm(now + SWEEP_MS);
   }
 
@@ -100,8 +103,32 @@ export class Lobby extends DurableObject {
 
   push(uid, event) { return this.send(uid, event); }
 
-  // 정지된 계정: 연결을 끊는다.
+  // uid 가 방(kind 'room', name '<게임>:<코드>') 이나 매칭 줄(kind 'match', name 게임)에 들어갔다.
+  async track(uid, kind, name) {
+    const key = `track:${uid}`;
+    const now = Date.now();
+    const list = ((await this.ctx.storage.get(key)) ?? []).filter(e => now - e.at < TRACK_MS && !(e.kind === kind && e.name === name));
+    list.push({ kind, name, at: now });
+    await this.ctx.storage.put(key, list.slice(-TRACK_MAX));
+  }
+
+  async pruneTracks() {
+    const now = Date.now();
+    for (const [key, list] of await this.ctx.storage.list({ prefix: 'track:' })) {
+      if (!list.some(e => now - e.at < TRACK_MS)) await this.ctx.storage.delete(key);
+    }
+  }
+
+  // 정지된 계정: /live 연결, 들어가 있는 방, 매칭 줄을 모두 끊는다.
   async kick(uid, reason = 'suspended') {
+    const tracked = (await this.ctx.storage.get(`track:${uid}`)) ?? [];
+    await this.ctx.storage.delete(`track:${uid}`);
+    for (const { kind, name } of tracked) {
+      try {
+        if (kind === 'room') { const [game, code] = name.split(':'); await roomStub(this.env, game, code).kickUser(uid); }
+        else if (kind === 'match') await this.env.MATCH.get(this.env.MATCH.idFromName(name)).kickUser(uid);
+      } catch (error) { console.error('kick failed', kind, name, error?.message); }
+    }
     for (const s of this.sockets(uid)) {
       safeSend(s.ws, JSON.stringify({ t: 'kicked', reason }));
       try { s.ws.serializeAttachment({ ...s.ws.deserializeAttachment(), gone: true }); s.ws.close(4403, reason); } catch { /* 이미 닫힘 */ }

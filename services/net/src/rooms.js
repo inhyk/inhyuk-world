@@ -24,7 +24,7 @@ export const roomStub = (env, game, code) => env.ROOMS.get(env.ROOMS.idFromName(
 export async function createRoom(env, game, { maxPlayers = DEFAULT_PLAYERS, members = null } = {}) {
   for (let tries = 0; tries < 5; tries++) {
     const code = randomCode();
-    if (await roomStub(env, game, code).reserve(maxPlayers, members)) return code;
+    if (await roomStub(env, game, code).reserve(maxPlayers, members, `${game}:${code}`)) return code;
   }
   return '';
 }
