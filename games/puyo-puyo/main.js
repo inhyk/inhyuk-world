@@ -62,9 +62,14 @@ let device = { sound: true, music: true, haptics: true };
 try { device = { ...device, ...JSON.parse(storage?.getItem(DEVICE_KEY) || '{}') }; } catch { /* 기본값 */ }
 const me = () => account || guest;
 const P = () => me()?.progress || (guest = { name: '손님', guest: true, progress: newProgress() }).progress;
+// 기기 계정 목록을 기기에 적는다. 못 적으면(저장 공간이 꽉 참 등) false 를 돌려주고 알린다.
+let storeFailed = false, storeWarned = 0;
 function persistStore() {
-  saveStore(storage, store);
-  mirrorSave(STORE_KEY, storage?.getItem(STORE_KEY));
+  const ok = saveStore(storage, store);
+  storeFailed = !ok;
+  if (ok) mirrorSave(STORE_KEY, storage?.getItem(STORE_KEY));
+  else if (Date.now() - storeWarned > 30000) { storeWarned = Date.now(); toast('⚠️ 이 기기에 기록을 저장하지 못했어. 저장 공간이 꽉 찼는지 확인해 줘.'); }
+  return ok;
 }
 function save() {
   if (account?.cloud) cloud?.change(account.progress); // 3초 조용하면 서버에 올린다
@@ -251,7 +256,6 @@ $('migrate-go').onclick = async () => {
   if (!(await checkLocalPassword(local, password))) { loginMsg('비밀번호가 달라. 다시 해 봐!'); return; }
   $('login-pass').value = '';
   migrating = { local, password };
-  await busy('login-form', () => drainLegacy(local));
   await runMigration({ nickname: local.name, password, mode: 'signup' });
 };
 function migratePanel(text, { fields = true, retry = false } = {}) {
@@ -263,13 +267,16 @@ function migratePanel(text, { fields = true, retry = false } = {}) {
 // 서버에 올리는 기록에는 친구 코드 기록(progress.social)을 넣지 않는다. 그 기록은 이 기기의 예전 계정에 그대로 남는다.
 const cloudProgress = progress => ({ ...sanitize(progress), social: emptySocial() });
 // 옮기기 전에 친구 우체통에 남은 편지를 받아서 예전 계정의 친구 기록에 넣는다 (안 되면 기존 친구 화면을 열 때 다시 받는다)
+// 한 묶음마다 기기에 저장(persistStore)된 뒤에만 우체통에서 지운다. 저장이 안 되면 { ok: false, error: 'save' }
 async function drainLegacy(local) {
-  const r = await drainMailbox(local?.progress?.social, mail).catch(() => ({ ok: false, count: 0 }));
-  if (r.count) persistStore();
-  return r;
+  return drainMailbox(local?.progress?.social, mail, { commit: () => persistStore() }).catch(() => ({ ok: false, count: 0 }));
 }
+const SAVE_FAILED = '이 기기에 기록을 저장하지 못해서 옮기지 않았어. 기기 계정은 그대로 있어. 저장 공간을 확인하고 다시 해 줘.';
 async function runMigration(params) {
   const { local } = migrating;
+  // 받은 편지를 기기에 저장하지 못했으면 옮기지 않는다 (기기 계정은 그대로, 편지는 우체통에 남음)
+  const drained = await busy('migrate-form', () => busy('login-form', () => drainLegacy(local)));
+  if (drained.error === 'save') { migrating.last = params; migratePanel(SAVE_FAILED, { fields: false, retry: true }); return; }
   const result = await busy('migrate-form', () => busy('login-form', () => migrateLocal({
     local, account: net, marker, ...params,
     upload: async (progress, importId) => {
@@ -281,6 +288,7 @@ async function runMigration(params) {
   })));
   if (result.ok) {
     markMigrated(store, local.id, result.user.nickname);
+    // 못 적어도 기록은 서버에 있다. 기기 계정이 다음에 다시 보이면 옮기기를 다시 하면 된다 (importId 로 두 번 쓰지 않음).
     persistStore();
     migrating = null; guest = null;
     startSocial();
@@ -357,9 +365,10 @@ function lostLogin(reason) {
 }
 // 옮기던 중 앱이 꺼졌으면(가입은 됐는데 첫 저장 전) 다음에 켤 때 마저 올린다. 안 되면 기기 계정으로 돌아간다.
 async function resumeMigration(local) {
-  await drainLegacy(local);
+  const drained = await drainLegacy(local);
   const acc = openCloud(net.user);
   try {
+    if (drained.error === 'save') throw new Error('save');
     await cloud.importLocal(cloudProgress(local.progress), importIdFor(local));
     acc.progress = sanitize(cloud.data);
     markMigrated(store, local.id, net.user.nickname); persistStore();
@@ -368,10 +377,17 @@ async function resumeMigration(local) {
     startSocial();
     toast(`☁️ ${net.user.nickname} 온라인 계정으로 옮겼어!`, true);
     afterLogin();
-  } catch {
-    stopCloud(); marker.clear();
-    await net.logout().catch(() => {});
-    if (screen === 'login') { renderLogin(); $('login-msg').textContent = '온라인 계정으로 옮기던 기록을 올리지 못했어. 인터넷을 확인하고 다시 옮겨 줘.'; }
+  } catch (error) {
+    // 기기 계정과 옮기던 표시는 그대로 둔다. 다시 하기를 누르면 가입은 건너뛰고 올리기만 한다 (그만두면 로그아웃).
+    stopCloud();
+    if (account === acc) account = null;
+    const code = error?.code ?? error?.message;
+    const text = code === 'save' ? SAVE_FAILED
+      : code === 'conflict-exhausted' ? '다른 기기가 계속 먼저 저장해서 기록을 올리지 못했어. 기기 계정은 그대로 있어. 잠시 뒤에 다시 해 줘.'
+        : code === 'too-big' ? '기록이 너무 커서 서버가 받지 않았어. 기기 계정은 그대로 있어. 나중에 다시 해 줘.'
+          : '온라인 계정으로 옮기던 기록을 올리지 못했어. 인터넷을 확인하고 다시 해 줘.';
+    migrating = { local, last: { nickname: net.user?.nickname ?? local.name, mode: 'login' } };
+    if (screen === 'login') migratePanel(text, { fields: false, retry: true });
   }
 }
 function afterLogin() {
@@ -1090,7 +1106,7 @@ $('reset-form').onsubmit = async e => {
   if (p1 !== p2) { resetMsg('두 비밀번호가 달라. 똑같이 두 번 적어 줘.'); sound.sfx('bump'); return; }
   const r = await creator.resetPassword(store, id, p1);
   if (!r.ok) { resetMsg(r.error); sound.sfx('bump'); return; }
-  persistStore();
+  if (!persistStore()) { resetMsg('이 기기에 저장하지 못했어. 저장 공간을 확인하고 다시 해 줘.'); sound.sfx('bump'); return; }
   $('reset-pass').value = ''; $('reset-pass2').value = '';
   resetDone = { name: r.account.name, password: p1 };
   resetMsg(`✅ ${r.account.name} 계정 비밀번호를 바꿨어! 새 비밀번호를 꼭 기억해 둬.`, true);
@@ -1607,8 +1623,8 @@ async function pollMail() {
   try {
     for (let round = 0; round < 3; round++) {
       const s = social();
-      // 지난번에 받은 편지까지 지우라고 알리면서 새 편지를 받는다
-      const ack = s.lastMail > ackedTo ? s.lastMail : 0;
+      // 지난번에 받은 편지까지 지우라고 알리면서 새 편지를 받는다 (기기에 저장이 안 됐으면 지우지 않는다)
+      const ack = !storeFailed && s.lastMail > ackedTo ? s.lastMail : 0;
       const r = await mail.inbox(s.code, s.key, ack);
       if (who !== account) return;
       if (!r.ok) {
@@ -1623,6 +1639,7 @@ async function pollMail() {
       s.lastMail = Math.max(s.lastMail, ...letters.map(l => l.t));
       receiveLetters(letters);
       save();
+      if (storeFailed) break;
     }
   } finally {
     mailBusy = false;

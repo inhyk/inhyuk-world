@@ -34,10 +34,14 @@ export function storeLetter(social, l) {
   return false;
 }
 
-// 우체통을 비울 때까지 받아서 기록에 넣는다. 받은 편지는 다음 요청의 ack 로 우체통에서 지운다.
-// mail: mailbox.mjs createMailClient(). 결과 { ok, count, error }
-export async function drainMailbox(social, mail, { rounds = 6 } = {}) {
+// 우체통을 비울 때까지 받아서 기록에 넣는다. mail: mailbox.mjs createMailClient(). 결과 { ok, count, error }
+// 받은 편지는 기기에 저장된 뒤에만 지운다: 한 묶음을 넣을 때마다 commit() 으로 저장하고,
+// 저장됐을 때만 다음 요청의 ack 로 우체통에서 지운다. 저장이 안 되면(false 또는 던짐) 그 묶음을 기록에서
+// 되돌리고 ack 없이 { ok: false, error: 'save' } 로 멈춘다 (편지는 우체통에 그대로, 다음에 다시 받는다).
+// commit 이 없으면 아무것도 받지 않는다 (지운 편지를 잃지 않게).
+export async function drainMailbox(social, mail, { commit, rounds = 6 } = {}) {
   if (!social || !validFriendCode(social.code) || !validMailKey(social.key)) return { ok: true, count: 0 };
+  if (typeof commit !== 'function') return { ok: false, count: 0, error: 'save' };
   let count = 0, acked = 0;
   for (let i = 0; i < rounds; i++) {
     const ack = social.lastMail > acked ? social.lastMail : 0;
@@ -49,8 +53,20 @@ export async function drainMailbox(social, mail, { rounds = 6 } = {}) {
       if (social.lastMail > acked) continue; // 마지막으로 받은 것까지 지우라고 한 번 더 알린다
       return { ok: true, count };
     }
-    for (const l of letters) if (storeLetter(social, l)) count++;
+    const before = JSON.stringify(social);
+    let got = 0;
+    for (const l of letters) if (storeLetter(social, l)) got++;
     social.lastMail = Math.max(social.lastMail, ...letters.map(l => Number(l.t)));
+    let saved = false;
+    try { saved = (await commit()) !== false; } catch { saved = false; }
+    if (!saved) {
+      // 기록을 넣기 전으로 되돌린다 (lastMail 도). 그래야 나중에 ack 로 저장 안 된 편지를 지우지 않는다.
+      const back = JSON.parse(before);
+      for (const k of Object.keys(social)) if (!(k in back)) delete social[k];
+      Object.assign(social, back);
+      return { ok: false, count, error: 'save' };
+    }
+    count += got;
   }
   return { ok: true, count };
 }
