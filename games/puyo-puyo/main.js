@@ -13,7 +13,7 @@ import {
   STORE_KEY, loadStore, saveStore, createAccount, login, logout, currentAccount, removeAccount, exportCode, importCode,
   newProgress, xpToNext,
 } from './profile.mjs';
-import { isApp, buzz, restoreSaves, mirrorSave, hideSplash } from './platform.mjs';
+import { isApp, buzz, restoreSaves, mirrorSave, hideSplash, onBackButton } from './platform.mjs';
 import { calendarBonus, todayKey } from './calendar.mjs';
 import { DAILY_REWARDS, SPIN_PRIZES, TIME_REWARDS, rewardPreview, grantReward, rewardView, claimDaily, spin, addPlayTime, claimTime } from './rewards.mjs';
 import { createCreatorSession } from './creator.mjs';
@@ -548,6 +548,30 @@ controls.onKey = e => {
   if (paused && e.code === 'Enter') { pause(false); return true; }
   return false;
 };
+
+// 안드로이드 뒤로 가기 단추: 열린 창을 닫거나 한 칸 뒤로. 첫 화면에서만 false(앱 끄기)
+function handleBack() {
+  if ($('seonn-promo').open) { $('promo-close').click(); return true; }
+  if (!$('ending').hidden) { $('ending-skip').click(); return true; }
+  if (talking) { closeTalk(); return true; }
+  if (!$('result').hidden) { [...$('result-buttons').querySelectorAll('button')].pop()?.click(); return true; }
+  if (match) {
+    if (game?.mode === 'online') $('hud-pause').click();
+    else pause(!paused);
+    return true;
+  }
+  if (screen === 'login') {
+    if ($('login-main').hidden) { loginPanel('main'); return true; }
+    return false;
+  }
+  if (screen === 'menu') return false;
+  if (!screen) return true;
+  if (!$('delete-confirm').hidden) { $('delete-cancel').click(); return true; }
+  const back = document.querySelector(`#scr-${screen} .head .back`);
+  if (back) back.click(); else show('menu');
+  return true;
+}
+onBackButton(handleBack);
 
 function quitGame() {
   if (game?.mode === 'online') online.leave();
@@ -1199,7 +1223,7 @@ window.render_game_to_text = () => JSON.stringify({
   } : null,
 });
 if (TEST) {
-  window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, P, store, startTower, startVs, startSolo, startLocal, startPractice, show, finishMatch, renderer, online, runEnding, recordPlayTime, pause, save };
+  window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, P, handleBack, store, startTower, startVs, startSolo, startLocal, startPractice, show, finishMatch, renderer, online, runEnding, recordPlayTime, pause, save };
 }
 
 // ---------- 시작 ----------

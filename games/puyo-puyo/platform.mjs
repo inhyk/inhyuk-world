@@ -1,9 +1,10 @@
-// 웹사이트와 아이폰 앱(apps/jelly-tower, Capacitor)에서 다르게 해야 하는 것만 모은다.
+// 웹사이트와 아이폰·안드로이드 앱(apps/jelly-tower, Capacitor)에서 다르게 해야 하는 것만 모은다.
 // 앱 안에서는 Capacitor가 window.Capacitor를 넣어 주고, nativePromise로 진동·저장·시작 화면을 부른다.
 // 웹에서는 모두 조용히 아무 일도 하지 않으므로 사이트 빌드에는 Capacitor 패키지가 필요 없다.
 
 const cap = globalThis.Capacitor;
 export const isApp = !!cap?.isNativePlatform?.();
+export const platform = isApp ? cap.getPlatform?.() || 'ios' : 'web';
 
 function native(plugin, method, options = {}, wait = 1500) {
   if (!isApp || typeof cap.nativePromise !== 'function') return Promise.resolve(null);
@@ -47,4 +48,18 @@ export function mirrorSave(key, value) {
 // 앱은 첫 화면이 다 그려질 때까지 시작 그림을 띄워 두고, 준비되면 부드럽게 걷는다.
 export function hideSplash() {
   if (isApp) native('SplashScreen', 'hide', { fadeOutDuration: 250 });
+}
+
+// ---------- 안드로이드 뒤로 가기 단추 ----------
+// 듣는 쪽을 달아 두면 안드로이드가 앱을 바로 끄지 않고 handler에게 맡긴다.
+// handler가 false를 돌려주면(첫 화면이라 더 돌아갈 곳이 없으면) 그때 앱을 끈다.
+export function onBackButton(handler) {
+  if (platform !== 'android' || typeof cap.addListener !== 'function') return;
+  try {
+    cap.addListener('App', 'backButton', () => {
+      let handled = true;
+      try { handled = handler() !== false; } catch { /* 처리하다 실패해도 앱은 켜 둔다 */ }
+      if (!handled) native('App', 'exitApp');
+    });
+  } catch { /* App 플러그인이 없으면 안드로이드 기본 동작 */ }
 }
