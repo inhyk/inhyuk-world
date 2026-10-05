@@ -2,6 +2,7 @@
 // 방해뿌요·연쇄 시작/끝·쓰러짐만 보낸다. 판정(누가 이겼나)은 방장이 한다.
 import { PuyoRoom, normaliseCode } from './room.mjs';
 import { clampFirstTo } from './match.mjs';
+import { QUICK, cleanChat, rateLimiter } from './chat.mjs';
 import { W, H, heights } from './core.mjs';
 import { emptyTotals } from './match.mjs';
 
@@ -68,6 +69,7 @@ export function createOnline(api) {
   const { $, toast, sound } = api;
   let peer = null, firstTo = 2, remote = null, clock = 0, last = '', lastRound = 0;
   let wantAgain = false, peerAgain = false, inGame = false;
+  let chatIn = rateLimiter(6, 5000); // 상대가 너무 빨리 보내면 넘친 건 버린다
   const options = import.meta.env?.DEV && new URLSearchParams(location.search).has('localPeer') ? { host: location.hostname, port: 9003, path: '/puyo', secure: false } : {};
   const room = new PuyoRoom({ status, join, depart, message }, options);
 
@@ -89,11 +91,14 @@ export function createOnline(api) {
     if (msg && state === 'error') { toast(msg); if (inGame) api.quit(); inGame = false; }
   }
   function join() {
+    chatIn = rateLimiter(6, 5000);
+    api.roomJoined?.();
     room.send({ t: 'hello', ...api.me() });
     sound.sfx('coin');
   }
   function depart() {
     const was = peer;
+    api.roomLeft?.();
     peer = null; wantAgain = false; peerAgain = false;
     $('online-lobby').hidden = true;
     if (inGame) { toast(`${was?.name || '친구'}와 연결이 끊겼어.`); inGame = false; api.quit(); }
@@ -154,6 +159,13 @@ export function createOnline(api) {
       case 'next':
         if (!room.host && match && inGame) match.nextRound();
         break;
+      case 'chat': {
+        // 방 채팅: 빠른 말은 번호로 오고, 직접 쓴 말은 받을 때도 나쁜 말을 다시 가린다
+        if (!chatIn()) break;
+        const text = Number.isInteger(m.q) && QUICK[m.q] ? QUICK[m.q] : cleanChat(m.text);
+        if (text) api.roomChat?.({ name: peer?.name || '친구', text });
+        break;
+      }
       case 'again':
         peerAgain = true;
         if (wantAgain && room.host) restart();
@@ -214,6 +226,18 @@ export function createOnline(api) {
       else toast('친구를 기다리는 중… 친구도 “한 번 더!”를 누르면 시작해.');
     },
     setFirstTo(n) { firstTo = n; if (room.host) room.send({ t: 'first', n }); },
+    // 방 채팅 보내기: 빠른 말 번호(q) 또는 직접 쓴 말(text)
+    say({ q, text }) {
+      if (!room.ready) return false;
+      if (Number.isInteger(q) && QUICK[q]) room.send({ t: 'chat', q });
+      else if (text) room.send({ t: 'chat', text: cleanChat(text) });
+      else return false;
+      return true;
+    },
+    get connected() { return room.ready; },
+    // 친구 초대: 방을 만들어 코드를 돌려주거나, 받은 코드로 들어간다
+    async host() { try { await room.open(); } catch { /* 상태 글자로 알려 줌 */ } return room.code; },
+    async join(code) { try { await room.open(code); } catch { /* 상태 글자로 알려 줌 */ } return room.active; },
     peerName: () => peer?.name || '친구',
     leave() { inGame = false; room.leave(); },
     state: () => ({ role: room.role, code: room.code, status: room.status, peer }),
