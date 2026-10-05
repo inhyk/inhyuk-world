@@ -69,7 +69,7 @@ export class CloudSave {
   // localFailed: 마지막으로 적으려던 것이 기기에 없다는 뜻. 다시 적는 데 성공하면 onPersistOk.
   persist() {
     const ok = writeCache(this.o.storage, this.o.uid, { data: this.data, revision: this.revision, dirty: this.dirty, updated: this.updated });
-    if (!ok) { this.localFailed = true; this.o.onPersistError?.(this.state); }
+    if (!ok) { this.localFailed = true; this.o.onPersistError?.(this.dirty ? 'pending' : this.state); }
     else if (this.localFailed) { this.localFailed = false; this.o.onPersistOk?.(); }
     return ok;
   }

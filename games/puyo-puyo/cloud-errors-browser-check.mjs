@@ -42,7 +42,7 @@ const url = `${base}${base.includes('?') ? '&' : '?'}test&net=${encodeURICompone
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const errors = [];
 // 일부러 내는 409, 413, 저장이 없을 때 404 는 Chrome 이 콘솔 오류로 찍는다
-const expected = /Failed to load resource: the server responded with a status of (404|409|413)/;
+const expected = /Failed to load resource: the server responded with a status of (404|409|413|503)/;
 async function open(name, viewport = { width: 1100, height: 860 }) {
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
@@ -131,8 +131,27 @@ try {
   await c.waitForFunction(() => window.__puyo.cloud.state === 'synced' && !window.__puyo.cloud.dirty, null, { timeout: 15000 });
   assert.equal(await c.textContent('#cloud-badge'), '☁️ 저장됨');
 
+  // 온라인 계정도 캐시 쓰기와 서버 쓰기가 모두 실패하면 보존 성공으로 안내하지 않는다.
+  await c.route(SAVES, route => route.request().method() === 'PUT'
+    ? route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'server' }) })
+    : route.continue());
+  await c.evaluate(() => {
+    const real = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) {
+      if (k.startsWith('jelly-cloud-v1')) throw new DOMException('full', 'QuotaExceededError');
+      return real.call(this, k, v);
+    };
+    window.__puyo.P().coins = 5555;
+    window.__puyo.save();
+    return window.__puyo.cloud.flush();
+  });
+  await toastHas(c, /창을 닫지 마/);
+  assert.match(await c.textContent('#cloud-badge'), /이 기기에도 서버에도 저장 못 함/);
+  assert.deepEqual(await c.evaluate(() => ({ failed: window.__puyo.cloud.localFailed, dirty: window.__puyo.cloud.dirty })), { failed: true, dirty: true });
+  await shot(c, 'cloud-cache-full');
+
   assert.deepEqual(errors, []);
-  console.log(`PASS: 옮기기 중 충돌 3번 → 옮기지 않고 다시 하기(기기 계정, 옮기던 표시 그대로) → 다시 하기로 옮김, 기기 저장소 꽉 참 알림, 413 too-big → 저장됨 아님(알림, 기기에 남음) → 서버가 받으면 저장됨 — 오류 없음 (net ${NET})`);
+  console.log(`PASS: 옮기기 중 충돌 3번 → 옮기지 않고 다시 하기(기기 계정, 옮기던 표시 그대로) → 다시 하기로 옮김, 기기 저장소 꽉 참 알림, 413 too-big → 저장됨 아님(알림, 기기에 남음) → 서버가 받으면 저장됨, 온라인 캐시와 서버 동시 실패 경고 — 오류 없음 (net ${NET})`);
   console.log(`Screenshots: ${shots}`);
 } finally {
   await browser.close();

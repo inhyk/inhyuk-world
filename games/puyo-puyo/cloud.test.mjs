@@ -504,7 +504,9 @@ test('기기 저장 공간이 꽉 차면(scopedStorage 경유) 저장한 것으�
   const { cloud } = make(server, { storage, options: { onPersistError: state => errors.push(state) } });
   await cloud.start();
   server.down = true;
+  errors.length = 0;
   cloud.change({ coins: 50 });
+  assert.deepEqual(errors, ['pending']); // 새 기록을 이전 synced 상태로 성공 안내하지 않는다.
   await cloud.flush();
   assert.equal(cloud.localFailed, true);
   assert.ok(errors.length >= 1);
