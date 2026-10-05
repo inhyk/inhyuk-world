@@ -1,4 +1,4 @@
-import {DriveRoom,normaliseCode,safeInput} from './room.mjs';
+import {DriveRoom,normaliseCode,safeInput,serverUrl} from './room.mjs';
 import {CARS,cleanSave,buy,claimDaily,claimTime,discover,nearestRoad} from './core.mjs';
 import {Journey} from './journey.mjs';
 import {Enforcement} from './police.mjs';
@@ -6,13 +6,14 @@ const idle={gas:false,brake:true,steer:0};
 const $=selector=>document.querySelector(selector);
 const day=()=>{const d=new Date();return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;};
 const pose=p=>({x:p.x,z:p.z,yaw:p.yaw,speed:p.speed,gear:p.gear});
+// net 서버는 한 사람이 1초에 30개까지만 받는다. 위치는 1초에 15번만 보내고, 한 번뿐인 일(버튼, 안내)은 다음 메시지에 모아 보낸다.
+export const SEND_EVERY=1/15;const MAX_ACTIONS=16,MAX_NOTICES=8;
 export function setupOnline(ctx){
  const {journey,world,node,box,cyl,makeCar,makeTreasure,makeCuffs,camera,material,toast,persist}=ctx;
- let partner=null,partnerSave=null,partnerLaw=null,partnerInput=idle,partnerPlaying=false,lastInput=0,sendClock=0,elapsed=0,guestJail=0,lastSave=0,connectedOnce=false;
+ let partner=null,partnerSave=null,partnerLaw=null,partnerInput=idle,partnerPlaying=false,lastInput=0,sendClock=0,elapsed=0,guestJail=0,lastSave=0,connectedOnce=false,actions=[],notices=[];
  const initialVehicleIds=new Set(journey.vehicles.map(v=>v.id));
  let remotePawn=null;const friendMarker=cyl('friend marker',0,3,0,.32,.7,'#83ceff',world,0);friendMarker.setEnabled(false);
- const options=import.meta.env.DEV&&new URLSearchParams(location.search).has('localPeer')?{host:location.hostname,port:9001,path:'/free-drive',secure:false}:{};
- const room=new DriveRoom({save:()=>ctx.save(),status:updateStatus,join:joinGuest,depart:depart,message:receive},options);
+ const room=new DriveRoom({save:()=>ctx.save(),status:updateStatus,join:joinGuest,depart:depart,message:receive},{server:serverUrl(location.search,import.meta.env)});
  function updateStatus(status,message=''){
   $('#room-status').textContent=message||({offline:'각자 기기에서 같은 방 코드로 들어오세요.',connecting:'방에 연결하는 중…',waiting:`방 코드 ${room.code} · 친구를 기다리고 있어요 (1/2)`,connected:`방 코드 ${room.code} · 함께 플레이 중 (2/2)`,error:'연결을 확인하고 다시 시도해 주세요.'}[status]);
   $('#room-code-display').textContent=room.code;$('#room-host').disabled=room.active;$('#room-join').disabled=room.active;$('#room-leave').hidden=!room.active;$('#room-copy').hidden=!room.code;$('#room-badge').hidden=!room.active;
@@ -27,11 +28,11 @@ export function setupOnline(ctx){
   partner.own.durability=partnerSave.durability[partnerSave.selected]??100;
   partnerLaw=new Enforcement({save:partnerSave,persist:()=>{},toast:tell,journey:partner,world,node,box,cyl,makeCar,material});partnerPlaying=true;lastInput=Date.now();
  }
- function tell(message){room.send({type:'notice',text:message});}
+ function tell(message){if(room.host&&room.ready&&notices.length<MAX_NOTICES)notices.push(String(message).slice(0,160));}
  function clearPartner(){
   if(partner){if(partner.occupied&&partner.occupied!==partner.own){partner.occupied.auto=false;partner.occupied.speed=0;}const index=journey.vehicles.indexOf(partner.own);if(index>=0)journey.vehicles.splice(index,1);partner.own.mesh.dispose();partner.own.cuffMesh?.dispose();partner.pawn.dispose();journey.actors=journey.actors.filter(a=>a!==partner);}
   if(partnerLaw){partnerLaw.car.dispose();partnerLaw.officer.dispose();for(const s of partnerLaw.signals.values())s.root.dispose();}
-  partner=null;partnerLaw=null;partnerSave=null;partnerInput=idle;partnerPlaying=false;
+  partner=null;partnerLaw=null;partnerSave=null;partnerInput=idle;partnerPlaying=false;actions=[];notices=[];
  }
  function depart(){
   clearPartner();friendMarker.setEnabled(false);remotePawn?.dispose();remotePawn=null;
@@ -44,15 +45,17 @@ export function setupOnline(ctx){
   for(const v of journey.vehicles)delete v.networkReserved;
   connectedOnce=false;guestJail=0;api.other=null;persist();
  }
- function action(kind,value){if(room.guest){room.send({type:'action',kind,value});return true;}return false;}
+ function action(kind,value){if(room.guest){if(room.ready&&actions.length<MAX_ACTIONS)actions.push([kind,value]);return true;}return false;}
  function receive(message){
   if(room.host){
    if(!partner)return;
-   if(message.type==='input'){partnerInput=safeInput(message.input);partnerPlaying=message.playing===true;lastInput=Date.now();}
-   if(message.type==='action')perform(message.kind,message.value);
+   if(message.type!=='input')return;
+   partnerInput=safeInput(message.input);partnerPlaying=message.playing===true;lastInput=Date.now();
+   if(Array.isArray(message.actions))for(const a of message.actions.slice(0,MAX_ACTIONS))if(Array.isArray(a)&&typeof a[0]==='string')perform(a[0],a[1]);
   }else if(room.guest){
-   if(message.type==='notice'&&typeof message.text==='string')toast(message.text.slice(0,160));
-   if(message.type==='frame')applyFrame(message);
+   if(message.type!=='frame')return;
+   if(Array.isArray(message.notices))for(const text of message.notices.slice(0,MAX_NOTICES))if(typeof text==='string')toast(text.slice(0,160));
+   applyFrame(message);
   }
  }
  function perform(kind,value){
@@ -121,13 +124,19 @@ export function setupOnline(ctx){
    }else{partner.p.speed=0;if(partner.occupied)partner.occupied.speed=0;}
    partner.render(ctx.clock());partner.pawn.setEnabled(partner.walking&&!remaining);api.other={p:pose(partner.p),vehicle:partner.occupied?.id||null,jail:remaining};friendMarker.setEnabled(!remaining);friendMarker.position.set(partner.p.x,3.3,partner.p.z);
   }
-  if(sendClock>=.05){sendClock%=.05;if(room.guest&&room.ready)room.send({type:'input',input:safeInput(input),playing});else if(room.host&&partner&&room.ready)room.send(frame());}
+ }
+ // 한 번 돌 때 많아야 한 번 보낸다 (탭이 느려져 tick 이 몰려도 메시지가 몰리지 않게).
+ function flush(input,playing){
+  if(sendClock<SEND_EVERY)return;sendClock%=SEND_EVERY;
+  if(room.guest&&room.ready){room.send({type:'input',input:safeInput(input),playing,actions});actions=[];}
+  else if(room.host&&partner&&room.ready){room.send({...frame(),notices});notices=[];}
  }
  let lastTick=performance.now();
  setInterval(()=>{
   const now=performance.now();let remaining=Math.min((now-lastTick)/1000,.25);lastTick=now;
   const {input,playing}=ctx.controls();
   while(remaining>.001){const dt=Math.min(remaining,.05);tick(dt,safeInput(input),playing);remaining-=dt;}
+  if(room.active)flush(input,playing);
  },50);
  function openPanel(){ctx.clearInput();$('#room-panel').hidden=false;$('#room-code-input').focus();}
  $('#multiplayer').onclick=openPanel;$('#room-badge').onclick=openPanel;$('#room-close').onclick=()=>$('#room-panel').hidden=true;
@@ -137,6 +146,6 @@ export function setupOnline(ctx){
  $('#room-copy').onclick=async()=>{try{await navigator.clipboard.writeText(room.code);toast('방 코드를 복사했어요. 친구에게 알려 주세요!');}catch{toast(`친구에게 방 코드 ${room.code}를 알려 주세요.`);}};
  $('#room-code-input').oninput=e=>e.target.value=normaliseCode(e.target.value);
  addEventListener('pagehide',()=>room.leave());
- const api={room,other:null,get guest(){return room.guest&&room.ready;},get waitingGuest(){return room.guest;},get active(){return room.active;},get jail(){return guestJail;},action,shift(x,z){partnerLaw?.shift(x,z);},get blocked(){return !$('#room-panel').hidden;},state:()=>({role:room.role,code:room.code,status:room.status,count:room.active?(room.ready?2:1):0,other:api.other}),leave:()=>room.leave()};
+ const api={room,other:null,get guest(){return room.guest&&room.ready;},get waitingGuest(){return room.guest;},get active(){return room.active;},get jail(){return guestJail;},action,shift(x,z){partnerLaw?.shift(x,z);},get blocked(){return !$('#room-panel').hidden;},state:()=>({role:room.role,code:room.code,status:room.status,count:room.active?(room.ready?2:1):0,other:api.other,rate:room.rate()}),leave:()=>room.leave()};
  return api;
 }
