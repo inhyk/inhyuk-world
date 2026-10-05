@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/jelly-mail?cleanup=1", "schedule": "17 18 * * *" }
+  ]
+}

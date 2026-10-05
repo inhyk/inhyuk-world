@@ -1234,16 +1234,19 @@ const online = createOnline({
 
 // ---------- 친구와 채팅 ----------
 // 친구는 계정마다 6글자 친구 코드로 맺는다.
-// - 메시지·젤리 이모티콘·친구 신청은 사이트의 친구 우체통(/api/jelly-mail)에 맡긴다. 그래서 친구가 게임을
-//   꺼 두었어도 나중에 켜면 받는다. 받아 가면 우체통에서 지우고, 안 받아 가도 7일 뒤 지운다.
-// - 둘 다 게임을 켜 두었으면 PeerJS로 직접 이어져서 "게임 중" 표시, 대전 초대, 편지가 왔다는 알림(ring)을 주고받는다.
-// - 우체통이 없으면(개발 서버, 인터넷 끊김) 예전처럼 둘 다 켜 두었을 때만 직접 보낸다.
+// - 둘 다 게임을 켜 두었으면 PeerJS로 직접 이어져서 메시지·이모티콘을 바로 보내고 "받았어"(got) 답을 받는다.
+//   "게임 중" 표시와 대전 초대도 이 연결로 한다.
+// - 친구가 게임을 꺼 두었거나 답이 없으면 사이트의 친구 우체통(/api/jelly-mail)에 맡긴다. 친구가 나중에 켜면 받고,
+//   받아 가면 우체통에서 지운다 (안 받아 가도 7일 뒤 지운다). 우체통을 얼마나 자주 열지는 서버가 알려 준다(pace).
+// - 우체통이 없으면(개발 서버, 인터넷 끊김) 예전처럼 둘 다 켜 두었을 때만 보낸다.
 // 대화는 이 기기에 친구마다 최근 50개만 남는다.
 const social = () => P().social;
 const chatOn = () => P().settings.chat !== false;
 const mail = createMailClient();
 let mailState = 'unknown';  // 'on' 우체통 사용 중 | 'off' 우체통 없음 | 'unknown' 아직 모름
 let mailTimer = null, mailBusy = false, mailTries = 0, ackedTo = 0;
+let mailPace = { fast: 8000, slow: 40000 }; // 우체통을 여는 간격: 친구 화면·채팅에서 / 그 밖에서
+const pendingAcks = new Map(); // 직접 보낸 편지 아이디 → "받았어" 답을 기다리는 함수
 const friendNet = new FriendNet({
   status: (state, message) => {
     netNote = state === 'connecting' ? '친구 서버에 연결하는 중…' : message;
@@ -1304,7 +1307,7 @@ async function startMail() {
   const who = account, code = ensureFriendCode();
   const r = await mail.hello(code, social().key);
   if (who !== account) return;
-  if (r.ok) { mailState = 'on'; mailTries = 0; refreshSocialViews(); pollMail(); return; }
+  if (r.ok) { mailState = 'on'; mailTries = 0; setPace(r.pace); refreshSocialViews(); pollMail(); return; }
   if (r.error === 'taken' && mailTries++ < 2) {
     // 아주 드문 일: 다른 사람이 같은 친구 코드를 먼저 맡았다 → 새 코드로 바꾼다
     social().code = makeFriendCode(); social().key = makeMailKey(); save();
@@ -1317,7 +1320,12 @@ async function startMail() {
   refreshSocialViews();
 }
 // 친구 화면이나 친구 채팅을 보고 있으면 자주, 아니면 가끔 우체통을 연다
-const mailDelay = () => (screen === 'friends' || chatWith?.kind === 'friend' ? 8000 : 40000);
+const mailDelay = () => (screen === 'friends' || chatWith?.kind === 'friend' ? mailPace.fast : mailPace.slow);
+// 서버가 알려 준 간격 (저장소마다 무료 한도가 달라서): 5초~15분 사이만 받는다
+function setPace(pace) {
+  const ok = v => Number.isFinite(v) && v >= 5000 && v <= 900000;
+  if (pace && ok(pace.fast) && ok(pace.slow)) mailPace = { fast: pace.fast, slow: pace.slow };
+}
 function scheduleMail(ms = mailDelay()) {
   clearTimeout(mailTimer);
   if (account) mailTimer = setTimeout(() => (mailState === 'on' ? pollMail() : startMail()), ms);
@@ -1341,6 +1349,7 @@ async function pollMail() {
         break;
       }
       if (ack) ackedTo = ack;
+      setPace(r.pace);
       const letters = (r.letters || []).filter(l => l && l.t > s.lastMail);
       if (!letters.length) break;
       s.lastMail = Math.max(s.lastMail, ...letters.map(l => l.t));
@@ -1357,20 +1366,33 @@ function receiveLetters(letters) {
   for (const l of letters) friendData(l.from, { t: l.kind, text: l.text, sticker: l.sticker, name: l.name, level: l.level, at: l.t, id: l.id }, { via: 'mail', quiet });
   if (quiet) { toast(`📮 친구 우체통에 편지가 ${letters.length}통 왔어!`, true); sound.sfx('mission'); }
 }
-// 친구에게 보내기: 우체통에 맡기고(친구가 꺼 두었어도 나중에 받는다), 친구가 게임 중이면 바로 알린다
+// 게임 중인 친구에게 직접 보내고 "받았어"(got) 답을 기다린다. 답이 없으면 false
+function sendLive(code, payload, wait = 3500) {
+  return new Promise(resolve => {
+    if (!friendNet.isOnline(code) || !friendNet.send(code, payload)) { resolve(false); return; }
+    const timer = setTimeout(() => { pendingAcks.delete(payload.id); resolve(false); }, wait);
+    pendingAcks.set(payload.id, () => { clearTimeout(timer); pendingAcks.delete(payload.id); resolve(true); });
+  });
+}
+// 친구에게 보내기: 게임 중이면 직접(바로 도착, 우체통을 아낀다), 아니면 우체통에 맡긴다(친구가 켜면 받는다)
 async function sendToFriend(code, letter) {
   const s = social(), id = letterId(), me = { name: account.name, level: P().level };
+  if (await sendLive(code, { t: letter.kind, text: letter.text, sticker: letter.sticker, id, ...me })) return { ok: true, live: true };
   if (mailState === 'on') {
     const r = await mail.send(s.code, s.key, { to: code, id, kind: letter.kind, text: letter.text, sticker: letter.sticker, ...me });
     if (r.ok) { friendNet.send(code, { t: 'ring' }); return r; }
     if (['personal', 'limit', 'empty', 'sticker'].includes(r.error)) return r;
     if (r.status === 401) { mailState = 'unknown'; startMail(); }
   }
-  // 우체통을 쓸 수 없으면 게임 중인 친구에게 직접 보낸다
-  if (friendNet.isOnline(code) && friendNet.send(code, { t: letter.kind, text: letter.text, sticker: letter.sticker, id, ...me })) return { ok: true, live: true };
   return { ok: false, error: mailState === 'on' ? 'fail' : 'offline' };
 }
-const replyFriend = (code, kind) => { if (account) sendToFriend(code, { kind }); };
+const NEEDS_GOT = new Set(['msg', 'st', 'fr', 'fa', 'fx']);
+// 친구 신청에 답하기: 신청한 친구가 게임 중이면 직접 이어서 바로 알려 준다
+async function replyFriend(code, kind) {
+  if (!account) return;
+  if (!friendNet.isOnline(code) && friendNet.on) await friendNet.connect(code);
+  sendToFriend(code, { kind });
+}
 function refreshSocialViews() {
   updateSocialBadges();
   if (screen === 'friends') renderFriends();
@@ -1392,12 +1414,14 @@ function friendData(code, m, { via = 'live', quiet = false } = {}) {
   if (!account || !validFriendCode(code)) return;
   const s = social(), friend = s.friends.find(f => f.code === code);
   if (s.blocked.includes(code)) return; // 차단한 친구가 보낸 것은 조용히 버린다
-  if (m.id) { if (seenLetters.has(m.id)) return; seenLetters.add(m.id); }
   if (via === 'live') {
+    if (m.t === 'got') { if (typeof m.id === 'string') pendingAcks.get(m.id)?.(); return; } // 내가 보낸 것을 받았대
     if (!friendLimits.has(code)) friendLimits.set(code, rateLimiter(8, 5000));
     if (!friendLimits.get(code)()) return;
     if (m.t === 'ring') { pollMail(); return; } // 친구가 우체통에 편지를 넣었다는 알림
+    if (m.id && NEEDS_GOT.has(m.t)) friendNet.send(code, { t: 'got', id: m.id }); // 받았다고 답한다 (두 번 받아도)
   }
+  if (m.id) { if (seenLetters.has(m.id)) return; seenLetters.add(m.id); }
   const time = Number(m.at) || Date.now();
   if (m.t === 'fr') {
     if (friend) { replyFriend(code, 'fa'); return; } // 이미 친구면 바로 받아 준다
@@ -1490,6 +1514,7 @@ function acceptRequest(code) {
   if (!r) return;
   if (addFriend(s, { code, name: r.name, level: r.level })) {
     save();
+    syncFriendNet();
     replyFriend(code, 'fa');
     toast(`🎉 ${r.name}와(과) 친구가 됐어!`, true); sound.sfx('level'); haptic('success');
   }
@@ -1514,8 +1539,11 @@ $('friend-add').onsubmit = async e => {
   if (s.sent.some(r => r.code === code)) { friendStatus('벌써 친구 신청을 보냈어. 친구가 받으면 친구가 돼!'); return; }
   sound.sfx('click');
   friendStatus('친구 신청을 보내는 중…');
-  if (mailState !== 'on') await startMail();
-  if (mailState === 'on') {
+  // 친구가 지금 게임 중이면 직접 이어서 바로 보내고, 아니면 우체통에 맡긴다
+  await friendNet.start(ensureFriendCode(), { name: account.name, level: P().level });
+  const live = await friendNet.connect(code);
+  if (mailState !== 'on' && !live) await startMail();
+  if (live || mailState === 'on') {
     const r = await sendToFriend(code, { kind: 'fr' });
     if (!r.ok) { friendStatus(r.error === 'limit' ? '신청을 너무 많이 보냈어. 조금 뒤에 다시 해 줘.' : '친구 신청을 보내지 못했어. 인터넷을 확인하고 다시 해 봐!'); return; }
     s.sent.push({ code, time: Date.now() }); save();
@@ -1526,14 +1554,7 @@ $('friend-add').onsubmit = async e => {
     renderFriends();
     return;
   }
-  // 우체통이 없으면 예전처럼 게임 중인 친구에게 직접
-  await friendNet.start(ensureFriendCode(), { name: account.name, level: P().level });
-  if (!(await friendNet.connect(code))) { friendStatus('친구를 찾지 못했어. 친구도 지금 게임을 켜 두고 있어야 해. 코드를 확인하고 다시 해 봐!'); return; }
-  s.sent.push({ code, time: Date.now() }); save();
-  friendNet.send(code, { t: 'fr', name: account.name, level: P().level, id: letterId() });
-  $('friend-input').value = '';
-  friendStatus('친구 신청을 보냈어! 친구가 받으면 바로 친구가 돼.');
-  renderFriends();
+  friendStatus('친구를 찾지 못했어. 친구도 지금 게임을 켜 두고 있어야 해. 코드를 확인하고 다시 해 봐!');
 };
 $('friend-input').oninput = e => { e.target.value = normaliseFriendCode(e.target.value); };
 $('friend-code-copy').onclick = async () => {

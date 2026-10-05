@@ -103,10 +103,13 @@ try {
   A = await openGame(ctxA, '지우');
   await A.waitForSelector('#scr-menu:not([hidden])');
   await A.click('[data-go="friends"]'); await mailOn(A);
+  // 둘 다 켜져 있으면 직접 이어진다 (게임 중 표시) → 이때는 우체통을 거치지 않고 바로 간다
+  await A.waitForFunction(() => document.querySelector('#friend-list .friend .dot.on'), null, T);
+  await B.waitForFunction(() => document.getElementById('chat-dot').classList.contains('on'), null, T);
   await A.click('#friend-list [data-chat]');
   await B.click('#chat-emoji-toggle'); await B.click('#chat-stickers [data-sticker="0"]'); // 좋아!
   await B.fill('#chat-input', '좋아 ㅋㅋ'); await B.click('#chat-form button[type=submit]');
-  await A.waitForFunction(() => document.querySelectorAll('#chat-log .msg.them').length === 2, null, { timeout: 20000 });
+  await A.waitForFunction(() => document.querySelectorAll('#chat-log .msg.them').length === 2, null, { timeout: 8000 }); // 직접 연결이라 금방
   assert.deepEqual((await logTexts(A)).slice(-2), ['젤리 이모티콘 좋아!', '좋아 ㅋㅋ']);
   // 우체통에서 받아 간 편지는 지워진다 (다시 열어도 같은 편지가 또 오지 않는다)
   await A.reload(); await A.waitForSelector('#scr-menu:not([hidden])');
