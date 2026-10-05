@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newProgress, sanitize, emptyStore, createAccount, exportCode, importCode } from './profile.mjs';
+import { newProgress, sanitize, emptyStore, createAccount, exportCode, importCode, login } from './profile.mjs';
 import { calendarBonus, todayKey, holidaysFor } from './calendar.mjs';
 import { grantReward, claimDaily, rewardView, spin, addPlayTime, claimTime, DAILY_REWARDS, SPIN_PRIZES } from './rewards.mjs';
 import { createCreatorSession } from './creator.mjs';
@@ -166,4 +166,27 @@ test('제작자 기능은 타워·챌린지·스킨에 반영, 반복 사용해�
   assert.deepEqual(p.owned.skin.slice().sort(), SKINS.map(s => s.id).sort());
   assert.deepEqual(p.owned.effect.slice().sort(), EFFECTS.map(s => s.id).sort());
   assert.equal(p.equip.skin, 'classic'); assert.equal(session.apply(p, 'invalid'), null);
+});
+
+test('제작자 모드: 잊은 계정 비밀번호를 다시 정하면 새 비밀번호로만 들어가고, 레벨·코인은 그대로', async () => {
+  const store = emptyStore();
+  const { account } = await createAccount(store, '안녕', 'abcd');
+  account.progress.level = 55; account.progress.coins = 25069;
+  await createAccount(store, '다른친구', 'zzzz');
+  const session = createCreatorSession();
+  assert.equal((await session.resetPassword(store, account.id, '5678')).ok, false); // 잠겨 있으면 못 바꾼다
+  session.unlock('7777777');
+  assert.match((await session.resetPassword(store, account.id, '12')).error, /4글자 이상/);
+  assert.equal((await session.resetPassword(store, 'nope', '5678')).ok, false);
+  const oldSalt = account.salt;
+  assert.equal((await session.resetPassword(store, account.id, '5678')).ok, true);
+  assert.notEqual(account.salt, oldSalt);
+  assert.equal((await login(store, '안녕', 'abcd')).ok, false);
+  const r = await login(store, '안녕', '5678');
+  assert.equal(r.ok, true);
+  assert.equal(r.account.progress.level, 55); assert.equal(r.account.progress.coins, 25069);
+  assert.equal((await login(store, '다른친구', 'zzzz')).ok, true); // 다른 계정은 그대로
+  // 기록 코드로 옮겨도 새 비밀번호
+  const moved = importCode(emptyStore(), exportCode(account));
+  assert.equal((await login({ accounts: [moved.account], current: null }, '안녕', '5678')).ok, true);
 });

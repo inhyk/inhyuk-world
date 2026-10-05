@@ -16,6 +16,7 @@
   <b id="hud-title"></b>
   <button id="hud-music" class="round" aria-label="음악 켜고 끄기">🎵</button>
   <button id="hud-sound" class="round" aria-label="효과음 켜고 끄기">🔊</button>
+  <button id="hud-chat" class="round" aria-label="채팅" hidden>💬<i class="dot-badge" id="hud-chat-dot" hidden></i></button>
 </header>
 
 <!-- 휴대폰 버튼 -->
@@ -99,6 +100,7 @@
       <button class="menu-btn" data-go="vs"><span class="ico">🤖</span><b>AI 대전</b><small>원하는 AI랑 한 판</small></button>
       <button class="menu-btn" data-go="local"><span class="ico">👥</span><b>2인 플레이</b><small>한 키보드로 둘이서</small></button>
       <button class="menu-btn" data-go="online"><span class="ico">🌐</span><b>온라인 대전</b><small>방 코드로 친구와</small></button>
+      <button class="menu-btn friends" data-go="friends"><span class="ico">👫</span><b>친구</b><small>친구 코드로 친구 맺고 채팅</small><i class="badge" id="friend-badge" hidden></i></button>
       <button class="menu-btn" data-go="solo"><span class="ico">♾️</span><b>혼자 하기</b><small>점점 빨라지는 연습</small></button>
       <button class="menu-btn" data-go="missions"><span class="ico">🎯</span><b>챌린지</b><small>미션 깨고 보상 받기</small><i class="badge" id="mission-badge" hidden></i></button>
       <button class="menu-btn" data-go="shop"><span class="ico">🛍️</span><b>상점</b><small>스킨 · 터짐 효과</small></button>
@@ -155,6 +157,33 @@
       <div class="setting" id="online-first-row"><span>몇 판 먼저 이기면 승리?</span><div class="seg first-to" id="online-first"></div></div>
       <button id="online-start" class="primary big">시작!</button>
       <p id="online-wait" class="fine" hidden>방장이 시작하기를 기다리는 중…</p>
+      <button id="lobby-chat" class="ghost lobby-chat">💬 채팅<i class="dot-badge" id="lobby-chat-dot" hidden></i></button>
+    </div>
+  </section>
+
+  <!-- 친구: 친구 코드로 맺고, 둘 다 게임을 켜 두었을 때 채팅·초대 -->
+  <section id="scr-friends" class="screen" hidden>
+    <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>👫 친구</h2></div>
+    <div id="friends-guest" class="card friends-guest" hidden>
+      <p class="lead">친구는 계정이 있어야 사귈 수 있어. 손님 기록은 창을 닫으면 사라지거든!</p>
+      <button id="friends-login" class="primary big">✨ 계정 만들러 가기</button>
+    </div>
+    <div id="friends-main">
+      <div class="friend-code card">
+        <small>내 친구 코드</small><b id="my-friend-code">------</b>
+        <button id="friend-code-copy" class="ghost">📋 코드 복사</button>
+        <p class="fine">친구에게 이 코드를 알려 줘. 친구 코드를 서로 넣으면 친구가 돼!</p>
+        <p id="mail-note" class="fine mail-note" role="status"></p>
+      </div>
+      <form id="friend-add" class="row center friend-add">
+        <input id="friend-input" placeholder="친구 코드 6글자" maxlength="6" autocomplete="off" autocapitalize="characters">
+        <button class="primary" type="submit">친구 신청</button>
+      </form>
+      <p id="friend-status" class="fine center-text" role="status" aria-live="polite"></p>
+      <div id="friend-requests"></div>
+      <h3 class="friend-title">내 친구 <small id="friend-count"></small></h3>
+      <div id="friend-list" class="friend-list"></div>
+      <p class="fine safety">🔒 전화번호·주소·학교 이름 같은 개인정보는 친구에게도 보내지 마! 대화는 서버에 저장되지 않고 두 기기 사이로만 가고, 이 기기에는 친구마다 최근 50개만 남아.</p>
     </div>
   </section>
 
@@ -179,6 +208,16 @@
         <button data-creator="skins"><span>🎨</span><b>모든 스킨 해제</b><small>터짐 효과까지 모두 · 상점에서 장착!</small></button>
       </div>
       <p id="creator-result" class="lead" role="status"></p>
+      <form id="reset-form" class="card reset-card">
+        <h3>🔑 계정 비밀번호 다시 정하기</h3>
+        <p class="fine">비밀번호를 잊어버린 <b>내 계정</b>에만 써. 다른 사람 계정은 그 사람한테 물어봐! 레벨·코인 같은 기록은 그대로 남아.</p>
+        <label class="reset-row">계정 <select id="reset-account" aria-label="비밀번호를 바꿀 계정"></select></label>
+        <input id="reset-pass" type="password" placeholder="새 비밀번호 (4글자 이상)" maxlength="16" autocomplete="new-password">
+        <input id="reset-pass2" type="password" placeholder="새 비밀번호 한 번 더" maxlength="16" autocomplete="new-password">
+        <button type="submit" class="primary">비밀번호 바꾸기</button>
+        <p id="reset-msg" class="msg" role="status"></p>
+        <button type="button" id="reset-login" class="ghost" hidden>이 계정으로 바로 들어가기 ▶</button>
+      </form>
       <div class="row"><button id="creator-lock" class="ghost">🔒 다시 잠그기</button><button class="primary" data-go="tower">타워로 가기</button></div>
     </div>
   </section>
@@ -239,6 +278,7 @@
       <label><input type="checkbox" id="set-ghost" checked> 떨어질 자리 표시</label>
       <label><input type="checkbox" id="set-shake" checked> 화면 흔들림</label>
       <label class="app-only"><input type="checkbox" id="set-haptic" checked> 진동</label>
+      <label><input type="checkbox" id="set-chat" checked> 채팅</label>
     </div>
     <h3>다른 기기로 옮기기</h3>
     <p class="fine">이 코드를 복사해서 다른 기기의 “기록 코드로 가져오기”에 붙여 넣으면 레벨·코인·타워 기록이 그대로 옮겨져. 비밀번호는 똑같아.</p>
@@ -276,6 +316,23 @@
   <div class="coach-body"><small id="coach-step"></small><b id="coach-title"></b><p id="coach-text"></p></div>
   <div id="coach-buttons" class="coach-buttons"></div>
 </div>
+
+<!-- 채팅 창: 친구 채팅(가운데)과 온라인 대전 채팅(게임 중에는 오른쪽 위에 작게) -->
+<div id="chat" class="chat-wrap" hidden>
+  <div class="card chat-card" role="dialog" aria-labelledby="chat-name">
+    <div class="chat-head"><i id="chat-dot" class="dot"></i><b id="chat-name"></b><small id="chat-sub"></small><button id="chat-close" class="ghost round-sm" aria-label="채팅 닫기">✕</button></div>
+    <div id="chat-log" class="chat-log" aria-live="polite"></div>
+    <div id="chat-quick" class="chat-quick"></div>
+    <form id="chat-form" class="chat-form"><button type="button" id="chat-emoji-toggle" class="ghost emoji-toggle" aria-label="이모티콘 고르기" aria-expanded="false" aria-controls="chat-emoji">😊</button><input id="chat-input" maxlength="120" placeholder="메시지 (60글자까지)" autocomplete="off"><button class="primary" type="submit">보내기</button></form>
+    <div id="chat-emoji" class="chat-emoji" hidden>
+      <small>젤리 이모티콘 (누르면 바로 보내져)</small><div id="chat-stickers" class="chat-stickers"></div>
+      <small>이모지 (누르면 글에 들어가)</small><div id="chat-emojis" class="chat-emojis"></div>
+    </div>
+    <p id="chat-note" class="fine chat-note" role="status"></p>
+    <div id="chat-tools" class="chat-tools"></div>
+  </div>
+</div>
+<div id="bubbles" aria-live="polite"></div>
 
 <!-- 층 주인 대사 -->
 <div id="talk" class="overlay" hidden>

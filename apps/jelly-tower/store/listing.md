@@ -61,20 +61,29 @@ App Store Connect에 그대로 붙여 넣을 글과 답을 모아 둔 곳이다.
 
 ## 연령 등급 설문
 
-전부 "없음"으로 답한다: 폭력, 공포, 성적 내용, 욕설, 약물, 도박(실제 돈), 의료 정보, 사용자 제작 콘텐츠 공유, 채팅, 웹 브라우징. 무료 스핀은 돈을 쓰지 않는 하루 한 번 선물 바퀴이고, 온라인 대전은 방 코드를 아는 친구끼리만 연결되며 채팅이 없다.
+폭력, 공포, 성적 내용, 욕설, 약물, 도박(실제 돈), 의료 정보, 웹 브라우징은 "없음". 무료 스핀은 돈을 쓰지 않는 하루 한 번 선물 바퀴다.
+
+**채팅(메시지)이 있다**고 답한다 (2026-10-05에 추가). 그래서 연령 등급이 4+보다 올라갈 수 있다. 애플 가이드라인 1.2(사용자 콘텐츠)에 맞춰 넣은 것:
+
+- 나쁜 말 거르기: 보내기 전과 받을 때 모두 ♡로 가린다. 전화번호·이메일은 보낼 수 없다.
+- 차단: 친구를 차단하면 다시 이어지지 않는다. 온라인 대전에서는 이번 판 채팅 끄기.
+- 신고: 🚩 신고로 최근 대화를 복사하고 도움말 페이지의 문의하기로 알린다. 신고가 오면 부모님이 빨리 답해야 한다.
+- 대화 상대는 방 코드나 친구 코드를 서로 아는 사람뿐이고, 설정에서 채팅을 끌 수 있다. 손님은 친구 기능을 쓸 수 없다.
 
 ## 앱 개인정보 (개인정보 라벨)
 
-"데이터를 수집하지 않음"을 고른다.
+2026-10-05에 친구 우체통(꺼 둔 친구에게도 메시지 보내기)이 생겨서 **"데이터를 수집함"**으로 답한다.
 
-- 계정(닉네임, 비밀번호 확인용 해시)과 게임 기록은 기기 안에만 저장한다.
-- 온라인 대전은 두 기기를 직접 연결하고(PeerJS·WebRTC), 개발자가 저장하는 데이터가 없다.
+- **사용자 콘텐츠 → 이메일 또는 문자 메시지**: 게임을 꺼 둔 친구에게 보낸 글·젤리 이모티콘 번호·친구 신청 (Vercel Blob 비공개 저장소). 목적: 앱 기능. 사용자와 연결됨(친구 코드). 추적에 사용 안 함. 친구가 받아 가면 바로, 아니면 7일 뒤 서버에서 지운다 (매일 청소).
+- **식별자 → 사용자 ID**: 친구 코드와 닉네임(편지에 함께 담김). 목적: 앱 기능. 사용자와 연결됨. 추적에 사용 안 함.
+- 그 밖의 계정 정보(비밀번호 확인용 해시)와 게임 기록은 기기 안에만 저장한다. 온라인 대전은 두 기기를 직접 연결한다(PeerJS·WebRTC).
 - 광고, 추적, 분석 도구가 없다. 앱 안의 개인정보 매니페스트(PrivacyInfo.xcprivacy)도 같은 내용이다.
 
 ## 심사 메모 (App Review에 남길 말, 영어)
 
 Jelly Tower is a falling-pair color-matching puzzle game designed by a young developer from his handwritten plans.
 
+- Chat: players can chat only with someone who shares their room code (online battle) or friend code (friends). Online-battle chat goes device-to-device over WebRTC. When both friends are online, friend messages go device-to-device too. Messages, jelly stickers and friend requests for a friend who is offline are held in a small server mailbox (seonn.dev, private Vercel Blob storage) until the friend's game picks them up, then deleted; undelivered mail is deleted after 7 days, and deleting the account deletes its mailbox. Offensive words are masked on both send and receive, phone numbers and e-mail addresses are refused, users can block friends or mute a match, and 🚩 Report copies the recent conversation for contacting us via the support page. Chat can be turned off in 내 정보 → 설정.
 - No sign-in is required. Tap "손님으로 하기" (play as guest), or create a local profile with "새 계정 만들기". Profiles exist only on the device and can be deleted in 내 정보 (Profile) → 계정 지우기 (Delete account).
 - First-time players can try 🐣 연습하기 (Practice), a three-step interactive tutorial.
 - Online battle (온라인 대전) connects two devices with a room code over WebRTC (PeerJS). To test it, open 온라인 대전 on two devices, tap 방 만들기 on one and enter the 6-letter code on the other. Nothing is stored on our side.

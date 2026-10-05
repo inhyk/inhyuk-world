@@ -24,6 +24,12 @@ import { GARBAGE_ICONS } from './core.mjs';
 import { createOnline } from './online.mjs';
 import { playEnding } from './ending.mjs';
 import { LESSONS, lessonCells, lessonSeq, newJudge, judge } from './tutorial.mjs';
+import {
+  QUICK, STICKERS, EMOJIS, CHAT_MAX, FRIEND_MAX, REQUEST_MAX, cleanChat, personalInfo, rateLimiter, makeFriendCode, normaliseFriendCode,
+  validFriendCode, validMailKey, makeMailKey, validSticker, bigEmoji, graphemes, cleanName, addFriend, removeFriend, pushChat,
+} from './chat.mjs';
+import { FriendNet } from './friendnet.mjs';
+import { createMailClient, letterId } from './mailbox.mjs';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -84,8 +90,9 @@ function toast(text, gold = false) {
 }
 
 // ---------- 화면 ----------
-const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'online', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards'];
+const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'online', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards', 'friends'];
 function show(name) {
+  if (chatWith?.kind === 'friend' && name !== 'friends') closeChat(); // 친구 화면을 떠나면 친구 채팅 창도 닫는다
   screen = name;
   for (const s of SCREENS) $(`scr-${s}`).hidden = s !== name;
   $('hud').hidden = true;
@@ -111,6 +118,8 @@ function renderScreen(name) {
   if (name === 'help') renderHelp();
   if (name === 'creator') renderCreator();
   if (name === 'rewards') renderRewards();
+  if (name === 'friends') { renderFriends(); syncFriendNet(); greetFriends(); ensureMail(); }
+  watchFriends(name === 'friends');
 }
 
 document.querySelectorAll('[data-go]').forEach(btn => btn.addEventListener('click', () => {
@@ -187,12 +196,15 @@ $('import-form').onsubmit = e => {
 };
 function afterLogin() {
   creator.lock();
+  resetSocialSession();
   pendingPlay = 0; unsavedPlay = 0;
   $('creator-result').textContent = '';
   $('spin-result').textContent = '';
   sound.sfx('coin');
   startDemo();
   show('menu');
+  syncFriendNet();
+  ensureMail();
 }
 
 // ---------- 메뉴 ----------
@@ -213,6 +225,7 @@ function renderMenu() {
   $('reward-badge').hidden = !gifts;
   $('reward-badge').textContent = gifts;
   $('practice-badge').hidden = !!p.tutorial; // 연습하기를 끝내기 전까지 NEW
+  updateSocialBadges();
 }
 $('profile-chip').onclick = () => { sound.sfx('click'); show('profile'); };
 
@@ -324,6 +337,8 @@ function startGame(cfg) {
   renderer.setup(cfg.views, { solo: cfg.mode === 'solo' || cfg.mode === 'practice', ghost: P().settings.ghost !== false, insets: computeInsets() });
   hideScreens();
   $('hud').hidden = false;
+  $('hud-chat').hidden = cfg.mode !== 'online' || !chatOn();
+  if (chatWith?.kind === 'room') $('chat').classList.add('compact');
   $('hud-title').textContent = cfg.title || '';
   $('touch').hidden = !coarse;
   document.body.classList.toggle('duo', cfg.mode === 'local');
@@ -551,6 +566,7 @@ controls.onKey = e => {
 
 function quitGame() {
   if (game?.mode === 'online') online.leave();
+  if (chatWith?.kind === 'room') closeChat();
   endPractice();
   match = null;
   const back = game?.mode === 'tower' ? 'tower' : game?.mode === 'online' ? 'online' : 'menu';
@@ -844,7 +860,39 @@ function renderCreator() {
   $('creator-account').textContent = `${me()?.name || '손님'} · Lv.${P().level}`;
   $('creator-error').textContent = '';
   $('creator-password').value = '';
+  // 비밀번호 다시 정하기: 이 기기의 계정 목록
+  $('reset-account').innerHTML = store.accounts.map(a => `<option value="${a.id}">${esc(a.name)} · Lv.${a.progress.level}</option>`).join('');
+  $('reset-account').disabled = !store.accounts.length;
+  $('reset-form').querySelector('button[type=submit]').disabled = !store.accounts.length;
+  $('reset-pass').value = ''; $('reset-pass2').value = '';
+  resetMsg(store.accounts.length ? '' : '이 기기에 만든 계정이 아직 없어.');
+  $('reset-login').hidden = true;
 }
+let resetDone = null; // 방금 비밀번호를 바꾼 계정 { name, password } (바로 들어가기용)
+function resetMsg(text, ok = false) { $('reset-msg').textContent = text; $('reset-msg').classList.toggle('ok', ok); }
+$('reset-form').onsubmit = async e => {
+  e.preventDefault();
+  const id = $('reset-account').value, p1 = $('reset-pass').value, p2 = $('reset-pass2').value;
+  if (!id) { resetMsg('바꿀 계정을 골라 줘.'); return; }
+  if (p1 !== p2) { resetMsg('두 비밀번호가 달라. 똑같이 두 번 적어 줘.'); sound.sfx('bump'); return; }
+  const r = await creator.resetPassword(store, id, p1);
+  if (!r.ok) { resetMsg(r.error); sound.sfx('bump'); return; }
+  persistStore();
+  $('reset-pass').value = ''; $('reset-pass2').value = '';
+  resetDone = { name: r.account.name, password: p1 };
+  resetMsg(`✅ ${r.account.name} 계정 비밀번호를 바꿨어! 새 비밀번호를 꼭 기억해 둬.`, true);
+  $('reset-login').hidden = false;
+  sound.sfx('coin'); haptic('success');
+};
+$('reset-login').onclick = async () => {
+  if (!resetDone) return;
+  const r = await login(store, resetDone.name, resetDone.password);
+  resetDone = null;
+  $('reset-login').hidden = true;
+  if (!r.ok) { toast(r.error); return; }
+  friendNet.stop();
+  account = r.account; guest = null; save(); afterLogin();
+};
 $('creator-form').onsubmit = e => {
   e.preventDefault();
   const ok = creator.unlock($('creator-password').value);
@@ -1107,6 +1155,7 @@ function renderProfile() {
   $('set-ghost').checked = p.settings.ghost !== false;
   $('set-shake').checked = p.settings.shake !== false;
   $('set-haptic').checked = device.haptics !== false;
+  $('set-chat').checked = chatOn();
   $('delete-zone').hidden = !account;
   $('delete-confirm').hidden = true;
   $('export-copy').disabled = !account;
@@ -1118,11 +1167,15 @@ $('set-music').onchange = e => { device.music = e.target.checked; sound.setMusic
 $('set-ghost').onchange = e => { P().settings.ghost = e.target.checked; save(); };
 $('set-shake').onchange = e => { P().settings.shake = e.target.checked; save(); };
 $('set-haptic').onchange = e => { device.haptics = e.target.checked; save(); haptic('medium'); };
+$('set-chat').onchange = e => { P().settings.chat = e.target.checked; save(); if (!e.target.checked) closeChat(); };
 // 계정 지우기: 이 기기에 저장된 그 계정의 모든 기록을 없앤다 (앱스토어 규칙: 앱 안에서 계정을 지울 수 있어야 함)
 $('delete-account').onclick = () => { if (!account) return; sound.sfx('click'); $('delete-name').textContent = account.name; $('delete-confirm').hidden = false; };
 $('delete-cancel').onclick = () => { sound.sfx('click'); $('delete-confirm').hidden = true; };
 $('delete-yes').onclick = () => {
   if (!account) return;
+  // 친구 우체통에 맡겨 둔 편지와 열쇠도 지운다
+  if (validFriendCode(social().code) && validMailKey(social().key)) mail.forget(social().code, social().key);
+  friendNet.stop(); resetSocialSession();
   const name = account.name;
   creator.lock();
   removeAccount(store, account.id);
@@ -1139,6 +1192,7 @@ $('export-copy').onclick = async () => {
   try { await navigator.clipboard.writeText(code); toast('📋 기록 코드를 복사했어!'); } catch { $('export-code').select(); toast('코드를 길게 눌러 복사해 줘.'); }
 };
 $('logout').onclick = () => {
+  friendNet.stop(); resetSocialSession();
   creator.lock();
   save();
   if (account) { logout(store); persistStore(); account = null; }
@@ -1173,7 +1227,561 @@ const online = createOnline({
   finished: () => finishMatch(),
   quit: () => { if (match && game?.mode === 'online') { match = null; game = null; $('result').hidden = true; startDemo(); show('online'); } },
   renderer,
+  roomChat: message => roomChat(message),
+  roomJoined: () => { roomLog.length = 0; roomMuted = false; roomUnread = 0; updateRoomDots(); },
+  roomLeft: () => { if (chatWith?.kind === 'room') closeChat(); },
 });
+
+// ---------- 친구와 채팅 ----------
+// 친구는 계정마다 6글자 친구 코드로 맺는다.
+// - 둘 다 게임을 켜 두었으면 PeerJS로 직접 이어져서 메시지·이모티콘을 바로 보내고 "받았어"(got) 답을 받는다.
+//   "게임 중" 표시와 대전 초대도 이 연결로 한다.
+// - 친구가 게임을 꺼 두었거나 답이 없으면 사이트의 친구 우체통(/api/jelly-mail)에 맡긴다. 친구가 나중에 켜면 받고,
+//   받아 가면 우체통에서 지운다 (안 받아 가도 7일 뒤 지운다). 우체통을 얼마나 자주 열지는 서버가 알려 준다(pace).
+// - 우체통이 없으면(개발 서버, 인터넷 끊김) 예전처럼 둘 다 켜 두었을 때만 보낸다.
+// 대화는 이 기기에 친구마다 최근 50개만 남는다.
+const social = () => P().social;
+const chatOn = () => P().settings.chat !== false;
+const mail = createMailClient();
+let mailState = 'unknown';  // 'on' 우체통 사용 중 | 'off' 우체통 없음 | 'unknown' 아직 모름
+let mailTimer = null, mailBusy = false, mailTries = 0, ackedTo = 0;
+let mailPace = { fast: 8000, slow: 40000 }; // 우체통을 여는 간격: 친구 화면·채팅에서 / 그 밖에서
+const pendingAcks = new Map(); // 직접 보낸 편지 아이디 → "받았어" 답을 기다리는 함수
+const friendNet = new FriendNet({
+  status: (state, message) => {
+    netNote = state === 'connecting' ? '친구 서버에 연결하는 중…' : message;
+    if (state === 'on') greetFriends();
+    if (state === 'error') setTimeout(() => { if (account && friendNet.state === 'error') syncFriendNet(); }, 15000);
+    if (screen === 'friends') renderFriends();
+  },
+  hello: (code, info) => {
+    const friend = account && social().friends.find(f => f.code === code);
+    if (friend) { friend.name = cleanName(info.name); friend.level = Math.max(1, Number(info.level) | 0); }
+  },
+  online: (code, isOnline) => friendOnline(code, isOnline),
+  data: (code, message) => friendData(code, message),
+  blocked: code => !!account && social().blocked.includes(code),
+}, import.meta.env?.DEV && new URLSearchParams(location.search).has('localPeer') ? { host: location.hostname, port: 9003, path: '/puyo', secure: false } : {});
+
+let netNote = '', chatWith = null, roomMuted = false, roomUnread = 0, presenceTimer = null;
+const unread = new Map();       // 친구 코드 → 이번에 켠 동안 안 읽은 메시지 수
+const greeted = new Set();      // 이번에 접속했다고 알려 준 친구
+const friendLimits = new Map(); // 직접 연결로 오는 말의 친구별 속도 제한
+const seenLetters = new Set();  // 이번에 켠 동안 받은 편지 (우체통과 직접 연결로 두 번 와도 한 번만)
+const roomLog = [];             // 이번 온라인 방의 대화 (저장하지 않음)
+const sendLimit = rateLimiter(5, 5000);
+
+function resetSocialSession() {
+  closeChat();
+  unread.clear(); greeted.clear(); friendLimits.clear(); seenLetters.clear();
+  roomLog.length = 0; roomMuted = false; roomUnread = 0;
+  clearTimeout(mailTimer); mailState = 'unknown'; mailTries = 0; ackedTo = 0;
+}
+function ensureFriendCode() {
+  const s = social();
+  let changed = false;
+  if (!validFriendCode(s.code)) { s.code = makeFriendCode(); changed = true; }
+  if (!validMailKey(s.key)) { s.key = makeMailKey(); changed = true; }
+  if (changed) save();
+  return s.code;
+}
+// 친구가 있거나 친구 화면을 보고 있을 때만 친구 서버에 이어 둔다 (안 쓰면 인터넷을 쓰지 않는다)
+function syncFriendNet() {
+  if (!account || (!social().friends.length && screen !== 'friends')) { friendNet.stop(); return; }
+  friendNet.start(ensureFriendCode(), { name: account.name, level: P().level });
+}
+function greetFriends() {
+  if (!account) return;
+  for (const friend of social().friends) if (!friendNet.isOnline(friend.code)) friendNet.connect(friend.code);
+}
+
+// ---------- 친구 우체통 ----------
+// 친구 기능을 한 번이라도 쓴 계정만 우체통을 연다 (친구 코드가 있는 계정)
+function ensureMail() {
+  if (!account || !social().code) return;
+  if (mailState === 'on') pollMail();
+  else if (mailState === 'unknown') startMail();
+}
+async function startMail() {
+  if (!account) return;
+  const who = account, code = ensureFriendCode();
+  const r = await mail.hello(code, social().key);
+  if (who !== account) return;
+  if (r.ok) { mailState = 'on'; mailTries = 0; setPace(r.pace); refreshSocialViews(); pollMail(); return; }
+  if (r.error === 'taken' && mailTries++ < 2) {
+    // 아주 드문 일: 다른 사람이 같은 친구 코드를 먼저 맡았다 → 새 코드로 바꾼다
+    social().code = makeFriendCode(); social().key = makeMailKey(); save();
+    friendStatus('친구 코드가 새로 바뀌었어. 친구에게 새 코드를 알려 줘!');
+    startMail();
+    return;
+  }
+  mailState = r.error === 'network' || r.error === 'store' || r.error === 'limit' ? 'unknown' : 'off';
+  if (mailState === 'unknown') scheduleMail(60000); // 인터넷이 돌아오면 다시 해 본다
+  refreshSocialViews();
+}
+// 친구 화면이나 친구 채팅을 보고 있으면 자주, 아니면 가끔 우체통을 연다
+const mailDelay = () => (screen === 'friends' || chatWith?.kind === 'friend' ? mailPace.fast : mailPace.slow);
+// 서버가 알려 준 간격 (저장소마다 무료 한도가 달라서): 5초~15분 사이만 받는다
+function setPace(pace) {
+  const ok = v => Number.isFinite(v) && v >= 5000 && v <= 900000;
+  if (pace && ok(pace.fast) && ok(pace.slow)) mailPace = { fast: pace.fast, slow: pace.slow };
+}
+function scheduleMail(ms = mailDelay()) {
+  clearTimeout(mailTimer);
+  if (account) mailTimer = setTimeout(() => (mailState === 'on' ? pollMail() : startMail()), ms);
+}
+async function pollMail() {
+  if (!account || mailState !== 'on' || mailBusy) return;
+  clearTimeout(mailTimer);
+  if (document.hidden) { scheduleMail(); return; }
+  mailBusy = true;
+  const who = account;
+  try {
+    for (let round = 0; round < 3; round++) {
+      const s = social();
+      // 지난번에 받은 편지까지 지우라고 알리면서 새 편지를 받는다
+      const ack = s.lastMail > ackedTo ? s.lastMail : 0;
+      const r = await mail.inbox(s.code, s.key, ack);
+      if (who !== account) return;
+      if (!r.ok) {
+        if (r.status === 401) { mailState = 'unknown'; startMail(); }
+        else if (r.error === 'off') { mailState = 'off'; refreshSocialViews(); }
+        break;
+      }
+      if (ack) ackedTo = ack;
+      setPace(r.pace);
+      const letters = (r.letters || []).filter(l => l && l.t > s.lastMail);
+      if (!letters.length) break;
+      s.lastMail = Math.max(s.lastMail, ...letters.map(l => l.t));
+      receiveLetters(letters);
+      save();
+    }
+  } finally {
+    mailBusy = false;
+    if (who === account) scheduleMail();
+  }
+}
+function receiveLetters(letters) {
+  const quiet = letters.length > 2;
+  for (const l of letters) friendData(l.from, { t: l.kind, text: l.text, sticker: l.sticker, name: l.name, level: l.level, at: l.t, id: l.id }, { via: 'mail', quiet });
+  if (quiet) { toast(`📮 친구 우체통에 편지가 ${letters.length}통 왔어!`, true); sound.sfx('mission'); }
+}
+// 게임 중인 친구에게 직접 보내고 "받았어"(got) 답을 기다린다.
+// 'got' 받았대 | 'sent' 보냈지만 답이 없다 (예전 버전 게임은 답을 안 한다) | false 보내지 못했다
+function sendLive(code, payload, wait = 3500) {
+  return new Promise(resolve => {
+    if (!friendNet.isOnline(code) || !friendNet.send(code, payload)) { resolve(false); return; }
+    const timer = setTimeout(() => { pendingAcks.delete(payload.id); resolve('sent'); }, wait);
+    pendingAcks.set(payload.id, () => { clearTimeout(timer); pendingAcks.delete(payload.id); resolve('got'); });
+  });
+}
+// 친구에게 보내기: 게임 중이면 직접(바로 도착, 우체통을 아낀다), 아니면 우체통에 맡긴다(친구가 켜면 받는다)
+async function sendToFriend(code, letter) {
+  const s = social(), id = letterId(), me = { name: account.name, level: P().level };
+  const live = await sendLive(code, { t: letter.kind, text: letter.text, sticker: letter.sticker, id, ...me });
+  if (live === 'got') return { ok: true, live: true };
+  if (mailState === 'on') {
+    const r = await mail.send(s.code, s.key, { to: code, id, kind: letter.kind, text: letter.text, sticker: letter.sticker, ...me });
+    if (r.ok) { friendNet.send(code, { t: 'ring' }); return r; }
+    if (['personal', 'limit', 'empty', 'sticker'].includes(r.error)) return r;
+    if (r.status === 401) { mailState = 'unknown'; startMail(); }
+  }
+  // 우체통을 쓸 수 없어도 열린 연결로 보내기는 했으면 보낸 걸로 친다 (예전처럼. 차단당한 것도 알리지 않는다)
+  if (live === 'sent') return { ok: true, live: true };
+  return { ok: false, error: mailState === 'on' ? 'fail' : 'offline' };
+}
+const NEEDS_GOT = new Set(['msg', 'st', 'fr', 'fa', 'fx']);
+// 친구 신청에 답하기: 신청한 친구가 게임 중이면 직접 이어서 바로 알려 준다
+async function replyFriend(code, kind) {
+  if (!account) return;
+  if (!friendNet.isOnline(code) && friendNet.on) await friendNet.connect(code);
+  sendToFriend(code, { kind });
+}
+function refreshSocialViews() {
+  updateSocialBadges();
+  if (screen === 'friends') renderFriends();
+  if (chatWith) renderChat();
+}
+
+function friendOnline(code, isOnline) {
+  const friend = account && social().friends.find(f => f.code === code);
+  if (friend && isOnline && !greeted.has(code)) {
+    greeted.add(code);
+    if (screen !== 'friends') toast(`👫 ${friend.name}이(가) 게임에 들어왔어!`);
+  }
+  if (!isOnline) greeted.delete(code);
+  if (screen === 'friends') renderFriends();
+  if (chatWith?.code === code) renderChat();
+}
+// 친구가 보낸 것 하나를 처리한다. via: 'mail'(우체통, 서버가 보낸 사람을 확인함) | 'live'(직접 연결)
+function friendData(code, m, { via = 'live', quiet = false } = {}) {
+  if (!account || !validFriendCode(code)) return;
+  const s = social(), friend = s.friends.find(f => f.code === code);
+  if (s.blocked.includes(code)) return; // 차단한 친구가 보낸 것은 조용히 버린다
+  if (via === 'live') {
+    if (m.t === 'got') { if (typeof m.id === 'string') pendingAcks.get(m.id)?.(); return; } // 내가 보낸 것을 받았대
+    if (!friendLimits.has(code)) friendLimits.set(code, rateLimiter(8, 5000));
+    if (!friendLimits.get(code)()) return;
+    if (m.t === 'ring') { pollMail(); return; } // 친구가 우체통에 편지를 넣었다는 알림
+    if (m.id && NEEDS_GOT.has(m.t)) friendNet.send(code, { t: 'got', id: m.id }); // 받았다고 답한다 (두 번 받아도)
+  }
+  if (m.id) { if (seenLetters.has(m.id)) return; seenLetters.add(m.id); }
+  const time = Number(m.at) || Date.now();
+  if (m.t === 'fr') {
+    if (friend) { replyFriend(code, 'fa'); return; } // 이미 친구면 바로 받아 준다
+    if (s.sent.some(r => r.code === code)) { becomeFriends(code, m, quiet); replyFriend(code, 'fa'); return; } // 서로 신청했으면 바로 친구
+    if (s.requests.some(r => r.code === code) || s.requests.length >= REQUEST_MAX) return;
+    s.requests.push({ code, name: cleanName(m.name), level: Math.max(1, Number(m.level) | 0), time });
+    save();
+    if (!quiet) { toast(`👫 ${cleanName(m.name)}이(가) 친구 신청을 했어! 친구 화면에서 받아 줘.`, true); sound.sfx('mission'); }
+  } else if (m.t === 'fa') {
+    if (!friend && !s.sent.some(r => r.code === code)) return; // 내가 신청한 적 없는 수락은 무시
+    becomeFriends(code, m, quiet);
+  } else if (m.t === 'fx') {
+    if (!s.sent.some(r => r.code === code)) return;
+    s.sent = s.sent.filter(r => r.code !== code); save();
+    friendStatus('보낸 친구 신청 하나를 친구가 받지 않았어.');
+  } else if ((m.t === 'msg' || m.t === 'st') && friend && chatOn()) {
+    const sticker = Number(m.sticker), text = m.t === 'msg' ? cleanChat(m.text) : '';
+    const entry = m.t === 'st' ? (validSticker(sticker) ? { me: false, sticker, time } : null) : text ? { me: false, text, time } : null;
+    if (!entry) return;
+    pushChat(s, code, entry); save();
+    if (chatWith?.code === code && !$('chat').hidden) renderChat();
+    else {
+      unread.set(code, (unread.get(code) || 0) + 1);
+      if (!quiet) toast(`💬 ${friend.name}: ${entry.text ?? `젤리 이모티콘 「${STICKERS[entry.sticker].text}」`}`);
+    }
+    if (!quiet) { sound.sfx('talk'); haptic('light'); }
+  } else if (m.t === 'inv' && friend && via === 'live') {
+    const room = normaliseFriendCode(m.room);
+    if (room.length !== 6) return;
+    pushChat(s, code, { me: false, text: '🎮 같이 하자! 대전 초대가 왔어', time, invite: room }); save();
+    if (chatWith?.code === code) renderChat();
+    else { unread.set(code, (unread.get(code) || 0) + 1); toast(`🎮 ${friend.name}이(가) 대전에 초대했어! 친구 화면 → 채팅에서 들어가기`, true); }
+    sound.sfx('mission'); haptic('medium');
+  }
+  updateSocialBadges();
+  if (screen === 'friends') renderFriends();
+}
+function becomeFriends(code, m, quiet = false) {
+  if (!addFriend(social(), { code, name: m.name, level: m.level })) return;
+  save();
+  if (!quiet) { toast(`🎉 ${cleanName(m.name)}와(과) 친구가 됐어!`, true); sound.sfx('level'); haptic('success'); }
+  friendStatus('');
+  syncFriendNet();
+}
+function updateSocialBadges() {
+  const n = account ? social().requests.length + [...unread.values()].reduce((a, b) => a + b, 0) : 0;
+  $('friend-badge').hidden = !n;
+  $('friend-badge').textContent = n;
+}
+function updateRoomDots() {
+  $('hud-chat-dot').hidden = !roomUnread;
+  $('lobby-chat-dot').hidden = !roomUnread;
+  $('lobby-chat').hidden = !chatOn();
+}
+function friendStatus(text) { $('friend-status').textContent = text; }
+
+function renderFriends() {
+  const guestMode = !account;
+  $('friends-guest').hidden = !guestMode;
+  $('friends-main').hidden = guestMode;
+  if (guestMode) return;
+  const s = social();
+  $('my-friend-code').textContent = ensureFriendCode();
+  $('mail-note').textContent = mailState === 'on'
+    ? '📮 친구가 게임을 꺼 두었어도 메시지·이모티콘·친구 신청을 보낼 수 있어. 친구가 켜면 받아!'
+    : mailState === 'off' ? '지금은 둘 다 게임을 켜 두었을 때만 친구 신청과 채팅을 할 수 있어.' : '친구 우체통을 여는 중…';
+  if (netNote && !$('friend-status').textContent) friendStatus(netNote);
+  $('friend-requests').innerHTML = s.requests.map(r => `<div class="friend-request card"><span>👋 <b>${esc(r.name)}</b> <small>Lv.${r.level}</small> 이(가) 친구 신청을 했어!</span><div class="row center"><button class="primary" data-accept="${r.code}">받기</button><button class="ghost" data-decline="${r.code}">안 받기</button></div></div>`).join('')
+    + (s.sent.length ? `<p class="fine sent-list">📨 보낸 친구 신청 (친구가 받으면 친구가 돼): ${s.sent.map(r => `<span class="sent-code">${r.code} <button class="ghost tiny" data-cancel="${r.code}" aria-label="${r.code} 신청 취소">취소</button></span>`).join(' ')}</p>` : '');
+  $('friend-count').innerHTML = `${s.friends.length}/${FRIEND_MAX}${s.blocked.length ? ` · 차단 ${s.blocked.length}명 <button class="ghost tiny" id="unblock-all">차단 모두 풀기</button>` : ''}`;
+  const list = [...s.friends].sort((a, b) => Number(friendNet.isOnline(b.code)) - Number(friendNet.isOnline(a.code)) || a.name.localeCompare(b.name, 'ko'));
+  $('friend-list').innerHTML = list.length ? list.map(f => {
+    const on = friendNet.isOnline(f.code), n = unread.get(f.code) || 0;
+    return `<div class="friend"><i class="dot${on ? ' on' : ''}"></i><div><b>${esc(f.name)}</b> <small>Lv.${f.level} · ${on ? '게임 중' : mailState === 'on' ? '없음 · 편지는 보낼 수 있어' : '없음'}</small></div>
+      <div class="friend-buttons"><button class="ghost" data-chat="${f.code}">💬 채팅${n ? `<i class="badge mini">${n}</i>` : ''}</button>${on ? `<button class="primary" data-invite="${f.code}">🎮 같이 하기</button>` : ''}</div></div>`;
+  }).join('') : `<p class="lead empty">아직 친구가 없어. 친구 코드를 서로 넣어 봐!${mailState === 'on' ? '' : ' 친구도 게임을 켜 두고 있어야 해.'}</p>`;
+}
+$('friends-main').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.accept) acceptRequest(b.dataset.accept);
+  else if (b.dataset.decline) declineRequest(b.dataset.decline);
+  else if (b.dataset.cancel) { sound.sfx('click'); social().sent = social().sent.filter(r => r.code !== b.dataset.cancel); save(); renderFriends(); }
+  else if (b.dataset.chat) openChat({ kind: 'friend', code: b.dataset.chat });
+  else if (b.dataset.invite) inviteFriend(b.dataset.invite);
+  else if (b.id === 'unblock-all') { sound.sfx('click'); social().blocked = []; save(); friendStatus('차단을 모두 풀었어.'); renderFriends(); }
+});
+function acceptRequest(code) {
+  const s = social(), r = s.requests.find(x => x.code === code);
+  if (!r) return;
+  if (addFriend(s, { code, name: r.name, level: r.level })) {
+    save();
+    syncFriendNet();
+    replyFriend(code, 'fa');
+    toast(`🎉 ${r.name}와(과) 친구가 됐어!`, true); sound.sfx('level'); haptic('success');
+  }
+  updateSocialBadges(); renderFriends(); syncFriendNet();
+}
+function declineRequest(code) {
+  sound.sfx('click');
+  social().requests = social().requests.filter(r => r.code !== code);
+  save();
+  replyFriend(code, 'fx');
+  updateSocialBadges(); renderFriends();
+}
+$('friend-add').onsubmit = async e => {
+  e.preventDefault();
+  if (!account) return;
+  const code = normaliseFriendCode($('friend-input').value), s = social();
+  if (!validFriendCode(code)) { friendStatus('친구 코드는 6글자야. (숫자 0·1, 글자 O·I는 없어!)'); return; }
+  if (code === ensureFriendCode()) { friendStatus('그건 내 코드야! 친구의 코드를 넣어 줘.'); return; }
+  if (s.friends.some(f => f.code === code)) { friendStatus('벌써 친구야!'); return; }
+  if (s.friends.length >= FRIEND_MAX) { friendStatus(`친구는 ${FRIEND_MAX}명까지야.`); return; }
+  if (s.requests.some(r => r.code === code)) { $('friend-input').value = ''; acceptRequest(code); return; } // 그 친구가 먼저 신청했다
+  if (s.sent.some(r => r.code === code)) { friendStatus('벌써 친구 신청을 보냈어. 친구가 받으면 친구가 돼!'); return; }
+  sound.sfx('click');
+  friendStatus('친구 신청을 보내는 중…');
+  // 친구가 지금 게임 중이면 직접 이어서 바로 보내고, 아니면 우체통에 맡긴다
+  await friendNet.start(ensureFriendCode(), { name: account.name, level: P().level });
+  const live = await friendNet.connect(code);
+  if (mailState !== 'on' && !live) await startMail();
+  if (live || mailState === 'on') {
+    const r = await sendToFriend(code, { kind: 'fr' });
+    if (!r.ok) {
+      friendStatus(r.error === 'limit' ? '신청을 너무 많이 보냈어. 조금 뒤에 다시 해 줘.'
+        : r.error === 'offline' ? '친구를 찾지 못했어. 친구도 지금 게임을 켜 두고 있어야 해. 코드를 확인하고 다시 해 봐!'
+        : '친구 신청을 보내지 못했어. 인터넷을 확인하고 다시 해 봐!');
+      return;
+    }
+    s.sent.push({ code, time: Date.now() }); save();
+    $('friend-input').value = '';
+    friendStatus(r.live || r.known !== false
+      ? '친구 신청을 보냈어! 친구가 받으면 친구가 돼. (친구가 게임을 꺼 두었어도 켜면 받아)'
+      : '친구 신청을 보냈어! 그런데 아직 그 코드로 젤리 타워 친구 화면을 연 사람이 없어. 코드가 맞는지 확인해 줘. 맞으면 친구가 열 때 받아.');
+    renderFriends();
+    return;
+  }
+  friendStatus('친구를 찾지 못했어. 친구도 지금 게임을 켜 두고 있어야 해. 코드를 확인하고 다시 해 봐!');
+};
+$('friend-input').oninput = e => { e.target.value = normaliseFriendCode(e.target.value); };
+$('friend-code-copy').onclick = async () => {
+  const code = ensureFriendCode();
+  try { await navigator.clipboard.writeText(code); toast('📋 친구 코드를 복사했어!'); } catch { toast(`내 친구 코드는 ${code}야.`); }
+};
+$('friends-login').onclick = () => { sound.sfx('click'); show('login'); };
+
+// ---------- 젤리 이모티콘 ----------
+// 게임 캐릭터를 그려서 한 번만 그림으로 만들어 둔다 (글꼴이 늦게 오면 다시 그린다)
+const stickerCache = new Map();
+document.fonts?.ready.then(() => stickerCache.clear());
+function stickerURL(i) {
+  if (stickerCache.has(i)) return stickerCache.get(i);
+  const s = STICKERS[i], cv = document.createElement('canvas');
+  cv.width = cv.height = 160;
+  const ctx = cv.getContext('2d');
+  drawCharacter(ctx, s.char, 80, 66, 116, s.mood, 0.35);
+  ctx.font = "27px Jua, 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  ctx.lineWidth = 8; ctx.strokeStyle = '#ffffff'; ctx.strokeText(s.text, 80, 140);
+  ctx.fillStyle = '#5b3bb3'; ctx.fillText(s.text, 80, 140);
+  const url = cv.toDataURL('image/png');
+  stickerCache.set(i, url);
+  return url;
+}
+const stickerImg = (i, cls = '') => `<img class="${cls}" src="${stickerURL(i)}" alt="젤리 이모티콘 ${esc(STICKERS[i].text)}" draggable="false">`;
+function renderEmojiPanel() {
+  $('chat-stickers').innerHTML = STICKERS.map((s, i) => `<button type="button" data-sticker="${i}" aria-label="젤리 이모티콘 ${esc(s.text)}">${stickerImg(i)}</button>`).join('');
+  $('chat-emojis').innerHTML = EMOJIS.map(e => `<button type="button" data-emoji="${e}" aria-label="${e}">${e}</button>`).join('');
+}
+function toggleEmojiPanel(open = $('chat-emoji').hidden) {
+  if (open && !$('chat-stickers').childElementCount) renderEmojiPanel();
+  $('chat-emoji').hidden = !open;
+  $('chat-emoji-toggle').setAttribute('aria-expanded', String(open));
+  $('chat-emoji-toggle').classList.toggle('on', open);
+  if (open && chatWith) $('chat-log').scrollTop = $('chat-log').scrollHeight; // 판이 열려 채팅 칸이 줄어도 새 메시지가 보이게
+}
+// 이모지는 글자처럼 커서 자리에 넣는다
+function insertEmoji(emoji) {
+  const input = $('chat-input'), start = input.selectionStart ?? input.value.length, end = input.selectionEnd ?? start;
+  if (graphemes(input.value).length >= CHAT_MAX) { chatNote(`${CHAT_MAX}글자까지야!`); return; }
+  input.value = input.value.slice(0, start) + emoji + input.value.slice(end);
+  const caret = start + emoji.length;
+  try { input.setSelectionRange(caret, caret); } catch { /* 커서를 못 옮겨도 괜찮다 */ }
+  sound.sfx('click');
+}
+
+// ---------- 채팅 창 ----------
+function openChat(target) {
+  if (!chatOn()) { toast('설정에서 채팅이 꺼져 있어. 내 정보 → 설정에서 켤 수 있어.'); return; }
+  sound.sfx('click');
+  chatWith = target;
+  if (target.kind === 'friend') { unread.delete(target.code); pollMail(); } else { roomUnread = 0; updateRoomDots(); }
+  $('chat').hidden = false;
+  $('chat').classList.toggle('compact', target.kind === 'room' && !!match);
+  $('chat-input').value = '';
+  toggleEmojiPanel(false);
+  renderChat();
+  updateSocialBadges();
+  if (screen === 'friends') renderFriends();
+  if (!coarse && !match) $('chat-input').focus();
+}
+function closeChat() {
+  chatWith = null;
+  $('chat').hidden = true;
+  $('chat-note').textContent = '';
+  toggleEmojiPanel(false);
+}
+let noteUntil = 0;
+function chatNote(text) { $('chat-note').textContent = text; noteUntil = text ? Date.now() + 4000 : 0; }
+// 받침이 있으면 '은', 없으면 '는' (이메일은, 전화번호는)
+const withTopic = word => { const c = word.charCodeAt(word.length - 1) - 0xac00; return word + (c >= 0 && c < 11172 && c % 28 ? '은' : '는'); };
+function chatLine(m) {
+  const who = m.me ? 'me' : 'them';
+  if (validSticker(m.sticker)) return `<div class="msg ${who} sticker">${stickerImg(m.sticker)}</div>`;
+  return `<div class="msg ${who}${bigEmoji(m.text) ? ' big' : ''}"><span>${esc(m.text)}</span>${m.invite && !m.me ? `<button class="primary tiny" data-join="${m.invite}">들어가기 ▶</button>` : ''}</div>`;
+}
+function renderChat() {
+  if (!chatWith) return;
+  const room = chatWith.kind === 'room';
+  const friend = room ? null : account && social().friends.find(f => f.code === chatWith.code);
+  if (!room && !friend) { closeChat(); return; }
+  const live = room ? online.connected : friendNet.isOnline(friend.code);
+  const canSend = room ? live : live || mailState === 'on';
+  $('chat-name').textContent = room ? online.peerName() : friend.name;
+  $('chat-sub').textContent = room ? '온라인 대전' : `Lv.${friend.level} · ${live ? '게임 중' : '없음'}`;
+  $('chat-dot').className = `dot${live ? ' on' : ''}`;
+  const log = room ? roomLog : social().chats[friend.code] || [];
+  $('chat-log').innerHTML = log.length ? log.map(chatLine).join('') : '<p class="fine empty">첫 인사를 해 봐! 👋</p>';
+  $('chat-quick').innerHTML = QUICK.map((q, i) => `<button type="button" data-q="${i}"${canSend ? '' : ' disabled'}>${q}</button>`).join('');
+  $('chat-input').disabled = !canSend;
+  $('chat-emoji-toggle').disabled = !canSend;
+  $('chat-form').querySelector('button[type=submit]').disabled = !canSend;
+  if (!canSend) toggleEmojiPanel(false);
+  if (Date.now() > noteUntil || !canSend) {
+    $('chat-note').textContent = !canSend ? (room ? '방에 친구가 없어.' : '친구가 지금 게임을 안 하고 있어. 둘 다 켜 두었을 때 보낼 수 있어.')
+      : !room && !live ? '📮 친구가 지금 없어도 보내 두면, 친구가 게임을 켤 때 받아!' : '🔒 전화번호·주소·학교 이름은 보내지 마!';
+  }
+  $('chat-tools').innerHTML = room
+    ? `<button type="button" class="ghost" data-tool="mute">${roomMuted ? '🔔 채팅 다시 받기' : '🔇 이번 판 채팅 끄기'}</button><button type="button" class="ghost" data-tool="report">🚩 신고</button>`
+    : `${live ? '<button type="button" class="ghost" data-tool="invite">🎮 같이 하자</button>' : ''}<button type="button" class="ghost danger" data-tool="block">🚫 차단</button><button type="button" class="ghost" data-tool="report">🚩 신고</button>`;
+  // 아래쪽(빠른 말·안내·단추)을 다 채운 다음에 맨 아래로 내린다. 먼저 내리면 그만큼 채팅 칸이 줄어서 새 메시지가 가려진다
+  $('chat-log').scrollTop = $('chat-log').scrollHeight;
+}
+async function sendChat({ q, text, sticker }) {
+  if (!chatWith || !chatOn()) return;
+  const isSticker = validSticker(sticker), quick = Number.isInteger(q) && QUICK[q];
+  if (!quick && !isSticker) {
+    const info = personalInfo(text);
+    if (info) { chatNote(`🔒 ${withTopic(info)} 보낼 수 없어. 개인정보는 꼭 지켜야 해!`); sound.sfx('bump'); return; }
+  }
+  const out = isSticker ? '' : quick || cleanChat(text);
+  if (!isSticker && !out) return;
+  if (!sendLimit()) { chatNote('조금만 천천히 보내 줘!'); return; }
+  const entry = isSticker ? { me: true, sticker } : { me: true, text: out };
+  if (chatWith.kind === 'room') {
+    if (!online.say(isSticker ? { sticker } : quick ? { q } : { text: out })) { chatNote('방에 친구가 없어.'); return; }
+    roomLog.push(entry);
+    if (roomLog.length > 50) roomLog.shift();
+  } else {
+    const code = chatWith.code;
+    const r = await sendToFriend(code, isSticker ? { kind: 'st', sticker } : { kind: 'msg', text: out });
+    if (!r.ok) {
+      chatNote(r.error === 'personal' ? '🔒 개인정보는 보낼 수 없어!' : r.error === 'limit' ? '조금만 천천히 보내 줘!' : r.error === 'offline' ? '친구가 지금 게임을 안 하고 있어.' : '보내지 못했어. 인터넷을 확인하고 다시 해 봐!');
+      sound.sfx('bump');
+      return;
+    }
+    pushChat(social(), code, { ...entry, time: Date.now() });
+    save();
+  }
+  if (!isSticker) $('chat-input').value = '';
+  chatNote('');
+  sound.sfx('click');
+  renderChat();
+}
+$('chat-form').onsubmit = e => { e.preventDefault(); sendChat({ text: $('chat-input').value }); };
+$('chat-close').onclick = () => { sound.sfx('click'); closeChat(); };
+$('chat').addEventListener('click', e => {
+  if (e.target === $('chat')) { closeChat(); return; } // 바깥을 누르면 닫기
+  const b = e.target.closest('button');
+  if (!b || !chatWith) return;
+  if (b.id === 'chat-emoji-toggle') { sound.sfx('click'); toggleEmojiPanel(); }
+  else if (b.dataset.sticker) sendChat({ sticker: Number(b.dataset.sticker) });
+  else if (b.dataset.emoji) insertEmoji(b.dataset.emoji);
+  else if (b.dataset.q) sendChat({ q: Number(b.dataset.q) });
+  else if (b.dataset.join) joinInvite(b.dataset.join);
+  else if (b.dataset.tool === 'mute') { roomMuted = !roomMuted; sound.sfx('click'); renderChat(); }
+  else if (b.dataset.tool === 'invite') inviteFriend(chatWith.code);
+  else if (b.dataset.tool === 'block') blockFriend(chatWith.code);
+  else if (b.dataset.tool === 'report') reportChat();
+});
+function roomChat({ name, text, sticker }) {
+  if (!chatOn() || roomMuted) return;
+  const entry = validSticker(sticker) ? { me: false, sticker } : { me: false, text };
+  roomLog.push(entry);
+  if (roomLog.length > 50) roomLog.shift();
+  if (chatWith?.kind === 'room' && !$('chat').hidden) renderChat();
+  else { roomUnread++; updateRoomDots(); bubble(name, entry); }
+  sound.sfx('talk');
+}
+// 게임 중에 온 말은 화면 위쪽에 말풍선으로 잠깐 보여 준다
+function bubble(name, entry) {
+  const b = document.createElement('div');
+  b.className = 'bubble';
+  b.innerHTML = `<b>${esc(name)}</b> ${validSticker(entry.sticker) ? stickerImg(entry.sticker, 'bubble-sticker') : esc(entry.text)}`;
+  $('bubbles').append(b);
+  setTimeout(() => b.remove(), 3600);
+}
+$('hud-chat').onclick = () => { if ($('chat').hidden) openChat({ kind: 'room' }); else closeChat(); };
+$('lobby-chat').onclick = () => openChat({ kind: 'room' });
+async function inviteFriend(code) {
+  const friend = social().friends.find(f => f.code === code);
+  if (!friend || !friendNet.isOnline(code)) { toast('친구가 게임을 켜 두고 있어야 초대할 수 있어.'); return; }
+  closeChat();
+  show('online');
+  const room = await online.host();
+  if (!room) { toast('방을 만들지 못했어. 다시 해 볼래?'); return; }
+  if (friendNet.send(code, { t: 'inv', room, id: letterId() })) {
+    pushChat(social(), code, { me: true, text: `🎮 대전 초대를 보냈어! (방 ${room})`, time: Date.now() });
+    save();
+    toast(`🎮 ${friend.name}에게 초대를 보냈어. 친구가 들어오면 시작!`, true);
+  }
+}
+async function joinInvite(room) {
+  sound.sfx('click');
+  closeChat();
+  show('online');
+  await online.join(room);
+}
+function blockFriend(code) {
+  const friend = social().friends.find(f => f.code === code);
+  removeFriend(social(), code, { block: true });
+  friendNet.close(code);
+  unread.delete(code);
+  save();
+  closeChat();
+  toast(`🚫 ${friend?.name || '친구'}을(를) 차단했어. 이제 서로 이어지지 않아.`);
+  updateSocialBadges();
+  if (screen === 'friends') renderFriends();
+  syncFriendNet();
+}
+// 신고: 대화를 복사해서 어른께 보여 드리고 사이트 문의로 알릴 수 있게
+async function reportChat() {
+  const room = chatWith.kind === 'room';
+  const name = room ? online.peerName() : social().friends.find(f => f.code === chatWith.code)?.name || '친구';
+  const log = (room ? roomLog : social().chats[chatWith.code] || []).slice(-20);
+  const line = m => (validSticker(m.sticker) ? `[젤리 이모티콘: ${STICKERS[m.sticker].text}]` : m.text);
+  const text = `[젤리 타워 신고] ${name}${room ? ' (온라인 대전)' : ` (친구 코드 ${chatWith.code})`}\n${log.map(m => `${m.me ? '나' : name}: ${line(m)}`).join('\n')}`;
+  try { await navigator.clipboard.writeText(text); } catch { /* 복사가 안 되면 안내만 */ }
+  chatNote('🚩 대화를 복사했어. 어른께 보여 드리고 seonn.dev/jelly-tower 의 문의하기로 알려 줘. 싫은 친구는 차단할 수 있어.');
+}
+// 친구 화면에 있는 동안은 45초마다 친구들이 게임에 들어왔는지 다시 본다
+function watchFriends(on) {
+  clearInterval(presenceTimer);
+  if (on) presenceTimer = setInterval(() => { if (screen === 'friends') greetFriends(); else watchFriends(false); }, 45000);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && account) pollMail(); });
+if (account) { syncFriendNet(); ensureMail(); }
 
 // ---------- 창 크기 ----------
 addEventListener('resize', () => {
@@ -1199,7 +1807,7 @@ window.render_game_to_text = () => JSON.stringify({
   } : null,
 });
 if (TEST) {
-  window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, P, store, startTower, startVs, startSolo, startLocal, startPractice, show, finishMatch, renderer, online, runEnding, recordPlayTime, pause, save };
+  window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, get mailState() { return mailState; }, pollMail, friendNet, P, store, startTower, startVs, startSolo, startLocal, startPractice, show, finishMatch, renderer, online, runEnding, recordPlayTime, pause, save };
 }
 
 // ---------- 시작 ----------
