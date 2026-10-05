@@ -20,6 +20,7 @@ button:focus-visible,a:focus-visible,canvas:focus-visible{outline:3px solid #ffd
 .stage-card b{font-size:17px;display:block;margin-top:2px}
 .actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .actions button{padding:9px 11px;font-size:13px}
+.actions button.off{opacity:.45;text-decoration:line-through}
 .actions button.ready{background:#ffd43b;color:#5c3b00;animation:pulse 1s infinite}
 @keyframes pulse{50%{transform:scale(1.07)}}
 #toast{position:fixed;left:50%;top:24%;transform:translate(-50%,-50%) scale(.9);background:#2b2140e6;color:#fff;padding:12px 22px;border-radius:999px;font-weight:700;font-size:18px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis}

@@ -31,6 +31,37 @@ const sfx={
  big:()=>chord([523,659,784,1047,784,1047],120,.22),
  chase:()=>tone(140,.5,'sawtooth',1.6,.07),
 };
+// 배경음악: 월드마다 빠르기·조·멜로디가 조금씩 다른 8비트 반복 음악. 음원 파일 없이 바로 만들어 낸다.
+const PROGS=[[0,9,5,7],[0,5,9,7],[9,5,0,7],[0,7,9,5]],MINOR=new Set([2,4,9]);
+let musicTimer=0,musicGain,musicStep=0,musicNext=0,song=null;
+function makeSong(w){
+ let seed=31+w*977;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+ const dark=WORLDS[w].theme.dark,prog=PROGS[(w+(dark?2:0))%PROGS.length],melody=[];
+ for(let bar=0;bar<8;bar++){const root=prog[bar%4],third=MINOR.has(root)?3:4,tones=[0,third,7,12,third+12];let at=Math.floor(rnd()*3);
+  for(let i=0;i<8;i++){if(i%2&&rnd()<.45){melody.push(null);continue;}at=Math.max(0,Math.min(tones.length-1,at+Math.floor(rnd()*3)-1));melody.push(root+tones[at]);}}
+ return {world:w,key:57+(w*5)%7,beat:60/(100+(w%5)*8)/2,prog,melody,lead:dark?'square':'triangle'};
+}
+function note(midi,t,dur,type,vol){
+ const o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.value=440*2**((midi-69)/12);
+ g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(musicGain);o.start(t);o.stop(t+dur+.02);
+}
+function musicTick(){
+ if(!audio||audio.state!=='running'||document.hidden)return;
+ if(song?.world!==s.world){song=makeSong(s.world);musicStep=0;musicNext=audio.currentTime+.08;}
+ if(musicNext<audio.currentTime)musicNext=audio.currentTime+.05;
+ while(musicNext<audio.currentTime+.3){
+  const i=musicStep%64,bar=Math.floor(i/8),st=i%8,root=song.key+song.prog[bar%4],third=MINOR.has(song.prog[bar%4])?3:4,t=musicNext,b=song.beat;
+  if(st===0||st===3||st===4||st===6)note(root-24,t,b*1.6,'triangle',.16);
+  note(root-12+[0,third,7,third][st%4],t,b*.8,'square',.022);
+  const m=song.melody[i];if(m!=null)note(song.key+m,t,b*1.7,song.lead,song.lead==='square'?.035:.07);
+  musicStep++;musicNext+=b;
+ }
+}
+function music(on){
+ clearInterval(musicTimer);musicTimer=0;
+ if(!on){musicGain?.gain.setTargetAtTime(0,audio.currentTime,.05);return;}
+ try{audio??=new AudioContext();if(audio.state==='suspended')audio.resume();musicGain??=audio.createGain();musicGain.connect(audio.destination);musicGain.gain.setTargetAtTime(.7,audio.currentTime,.05);musicTimer=setInterval(musicTick,100);musicTick();}catch{}
+}
 function toast(text,ms=1700){const t=$('toast');t.textContent=text;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),ms);}
 function flash(kind){const f=$('flash');f.className=`flash ${kind}`;requestAnimationFrame(()=>requestAnimationFrame(()=>{f.className='flash';}));}
 function pop(text,kind=''){const p=document.createElement('div');p.className=`pop ${kind}`;p.textContent=text;p.style.marginLeft=`${Math.round((Math.random()-.5)*140)}px`;$('pops').append(p);setTimeout(()=>p.remove(),900);}
@@ -47,6 +78,7 @@ function hud(){
  $('event').textContent=ev.active?`🏆 트로피 2배 이벤트! ${mm}:${ss} 남음`:`다음 트로피 2배 이벤트까지 ${mm}:${ss}`;$('event').classList.toggle('on',ev.active);
  if(ev.active&&s.winBoost===1){sfx.big();toast('🏆 트로피 2배 이벤트 시작! 10분 동안 트로피가 2배',3000);}
  s.winBoost=ev.boost;
+ $('music').classList.toggle('off',!s.music);$('music').setAttribute('aria-pressed',String(s.music));$('music').setAttribute('aria-label',s.music?'배경음악 끄기':'배경음악 켜기');
  $('sound').textContent=s.sound?'🔊':'🔇';$('sound').setAttribute('aria-pressed',String(s.sound));$('sound').setAttribute('aria-label',s.sound?'소리 끄기':'소리 켜기');
 }
 hud();
@@ -166,8 +198,9 @@ $('ad-close').addEventListener('click',()=>{$('ad').close();canvas.focus();});
 $('ad').addEventListener('cancel',e=>{if($('ad-close').disabled)e.preventDefault();});
 $('reset').addEventListener('click',()=>{keys.clear();$('reset-dialog').showModal();});
 $('cancel-reset').addEventListener('click',()=>$('reset-dialog').close());
-$('confirm-reset').addEventListener('click',()=>{const sound=s.sound;s=fresh();s.sound=sound;world.snapCamera(s);save();hud();$('reset-dialog').close();toast('리셋 완료! 1월드 로비에서 처음부터');});
+$('confirm-reset').addEventListener('click',()=>{const sound=s.sound,bgm=s.music;s=fresh();s.sound=sound;s.music=bgm;world.snapCamera(s);save();hud();$('reset-dialog').close();toast('리셋 완료! 1월드 로비에서 처음부터');});
 $('home').addEventListener('click',()=>{toLobby(s);world.snapCamera(s);hud();save();toast('🏠 로비로 돌아왔어요');canvas.focus();});
+$('music').addEventListener('click',()=>{s.music=!s.music;music(s.music&&playing);hud();save();toast(s.music?'🎵 배경음악 켜짐':'🎵 배경음악 꺼짐',1000);canvas.focus();});
 $('sound').addEventListener('click',()=>{s.sound=!s.sound;hud();save();if(s.sound)tone(660,.1,'triangle');});
 // 로비 시설 앞이나 잠긴 러닝머신 위에서 뜨는 버튼
 const ZONE_TEXT={item:'🛒 아이템 상점 열기',stat:'📊 스탯 상점 열기',world:'🌍 월드 포탈 열기',rebirth:'🔁 환생의 제단 열기'};
@@ -184,7 +217,7 @@ function prompt(){
 }
 
 // 흐름
-function start(){$('start').hidden=true;playing=true;canvas.focus();hud();save();toast(`${WORLDS[s.world].emoji} ${s.world+1}월드 · ${WORLDS[s.world].name}`);}
+function start(){$('start').hidden=true;playing=true;music(s.music);canvas.focus();hud();save();toast(`${WORLDS[s.world].emoji} ${s.world+1}월드 · ${WORLDS[s.world].name}`);}
 $('play').addEventListener('click',start);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){keys.clear();save();}});
 
@@ -229,7 +262,7 @@ world.engine.runRenderLoop(()=>{
 });
 addEventListener('pagehide',save);
 
-window.render_game_to_text=()=>JSON.stringify({playing,...serialize(s),level:levelOf(s.speed),stage:s.checkpoint,pathS:pathS(s),onTread,zone,
+window.render_game_to_text=()=>JSON.stringify({playing,...serialize(s),level:levelOf(s.speed),stage:s.checkpoint,bgm:{on:s.music,running:!!musicTimer,step:musicStep,world:song?.world??null,tempo:song?Math.round(30/song.beat):null},pathS:pathS(s),onTread,zone,
  player:{x:s.x,y:s.y,z:s.z,vy:s.vy,grounded:s.grounded,groundId:s.groundId},chaser:s.chaser,wait:buttonWait(s,s.world,0),world3d:world.diagnostics()});
 // 브라우저 검사용
 window.keycap_tower_debug={

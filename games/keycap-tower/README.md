@@ -15,7 +15,7 @@ KEYCAP_TOWER_URL=http://localhost:5191/ SHOTS=/tmp/shots node games/keycap-tower
 
 - `core.mjs` — 월드·스테이지 데이터, 물리, 스피드·레벨·윈·스탯·러닝머신·환생 계산 (화면 없이 테스트 가능)
 - `world.mjs` — Babylon.js 3D 화면
-- `main.js` — 조작, HUD, 메뉴, 소리, 저장 (`localStorage` 키 `keycap-tower-v1`)
+- `main.js` — 조작, HUD, 메뉴, 소리, 배경음악(Web Audio로 월드마다 만들어 냄), 저장 (`localStorage` 키 `keycap-tower-v1`)
 
 ## 조작
 

@@ -148,7 +148,7 @@ test('쫓아오는 괴물은 서 있으면 잡고, 안전지대에 닿으면 사
 });
 
 test('저장과 불러오기, 망가진 저장은 새로 시작',()=>{
- const s=fresh();s.speed=12345;s.wins=99;s.stats.power=5;s.treads=['0-1'];s.trails=[1];s.trail=1;s.unlocked=1;s.world=1;s.reached[0]=8;s.reached[1]=2;s.items=['chocolate'];s.skins=[0,2];s.skin=2;s.checkpoint=2;s.rebirths=2;
+ const s=fresh();s.speed=12345;s.wins=99;s.stats.power=5;s.treads=['0-1'];s.trails=[1];s.trail=1;s.unlocked=1;s.world=1;s.reached[0]=8;s.reached[1]=2;s.items=['chocolate'];s.skins=[0,2];s.skin=2;s.music=false;s.checkpoint=2;s.rebirths=2;
  const r=restore(JSON.stringify(serialize(s)));assert.deepEqual(serialize(r),serialize(s));assert.equal(r.groundId,getWorld(1).stages[1].safe.id);
  assert.deepEqual(serialize(restore('{bad')),serialize(fresh()));
  const odd=restore({version:1,world:3,unlocked:0,speed:-5,stats:{power:999},treads:['9-9',3],trail:4,checkpoint:50});

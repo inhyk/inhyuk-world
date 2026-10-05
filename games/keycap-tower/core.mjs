@@ -180,11 +180,11 @@ export const buttonWait=(s,w,k)=>Math.max(0,(s.cool[`b${w}-${k}`]??-1e9)+BUTTON_
 
 // 상태
 export function fresh(){
- const s={version:1,world:0,checkpoint:0,speed:0,wins:0,totalWins:0,rebirths:0,stats:{power:0,wins:0,tread:0,run:0,jump:0},treads:[],trails:[],trail:-1,items:[],skins:[0],skin:0,unlocked:0,reached:WORLDS.map(()=>0),deaths:0,sound:true,winBoost:1,
+ const s={version:1,world:0,checkpoint:0,speed:0,wins:0,totalWins:0,rebirths:0,stats:{power:0,wins:0,tread:0,run:0,jump:0},treads:[],trails:[],trail:-1,items:[],skins:[0],skin:0,unlocked:0,reached:WORLDS.map(()=>0),deaths:0,sound:true,music:true,winBoost:1,
   x:0,y:0,z:0,vx:0,vy:0,vz:0,facing:0,grounded:true,groundId:'lobby',lastKey:null,lastGroundY:0,clock:0,vanish:{},cool:{},chaser:null};
  respawn(s);return s;
 }
-const SAVED=['version','world','checkpoint','speed','wins','totalWins','rebirths','stats','treads','trails','trail','items','skins','skin','unlocked','reached','deaths','sound'];
+const SAVED=['version','world','checkpoint','speed','wins','totalWins','rebirths','stats','treads','trails','trail','items','skins','skin','unlocked','reached','deaths','sound','music'];
 export function serialize(s){const o={};for(const k of SAVED)o[k]=s[k];return o;}
 export function restore(raw){
  const s=fresh();let d;try{d=typeof raw==='string'?JSON.parse(raw):raw;}catch{d=null;}
@@ -198,7 +198,7 @@ export function restore(raw){
  s.trails=Array.isArray(d.trails)?d.trails.filter(i=>Number.isInteger(i)&&i>=0&&i<TRAILS.length):[];
  s.trail=s.trails.includes(d.trail)?d.trail:-1;
  s.items=Array.isArray(d.items)?ITEMS.map(it=>it.id).filter(id=>d.items.includes(id)):[];
- s.skins=[0,...(Array.isArray(d.skins)?d.skins.filter(i=>Number.isInteger(i)&&i>0&&i<SKINS.length):[])];s.skin=s.skins.includes(d.skin)?d.skin:0;s.sound=d.sound!==false;
+ s.skins=[0,...(Array.isArray(d.skins)?d.skins.filter(i=>Number.isInteger(i)&&i>0&&i<SKINS.length):[])];s.skin=s.skins.includes(d.skin)?d.skin:0;s.sound=d.sound!==false;s.music=d.music!==false;
  respawn(s);return s;
 }
 export function respawn(s){

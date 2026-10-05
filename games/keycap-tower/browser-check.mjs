@@ -13,6 +13,10 @@ try{
  await page.waitForTimeout(500);await page.screenshot({path:`${out}/keycap-tower-start.png`});
  await page.locator('#play').click();assert.equal((await state(page)).playing,true);
  await page.waitForTimeout(1200);await page.screenshot({path:`${out}/keycap-tower-lobby.png`});
+ // 배경음악: 시작하면 켜지고, 🎵 버튼으로 끄고 켠다
+ let bgm=(await state(page)).bgm;assert.deepEqual([bgm.on,bgm.running,bgm.world],[true,true,0]);assert.ok(bgm.step>0,`music steps ${bgm.step}`);
+ await page.locator('#music').click();bgm=(await state(page)).bgm;assert.deepEqual([bgm.on,bgm.running],[false,false]);
+ await page.locator('#music').click();bgm=(await state(page)).bgm;assert.deepEqual([bgm.on,bgm.running],[true,true]);
  // 걸어서 타워 입구의 첫 키캡을 밟는다
  await page.keyboard.down('KeyW');
  let st;for(let i=0;i<40;i++){await page.waitForTimeout(150);st=await state(page);if(st.player.grounded&&st.pathS>-2&&st.player.groundId==='lobby'&&i%2===0)await page.keyboard.press('Space');if(st.speed>=2)break;}
@@ -50,7 +54,7 @@ try{
  // 스테이지 구경
  for(const [w,cp,name] of [[0,2,'movers'],[0,3,'del'],[0,5,'spinner'],[0,7,'chaser'],[0,8,'summit'],[1,0,'world2'],[1,3,'neon'],[2,0,'world3'],[2,2,'lava'],[3,0,'world4'],[3,4,'galaxy'],[4,0,'world5'],[8,3,'world9'],[26,5,'world27'],[49,0,'world50'],[49,12,'world50-top']]){
   await page.evaluate(([w,cp])=>{window.keycap_tower_debug.set({speed:1e70});window.keycap_tower_debug.warp(w,cp);},[w,cp]);await page.waitForTimeout(900);
-  st=await state(page);assert.equal(st.world3d.world,w);assert.equal(st.player.grounded,true,`grounded at ${name}`);
+  st=await state(page);assert.equal(st.world3d.world,w);assert.equal(st.bgm.world,w,'월드가 바뀌면 음악도 바뀐다');assert.equal(st.player.grounded,true,`grounded at ${name}`);
   await page.screenshot({path:`${out}/keycap-tower-${name}.png`});
  }
  // 월드 메뉴에서 1월드로 돌아가기, 환생
