@@ -1,7 +1,9 @@
 // 클라우드 세이브 adapter (cloud.mjs) 와 기기 계정 옮기기 (migrate.mjs) 를 가짜 서버로 확인한다.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CloudSave, readCache, saveSummary, GAME } from './cloud.mjs';
+import { CloudSave, readCache, saveSummary, GAME, cloudPayload } from './cloud.mjs';
+import { SAVE_MAX_BYTES } from '../../services/net/src/saves.js';
+import { maxProgress, bytes } from './save-size.fixture.mjs';
 import { migrateLocal, markMigrated, migrationMarker, importIdFor, checkLocalPassword } from './migrate.mjs';
 import { emptyStore, createAccount, newProgress } from './profile.mjs';
 import { memoryStorage } from '../../packages/net/social.mjs';
@@ -401,4 +403,89 @@ test('자동 저장: 충돌이 끝나지 않아도 던지지 않고 pending, dir
   assert.equal(server.calls.length, tries + 1);
   assert.equal(cloud.dirty, false);
   assert.equal(cloud.state, 'synced');
+});
+
+// ---------- 저장 크기 ----------
+// 서버 한도(services/net saves.js)를 그대로 지키는 가짜 서버
+function sizedServer(max = SAVE_MAX_BYTES) {
+  const s = fakeServer();
+  const put = s.putSave;
+  s.putSave = async (game, data, base, options) => {
+    if (bytes(data) > max) { s.calls.push(['too-big', game, base]); throw Object.assign(new NetError('too-big'), { status: 413 }); }
+    return put(game, data, base, options);
+  };
+  return s;
+}
+
+test('가장 큰 기록: 친구 기록까지 넣으면 서버 한도를 넘고, 올리는 기록(cloudPayload)은 한도 안이다', () => {
+  const full = maxProgress();
+  assert.ok(bytes(full) > SAVE_MAX_BYTES * 50, `full ${bytes(full)}`);
+  const payload = cloudPayload(full);
+  assert.ok(bytes(payload) < SAVE_MAX_BYTES / 3, `payload ${bytes(payload)}`);
+  assert.equal(payload.social.key, '');
+  assert.deepEqual(payload.social.friends, []);
+  assert.equal(full.social.friends.length, 30); // 원본은 건드리지 않는다
+});
+
+test('가장 큰 기기 계정을 옮겨도 서버 한도 안에서 올라가고 우체통 열쇠는 서버에 가지 않는다', async () => {
+  const { store, local } = await localAccount();
+  local.progress = maxProgress();
+  const key = local.progress.social.key;
+  const server = sizedServer();
+  const { cloud } = make(server);
+  const r = await migrateLocal({ local, password: '1234', account: fakeAccount(), marker: migrationMarker(memoryStorage()),
+    upload: (p, id) => cloud.importLocal(cloudPayload(p), id) });
+  assert.equal(r.ok, true);
+  assert.equal(server.save.data.coins, 999999999);
+  assert.equal(server.save.data.social.key, '');
+  assert.ok(!JSON.stringify(server.save.data).includes(key));
+  assert.equal(store.accounts[0].progress.social.chats[local.progress.social.friends[0].code].length, 50); // 기기에는 그대로
+});
+
+test('가장 큰 기록의 자동 저장도 한도 안에서 올라간다', async () => {
+  const server = sizedServer();
+  server.save = { data: newProgress(), revision: 1, updated: 1 };
+  const { cloud, timers } = make(server);
+  await cloud.start();
+  cloud.change(cloudPayload(maxProgress()));
+  await timers.runAll(); await cloud.busy;
+  assert.equal(cloud.state, 'synced');
+  assert.equal(server.save.revision, 2);
+  assert.equal(server.save.data.social.key, '');
+});
+
+test('서버가 너무 크다고(413) 하면 저장된 것으로 치지 않는다: 기기에 두고 too-big 으로 알리고 나중에 다시 올린다', async () => {
+  const server = sizedServer(100); // 배포된 서버 한도가 더 작다고 치자
+  server.save = { data: newProgress(), revision: 1, updated: 1 };
+  const { cloud, timers, storage, states } = make(server, { options: { tooBigRetryMs: 300000 } });
+  await cloud.start();
+  const p = cloudPayload(maxProgress()); p.coins = 4321;
+  cloud.change(p);
+  await timers.runAll(); await cloud.busy;
+  assert.equal(cloud.state, 'too-big');
+  assert.ok(states.includes('too-big'));
+  assert.equal(cloud.dirty, true);
+  assert.equal(readCache(storage, 7).data.coins, 4321); // 기기에는 남는다
+  assert.equal(readCache(storage, 7).dirty, true);
+  assert.equal(server.save.revision, 1);
+  assert.deepEqual([...timers.jobs.values()].map(j => j.ms), [300000]);
+  // 한도를 올린 서버가 배포되면 다음 다시 하기에서 올라간다
+  const big = sizedServer(); big.save = server.save; server.putSave = big.putSave;
+  await timers.runAll(); await cloud.busy;
+  assert.equal(cloud.state, 'synced');
+  assert.equal(cloud.dirty, false);
+  assert.equal(big.save.data.coins, 4321);
+});
+
+test('옮기다가 413 이면 ok:false(too-big), 옮기던 표시와 기기 계정은 그대로', async () => {
+  const { store, local } = await localAccount();
+  const marker = migrationMarker(memoryStorage());
+  const server = sizedServer(100);
+  const { cloud } = make(server);
+  const r = await migrateLocal({ local, password: '1234', account: fakeAccount(), marker, upload: (p, id) => cloud.importLocal(cloudPayload(p), id) });
+  assert.deepEqual([r.ok, r.step, r.code], [false, 'upload', 'too-big']);
+  assert.match(r.message, /너무 커서/);
+  assert.deepEqual(marker.get(), { localId: local.id, nickname: '인혁' });
+  assert.equal(store.accounts[0].migratedTo, undefined);
+  assert.equal(server.save, null);
 });

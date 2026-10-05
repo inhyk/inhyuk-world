@@ -112,7 +112,7 @@ export function createSocialUI(deps) {
     const b = $('cloud-badge');
     if (!b) return;
     b.hidden = !deps.user();
-    b.textContent = { synced: '☁️ 저장됨', pending: '☁️ 저장 중…', offline: '☁️ 인터넷 기다리는 중', conflict: '☁️ 골라 줘!' }[state] || '☁️';
+    b.textContent = { synced: '☁️ 저장됨', pending: '☁️ 저장 중…', offline: '☁️ 인터넷 기다리는 중', conflict: '☁️ 골라 줘!', 'too-big': '⚠️ 너무 커서 서버에 못 올림 (이 기기에는 있음)' }[state] || '☁️';
   }
 
   // ---------- 온라인 대전 화면 ----------

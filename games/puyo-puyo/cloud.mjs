@@ -4,9 +4,18 @@
 // - 다른 기기가 먼저 써서 409 가 오면 합치지 않는다. 코인을 큰 쪽으로 고르지도 않는다.
 //   onConflict 로 "이 기기 / 서버" 를 보여 주고 고른 쪽을 서버 revision 으로 다시 쓴다.
 // - 인터넷이 안 되면 이 기기에 적어 두고(dirty) 나중에 다시 올린다.
+// - 서버가 너무 크다고(413 too-big) 하면 올라간 것으로 치지 않는다: 이 기기에 그대로 두고 'too-big' 으로 알린 뒤
+//   tooBigRetryMs 마다(그리고 바뀔 때마다) 다시 해 본다 (서버 한도를 올려 배포하면 그때 올라간다).
 // client 는 @inhyuk/net 의 Account (loadSave, putSave) 와 같은 모양이면 된다 (테스트는 가짜를 쓴다).
 
+import { sanitize } from './profile.mjs';
+import { emptySocial } from './chat.mjs';
+
 export const GAME = 'jelly-tower';
+
+// 서버에 올리는 기록. 친구 코드 기록(progress.social: 우체통 열쇠, 친구 대화)은 이 기기에만 둔다.
+// (친구 30명 대화를 끝까지 채우면 2MB 가 넘어 서버 한도 32KB 에 들어가지도 않는다. save-size.fixture.mjs)
+export function cloudPayload(progress) { return { ...sanitize(progress), social: emptySocial() }; }
 export const CACHE_KEY = 'jelly-cloud-v1';
 const MAX_CONFLICT_ROUNDS = 3;
 
@@ -35,14 +44,15 @@ export function writeCache(storage, uid, entry) {
 }
 
 const offline = error => !error?.code || error.code === 'network' || error.code === 'server' || error.code === 'rate';
+const tooBig = error => error?.code === 'too-big' || error?.status === 413;
 
 export class CloudSave {
   // options: client, uid, storage, initial() → 새 progress, apply(data) 서버 것을 게임에 넣기,
-  //          onConflict({ local, server }) → 'local' | 'server', onStatus(state) 'synced'|'pending'|'offline'|'conflict',
-  //          onAuthLost() 로그인이 풀림(토큰이 지워짐), delay(ms, 기본 3000), retryMs(기본 20000),
+  //          onConflict({ local, server }) → 'local' | 'server', onStatus(state) 'synced'|'pending'|'offline'|'conflict'|'too-big',
+  //          onAuthLost() 로그인이 풀림(토큰이 지워짐), delay(ms, 기본 3000), retryMs(기본 20000), tooBigRetryMs(기본 5분),
   //          timers({ setTimeout, clearTimeout }), now()
   constructor(options) {
-    this.o = { delay: 3000, retryMs: 20000, now: () => Date.now(), timers: globalThis, ...options };
+    this.o = { delay: 3000, retryMs: 20000, tooBigRetryMs: 5 * 60 * 1000, now: () => Date.now(), timers: globalThis, ...options };
     const cache = readCache(this.o.storage, this.o.uid);
     this.data = cache?.data ?? null;
     this.revision = Number.isInteger(cache?.revision) ? cache.revision : null; // null: 서버 번호를 아직 모름
@@ -82,6 +92,7 @@ export class CloudSave {
       this.setState('synced');
       return this.data;
     } catch (error) {
+      if (tooBig(error)) { this.refused(() => this.start()); return this.data; }
       if (!offline(error)) { this.lost(error); throw error; }
       if (!this.data) { this.data = this.o.initial(); this.persist(); }
       this.setState('offline');
@@ -149,10 +160,19 @@ export class CloudSave {
       this.persist();
       this.setState(this.dirty ? 'pending' : 'synced');
     } catch (error) {
+      if (tooBig(error)) { this.refused(() => this.flush()); return; }
       if (!offline(error)) { this.setState('offline'); this.lost(error); throw error; }
       this.setState('offline');
       this.scheduleRetry(() => this.flush());
     }
+  }
+
+  // 서버가 크기 때문에 받지 않음: 기기 기록(dirty)은 그대로, 오래 기다렸다 다시
+  refused(retry) {
+    this.dirty = true;
+    this.persist();
+    this.setState('too-big');
+    this.scheduleRetry(retry, this.o.tooBigRetryMs);
   }
 
   // 409: 이 기기와 서버 중 하나를 고른다. 고른 쪽을 서버 번호로 다시 쓴다.
@@ -218,10 +238,10 @@ export class CloudSave {
 
   lost(error) { if (error?.code === 'login-required' || error?.code === 'suspended') this.o.onAuthLost?.(error.code); }
 
-  scheduleRetry(fn) {
+  scheduleRetry(fn, ms = this.o.retryMs) {
     if (this.stopped) return;
     this.o.timers.clearTimeout(this.retryTimer);
-    this.retryTimer = this.o.timers.setTimeout(() => { this.retryTimer = null; fn().catch(() => {}); }, this.o.retryMs);
+    this.retryTimer = this.o.timers.setTimeout(() => { this.retryTimer = null; fn().catch(() => {}); }, ms);
   }
   // 인터넷이 돌아왔을 때 (online 이벤트)
   retryNow() {

@@ -25,14 +25,14 @@ import { createOnline } from './online.mjs';
 import { createPeerOnline } from './online-peer.mjs';
 import { Account, Social } from '../../packages/net/index.mjs';
 import { serverUrl, scopedStorage } from './net.mjs';
-import { CloudSave, CACHE_KEY } from './cloud.mjs';
+import { CloudSave, CACHE_KEY, cloudPayload } from './cloud.mjs';
 import { migrateLocal, checkLocalPassword, markMigrated, migrationMarker, importIdFor, MIGRATING_KEY } from './migrate.mjs';
 import { createSocialUI } from './social-ui.mjs';
 import { playEnding } from './ending.mjs';
 import { LESSONS, lessonCells, lessonSeq, newJudge, judge } from './tutorial.mjs';
 import {
   QUICK, STICKERS, EMOJIS, CHAT_MAX, FRIEND_MAX, REQUEST_MAX, cleanChat, personalInfo, rateLimiter, makeFriendCode, normaliseFriendCode,
-  validFriendCode, validMailKey, makeMailKey, validSticker, bigEmoji, graphemes, cleanName, addFriend, removeFriend, pushChat, emptySocial,
+  validFriendCode, validMailKey, makeMailKey, validSticker, bigEmoji, graphemes, cleanName, addFriend, removeFriend, pushChat,
 } from './chat.mjs';
 import { drainMailbox, hasLegacy } from './legacy.mjs';
 import { FriendNet } from './friendnet.mjs';
@@ -72,7 +72,7 @@ function persistStore() {
   return ok;
 }
 function save() {
-  if (account?.cloud) cloud?.change(account.progress); // 3초 조용하면 서버에 올린다
+  if (account?.cloud) cloud?.change(cloudPayload(account.progress)); // 3초 조용하면 서버에 올린다 (친구 코드 기록은 빼고)
   else if (account) { account.last = Date.now(); persistStore(); }
   try { storage?.setItem(DEVICE_KEY, JSON.stringify(device)); } catch { /* 저장 안 됨 */ }
   mirrorSave(DEVICE_KEY, storage?.getItem(DEVICE_KEY));
@@ -264,8 +264,6 @@ function migratePanel(text, { fields = true, retry = false } = {}) {
   $('migrate-fields').hidden = !fields;
   $('migrate-retry').hidden = !retry;
 }
-// 서버에 올리는 기록에는 친구 코드 기록(progress.social)을 넣지 않는다. 그 기록은 이 기기의 예전 계정에 그대로 남는다.
-const cloudProgress = progress => ({ ...sanitize(progress), social: emptySocial() });
 // 옮기기 전에 친구 우체통에 남은 편지를 받아서 예전 계정의 친구 기록에 넣는다 (안 되면 기존 친구 화면을 열 때 다시 받는다)
 // 한 묶음마다 기기에 저장(persistStore)된 뒤에만 우체통에서 지운다. 저장이 안 되면 { ok: false, error: 'save' }
 async function drainLegacy(local) {
@@ -281,7 +279,7 @@ async function runMigration(params) {
     local, account: net, marker, ...params,
     upload: async (progress, importId) => {
       const acc = openCloud(net.user);
-      await cloud.importLocal(cloudProgress(progress), importId);
+      await cloud.importLocal(cloudPayload(progress), importId);
       acc.progress = sanitize(cloud.data);
       account = acc;
     },
@@ -330,7 +328,10 @@ function openCloud(user) {
     client: net, uid: user.id, storage: netStore, initial: newProgress,
     apply: data => { acc.progress = sanitize(data); if (account === acc && screen) renderScreen(screen); },
     onConflict: info => ui.chooseSave(info),
-    onStatus: state => ui.cloudStatus(state),
+    onStatus: state => {
+      ui.cloudStatus(state);
+      if (state === 'too-big') toast('⚠️ 기록이 너무 커서 서버에 저장하지 못했어. 이 기기에는 그대로 있고, 조금 뒤에 다시 올려 볼게.');
+    },
     onAuthLost: code => lostLogin(code),
   });
   if (cloud.data) acc.progress = sanitize(cloud.data);
@@ -369,7 +370,7 @@ async function resumeMigration(local) {
   const acc = openCloud(net.user);
   try {
     if (drained.error === 'save') throw new Error('save');
-    await cloud.importLocal(cloudProgress(local.progress), importIdFor(local));
+    await cloud.importLocal(cloudPayload(local.progress), importIdFor(local));
     acc.progress = sanitize(cloud.data);
     markMigrated(store, local.id, net.user.nickname); persistStore();
     marker.clear();
