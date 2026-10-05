@@ -19,7 +19,10 @@ test('레벨은 스피드가 쌓일수록 오르고 필요 스피드와 맞는�
 
 test('월드는 50개이고 1월드부터 순서대로 열리며 뒤로 갈수록 타워가 높다',()=>{
  assert.equal(WORLDS.length,50);assert.deepEqual(WORLDS.slice(0,5).map(w=>w.req),[0,120,400,1000,5000]);
- for(let i=5;i<50;i++)assert.equal(WORLDS[i].req-WORLDS[i-1].req,3000,'5월드부터는 레벨이 3000씩 올라야 다음 월드');
+ for(let i=5;i<30;i++)assert.equal(WORLDS[i].req-WORLDS[i-1].req,3000,'5월드부터는 레벨이 3000씩 올라야 다음 월드');
+ for(let i=30;i<50;i++)assert.equal(WORLDS[i].req-WORLDS[i-1].req,1000000,'30월드부터는 레벨이 1000000씩 올라야 다음 월드');
+ assert.equal(WORLDS[29].req,80000);assert.equal(WORLDS[49].req,20080000);assert.ok(Math.abs(levelOf(needSpeed(WORLDS[49].req))-WORLDS[49].req)<=1);
+ for(const w of WORLDS)for(let k=1;k<w.levels.length;k++)assert.ok(needSpeed(w.levels[k])>needSpeed(w.levels[k-1]));
  assert.equal(new Set(WORLDS.map(w=>w.name)).size,50);assert.ok(getWorld(49).top>getWorld(4).top&&WORLDS[49].levels.length>WORLDS[4].levels.length);
  assert.ok(Number.isFinite(needSpeed(WORLDS[49].levels.at(-1)))&&needSpeed(WORLDS[49].levels.at(-1))<1e72);
  WORLDS.forEach((w,i)=>{

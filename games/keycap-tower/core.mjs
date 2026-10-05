@@ -39,7 +39,7 @@ export const WORLDS=[
   theme:{sky:'#050418',fog:'#0d0a33',floor:'#14113a',keys:['#fcc419','#748ffc','#e599f7','#f8f9fa'],safe:'#2b2a5c',accent:'#63e6be',pillar:'#060518',ink:'#1a1440',dark:true}},
 ];
 // 5월드부터 50월드까지는 규칙으로 만든다. 월드가 올라갈수록 스테이지가 늘어 타워가 더 높아진다.
-const WORLD_GAP=3000;
+const WORLD_GAP=3000,BIG_WORLD=29,BIG_GAP=1e6,BIG_FROM=5000+(BIG_WORLD-4)*WORLD_GAP;
 const MORE=[['얼음','🧊',195],['정글','🌴',130],['사막','🏜️',40],['바다','🌊',210],['구름','☁️',200],['과자','🍪',30],['로봇','🤖',220],['유령','👻',270],['무지개','🌈',320],['황금','🥇',48],
  ['수정','🔮',285],['번개','⚡',55],['꿈','💤',250],['장난감','🧸',15],['해적','🏴‍☠️',5],['공룡','🦖',110],['닌자','🥷',240],['마법','🪄',300],['눈꽃','❄️',185],['폭풍','🌪️',225],
  ['버섯','🍄',0],['꿀벌','🐝',50],['젤리','🍮',335],['레이저','🔦',350],['달빛','🌙',235],['태양','☀️',35],['심해','🐙',205],['화석','🦴',28],['다이아','💎',180],['픽셀','👾',140],
@@ -49,9 +49,9 @@ const MIDDLE=['징검다리','흔들 다리','함정 길','깜빡 길','회전 �
 const KINDS=['zig:4','mover:4','lift:3','blink:5','del:4','spin','plain:3'];
 function hsl(h,s,l){h=((h%360)+360)%360;s/=100;l/=100;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)))).toString(16).padStart(2,'0');};return `#${f(0)}${f(8)}${f(4)}`;}
 MORE.forEach(([nm,emoji,h],j)=>{
- const i=j+4,n=Math.min(12,7+Math.floor(j/6)),req=5000+j*WORLD_GAP,rnd=rng(500+i*37),dark=i%3!==0,base=5e4*11**(i-3),win=5e12*10**j;
+ const i=j+4,n=Math.min(12,7+Math.floor(j/6)),big=i>=BIG_WORLD,req=big?BIG_FROM+(i-BIG_WORLD)*BIG_GAP:5000+j*WORLD_GAP,rnd=rng(500+i*37),dark=i%3!==0,base=5e4*11**(i-3),win=5e12*10**j;
  WORLDS.push({name:`${nm} 타워`,emoji,req,keyMult:base,
-  levels:Array.from({length:n},(_,k)=>req+Math.round(k*2550/(n-1))),
+  levels:Array.from({length:n},(_,k)=>req+Math.round(k*(big?BIG_GAP:WORLD_GAP)*.85/(n-1))),
   names:Array.from({length:n},(_,k)=>k===0?`${nm} 입구`:k===n-1?`${nm} 왕관`:`${nm} ${MIDDLE[(k-1+j)%MIDDLE.length]}`),
   segs:Array.from({length:n},(_,k)=>['plain:3',...Array.from({length:2+(k>n/2?1:0)+(k===n-1?1:0)},()=>KINDS[Math.floor(rnd()*KINDS.length)])]),
   chasers:Array.from({length:n},(_,k)=>k).filter(k=>k%3===2||k===n-1),
@@ -97,10 +97,10 @@ export function fmt(n){
  for(const [u,name] of UNITS)if(n>=u){const v=n/u;return `${v>=100?Math.floor(v).toLocaleString('en-US'):+v.toFixed(v>=10?1:2)}${name}`;}
  return String(n);
 }
-// 레벨 2000까지는 가파르게, 그 뒤로는 월드 하나(레벨 3000)에 약 11배씩 늘어난다.
-const CURVE_END=2000,curve=L=>5*L**1.6*1.012**L;
-export const needSpeed=L=>L<=0?0:Math.round(L<=CURVE_END?curve(L):curve(CURVE_END)*1.0008**(L-CURVE_END));
-export function levelOf(speed){let lo=0,hi=200000;while(lo<hi){const mid=Math.ceil((lo+hi)/2);if(needSpeed(mid)<=speed)lo=mid;else hi=mid-1;}return lo;}
+// 레벨 2000까지는 가파르게, 그 뒤로는 월드 하나(레벨 3000)에 약 11배씩, 30월드(레벨 8만)부터는 월드 하나(레벨 100만)에 11배씩 늘어난다.
+const CURVE_END=2000,curve=L=>5*L**1.6*1.012**L,mid=L=>curve(CURVE_END)*1.0008**(L-CURVE_END);
+export const needSpeed=L=>L<=0?0:Math.round(L<=CURVE_END?curve(L):L<=BIG_FROM?mid(L):mid(BIG_FROM)*11**((L-BIG_FROM)/BIG_GAP));
+export function levelOf(speed){let lo=0,hi=4e7;while(lo<hi){const mid=Math.ceil((lo+hi)/2);if(needSpeed(mid)<=speed)lo=mid;else hi=mid-1;}return lo;}
 export const runSpeed=(level,run=0)=>(8+16*(1-Math.exp(-level/150)))*STATS.run.value(run);
 export const jumpVy=(jump=0)=>JUMP_VY*STATS.jump.value(jump);
 export const rebirthMult=r=>2**r;

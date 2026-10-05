@@ -66,6 +66,8 @@ try{
  await page.locator('[data-act="world:0"]').click();await page.waitForTimeout(500);st=await state(page);assert.equal(st.world,0);assert.equal(st.player.groundId,'lobby');
  await page.locator('.actions [data-tab=rebirth]').click({force:true});await page.locator('[data-act=rebirth]').click();await page.waitForTimeout(300);
  st=await state(page);assert.deepEqual([st.rebirths,st.speed,st.level],[1,0,0]);
+ // 리셋 버튼: 취소하면 그대로
+ await page.locator('#reset').click();assert.ok(await page.locator('#reset-dialog').isVisible());await page.locator('#cancel-reset').click();assert.equal((await state(page)).rebirths,1);
  const fps=await page.evaluate(()=>new Promise(r=>{let n=0;const t0=performance.now();const f=()=>{n++;if(performance.now()-t0<2000)requestAnimationFrame(f);else r(n/2);};requestAnimationFrame(f);}));
  console.log('fps',fps,'meshes',st.world3d.meshes,'active',st.world3d.activeMeshes);
  // 저장: 새로고침해도 남는다
@@ -74,7 +76,10 @@ try{
  // 게임은 페이지를 떠날 때 저장하므로, 다른 페이지에서 저장값을 넣고 다시 연다.
  await page.goto(new URL('style.css',url).href);
  await page.evaluate(()=>localStorage.setItem('keycap-tower-v1',JSON.stringify({version:1,world:2,checkpoint:0,speed:2.59e10,wins:2.23e10,totalWins:3e10,rebirths:5,stats:{power:20,wins:5,tread:8,run:2,jump:1},treads:['0-1','0-2'],trails:[0],trail:0,unlocked:2,reached:[8,6,1,0],deaths:3,sound:true})));
- await page.goto(url);await ready(page);await page.locator('#play').click();await page.waitForTimeout(900);st=await state(page);assert.deepEqual([st.world,st.rebirths,st.level,st.world3d.world],[2,5,954,2]);await page.screenshot({path:`${out}/keycap-tower-old-save.png`});
+ await page.goto(url);await ready(page);await page.locator('#play').click();await page.waitForTimeout(900);st=await state(page);assert.deepEqual([st.world,st.rebirths,st.level,st.world3d.world],[2,5,954,2]);
+ // 리셋하면 전부 처음으로
+ await page.locator('#reset').click();await page.screenshot({path:`${out}/keycap-tower-reset.png`});await page.locator('#confirm-reset').click();await page.waitForTimeout(500);
+ st=await state(page);assert.deepEqual([st.world,st.rebirths,st.level,st.wins,st.unlocked,st.items.length,st.world3d.world],[0,0,0,0,0,0,0]);await page.screenshot({path:`${out}/keycap-tower-old-save.png`});
  const m=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
  m.on('pageerror',e=>errors.push(e.message));
  await m.goto(url);await ready(m);await m.screenshot({path:`${out}/keycap-tower-mobile-start.png`});

@@ -92,7 +92,7 @@ export function createWorld(canvas){
    }
    else if(o.type==='wall'){
     const b=MeshBuilder.CreateBox(o.id,{width:o.w,height:o.h,depth:o.d},scene);b.parent=root;b.position.set(o.x,o.top-o.h/2,o.z);b.rotation.y=yawOf(o);b.material=mat('#ff3b5c',{glow:.6,alpha:.42});b.isPickable=false;
-    const tag=sign(`🔒 레벨 ${o.req} 필요`,{w:5,h:1.1,bg:'#c92a2aee',fg:'#ffffff',size:100});tag.position.set(o.x,o.top-o.h/2+.6,o.z);
+    const tag=sign(`🔒 레벨 ${fmt(o.req)} 필요`,{w:5,h:1.1,bg:'#c92a2aee',fg:'#ffffff',size:100});tag.position.set(o.x,o.top-o.h/2+.6,o.z);
     walls.push({req:o.req,nodes:[b,tag]});
    }
    else if(o.type==='spinner'){
