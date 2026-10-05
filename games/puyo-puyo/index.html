@@ -120,7 +120,7 @@
   <section id="scr-vs" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🤖 AI 대전</h2></div>
     <div id="vs-levels" class="level-grid"></div>
-    <div class="setting"><span>몇 판 먼저 이기면 승리?</span><div class="seg" id="vs-first"><button data-v="1">1판</button><button data-v="2" class="on">2판</button><button data-v="3">3판</button><button data-v="5">5판</button></div></div>
+    <div class="setting"><span>몇 판 먼저 이기면 승리?</span><div class="seg first-to" id="vs-first"></div></div>
     <button id="vs-start" class="primary big">시작!</button>
   </section>
 
@@ -134,7 +134,7 @@
       <div><h3>2P (오른쪽)</h3><p><kbd>←</kbd><kbd>→</kbd> 이동 · <kbd>↓</kbd> 빨리 내리기</p><p><kbd>↑</kbd> 오른쪽 돌리기 · <kbd>/</kbd> 왼쪽 돌리기</p><p><kbd>Enter</kbd> 바로 떨어뜨리기</p></div>
     </div>
     <div class="setting"><span>2P 이름</span><input id="local-name" maxlength="10" value="2P"></div>
-    <div class="setting"><span>몇 판 먼저 이기면 승리?</span><div class="seg" id="local-first"><button data-v="1">1판</button><button data-v="2" class="on">2판</button><button data-v="3">3판</button><button data-v="5">5판</button></div></div>
+    <div class="setting"><span>몇 판 먼저 이기면 승리?</span><div class="seg first-to" id="local-first"></div></div>
     <p class="fine">태블릿·휴대폰을 가로로 놓으면 양쪽에 버튼이 하나씩 생겨.</p>
     <button id="local-start" class="primary big">시작!</button>
   </section>
@@ -152,7 +152,7 @@
     <form id="room-join" class="row center"><input id="room-input" placeholder="친구 방 코드" maxlength="6" autocomplete="off"><button class="primary" type="submit">들어가기</button></form>
     <div id="online-lobby" class="lobby" hidden>
       <div class="vsline"><span id="lobby-me"></span><b>VS</b><span id="lobby-you"></span></div>
-      <div class="setting" id="online-first-row"><span>몇 판 먼저 이기면 승리?</span><div class="seg" id="online-first"><button data-v="1">1판</button><button data-v="2" class="on">2판</button><button data-v="3">3판</button><button data-v="5">5판</button></div></div>
+      <div class="setting" id="online-first-row"><span>몇 판 먼저 이기면 승리?</span><div class="seg first-to" id="online-first"></div></div>
       <button id="online-start" class="primary big">시작!</button>
       <p id="online-wait" class="fine" hidden>방장이 시작하기를 기다리는 중…</p>
     </div>

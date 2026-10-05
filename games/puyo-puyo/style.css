@@ -401,3 +401,6 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 }
 /* 좁은 휴대폰에서 로그인 아래 두 단추가 글자 중간에서 줄바꿈되지 않게 위아래로 */
 @media (max-width: 440px) { #login-main .row { flex-direction: column; align-items: stretch; } }
+/* 판 수 단추가 9개라 좁은 화면에서는 두 줄로 나뉘어도 단추 크기가 고르게 */
+.seg.first-to { justify-content: flex-end; }
+.seg.first-to button { min-width: 52px; padding: 8px 10px; }

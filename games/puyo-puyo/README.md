@@ -11,6 +11,7 @@
 - `npm run test:puyo-puyo`: 규칙·AI·로그인·챌린지·상점·타워 테스트
 - `node games/puyo-puyo/browser-check.mjs`: 실제 Chrome에서 로그인 → 타워 → 엔딩 → 모바일 버튼까지 확인 (`PUYO_URL`로 주소 변경)
 - `node games/puyo-puyo/practice-browser-check.mjs`: 연습하기 3단계를 키보드와 휴대폰 버튼으로 끝까지
+- `node games/puyo-puyo/rounds-browser-check.mjs`: AI 대전·2인 플레이·온라인 대전에서 10·25·30·40·50판까지 고르기 (온라인은 두 창을 실제로 연결)
 - `node games/puyo-puyo/app-browser-check.mjs`: 가짜 Capacitor로 앱 전용 기능(시작 그림, 기기 저장소에 같이 저장·되살리기, 진동, 계정 지우기) 확인
 
 ## 기획서 12가지와 구현
@@ -23,7 +24,7 @@
    - 자세한 분석은 [ANALYSIS.md](ANALYSIS.md)
 2. **2인 플레이와 온라인**
    - 한 키보드 2인 플레이 (1P WASD + Q·Space, 2P 방향키 + / · Enter), 태블릿은 양쪽 버튼
-   - 온라인 대전: 방 만들기 → 6글자 코드 → 친구가 들어오기, 선취 1·2·3·5판, “한 번 더!”
+   - 온라인 대전: 방 만들기 → 6글자 코드 → 친구가 들어오기, 선취 1·2·3·5·10·25·30·40·50판, “한 번 더!”
 3. **AI를 깨는 타워**
    - 한 번 이길 때마다 한 층씩, 순서는 방해 젤리 순서 그대로: 작은 젤리 → 큰 젤리 → 운석 → 별 → 달 → 왕관
    - 층마다 주인 캐릭터와 대사(꼬마 젤리, 왕방울, 운석 골렘 쿵쿵, 별빛 마법사 반짝이, 달토끼 루나, 젤리 대왕)

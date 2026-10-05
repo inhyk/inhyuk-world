@@ -1,7 +1,7 @@
 import './style.css';
 import { MAPS, getMap } from './maps.mjs';
 import { consumePromo } from './promo.mjs';
-import { Match } from './match.mjs';
+import { Match, FIRST_TO } from './match.mjs';
 import { Renderer } from './render.mjs';
 import { Sound } from './audio.mjs';
 import { Controls } from './input.mjs';
@@ -278,6 +278,9 @@ function renderVs() {
   }
 }
 function segValue(id) { return Number($(id).querySelector('.on')?.dataset.v || 1); }
+// 몇 판 먼저 이기면 승리? 단추: 1·2·3·5·10·25·30·40·50판 (처음에는 2판)
+for (const id of ['vs-first', 'local-first', 'online-first'])
+  $(id).innerHTML = FIRST_TO.map(n => `<button data-v="${n}"${n === 2 ? ' class="on"' : ''}>${n}판</button>`).join('');
 document.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b || seg.id === 'shop-tabs') return;

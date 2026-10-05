@@ -4,6 +4,10 @@ import { Player, makeSequence, targetPoints, TIMING } from './core.mjs';
 import { AIController } from './ai.mjs';
 
 export const COUNTDOWN = 150;   // 준비 → 3 → 2 → 1 → 시작
+// 몇 판 먼저 이기면 승리? AI 대전·2인 플레이·온라인 대전에서 고르는 판 수 (인혁이 요청: 10·25·30·40·50판까지)
+export const FIRST_TO = [1, 2, 3, 5, 10, 25, 30, 40, 50];
+// 온라인 상대가 보낸 판 수처럼 믿을 수 없는 값을 1~50판 사이로
+export const clampFirstTo = n => Math.max(1, Math.min(FIRST_TO[FIRST_TO.length - 1], Math.trunc(Number(n)) || 1));
 export const ROUND_PAUSE = 180; // 한 판이 끝나고 다음 판까지
 
 // spec: { kind: 'human' | 'ai' | 'remote', level, name }

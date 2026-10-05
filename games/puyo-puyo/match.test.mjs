@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Match } from './match.mjs';
+import { Match, FIRST_TO, clampFirstTo, ROUND_PAUSE } from './match.mjs';
 import { rng, parseField, W, H } from './core.mjs';
 import { think, AI_LEVELS, potential, moves, reachable } from './ai.mjs';
 
@@ -102,4 +102,24 @@ test('타워 AI는 층이 높을수록 세다 (5층이 1층을 이긴다)', () =
     if (m.winner() === 1) high++;
   }
   assert.equal(high, 3);
+});
+
+test('판 수: 1·2·3·5판에 10·25·30·40·50판까지 고를 수 있고, 온라인으로 받은 값은 1~50판', () => {
+  assert.deepEqual(FIRST_TO, [1, 2, 3, 5, 10, 25, 30, 40, 50]);
+  for (const n of FIRST_TO) assert.equal(clampFirstTo(n), n);
+  assert.equal(clampFirstTo('25'), 25);
+  assert.equal(clampFirstTo(51), 50); assert.equal(clampFirstTo(9999), 50);
+  assert.equal(clampFirstTo(0), 1); assert.equal(clampFirstTo(-3), 1); assert.equal(clampFirstTo('없음'), 1); assert.equal(clampFirstTo(undefined), 1);
+  assert.equal(clampFirstTo(2.7), 2);
+});
+
+test('10선승: 5번 이겨도 계속, 10번째 승리에서 끝난다', () => {
+  const m = new Match({ seed: 3, specs: [{ kind: 'human' }, { kind: 'human' }], firstTo: 10 });
+  for (let win = 1; win <= 10; win++) {
+    m.endRound([false, true]); // 2P가 쓰러져 1P 승리
+    assert.deepEqual(m.wins, [win, 0]);
+    for (let i = 0; i < ROUND_PAUSE; i++) m.step([]);
+    assert.equal(m.phase, win < 10 ? 'countdown' : 'over', `${win}승`);
+  }
+  assert.ok(m.events.some(e => e.type === 'matchEnd'));
 });

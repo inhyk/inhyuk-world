@@ -1,6 +1,7 @@
 // 온라인 대전. 각자 자기 필드를 계산하고, 상대에게는 필드 모습(초당 20번)과
 // 방해뿌요·연쇄 시작/끝·쓰러짐만 보낸다. 판정(누가 이겼나)은 방장이 한다.
 import { PuyoRoom, normaliseCode } from './room.mjs';
+import { clampFirstTo } from './match.mjs';
 import { W, H, heights } from './core.mjs';
 import { emptyTotals } from './match.mjs';
 
@@ -123,10 +124,10 @@ export function createOnline(api) {
         toast(`🌐 ${peer.name}와 연결됐어!`);
         break;
       case 'first':
-        if (!room.host) { firstTo = Math.max(1, Math.min(5, Number(m.n) | 0)); lobby(); }
+        if (!room.host) { firstTo = clampFirstTo(m.n); lobby(); }
         break;
       case 'start':
-        if (!room.host && Number.isFinite(m.seed)) { firstTo = Math.max(1, Math.min(5, Number(m.first) | 0)); begin(m.seed >>> 0, 'guest'); }
+        if (!room.host && Number.isFinite(m.seed)) { firstTo = clampFirstTo(m.first); begin(m.seed >>> 0, 'guest'); }
         break;
       case 'atk':
         if (match && inGame && match.phase === 'play') { const n = Math.max(0, Math.min(2000, Number(m.n) | 0)); match.players[0].receive(n); match.remoteChaining = true; }
