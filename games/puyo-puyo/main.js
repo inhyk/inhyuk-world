@@ -1366,24 +1366,28 @@ function receiveLetters(letters) {
   for (const l of letters) friendData(l.from, { t: l.kind, text: l.text, sticker: l.sticker, name: l.name, level: l.level, at: l.t, id: l.id }, { via: 'mail', quiet });
   if (quiet) { toast(`📮 친구 우체통에 편지가 ${letters.length}통 왔어!`, true); sound.sfx('mission'); }
 }
-// 게임 중인 친구에게 직접 보내고 "받았어"(got) 답을 기다린다. 답이 없으면 false
+// 게임 중인 친구에게 직접 보내고 "받았어"(got) 답을 기다린다.
+// 'got' 받았대 | 'sent' 보냈지만 답이 없다 (예전 버전 게임은 답을 안 한다) | false 보내지 못했다
 function sendLive(code, payload, wait = 3500) {
   return new Promise(resolve => {
     if (!friendNet.isOnline(code) || !friendNet.send(code, payload)) { resolve(false); return; }
-    const timer = setTimeout(() => { pendingAcks.delete(payload.id); resolve(false); }, wait);
-    pendingAcks.set(payload.id, () => { clearTimeout(timer); pendingAcks.delete(payload.id); resolve(true); });
+    const timer = setTimeout(() => { pendingAcks.delete(payload.id); resolve('sent'); }, wait);
+    pendingAcks.set(payload.id, () => { clearTimeout(timer); pendingAcks.delete(payload.id); resolve('got'); });
   });
 }
 // 친구에게 보내기: 게임 중이면 직접(바로 도착, 우체통을 아낀다), 아니면 우체통에 맡긴다(친구가 켜면 받는다)
 async function sendToFriend(code, letter) {
   const s = social(), id = letterId(), me = { name: account.name, level: P().level };
-  if (await sendLive(code, { t: letter.kind, text: letter.text, sticker: letter.sticker, id, ...me })) return { ok: true, live: true };
+  const live = await sendLive(code, { t: letter.kind, text: letter.text, sticker: letter.sticker, id, ...me });
+  if (live === 'got') return { ok: true, live: true };
   if (mailState === 'on') {
     const r = await mail.send(s.code, s.key, { to: code, id, kind: letter.kind, text: letter.text, sticker: letter.sticker, ...me });
     if (r.ok) { friendNet.send(code, { t: 'ring' }); return r; }
     if (['personal', 'limit', 'empty', 'sticker'].includes(r.error)) return r;
     if (r.status === 401) { mailState = 'unknown'; startMail(); }
   }
+  // 우체통을 쓸 수 없어도 열린 연결로 보내기는 했으면 보낸 걸로 친다 (예전처럼. 차단당한 것도 알리지 않는다)
+  if (live === 'sent') return { ok: true, live: true };
   return { ok: false, error: mailState === 'on' ? 'fail' : 'offline' };
 }
 const NEEDS_GOT = new Set(['msg', 'st', 'fr', 'fa', 'fx']);
@@ -1545,7 +1549,12 @@ $('friend-add').onsubmit = async e => {
   if (mailState !== 'on' && !live) await startMail();
   if (live || mailState === 'on') {
     const r = await sendToFriend(code, { kind: 'fr' });
-    if (!r.ok) { friendStatus(r.error === 'limit' ? '신청을 너무 많이 보냈어. 조금 뒤에 다시 해 줘.' : '친구 신청을 보내지 못했어. 인터넷을 확인하고 다시 해 봐!'); return; }
+    if (!r.ok) {
+      friendStatus(r.error === 'limit' ? '신청을 너무 많이 보냈어. 조금 뒤에 다시 해 줘.'
+        : r.error === 'offline' ? '친구를 찾지 못했어. 친구도 지금 게임을 켜 두고 있어야 해. 코드를 확인하고 다시 해 봐!'
+        : '친구 신청을 보내지 못했어. 인터넷을 확인하고 다시 해 봐!');
+      return;
+    }
     s.sent.push({ code, time: Date.now() }); save();
     $('friend-input').value = '';
     friendStatus(r.live || r.known !== false
