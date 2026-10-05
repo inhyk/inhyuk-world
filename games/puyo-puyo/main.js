@@ -92,6 +92,7 @@ function toast(text, gold = false) {
 // ---------- 화면 ----------
 const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'online', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards', 'friends'];
 function show(name) {
+  if (chatWith?.kind === 'friend' && name !== 'friends') closeChat(); // 친구 화면을 떠나면 친구 채팅 창도 닫는다
   screen = name;
   for (const s of SCREENS) $(`scr-${s}`).hidden = s !== name;
   $('hud').hidden = true;

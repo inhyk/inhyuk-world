@@ -115,7 +115,16 @@ try {
   await A.click('#friend-list [data-chat]');
   assert.equal((await logTexts(A)).length, 5); // 내가 보낸 3 + 받은 2, 중복 없음
 
+  // 7) 검사용 계정을 지운다: 계정을 지우면 우체통과 열쇠도 지워진다 (진짜 사이트에서 돌려도 흔적이 남지 않게)
+  for (const P of [A, B]) {
+    await P.evaluate(() => window.__puyo.show('profile'));
+    await P.click('#delete-account'); await P.click('#delete-yes');
+    await P.waitForSelector('#scr-login:not([hidden])', T);
+  }
+  const gone = await A.evaluate(async code => (await fetch('/api/jelly-mail', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'send', code, key: '0'.repeat(32), to: 'QQQQQQ', kind: 'msg', text: 'x' }) })).status, codeA);
+  assert.equal(gone, 401); // 지운 계정의 코드로는 더 보낼 수 없다
+
   assert.deepEqual(errors, []);
-  console.log('PASS: 친구가 꺼 둔 동안 친구 신청(없는 코드 알림) → 다시 켜서 받기 → 꺼 둔 친구에게 글·젤리 이모티콘·이모지 → 켜면 도착(메뉴 배지·안 읽음) → 둘 다 켜 있을 때 바로 · 중복 없음 — 오류 없음');
+  console.log('PASS: 친구가 꺼 둔 동안 친구 신청(없는 코드 알림) → 다시 켜서 받기 → 꺼 둔 친구에게 글·젤리 이모티콘·이모지 → 켜면 도착(메뉴 배지·안 읽음) → 둘 다 켜 있을 때 바로 · 중복 없음 · 계정 지우면 우체통도 지움 — 오류 없음');
   console.log(`Screenshots: ${shots}`);
 } finally { await browser.close(); }
