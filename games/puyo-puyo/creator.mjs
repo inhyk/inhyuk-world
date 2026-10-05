@@ -1,6 +1,7 @@
 import { MISSIONS, DAILY_POOL, ensureDaily, track } from './missions.mjs';
 import { SKINS, EFFECTS, grant } from './shop.mjs';
 import { TOP_FLOOR, clearFloor } from './tower.mjs';
+import { resetPassword } from './profile.mjs';
 
 // 이 기기에서 즐기는 제작자 도구. 잠금 해제는 저장하지 않고 로그인 세션에서만 유지한다.
 export function createCreatorSession() {
@@ -9,6 +10,11 @@ export function createCreatorSession() {
     get unlocked() { return unlocked; },
     unlock(password) { unlocked = password === '7777777'; return unlocked; },
     lock() { unlocked = false; },
+    // 이 기기 계정의 비밀번호를 잊었을 때 새로 정한다 (제작자 모드가 열려 있을 때만)
+    async resetPassword(store, id, password) {
+      if (!unlocked) return { ok: false, error: '제작자 모드를 먼저 열어 줘.' };
+      return resetPassword(store, id, password);
+    },
     apply(progress, action) {
       if (!unlocked) return null;
       if (action === 'tower') {

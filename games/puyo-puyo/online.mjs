@@ -5,13 +5,15 @@
 // - 매칭, 초대 방에서는 서버가 data 안의 모든 글자열을 거르고 숫자 8개 이상을 가린다.
 //   그래서 필드 모습은 글자열이 아니라 숫자 배열로 보낸다.
 // - 서버는 한 연결에서 1초에 30개(몰아서 60개)까지만 전한다. 필드 모습을 초당 12번으로 줄여 공격 메시지가 버려지지 않게 한다.
-// - 채팅은 room.chat(text) (data.chat) 으로만 보낸다.
+// - 직접 쓴 채팅은 room.chat(text) (data.chat) 으로만 보낸다. 빠른 말과 젤리 이모티콘은 번호만 보낸다
+//   ({ t: 'say', quick: n } / { t: 'say', sticker: n }). 번호라서 거를 글자가 없고, 받는 쪽이 정해진 말과 그림으로 바꾼다.
 // - 다시 접속(rejoin): 상대 계정이 다른 연결로 다시 들어오면 판을 맞추지 않고 이번 대전을 끝낸다(둘 다 온라인 화면으로).
 //   필드를 다시 맞추려면 양쪽 젤리 순서와 방해 젤리 수를 모두 다시 보내야 해서, 끝내는 쪽이 간단하고 어긋나지 않는다.
 //   내 연결이 끊기거나(lost) 다른 기기에서 같은 계정이 들어오면(replaced) 지금처럼 대전을 끝내고 온라인 화면으로 돌아간다.
 import { clampFirstTo, emptyTotals } from './match.mjs';
 import { W, H, heights } from './core.mjs';
 import { NET_GAME } from './net.mjs';
+import { QUICK, STICKERS, validSticker } from './chat.mjs';
 
 const SEND_EVERY = 5;        // 5프레임마다 (초당 12번)
 export const CHAT_MAX = 60;  // 짧은 말만 (서버는 200글자까지)
@@ -90,7 +92,7 @@ export function eventMessage(e) {
 
 // api: $, toast, sound, social() → Social | null, me() → { level, skin, effect }, start({ seed, firstTo, opponent, peer, role, makeRemote }),
 //      match() → 지금 판, isFinished() → 결과가 나왔는지, quit() → 판을 접고 온라인 화면으로,
-//      render() 온라인 화면 다시 그리기, chatLine(entry), chatReset()
+//      render() 온라인 화면 다시 그리기, chatLine(entry) 대화 한 줄({ who, text } 또는 { who, sticker }), chatReset()
 export function createOnline(api) {
   const { toast, sound } = api;
   let room = null, opponent = null, peer = null, firstTo = 2, remote = null, clock = 0, last = '', lastRound = 0;
@@ -154,8 +156,8 @@ export function createOnline(api) {
     api.start({ seed, firstTo, opponent, peer: peer || cleanPeer({}), role, makeRemote: seq => (remote = new RemoteView(seq)) });
   }
 
-  function line(who, text) {
-    const entry = { who, text: String(text).slice(0, 200), at: Date.now() };
+  function line(who, text, sticker) {
+    const entry = validSticker(sticker) ? { who, sticker, at: Date.now() } : { who, text: String(text).slice(0, 200), at: Date.now() };
     lines.push(entry);
     if (lines.length > LINES_KEEP) lines.shift();
     api.chatLine?.(entry);
@@ -164,6 +166,11 @@ export function createOnline(api) {
   function received(m) {
     if (!m || typeof m !== 'object') return;
     if (typeof m.chat === 'string') { if (m.chat) line('them', m.chat); return; }
+    if (m.t === 'say') {
+      if (validSticker(m.sticker)) line('them', '', m.sticker);
+      else if (Number.isInteger(m.quick) && QUICK[m.quick]) line('them', QUICK[m.quick]);
+      return;
+    }
     const match = api.match();
     switch (m.t) {
       case 'hello':
@@ -291,11 +298,19 @@ export function createOnline(api) {
       line('me', t);
       return true;
     },
+    // 빠른 말(quick)과 젤리 이모티콘(sticker)은 번호만 보낸다
+    say({ quick, sticker }) {
+      if (!room?.ready) return false;
+      if (validSticker(sticker)) { if (!room.send({ t: 'say', sticker })) return false; line('me', '', sticker); return true; }
+      if (Number.isInteger(quick) && QUICK[quick]) { if (!room.send({ t: 'say', quick })) return false; line('me', QUICK[quick]); return true; }
+      return false;
+    },
+    get connected() { return !!room?.ready; },
     // 신고할 때 같이 보내는 대화 (서버도 그 방의 거른 채팅을 따로 모은다)
     reportPayload(reason) {
       const who = recent;
       if (!who?.id) return null;
-      return { target: who.id, context: { kind: 'room', game: NET_GAME, room: who.room }, reason, messages: lines.map(l => ({ text: `${l.who === 'me' ? '나' : '상대'}: ${l.text}` })) };
+      return { target: who.id, context: { kind: 'room', game: NET_GAME, room: who.room }, reason, messages: lines.map(l => ({ text: `${l.who === 'me' ? '나' : '상대'}: ${validSticker(l.sticker) ? `[젤리 이모티콘: ${STICKERS[l.sticker].text}]` : l.text}` })) };
     },
 
     send: m => room?.send(m),

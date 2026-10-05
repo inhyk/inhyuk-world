@@ -1,7 +1,16 @@
-// 온라인 계정으로 하는 것들의 화면: 온라인 대전(게임 찾기, 친구 초대), 친구, 1:1 대화, 대전 채팅, 초대 알림,
+// 온라인 계정으로 하는 것들의 화면: 온라인 대전(게임 찾기, 친구 초대), 닉네임 친구, 1:1 대화, 초대 알림,
 // 차단과 신고, 결과 화면의 "친구 요청", 저장 충돌 고르기 창. 게임 규칙과 계정 관리는 main.js 에 있다.
+// 대전 채팅 창(빠른 말, 젤리 이모티콘, 이모지)과 이 기기 계정의 친구 코드 친구도 main.js 에 있다.
 // 상대 이름은 서버가 준 닉네임만 보여 주고, 사람이 쓴 글은 모두 textContent 로 넣는다.
 import { NET_GAME } from './net.mjs';
+import { QUICK, STICKERS, EMOJIS, validSticker, bigEmoji } from './chat.mjs';
+
+// 1:1 대화의 젤리 이모티콘: 서버는 글만 받으므로 [[st:번호]] 로 보내고, 받는 쪽이 그림으로 바꾼다
+export const stickerBody = n => `[[st:${n}]]`;
+export function bodySticker(body) {
+  const m = /^\[\[st:(\d{1,2})\]\]$/.exec(String(body ?? '').trim());
+  return m && validSticker(Number(m[1])) ? Number(m[1]) : null;
+}
 
 const fmt = n => Number(n || 0).toLocaleString('ko-KR');
 const when = v => {
@@ -23,16 +32,17 @@ function button(label, cls, onclick) {
 }
 
 // deps: $, toast, sound, show(name), screen() → 지금 화면, online, social() → Social | null, user() → { id, nickname } | null,
-//       P() → 내 기록, leaveOnline() → 온라인 판/방을 접는다, stopGame() → 다른 판을 하고 있으면 접는다, refreshMenu()
+//       P() → 내 기록, leaveOnline() → 온라인 판/방을 접는다, stopGame() → 다른 판을 하고 있으면 접는다,
+//       chatOn() → 설정에서 채팅을 켰는지, stickerImg(n) → 젤리 이모티콘 <img> 의 src
 export function createSocialUI(deps) {
   const { $, toast, sound, online } = deps;
   let friends = [], incoming = [], outgoing = [], unread = new Map(), dmWith = null, dmLines = [], invite = null, inviteTimer = null;
-  let chatUnseen = 0;
 
   // ---------- 알림 개수 (메뉴, 온라인 화면의 친구 단추) ----------
   function counts() {
-    const n = incoming.length + [...unread.values()].reduce((a, b) => a + b, 0);
-    for (const id of ['online-badge', 'friends-badge']) { const b = $(id); if (b) { b.hidden = !n; b.textContent = n; } }
+    // 메뉴의 친구 단추(friend-badge)는 이 기기 계정이면 main.js 가 친구 코드 친구 수로 센다
+    const user = deps.user(), n = user ? incoming.length + [...unread.values()].reduce((a, b) => a + b, 0) : 0;
+    for (const id of user ? ['online-badge', 'friends-badge', 'friend-badge'] : ['online-badge', 'friends-badge']) { const b = $(id); if (b) { b.hidden = !n; b.textContent = n; } }
   }
   async function refreshCounts() {
     const s = deps.social();
@@ -109,16 +119,19 @@ export function createSocialUI(deps) {
   function renderOnline() {
     const user = deps.user();
     const s = online.state();
+    // 이 기기 계정과 손님은 방 코드 대전(online-peer.mjs)이 화면을 그린다
+    $('online-room-box').hidden = !!user;
     $('online-need-login').hidden = !!user;
+    $('online-leave').hidden = !user;
     $('go-friends').hidden = !user;
     $('online-find-box').hidden = !user || s.active;
+    if (!user) return;
     $('online-find').hidden = s.searching || !!s.inviting;
     $('online-searching').hidden = !s.searching;
     $('online-inviting').hidden = !s.inviting;
     if (s.inviting) $('online-inviting-text').textContent = `${s.inviting}에게 초대를 보냈어. 기다리는 중…`;
     $('online-lobby').hidden = !s.active;
-    $('online-status').textContent = !user ? '온라인 대전은 온라인 계정으로 할 수 있어.'
-      : s.searching ? '상대를 찾는 중이야…'
+    $('online-status').textContent = s.searching ? '상대를 찾는 중이야…'
         : s.active ? (s.peer ? `${s.opponent?.nickname}와 만났어!` : `${s.opponent?.nickname}와 연결하는 중…`)
           : '게임 찾기를 누르면 먼저 기다리던 사람과 바로 붙어!';
     if (s.active) {
@@ -132,45 +145,16 @@ export function createSocialUI(deps) {
       $('online-wait').hidden = s.host;
       if (!s.host) $('online-wait').textContent = `${s.opponent?.nickname}이(가) 시작하기를 기다리는 중… (${s.firstTo}판 먼저 이기면 승리)`;
     }
-    $('chat-toggle').hidden = !s.active;
-    if (!s.active) $('chat').hidden = true;
-    $('chat-name').textContent = s.opponent?.nickname ?? '';
     counts();
   }
-
-  // ---------- 대전 채팅 ----------
-  function chatLine(entry) {
-    const row = el('div', `line ${entry.who}`);
-    row.append(el('b', '', entry.who === 'me' ? '나' : (online.opponent?.nickname ?? '상대')), el('span', '', entry.text));
-    $('chat-lines').append(row);
-    $('chat-lines').scrollTop = $('chat-lines').scrollHeight;
-    if (entry.who === 'them' && $('chat').hidden) { chatUnseen++; $('chat-badge').hidden = false; $('chat-badge').textContent = chatUnseen; }
-  }
-  function chatReset() {
-    $('chat-lines').replaceChildren();
-    chatUnseen = 0; $('chat-badge').hidden = true;
-  }
-  $('chat-toggle').onclick = () => {
-    sound.sfx('click');
-    $('chat').hidden = !$('chat').hidden;
-    if (!$('chat').hidden) { chatUnseen = 0; $('chat-badge').hidden = true; }
-  };
-  $('chat-close').onclick = () => { $('chat').hidden = true; };
-  $('chat-form').onsubmit = e => {
-    e.preventDefault();
-    const input = $('chat-input');
-    if (online.chat(input.value)) input.value = '';
-  };
-  $('chat-block').onclick = () => blockUser(online.recent);
-  $('chat-report').onclick = () => reportUser(online.reportPayload(''), online.recent);
 
   // ---------- 온라인 화면 단추 ----------
   $('online-find').onclick = () => { sound.sfx('click'); online.find(); };
   $('online-cancel').onclick = () => { sound.sfx('click'); online.cancelFind(); };
   $('online-invite-cancel').onclick = () => { sound.sfx('click'); online.cancelInvite(); };
-  $('online-start').onclick = () => { sound.sfx('click'); online.start(); };
   $('online-leave').onclick = () => { sound.sfx('click'); online.leave(); toast('방에서 나왔어.'); };
   $('online-login').onclick = () => { sound.sfx('click'); deps.show('login'); };
+  // (시작 단추는 main.js 가 계정 종류에 맞는 대전에 잇는다)
   $('go-friends').onclick = () => { sound.sfx('click'); deps.show('friends'); };
 
   // ---------- 친구 ----------
@@ -189,7 +173,7 @@ export function createSocialUI(deps) {
     return row;
   }
   function paintFriends() {
-    const list = $('friend-list');
+    const list = $('net-friend-list');
     list.replaceChildren(...friends.slice().sort((a, b) => Number(b.online) - Number(a.online) || a.nickname.localeCompare(b.nickname)).map(friendRow));
     if (!friends.length) list.append(el('p', 'fine', '아직 친구가 없어. 닉네임으로 찾거나, 게임이 끝난 뒤 “친구 요청”을 눌러 봐!'));
     $('req-in-title').hidden = !incoming.length;
@@ -221,7 +205,7 @@ export function createSocialUI(deps) {
   }
   async function renderFriends() {
     const s = deps.social();
-    if (!s) { deps.show('online'); return; }
+    if (!s) return; // 온라인 계정이 아니면 main.js 의 친구 코드 화면
     paintFriends();
     try {
       const [list, reqs, un] = await Promise.all([s.friends(), s.requests(), s.unread()]);
@@ -260,13 +244,21 @@ export function createSocialUI(deps) {
 
   // ---------- 1:1 대화 ----------
   function openDm(friend) {
+    if (!deps.chatOn()) { toast('설정에서 채팅이 꺼져 있어. 내 정보 → 설정에서 켤 수 있어.'); return; }
     dmWith = { id: friend.id, nickname: friend.nickname };
     deps.show('dm');
   }
   function dmRow(m) {
     const mine = m.from === deps.user()?.id;
-    const row = el('div', `line ${mine ? 'me' : 'them'}`);
-    row.append(el('b', '', mine ? '나' : dmWith.nickname), el('span', '', m.body), el('small', '', when(m.created)));
+    const sticker = bodySticker(m.body);
+    const row = el('div', `line ${mine ? 'me' : 'them'}${sticker !== null ? ' sticker' : bigEmoji(m.body) ? ' big' : ''}`);
+    let body;
+    if (sticker !== null) {
+      body = el('img', 'dm-sticker');
+      body.src = deps.stickerImg(sticker);
+      body.alt = `젤리 이모티콘 ${STICKERS[sticker].text}`;
+    } else body = el('span', '', m.body);
+    row.append(el('b', '', mine ? '나' : dmWith.nickname), body, el('small', '', when(m.created)));
     return row;
   }
   function paintDm() {
@@ -278,6 +270,7 @@ export function createSocialUI(deps) {
   async function renderDm() {
     const s = deps.social();
     if (!s || !dmWith) { deps.show('friends'); return; }
+    paintDmTools();
     $('dm-title').textContent = `💬 ${dmWith.nickname}`;
     dmLines = [];
     paintDm();
@@ -288,18 +281,50 @@ export function createSocialUI(deps) {
       if (unread.get(dmWith.id)) { await s.markRead(dmWith.id); unread.delete(dmWith.id); counts(); }
     } catch (error) { toast(error.message); }
   }
-  $('dm-form').onsubmit = async e => {
-    e.preventDefault();
+  // 보내기: 직접 쓴 말, 빠른 말(그대로 글), 젤리 이모티콘([[st:번호]]). 서버가 모두 거른다.
+  async function sendDm(body, { clear = false } = {}) {
     const s = deps.social();
-    const body = $('dm-input').value.trim();
-    if (!s || !dmWith || !body) return;
+    if (!s || !dmWith || !body || !deps.chatOn()) return;
     try {
       const message = await s.sendDm(dmWith.id, body);
-      $('dm-input').value = '';
+      if (clear) $('dm-input').value = '';
       dmLines.push(message);
       paintDm();
     } catch (error) { toast(error.message); }
+  }
+  $('dm-form').onsubmit = e => {
+    e.preventDefault();
+    sendDm($('dm-input').value.trim(), { clear: true });
   };
+  function paintDmTools() {
+    $('dm-quick').replaceChildren(...QUICK.map((q, i) => { const b = button(q, '', () => { sound.sfx('click'); sendDm(QUICK[i]); }); b.dataset.q = i; return b; }));
+    dmEmoji(false);
+  }
+  function dmEmoji(open = $('dm-emoji').hidden) {
+    if (open && !$('dm-stickers').childElementCount) {
+      $('dm-stickers').replaceChildren(...STICKERS.map((st, i) => {
+        const b = button('', '', () => { sound.sfx('click'); sendDm(stickerBody(i)); dmEmoji(false); });
+        b.dataset.sticker = i;
+        b.setAttribute('aria-label', `젤리 이모티콘 ${st.text}`);
+        const img = el('img'); img.src = deps.stickerImg(i); img.alt = ''; img.draggable = false;
+        b.append(img);
+        return b;
+      }));
+      $('dm-emojis').replaceChildren(...EMOJIS.map(e => {
+        const b = button(e, '', () => {
+          const input = $('dm-input'), at = input.selectionStart ?? input.value.length, end = input.selectionEnd ?? at;
+          input.value = (input.value.slice(0, at) + e + input.value.slice(end)).slice(0, 300);
+          sound.sfx('click');
+        });
+        b.dataset.emoji = e;
+        return b;
+      }));
+    }
+    $('dm-emoji').hidden = !open;
+    $('dm-emoji-toggle').setAttribute('aria-expanded', String(open));
+    $('dm-emoji-toggle').classList.toggle('on', open);
+  }
+  $('dm-emoji-toggle').onclick = () => { sound.sfx('click'); dmEmoji(); };
   $('dm-block').onclick = async () => { if (await blockUser(dmWith)) deps.show('friends'); };
   $('dm-report').onclick = () => reportUser({ target: dmWith?.id, context: { kind: 'dm' }, messages: dmLines.slice(-50).map(m => ({ text: `${m.from === deps.user()?.id ? '나' : '상대'}: ${m.body}` })) }, dmWith);
 
@@ -394,7 +419,7 @@ export function createSocialUI(deps) {
       }
       unread.set(from.id, (unread.get(from.id) ?? 0) + 1);
       counts();
-      toast(`💬 ${from.nickname}이(가) 말을 걸었어. 친구 화면에서 볼 수 있어.`);
+      if (deps.chatOn()) toast(`💬 ${from.nickname}이(가) 말을 걸었어. 친구 화면에서 볼 수 있어.`);
       if (deps.screen() === 'friends') paintFriends();
     },
     invite: showInvite,
@@ -403,13 +428,17 @@ export function createSocialUI(deps) {
   };
 
   return {
-    socialHooks, chooseSave, cloudStatus, chatLine, chatReset, refreshCounts, resultSocial,
+    socialHooks, chooseSave, cloudStatus, refreshCounts, resultSocial,
+    refreshBadges: counts,
+    // 대전 채팅 창의 차단, 신고 (온라인 계정 방)
+    blockOpponent: () => blockUser(online.recent),
+    reportOpponent: () => reportUser(online.reportPayload(''), online.recent),
     render(name) {
       if (name === 'online') renderOnline();
       if (name === 'friends') renderFriends();
       if (name === 'dm') renderDm();
     },
-    onlineChanged() { if (deps.screen() === 'online') renderOnline(); else { $('chat-toggle').hidden = !online.active; if (!online.active) $('chat').hidden = true; } },
+    onlineChanged() { if (deps.screen() === 'online') renderOnline(); },
     reset() { friends = []; incoming = []; outgoing = []; unread.clear(); dmWith = null; hideInvite(); counts(); },
     get friends() { return friends.slice(); },
   };

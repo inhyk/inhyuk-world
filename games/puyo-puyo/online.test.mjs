@@ -6,6 +6,7 @@ import { W, H } from './core.mjs';
 import { RemoteView, snapshot, hasLongDigits, cleanPeer, eventMessage, createOnline } from './online.mjs';
 import { serverUrl, scopedStorage, NET_GAME } from './net.mjs';
 import { DEFAULT_SERVER, memoryStorage } from '../../packages/net/index.mjs';
+import { QUICK } from './chat.mjs';
 
 function playFor(frames) {
   const m = new Match({ seed: 11, specs: [{ kind: 'human' }, { kind: 'human' }], firstTo: 1 });
@@ -99,6 +100,23 @@ test('채팅: data.chat 으로만 보내고, 받은 글은 서버가 준 그대�
   assert.equal(report.target, 5);
   assert.deepEqual(report.context, { kind: 'room', game: NET_GAME, room: 'ABCDEF' });
   assert.equal(report.messages.length, 2);
+});
+
+test('빠른 말과 젤리 이모티콘은 번호만 보내고(글자가 없어서 거를 것도 없다), 받으면 정해진 말과 그림으로 바꾼다', async () => {
+  const { online, room, calls } = setup();
+  await online.find();
+  assert.equal(online.say({ quick: 6 }), true);
+  assert.deepEqual(room.sent.at(-1), { t: 'say', quick: 6 });
+  assert.equal(online.say({ sticker: 4 }), true);
+  assert.deepEqual(room.sent.at(-1), { t: 'say', sticker: 4 });
+  assert.equal(online.say({ quick: 99 }), false);
+  assert.equal(online.say({ sticker: -1 }), false);
+  for (const m of room.sent) { assert.equal('chat' in m, false); assert.equal(hasLongDigits(m), false); }
+  online.hooks.message({ t: 'say', quick: 0 });
+  online.hooks.message({ t: 'say', sticker: 9 });
+  online.hooks.message({ t: 'say', quick: 'x', sticker: 'y' }); // 이상한 값은 버린다
+  assert.deepEqual(calls.lines.map(l => [l.who, l.text ?? l.sticker]), [['me', QUICK[6]], ['me', 4], ['them', QUICK[0]], ['them', 9]]);
+  assert.match(online.reportPayload('').messages[3].text, /^상대: \[젤리 이모티콘: /);
 });
 
 test('상대가 나가거나 다시 접속하면 대전을 끝낸다 (결과가 나온 뒤면 결과 화면은 둔다)', async () => {
