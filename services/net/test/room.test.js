@@ -1,7 +1,7 @@
 // 로컬 Workers 런타임(workerd)에서 진짜 Worker와 Durable Object를 띄워 여러 사람이 접속해 본다.
 import { describe, it, expect } from 'vitest';
 import { SELF, env, runInDurableObject, runDurableObjectAlarm } from 'cloudflare:test';
-import { CODE_RE, MAX_MESSAGE_BYTES, PING, PONG } from '../src/index.js';
+import { CODE_RE, MAX_MESSAGE_BYTES, PING, PONG } from '../src/rooms.js';
 import { Room as Client } from '../../../packages/net/index.mjs';
 
 const ORIGIN = 'https://seonn.dev';

@@ -5,6 +5,10 @@ export const GAME_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
 export const CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4,8}$/;
 export const DEFAULT_PLAYERS = 2;
 export const MAX_PLAYERS = 8;
+export const MAX_MESSAGE_BYTES = 16 * 1024;
+export const PING = '{"t":"ping"}';
+export const PONG = '{"t":"pong"}';
+export const CHAT_LINES = 50; // 방마다 기억하는 거른 채팅 줄 수
 
 export function clampPlayers(value) {
   const n = Math.floor(Number(value));
