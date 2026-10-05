@@ -23,8 +23,8 @@ async function openGame(context, who) {
 }
 async function signup(context, name) {
   const page = await openGame(context, name);
-  await page.click('#go-signup'); await page.fill('#signup-name', name); await page.fill('#signup-pass', 'abcd');
-  await page.click('#signup-form button[type=submit]'); await page.waitForSelector('#scr-menu:not([hidden])');
+  // 친구 코드와 우체통은 이 기기 계정의 기능이다. 화면의 「새 계정 만들기」는 온라인 계정이라 검사용 기기 계정을 바로 만든다.
+  await page.evaluate(n => window.__puyo.localSignup(n, 'abcd'), name); await page.waitForSelector('#scr-menu:not([hidden])');
   return page;
 }
 const mailOn = page => page.waitForFunction(() => window.__puyo.mailState === 'on', null, T);

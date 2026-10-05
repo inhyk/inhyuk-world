@@ -251,7 +251,7 @@ export function createSocialUI(deps) {
   function dmRow(m) {
     const mine = m.from === deps.user()?.id;
     const sticker = bodySticker(m.body);
-    const row = el('div', `line ${mine ? 'me' : 'them'}${sticker !== null ? ' sticker' : bigEmoji(m.body) ? ' big' : ''}`);
+    const row = el('div', `line ${mine ? 'me' : 'them'}${sticker !== null ? ' sticker' : bigEmoji(m.body) ? ' emoji-big' : ''}`);
     let body;
     if (sticker !== null) {
       body = el('img', 'dm-sticker');

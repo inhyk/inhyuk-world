@@ -526,4 +526,4 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 #go-legacy, #legacy-back { display: block; margin: 14px auto 0; }
 .chat-lines .line.sticker { background: none; box-shadow: none; padding: 0; }
 .chat-lines .line img.dm-sticker { display: block; width: 96px; height: 96px; }
-.chat-lines .line.big span { font-size: 36px; line-height: 1.15; }
+.chat-lines .line.emoji-big span { font-size: 36px; line-height: 1.15; }

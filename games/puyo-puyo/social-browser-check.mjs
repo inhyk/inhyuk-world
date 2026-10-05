@@ -20,8 +20,8 @@ async function person(name, viewport = { width: 1100, height: 820 }) {
   page.on('console', m => { if (m.type() === 'error' && !/peerjs|PeerJS|ICE|webrtc|Could not connect to peer|Failed to load resource/i.test(m.text())) errors.push(`${name}: ${m.text()}`); });
   page.on('dialog', d => d.accept());
   await page.goto(`${base}?test`); await page.waitForFunction(() => window.__puyo);
-  await page.click('#go-signup'); await page.fill('#signup-name', name); await page.fill('#signup-pass', 'abcd');
-  await page.click('#signup-form button[type=submit]'); await page.waitForSelector('#scr-menu:not([hidden])');
+  // 친구 코드와 우체통은 이 기기 계정의 기능이다. 화면의 「새 계정 만들기」는 온라인 계정이라 검사용 기기 계정을 바로 만든다.
+  await page.evaluate(n => window.__puyo.localSignup(n, 'abcd'), name); await page.waitForSelector('#scr-menu:not([hidden])');
   await page.evaluate(() => { document.getElementById('toasts').style.display = 'none'; });
   return { context, page };
 }
