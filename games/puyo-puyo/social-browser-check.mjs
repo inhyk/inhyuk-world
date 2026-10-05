@@ -16,7 +16,8 @@ async function person(name, viewport = { width: 1100, height: 820 }) {
   const context = await browser.newContext({ viewport, permissions: ['clipboard-read', 'clipboard-write'] });
   const page = await context.newPage();
   page.on('pageerror', e => errors.push(`${name}: ${e.message}`));
-  page.on('console', m => { if (m.type() === 'error' && !/peerjs|PeerJS|ICE|webrtc|Could not connect to peer/i.test(m.text())) errors.push(`${name}: ${m.text()}`); });
+  // 개발 서버에는 우체통 주소가 없어서 404가 나는 것은 괜찮다 (게임은 직접 연결로 돌아간다)
+  page.on('console', m => { if (m.type() === 'error' && !/peerjs|PeerJS|ICE|webrtc|Could not connect to peer|Failed to load resource/i.test(m.text())) errors.push(`${name}: ${m.text()}`); });
   page.on('dialog', d => d.accept());
   await page.goto(`${base}?test`); await page.waitForFunction(() => window.__puyo);
   await page.click('#go-signup'); await page.fill('#signup-name', name); await page.fill('#signup-pass', 'abcd');
@@ -50,6 +51,11 @@ try {
   assert.deepEqual(await logTexts(B), ['안녕 ♡♡ 같이 하자']);
   await B.click('#chat-quick [data-q="1"]'); // 👍 잘한다!
   await A.waitForFunction(() => [...document.querySelectorAll('#chat-log .msg.them span')].some(s => s.textContent === '👍 잘한다!'), null, T);
+  // 젤리 이모티콘과 큰 이모지도 방 채팅으로
+  await B.click('#chat-emoji-toggle'); await B.click('#chat-stickers [data-sticker="3"]'); // ㅋㅋㅋ
+  await A.waitForSelector('#chat-log .msg.them.sticker img[alt*="ㅋㅋㅋ"]', T);
+  await B.click('#chat-emojis [data-emoji="🥳"]'); await B.click('#chat-form button[type=submit]');
+  await A.waitForSelector('#chat-log .msg.them.big', T);
   // 전화번호는 보내지 않는다
   await say(A, '내 번호 010-1234-5678');
   assert.match(await A.textContent('#chat-note'), /전화번호는 보낼 수 없어/);
@@ -98,6 +104,7 @@ try {
   // ---------- 3) 친구 채팅 ----------
   await A.click('#friend-list [data-chat]');
   await say(A, '안녕 민준아! 병신같은 버그 봤어?');
+  await A.waitForFunction(() => document.querySelectorAll('#chat-log .msg.me').length === 1, null, T); // 우체통이 받으면 보인다
   assert.deepEqual(await logTexts(A), ['안녕 민준아! ♡♡같은 버그 봤어?']);
   await B.waitForFunction(() => document.querySelector('#friend-list [data-chat] .badge'), null, T); // 안 읽음 표시
   assert.equal(await B.locator('#friend-badge').isVisible(), false); // 친구 화면 안이라 메뉴 배지는 안 보임 (메뉴로 가면 보임)
@@ -138,7 +145,15 @@ try {
   await A.click('[data-go="friends"]');
   await A.waitForFunction(() => !document.querySelector('#friend-list .friend .dot.on'), null, T); // A에게는 그냥 연결 안 됨
   await A.click('#friend-list [data-chat]');
-  assert.equal(await A.locator('#chat-input').isDisabled(), true);
+  if (await A.evaluate(() => window.__puyo.mailState === 'on')) {
+    // 우체통이 있으면 A는 계속 보낼 수 있지만(차단당한 걸 알리지 않는다), B에게는 닿지 않는다
+    await A.fill('#chat-input', '내 말 들려?'); await A.click('#chat-form button[type=submit]');
+    await B.evaluate(() => window.__puyo.pollMail()); await B.waitForTimeout(2000);
+    assert.equal(await B.evaluate(() => Object.keys(window.__puyo.P().social.chats).length), 0);
+    assert.equal(await B.locator('#friend-requests [data-accept]').count(), 0);
+  } else {
+    assert.equal(await A.locator('#chat-input').isDisabled(), true);
+  }
   // 차단된 쪽이 다시 친구 신청을 해도 상대에게 닿지 않는다 (차단당한 걸 알리지는 않는다)
   await A.click('#chat-close');
   await A.evaluate(() => window.__puyo.P().social.friends.splice(0)); // A가 B를 지운 뒤 다시 신청
@@ -157,6 +172,7 @@ try {
   assert.equal(await G.locator('#friends-main').isVisible(), false);
 
   assert.deepEqual(errors, []);
-  console.log('PASS: 방 채팅(나쁜 말 ♡, 빠른 말, 전화번호 막기, 게임 중 말풍선, 채팅 끄기) · 친구 신청/받기 · 친구 채팅(이메일 막기, 안 읽음 표시) · 새로고침 뒤 기록 · 대전 초대로 같은 방 · 차단 · 손님 — 오류 없음');
+  const mode = await A.evaluate(() => (window.__puyo.mailState === 'on' ? '우체통 켬' : '우체통 없음(직접 연결만)'));
+  console.log(`[${mode}] PASS: 방 채팅(나쁜 말 ♡, 빠른 말, 젤리 이모티콘·큰 이모지, 전화번호 막기, 게임 중 말풍선, 채팅 끄기) · 친구 신청/받기 · 친구 채팅(이메일 막기, 안 읽음 표시) · 새로고침 뒤 기록 · 대전 초대로 같은 방 · 차단 · 손님 — 오류 없음`);
   console.log(`Screenshots: ${shots}`);
 } finally { await browser.close(); }

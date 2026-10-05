@@ -2,7 +2,7 @@
 // 방해뿌요·연쇄 시작/끝·쓰러짐만 보낸다. 판정(누가 이겼나)은 방장이 한다.
 import { PuyoRoom, normaliseCode } from './room.mjs';
 import { clampFirstTo } from './match.mjs';
-import { QUICK, cleanChat, rateLimiter } from './chat.mjs';
+import { QUICK, cleanChat, rateLimiter, validSticker } from './chat.mjs';
 import { W, H, heights } from './core.mjs';
 import { emptyTotals } from './match.mjs';
 
@@ -162,6 +162,7 @@ export function createOnline(api) {
       case 'chat': {
         // 방 채팅: 빠른 말은 번호로 오고, 직접 쓴 말은 받을 때도 나쁜 말을 다시 가린다
         if (!chatIn()) break;
+        if (validSticker(m.st)) { api.roomChat?.({ name: peer?.name || '친구', sticker: m.st }); break; } // 젤리 이모티콘
         const text = Number.isInteger(m.q) && QUICK[m.q] ? QUICK[m.q] : cleanChat(m.text);
         if (text) api.roomChat?.({ name: peer?.name || '친구', text });
         break;
@@ -226,10 +227,11 @@ export function createOnline(api) {
       else toast('친구를 기다리는 중… 친구도 “한 번 더!”를 누르면 시작해.');
     },
     setFirstTo(n) { firstTo = n; if (room.host) room.send({ t: 'first', n }); },
-    // 방 채팅 보내기: 빠른 말 번호(q) 또는 직접 쓴 말(text)
-    say({ q, text }) {
+    // 방 채팅 보내기: 빠른 말 번호(q), 젤리 이모티콘 번호(sticker) 또는 직접 쓴 말(text)
+    say({ q, text, sticker }) {
       if (!room.ready) return false;
-      if (Number.isInteger(q) && QUICK[q]) room.send({ t: 'chat', q });
+      if (validSticker(sticker)) room.send({ t: 'chat', st: sticker });
+      else if (Number.isInteger(q) && QUICK[q]) room.send({ t: 'chat', q });
       else if (text) room.send({ t: 'chat', text: cleanChat(text) });
       else return false;
       return true;

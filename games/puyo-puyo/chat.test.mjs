@@ -98,3 +98,36 @@ test('친구 연결 이름과, 둘이 동시에 연결해도 양쪽이 같은 �
   assert.equal(keepLink('BBBBBB', 'AAAAAA', true), false);
   assert.equal(keepLink('AAAAAA', 'BBBBBB', false), false);
 });
+
+test('이모티콘: 이모지는 반으로 잘리지 않고, 이모지만 1~3개면 크게, 젤리 이모티콘 번호만 통과', async () => {
+  const { STICKERS, EMOJIS, validSticker, bigEmoji, graphemes, cleanChat: clean } = await import('./chat.mjs');
+  assert.equal(clean('😂'.repeat(70)), '😂'.repeat(60)); // 60글자 = 이모지 60개 (반쪽 이모지 없음)
+  assert.equal(graphemes('👍🏽❤️🇰🇷').length, 3);
+  assert.equal(clean('👨‍👩‍👧 가족'), '👨‍👩‍👧 가족');
+  assert.equal(bigEmoji('😂'), true); assert.equal(bigEmoji('🔥🔥🔥'), true); assert.equal(bigEmoji(' ❤️ '), true);
+  assert.equal(bigEmoji('😂😂😂😂'), false); assert.equal(bigEmoji('안녕 😂'), false); assert.equal(bigEmoji('123'), false); assert.equal(bigEmoji(''), false);
+  assert.ok(STICKERS.length >= 8 && EMOJIS.length >= 30);
+  for (let i = 0; i < STICKERS.length; i++) assert.equal(validSticker(i), true);
+  for (const bad of [-1, STICKERS.length, 1.5, '2', null, undefined]) assert.equal(validSticker(bad), false);
+  for (const e of EMOJIS) assert.equal(clean(e), e); // 고르기 판의 이모지는 그대로 보내진다
+});
+
+test('우체통 열쇠·받은 신청·보낸 신청·젤리 이모티콘 대화가 저장되고, 이상한 값은 걸러진다', async () => {
+  const { sanitizeSocial, makeMailKey, validMailKey, STICKERS } = await import('./chat.mjs');
+  const key = makeMailKey();
+  assert.equal(validMailKey(key), true); assert.equal(validMailKey('xyz'), false);
+  const s = sanitizeSocial({
+    code: 'MEMEME', key,
+    friends: [{ code: 'PALPAL', name: '친구', level: 2 }],
+    blocked: ['BADBAD'],
+    requests: [{ code: 'ASKASK', name: '<i>새친구</i>', level: 4, time: 9 }, { code: 'ASKASK' }, { code: 'PALPAL' }, { code: 'BADBAD' }, { code: 'nope' }],
+    sent: [{ code: 'WAQTME', time: 3 }, 'WAQTME', { code: 'PALPAL' }, 'x'],
+    chats: { PALPAL: [{ me: true, sticker: 2, time: 1 }, { me: false, sticker: STICKERS.length, time: 2 }, { me: false, text: '😂', time: 3 }] },
+    lastMail: 1234,
+  });
+  assert.equal(s.key, key); assert.equal(s.lastMail, 1234);
+  assert.deepEqual(s.requests, [{ code: 'ASKASK', name: 'i새친구/i', level: 4, time: 9 }]); // 중복·친구·차단·이상한 코드는 빠짐
+  assert.deepEqual(s.sent, [{ code: 'WAQTME', time: 3 }]);
+  assert.deepEqual(s.chats.PALPAL, [{ me: true, sticker: 2, time: 1 }, { me: false, text: '😂', time: 3 }]);
+  assert.equal(sanitizeSocial({ key }).key, ''); // 친구 코드 없이 열쇠만 있으면 버린다
+});

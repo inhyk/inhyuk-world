@@ -172,7 +172,8 @@
       <div class="friend-code card">
         <small>내 친구 코드</small><b id="my-friend-code">------</b>
         <button id="friend-code-copy" class="ghost">📋 코드 복사</button>
-        <p class="fine">친구에게 이 코드를 알려 줘. 둘 다 게임을 켜 두었을 때 친구 신청·채팅·초대를 할 수 있어.</p>
+        <p class="fine">친구에게 이 코드를 알려 줘. 친구 코드를 서로 넣으면 친구가 돼!</p>
+        <p id="mail-note" class="fine mail-note" role="status"></p>
       </div>
       <form id="friend-add" class="row center friend-add">
         <input id="friend-input" placeholder="친구 코드 6글자" maxlength="6" autocomplete="off" autocapitalize="characters">
@@ -322,7 +323,11 @@
     <div class="chat-head"><i id="chat-dot" class="dot"></i><b id="chat-name"></b><small id="chat-sub"></small><button id="chat-close" class="ghost round-sm" aria-label="채팅 닫기">✕</button></div>
     <div id="chat-log" class="chat-log" aria-live="polite"></div>
     <div id="chat-quick" class="chat-quick"></div>
-    <form id="chat-form" class="chat-form"><input id="chat-input" maxlength="60" placeholder="메시지 (60글자까지)" autocomplete="off"><button class="primary" type="submit">보내기</button></form>
+    <form id="chat-form" class="chat-form"><button type="button" id="chat-emoji-toggle" class="ghost emoji-toggle" aria-label="이모티콘 고르기" aria-expanded="false" aria-controls="chat-emoji">😊</button><input id="chat-input" maxlength="120" placeholder="메시지 (60글자까지)" autocomplete="off"><button class="primary" type="submit">보내기</button></form>
+    <div id="chat-emoji" class="chat-emoji" hidden>
+      <small>젤리 이모티콘 (누르면 바로 보내져)</small><div id="chat-stickers" class="chat-stickers"></div>
+      <small>이모지 (누르면 글에 들어가)</small><div id="chat-emojis" class="chat-emojis"></div>
+    </div>
     <p id="chat-note" class="fine chat-note" role="status"></p>
     <div id="chat-tools" class="chat-tools"></div>
   </div>
