@@ -21,6 +21,12 @@ const sameName = (a, b) => !!a && !!b && String(a).toLowerCase() === String(b).t
 //   marker: 가입은 됐는데 첫 저장 전에 앱이 꺼져도 다음에 이어 올릴 수 있게 적어 두는 곳 (migrationMarker)
 // 결과: { ok: true, user } 또는 { ok: false, step: 'auth'|'upload', code, message }
 //   code: 'nickname-taken', 'bad-nickname', 'bad-nickname-word', 'bad-password', 'wrong-login', 'rate', 'network' ... (서버 오류 코드 그대로)
+const UPLOAD_MESSAGES = {
+  'conflict-exhausted': '다른 기기가 계속 먼저 저장해서 기록을 올리지 못했어. 기기 계정은 그대로 있어. 잠시 뒤에 다시 해 줘.',
+  'too-big': '기록이 너무 커서 서버가 받지 않았어. 기기 계정은 그대로 있어. 나중에 다시 해 줘.',
+  save: '이 기기에 기록을 저장하지 못했어 (저장 공간이 꽉 찼을 수 있어). 기기 계정은 그대로 있어.',
+};
+
 export async function migrateLocal({ local, nickname = local.name, password, mode = 'signup', account, upload, marker }) {
   // 같은 닉네임으로 이미 로그인돼 있으면 (앞에서 가입은 됐는데 올리기만 실패한 경우) 가입을 건너뛴다.
   const already = account.loggedIn && sameName(account.user?.nickname, nickname);
@@ -36,7 +42,9 @@ export async function migrateLocal({ local, nickname = local.name, password, mod
   try {
     await upload(local.progress, importIdFor(local));
   } catch (error) {
-    return { ok: false, step: 'upload', code: error.code ?? 'network', message: '기록을 올리지 못했어. 인터넷을 확인하고 다시 해 줘.' };
+    const code = error.code ?? 'network';
+    const message = UPLOAD_MESSAGES[code] ?? '기록을 올리지 못했어. 인터넷을 확인하고 다시 해 줘.';
+    return { ok: false, step: 'upload', code, message };
   }
   marker?.clear();
   return { ok: true, user: account.user };

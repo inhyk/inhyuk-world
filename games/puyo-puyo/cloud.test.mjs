@@ -343,3 +343,62 @@ test('옮기기: 올리기가 실패하면 표시를 남기고, 다시 하면 �
   assert.equal(signups, 1);
   assert.equal(marker.get(), null);
 });
+
+// ---------- 충돌이 끝나지 않을 때 ----------
+// 다른 기기가 매번 먼저 쓰는 서버: 쓸 때마다 revision 이 올라가서 늘 409
+function racingServer() {
+  const s = {
+    revision: 5, calls: [],
+    async loadSave() { return { data: { ...newProgress(), coins: 1 }, revision: s.revision, updated: s.revision }; },
+    async putSave(game, data, base, { importId } = {}) {
+      s.calls.push(['put', base, importId ?? null]);
+      s.revision++;
+      return { conflict: true, server: { data: { ...newProgress(), coins: 1 }, revision: s.revision, updated: s.revision } };
+    },
+  };
+  return s;
+}
+
+test('importLocal: 충돌이 끝나지 않으면 conflict-exhausted 로 던진다 (올라간 것으로 치지 않음)', async () => {
+  const server = racingServer();
+  const { cloud } = make(server, { choose: 'local' });
+  await assert.rejects(cloud.importLocal({ ...newProgress(), coins: 900 }, 'jelly-race'), e => e.code === 'conflict-exhausted');
+  assert.equal(cloud.dirty, true);
+  assert.equal(cloud.state, 'pending');
+  // 모든 다시 쓰기에 importId 가 붙는다
+  assert.ok(server.calls.every(c => c[2] === 'jelly-race'));
+});
+
+test('옮기기: 충돌이 끝나지 않으면 ok:false, 표시와 기기 계정은 그대로 남는다', async () => {
+  const { store, local } = await localAccount();
+  const account = fakeAccount();
+  const marker = migrationMarker(memoryStorage());
+  const server = racingServer();
+  const { cloud } = make(server, { choose: 'local' });
+  const before = JSON.stringify(store);
+  const r = await migrateLocal({ local, password: '1234', account, marker, upload: (p, id) => cloud.importLocal(p, id) });
+  assert.deepEqual([r.ok, r.step, r.code], [false, 'upload', 'conflict-exhausted']);
+  assert.match(r.message, /다시 해 줘/);
+  assert.deepEqual(marker.get(), { localId: local.id, nickname: '인혁' });
+  assert.equal(JSON.stringify(store), before);
+  assert.equal(store.accounts[0].migratedTo, undefined);
+});
+
+test('자동 저장: 충돌이 끝나지 않아도 던지지 않고 pending, dirty 로 두었다가 다음 flush 에 다시 올린다', async () => {
+  const server = racingServer();
+  const { cloud, timers } = make(server, { choose: 'local' });
+  cloud.revision = 5;
+  cloud.change({ ...newProgress(), coins: 42 });
+  await timers.runAll();
+  await cloud.busy;
+  assert.equal(cloud.state, 'pending');
+  assert.equal(cloud.dirty, true);
+  const tries = server.calls.length;
+  assert.equal(tries, 4); // 처음 한 번 + 고르고 다시 쓰기 3번
+  // 다른 기기가 멈추면 다음 flush 에 올라간다
+  server.putSave = async (game, data, base) => { server.calls.push(['put', base, null]); return { ok: true, revision: base + 1, updated: 99 }; };
+  await cloud.flush();
+  assert.equal(server.calls.length, tries + 1);
+  assert.equal(cloud.dirty, false);
+  assert.equal(cloud.state, 'synced');
+});

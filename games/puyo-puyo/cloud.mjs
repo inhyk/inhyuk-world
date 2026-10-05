@@ -10,6 +10,12 @@ export const GAME = 'jelly-tower';
 export const CACHE_KEY = 'jelly-cloud-v1';
 const MAX_CONFLICT_ROUNDS = 3;
 
+// 옮기기(importLocal)처럼 "올라갔는지"를 꼭 알아야 하는 곳에서 던지는 오류.
+// code: 'conflict-exhausted' (계속 다른 기기가 먼저 씀), 'stopped' (옮기는 중에 멈춤)
+export class CloudError extends Error {
+  constructor(code, message) { super(message || code); this.code = code; }
+}
+
 // 충돌 창에 보여 줄 요약
 export function saveSummary(data, updated = null) {
   return { level: Number(data?.level) || 1, coins: Number(data?.coins) || 0, updated: updated ?? null };
@@ -151,7 +157,8 @@ export class CloudSave {
 
   // 409: 이 기기와 서버 중 하나를 고른다. 고른 쪽을 서버 번호로 다시 쓴다.
   // options.importId: 기기 계정을 옮기다 생긴 충돌이면 다시 쓸 때도 같이 보내, 다시 옮겨도 두 번 쓰지 않게 한다.
-  async resolve(server, round = 0, options = {}) {
+  // strict: 옮기기 중이면 끝내 못 쓴 경우 던진다 (평소 자동 저장은 pending 으로 두고 다음 flush 에 다시 한다).
+  async resolve(server, round = 0, options = {}, strict = false) {
     // 서버에 저장이 없으면 고를 것 없이 이 기기 것을 쓴다.
     let choice = 'local';
     if (server.data) {
@@ -161,7 +168,7 @@ export class CloudSave {
         server: saveSummary(server.data, server.updated),
       });
     }
-    if (this.stopped) return;
+    if (this.stopped) { if (strict) throw new CloudError('stopped'); return; }
     if (choice === 'server' && server.data) { this.adopt(server); this.setState('synced'); return; }
     // 이 기기 것 (서버에 저장이 없었으면 고를 것도 없이 이 기기 것)
     this.revision = server.revision ?? 0;
@@ -169,10 +176,14 @@ export class CloudSave {
     this.persist();
     const sent = this.data;
     const result = await this.o.client.putSave(GAME, sent, this.revision, options);
-    if (this.stopped) return;
+    if (this.stopped) { if (strict) throw new CloudError('stopped'); return; }
     if (result.conflict) {
-      if (round + 1 >= MAX_CONFLICT_ROUNDS) { this.setState('pending'); return; }
-      await this.resolve(result.server, round + 1, options);
+      if (round + 1 >= MAX_CONFLICT_ROUNDS) {
+        this.setState('pending');
+        if (strict) throw new CloudError('conflict-exhausted', '다른 기기가 계속 먼저 저장해서 기록을 올리지 못했어. 잠시 뒤에 다시 해 줘.');
+        return;
+      }
+      await this.resolve(result.server, round + 1, options, strict);
       return;
     }
     this.revision = result.revision;
@@ -183,12 +194,14 @@ export class CloudSave {
   }
 
   // 기기에만 있던 계정을 처음 올린다. baseRevision 0 으로 보내므로 서버에 이미 저장이 있으면 409 → 고르기 창.
-  // importId 가 같으면 다시 보내도 두 번 쓰지 않는다. 연결이 안 되면 던진다 (옮기기 실패, 기기 계정은 그대로).
+  // importId 가 같으면 다시 보내도 두 번 쓰지 않는다. 연결이 안 되거나, 충돌이 끝나지 않거나, 중간에 멈추면 던진다
+  // (옮기기 실패, 기기 계정은 그대로). 돌아오면 서버에 저장된 것이다.
   async importLocal(data, importId) {
     const result = await this.o.client.putSave(GAME, data, 0, { importId });
+    if (this.stopped) throw new CloudError('stopped');
     this.data = data;
     this.updated = new Date(this.o.now()).toISOString();
-    if (result.conflict) { this.revision = null; this.dirty = true; await this.resolve(result.server, 0, { importId }); return this.data; }
+    if (result.conflict) { this.revision = null; this.dirty = true; await this.resolve(result.server, 0, { importId }, true); return this.data; }
     if (result.duplicate) {
       const latest = await this.o.client.loadSave(GAME);
       if (latest) this.adopt(latest);
