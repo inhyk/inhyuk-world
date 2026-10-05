@@ -2,6 +2,8 @@
 // 닉네임 + 비밀번호(해시로 저장)로 들어가고, 계정마다 레벨·코인·상점·타워·미션이 따로 저장된다.
 // 다른 기기로 옮기고 싶으면 "기록 코드"를 복사해서 붙여 넣는다.
 
+import { emptySocial, sanitizeSocial } from './chat.mjs';
+
 export const STORE_KEY = 'puyo-tower-v1';
 export const NAME_MAX = 10, PASS_MIN = 4, PASS_MAX = 16, LEVEL_MAX = 99;
 
@@ -14,6 +16,7 @@ export function newProgress() {
     tickets: { skin: 0, effect: 0, spin: 0 },
     promo: { lastGame: 0 },
     tutorial: false, // 연습하기를 끝냈는지 (처음 끝내면 선물)
+    social: emptySocial(), // 내 친구 코드, 친구 목록, 차단, 친구마다 최근 대화
     missions: {},
     daily: null,
     rewards: { dailyDate: '', dailyStreak: 0, spinDate: '', spinIndex: null, date: '', playSeconds: 0, claimedTime: [] },
@@ -21,7 +24,7 @@ export function newProgress() {
       games: 0, wins: 0, losses: 0, maxChain: 0, maxScore: 0, popped: 0, allClears: 0, offsets: 0,
       garbageSent: 0, onlineGames: 0, onlineWins: 0, localGames: 0, endlessBest: 0, playSeconds: 0,
     },
-    settings: { ghost: true, shake: true, localMap: 'garden' },
+    settings: { ghost: true, shake: true, localMap: 'garden', chat: true },
   };
 }
 
@@ -45,6 +48,7 @@ export function sanitize(p) {
   out.tickets = Object.fromEntries(['skin', 'effect', 'spin'].map(k => [k, clampInt(out.tickets?.[k], 0, 1e6)]));
   out.promo = { lastGame: clampInt(out.promo?.lastGame, 0, 1e9) };
   out.tutorial = out.tutorial === true;
+  out.social = sanitizeSocial(out.social);
   out.stats = { ...base.stats, ...(out.stats || {}) };
   out.settings = { ...base.settings, ...(out.settings || {}) };
   out.missions = out.missions && typeof out.missions === 'object' ? out.missions : {};
@@ -162,6 +166,18 @@ export async function login(store, name, password) {
   if ((await hashPassword(String(password ?? ''), account.salt)) !== account.hash) return { ok: false, error: '비밀번호가 달라. 다시 해 봐!' };
   account.last = Date.now();
   store.current = account.id;
+  return { ok: true, account };
+}
+
+// 비밀번호 다시 정하기 (제작자 모드에서만 부른다): 새 소금·해시로 바꾸고 레벨·코인 같은 기록은 그대로 둔다
+export async function resetPassword(store, id, password) {
+  const account = store.accounts.find(a => a.id === id);
+  if (!account) return { ok: false, error: '그 계정이 이 기기에 없어.' };
+  const error = checkPassword(password);
+  if (error) return { ok: false, error };
+  const salt = randomHex(8);
+  account.salt = salt;
+  account.hash = await hashPassword(String(password), salt);
   return { ok: true, account };
 }
 

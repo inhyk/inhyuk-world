@@ -1,0 +1,18 @@
+{
+  // 모든 게임이 같이 쓰는 멀티플레이 서버. 자세한 설명은 README.md
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "net",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  // 무료 요금제에서도 되도록 SQLite 저장소를 쓰는 Durable Object로 만든다.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "vars": {
+    // 여기에 적힌 주소의 게임만 방에 들어올 수 있다. http://localhost, http://127.0.0.1 은 언제나 허용.
+    "ALLOWED_ORIGINS": "https://seonn.dev,https://www.seonn.dev,capacitor://localhost,https://localhost"
+  }
+  // net.seonn.dev 를 쓰려면 seonn.dev DNS가 Cloudflare에 있어야 한다. README의 "배포" 참고.
+  // "routes": [{ "pattern": "net.seonn.dev", "custom_domain": true }]
+}

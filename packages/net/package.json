@@ -1,0 +1,10 @@
+{
+  "name": "@inhyuk/net",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "seonn.dev 게임들이 같이 쓰는 멀티플레이 방 (services/net 서버에 접속)",
+  "exports": { ".": "./index.mjs" },
+  "main": "./index.mjs",
+  "scripts": { "test": "node --test" }
+}
