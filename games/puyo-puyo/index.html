@@ -207,6 +207,16 @@
         <button data-creator="skins"><span>🎨</span><b>모든 스킨 해제</b><small>터짐 효과까지 모두 · 상점에서 장착!</small></button>
       </div>
       <p id="creator-result" class="lead" role="status"></p>
+      <form id="reset-form" class="card reset-card">
+        <h3>🔑 계정 비밀번호 다시 정하기</h3>
+        <p class="fine">비밀번호를 잊어버린 <b>내 계정</b>에만 써. 다른 사람 계정은 그 사람한테 물어봐! 레벨·코인 같은 기록은 그대로 남아.</p>
+        <label class="reset-row">계정 <select id="reset-account" aria-label="비밀번호를 바꿀 계정"></select></label>
+        <input id="reset-pass" type="password" placeholder="새 비밀번호 (4글자 이상)" maxlength="16" autocomplete="new-password">
+        <input id="reset-pass2" type="password" placeholder="새 비밀번호 한 번 더" maxlength="16" autocomplete="new-password">
+        <button type="submit" class="primary">비밀번호 바꾸기</button>
+        <p id="reset-msg" class="msg" role="status"></p>
+        <button type="button" id="reset-login" class="ghost" hidden>이 계정으로 바로 들어가기 ▶</button>
+      </form>
       <div class="row"><button id="creator-lock" class="ghost">🔒 다시 잠그기</button><button class="primary" data-go="tower">타워로 가기</button></div>
     </div>
   </section>

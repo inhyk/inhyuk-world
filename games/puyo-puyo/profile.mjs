@@ -169,6 +169,18 @@ export async function login(store, name, password) {
   return { ok: true, account };
 }
 
+// 비밀번호 다시 정하기 (제작자 모드에서만 부른다): 새 소금·해시로 바꾸고 레벨·코인 같은 기록은 그대로 둔다
+export async function resetPassword(store, id, password) {
+  const account = store.accounts.find(a => a.id === id);
+  if (!account) return { ok: false, error: '그 계정이 이 기기에 없어.' };
+  const error = checkPassword(password);
+  if (error) return { ok: false, error };
+  const salt = randomHex(8);
+  account.salt = salt;
+  account.hash = await hashPassword(String(password), salt);
+  return { ok: true, account };
+}
+
 export function logout(store) { store.current = null; }
 export function currentAccount(store) { return store.accounts.find(a => a.id === store.current) || null; }
 export function removeAccount(store, id) {

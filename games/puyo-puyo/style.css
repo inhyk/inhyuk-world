@@ -461,3 +461,10 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 #bubbles { position: fixed; top: calc(max(8px, env(safe-area-inset-top)) + 54px); left: 50%; transform: translateX(-50%); z-index: 16; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; width: min(420px, calc(100% - 24px)); }
 .bubble { background: #fffdf8; border-radius: 16px; padding: 8px 14px; box-shadow: 0 8px 22px rgba(30, 10, 70, .3), 0 0 0 3px #9fe3ff inset; font-family: var(--body-font); font-size: 15px; animation: toast 3.4s ease forwards; }
 .bubble b { font-family: 'Jua', var(--body-font); font-weight: 400; color: #5b3bb3; margin-right: 4px; }
+/* 제작자 모드: 계정 비밀번호 다시 정하기 */
+.reset-card { display: flex; flex-direction: column; gap: 10px; margin: 18px auto; padding: 18px; }
+.reset-card h3 { font-size: 21px; }
+.reset-card .fine { margin: 0; }
+.reset-row { display: flex; align-items: center; gap: 10px; font-family: var(--body-font); font-size: 14px; }
+.reset-row select { flex: 1; font: inherit; border: 2px solid var(--line); border-radius: 12px; padding: 9px 10px; background: #fff; }
+#reset-msg.ok { color: #1f9d55; }

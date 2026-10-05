@@ -857,7 +857,39 @@ function renderCreator() {
   $('creator-account').textContent = `${me()?.name || '손님'} · Lv.${P().level}`;
   $('creator-error').textContent = '';
   $('creator-password').value = '';
+  // 비밀번호 다시 정하기: 이 기기의 계정 목록
+  $('reset-account').innerHTML = store.accounts.map(a => `<option value="${a.id}">${esc(a.name)} · Lv.${a.progress.level}</option>`).join('');
+  $('reset-account').disabled = !store.accounts.length;
+  $('reset-form').querySelector('button[type=submit]').disabled = !store.accounts.length;
+  $('reset-pass').value = ''; $('reset-pass2').value = '';
+  resetMsg(store.accounts.length ? '' : '이 기기에 만든 계정이 아직 없어.');
+  $('reset-login').hidden = true;
 }
+let resetDone = null; // 방금 비밀번호를 바꾼 계정 { name, password } (바로 들어가기용)
+function resetMsg(text, ok = false) { $('reset-msg').textContent = text; $('reset-msg').classList.toggle('ok', ok); }
+$('reset-form').onsubmit = async e => {
+  e.preventDefault();
+  const id = $('reset-account').value, p1 = $('reset-pass').value, p2 = $('reset-pass2').value;
+  if (!id) { resetMsg('바꿀 계정을 골라 줘.'); return; }
+  if (p1 !== p2) { resetMsg('두 비밀번호가 달라. 똑같이 두 번 적어 줘.'); sound.sfx('bump'); return; }
+  const r = await creator.resetPassword(store, id, p1);
+  if (!r.ok) { resetMsg(r.error); sound.sfx('bump'); return; }
+  persistStore();
+  $('reset-pass').value = ''; $('reset-pass2').value = '';
+  resetDone = { name: r.account.name, password: p1 };
+  resetMsg(`✅ ${r.account.name} 계정 비밀번호를 바꿨어! 새 비밀번호를 꼭 기억해 둬.`, true);
+  $('reset-login').hidden = false;
+  sound.sfx('coin'); haptic('success');
+};
+$('reset-login').onclick = async () => {
+  if (!resetDone) return;
+  const r = await login(store, resetDone.name, resetDone.password);
+  resetDone = null;
+  $('reset-login').hidden = true;
+  if (!r.ok) { toast(r.error); return; }
+  friendNet.stop();
+  account = r.account; guest = null; save(); afterLogin();
+};
 $('creator-form').onsubmit = e => {
   e.preventDefault();
   const ok = creator.unlock($('creator-password').value);
