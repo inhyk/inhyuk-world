@@ -517,3 +517,12 @@ test('기기 저장 공간이 꽉 차면(scopedStorage 경유) 저장한 것으�
   assert.equal(server.save.data.coins, 50);
   assert.equal(cloud.localFailed, true);
 });
+
+
+test('unavailable local storage is a persistence failure through the real adapter', () => {
+  const unavailable = scopedStorage(null, 'http://127.0.0.1:8799');
+  assert.equal(unavailable.setItem('key', 'value'), false);
+  assert.equal(unavailable.removeItem('key'), false);
+  assert.equal(writeCache(null, 1, { data: { coins: 50 }, dirty: true }), false);
+  assert.equal(writeCache(unavailable, 1, { data: { coins: 50 }, dirty: true }), false);
+});

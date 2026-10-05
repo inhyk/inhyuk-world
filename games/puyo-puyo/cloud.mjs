@@ -35,6 +35,7 @@ export function readCache(storage, uid) {
   try { return JSON.parse(storage?.getItem(CACHE_KEY) || '{}')[uid] ?? null; } catch { return null; }
 }
 export function writeCache(storage, uid, entry) {
+  if (!storage) return false;
   try {
     const all = JSON.parse(storage?.getItem(CACHE_KEY) || '{}');
     if (entry) all[uid] = entry; else delete all[uid];
