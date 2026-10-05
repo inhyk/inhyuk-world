@@ -74,6 +74,10 @@ function profanityRanges(text) {
 
 // 숫자 8개 이상이면 전화번호로 본다. 7개는 "123-4567" 처럼 나뉘어 있을 때만. min 을 주면 그 개수 이상만.
 function phoneRanges(text, min = 0) {
+  // "이야", "사람" 같은 일반 낱말의 숫자 음절은 번호에 붙이지 않는다.
+  // 숫자를 한글로 쓴 낱말과 구분 조사 "에"는 보존하고, 위치는 그대로 유지한다.
+  text = text.replace(/[가-힣]+/g, word => /^[공영일이삼사오육륙칠팔구에]+$/.test(word)
+    ? word : word.replace(/[공영일이삼사오육륙칠팔구]+/g, digits => digits.length >= 3 ? digits : '\0'.repeat(digits.length)));
   const ranges = [];
   const isDigit = ch => /[0-9]/.test(ch) || KOREAN_DIGITS[ch];
   let i = 0;

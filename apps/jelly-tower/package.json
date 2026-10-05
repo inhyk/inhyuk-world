@@ -2,13 +2,18 @@
   "name": "jelly-tower-app",
   "version": "1.0.0",
   "private": true,
-  "description": "젤리 타워 아이폰 앱 (Capacitor). 게임 코드는 games/puyo-puyo에 있고, 여기서는 앱으로 감싸기만 한다.",
+  "description": "젤리 타워 아이폰·안드로이드 앱 (Capacitor). 게임 코드는 games/puyo-puyo에 있고, 여기서는 앱으로 감싸기만 한다.",
   "scripts": {
     "web": "node scripts/build-web.mjs",
-    "sync": "npm run web && npx cap sync ios",
-    "open": "npx cap open ios"
+    "sync": "npm run web && npx cap sync ios && npx cap sync android",
+    "sync:ios": "npm run web && npx cap sync ios",
+    "sync:android": "npm run web && npx cap sync android",
+    "open": "npx cap open ios",
+    "open:android": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/ios": "^8.5.2",

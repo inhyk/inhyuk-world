@@ -25,6 +25,14 @@ describe('filterText', () => {
     }
   });
 
+  it('does not treat Korean number syllables inside ordinary words as phone digits', () => {
+    expect(masked('내 번호 010-1234-5678 이야')).toBe('내 번호 ************* 이야');
+    expect(masked('내 번호 공일공 일이삼사 오육칠팔 이야')).toBe('내 번호 *** **** **** 이야');
+    expect(maskSplitPhone(['010-1234-5678'], '이야')).toBe('이야');
+    expect(filterText('번호공일공일이삼사오육칠팔이야').kinds).toContain('phone');
+    expect(filterText('이야기 재미있다')).toEqual({ text: '이야기 재미있다', kinds: [] });
+  });
+
   it('masks Korean phone numbers in many shapes', () => {
     for (const phone of ['010-1234-5678', '01012345678', '010 1234 5678', '010.1234.5678', '0 1 0 1 2 3 4 5 6 7 8', '+82 10 1234 5678', '02-123-4567', '공일공 일이삼사 오육칠팔', '０１０１２３４５６７８']) {
       const r = filterText(`내 번호 ${phone} 야`);

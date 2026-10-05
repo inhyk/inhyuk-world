@@ -1,5 +1,6 @@
-// 아이폰 앱(Capacitor) 안에서만 하는 일을 Chrome에서 가짜 Capacitor로 확인한다.
-// 시작 그림 걷기, 기기 저장소에 같이 저장하고 되살리기, 진동, 계정 지우기, 앱에서 숨기는 사이트 링크.
+// 아이폰·안드로이드 앱(Capacitor) 안에서만 하는 일을 Chrome에서 가짜 Capacitor로 확인한다.
+// 시작 그림 걷기, 기기 저장소에 같이 저장하고 되살리기, 진동, 계정 지우기, 앱에서 숨기는 사이트 링크,
+// 안드로이드 뒤로 가기 단추.
 import { chromium } from '../../tools/node_modules/playwright/index.mjs';
 import assert from 'node:assert/strict';
 
@@ -9,14 +10,16 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const errors = [];
 
 // prefs: 아이폰의 기기 저장소(Preferences)에 이미 들어 있는 값
-async function openApp(prefs = {}) {
+async function openApp(prefs = {}, platform = 'ios') {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  await context.addInitScript(initial => {
+  await context.addInitScript(([initial, platform]) => {
     window.__calls = [];
+    window.__listeners = {};
     window.__prefs = { ...initial };
     window.Capacitor = {
       isNativePlatform: () => true,
-      getPlatform: () => 'ios',
+      getPlatform: () => platform,
+      addListener(plugin, event, callback) { window.__listeners[`${plugin}.${event}`] = callback; return { remove() {} }; },
       nativePromise(plugin, method, options = {}) {
         window.__calls.push({ plugin, method, options });
         if (plugin === 'Preferences' && method === 'get') return Promise.resolve({ value: window.__prefs[options.key] ?? null });
@@ -24,7 +27,7 @@ async function openApp(prefs = {}) {
         return Promise.resolve();
       },
     };
-  }, prefs);
+  }, [prefs, platform]);
   const page = await context.newPage();
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
@@ -110,6 +113,31 @@ try {
   assert.equal(await web.locator('#set-haptic').isVisible(), false);
   assert.equal(await web.locator('#delete-zone').isVisible(), false); // 손님은 지울 계정이 없다
 
+  // 8) 안드로이드: 뒤로 가기 단추는 한 칸씩 돌아가고, 첫 화면에서만 앱을 끈다. 아이폰은 듣지 않는다.
+  const ios = await openApp();
+  assert.equal(await ios.page.evaluate(() => Object.keys(window.__listeners).length), 0);
+  await ios.context.close();
+  const droid = await openApp({}, 'android');
+  page = droid.page;
+  const back = () => page.evaluate(() => window.__listeners['App.backButton']({}));
+  const exits = () => calls(page, 'App', 'exitApp').then(c => c.length);
+  assert.equal(await page.evaluate(() => typeof window.__listeners['App.backButton']), 'function');
+  await page.click('#go-signup'); await back();
+  assert.equal(await page.locator('#login-main').isVisible(), true); // 가입 칸 → 로그인 첫 칸
+  assert.equal(await exits(), 0);
+  await page.click('#go-guest'); await page.waitForSelector('#scr-menu:not([hidden])');
+  await page.click('#scr-menu [data-go="shop"]'); await back();
+  await page.waitForSelector('#scr-menu:not([hidden])'); // 상점 → 메뉴
+  await page.evaluate(() => window.__puyo.startSolo());
+  await page.waitForFunction(() => window.__puyo.match?.phase === 'play');
+  await back(); assert.equal(await page.locator('#pause').isVisible(), true); // 게임 중 → 멈춤
+  await back(); assert.equal(await page.locator('#pause').isVisible(), false); // 한 번 더 → 계속
+  assert.equal(await exits(), 0);
+  await page.evaluate(() => window.__puyo.pause(true)); await page.click('#pause-quit');
+  await page.waitForSelector('#scr-menu:not([hidden])');
+  await back(); assert.equal(await exits(), 1); // 메뉴에서는 앱 끄기
+  await droid.context.close();
+
   assert.deepEqual(errors, []);
-  console.log('PASS: 앱 시작 그림 걷기, 기기 저장소에 같이 저장·되살리기, 진동 설정·터질 때 진동, 계정 지우기, 웹에서는 앱 전용 숨김 — 오류 없음');
+  console.log('PASS: 앱 시작 그림 걷기, 기기 저장소에 같이 저장·되살리기, 진동 설정·터질 때 진동, 계정 지우기, 웹에서는 앱 전용 숨김, 안드로이드 뒤로 가기 — 오류 없음');
 } finally { await browser.close(); }
