@@ -150,7 +150,8 @@ export class CloudSave {
   }
 
   // 409: 이 기기와 서버 중 하나를 고른다. 고른 쪽을 서버 번호로 다시 쓴다.
-  async resolve(server, round = 0) {
+  // options.importId: 기기 계정을 옮기다 생긴 충돌이면 다시 쓸 때도 같이 보내, 다시 옮겨도 두 번 쓰지 않게 한다.
+  async resolve(server, round = 0, options = {}) {
     // 서버에 저장이 없으면 고를 것 없이 이 기기 것을 쓴다.
     let choice = 'local';
     if (server.data) {
@@ -166,17 +167,19 @@ export class CloudSave {
     this.revision = server.revision ?? 0;
     this.dirty = true;
     this.persist();
-    const result = await this.o.client.putSave(GAME, this.data, this.revision);
+    const sent = this.data;
+    const result = await this.o.client.putSave(GAME, sent, this.revision, options);
+    if (this.stopped) return;
     if (result.conflict) {
       if (round + 1 >= MAX_CONFLICT_ROUNDS) { this.setState('pending'); return; }
-      await this.resolve(result.server, round + 1);
+      await this.resolve(result.server, round + 1, options);
       return;
     }
     this.revision = result.revision;
-    this.dirty = false;
-    this.updated = result.updated ?? this.updated;
+    // 쓰는 동안 게임이 또 바꿨으면(change) 그건 아직 안 올라갔다. dirty 로 두고 다음 flush 가 새 revision 으로 올린다.
+    if (this.data === sent) { this.dirty = false; this.updated = result.updated ?? this.updated; }
     this.persist();
-    this.setState('synced');
+    this.setState(this.dirty ? 'pending' : 'synced');
   }
 
   // 기기에만 있던 계정을 처음 올린다. baseRevision 0 으로 보내므로 서버에 이미 저장이 있으면 409 → 고르기 창.
@@ -185,7 +188,7 @@ export class CloudSave {
     const result = await this.o.client.putSave(GAME, data, 0, { importId });
     this.data = data;
     this.updated = new Date(this.o.now()).toISOString();
-    if (result.conflict) { this.revision = null; this.dirty = true; await this.resolve(result.server); return this.data; }
+    if (result.conflict) { this.revision = null; this.dirty = true; await this.resolve(result.server, 0, { importId }); return this.data; }
     if (result.duplicate) {
       const latest = await this.o.client.loadSave(GAME);
       if (latest) this.adopt(latest);

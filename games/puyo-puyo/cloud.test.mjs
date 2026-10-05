@@ -212,6 +212,52 @@ test('importLocal: importId 로 한 번만 올리고, 다시 보내면 서버 �
   assert.equal(again.data.coins, 3000);
 });
 
+test('409 에서 이 기기를 골라 다시 쓰는 동안 또 바뀐 기록은 올라간 것으로 치지 않고 다시 올린다', async () => {
+  const server = fakeServer();
+  const { cloud, timers } = make(server, { choose: 'local' });
+  cloud.data = { coins: 100 }; cloud.revision = 0; cloud.dirty = true;
+  // 고른 기록을 쓰는 응답을 붙잡아 두고, 그 사이 게임이 기록을 바꾼다
+  let release;
+  const realPut = server.putSave;
+  server.putSave = (...args) => new Promise(resolve => { release = () => resolve(realPut(...args)); });
+  const resolving = cloud.resolve({ data: { coins: 80 }, revision: 2, updated: 5 });
+  await settle();
+  server.save = { data: { coins: 80 }, revision: 2, updated: 5 };
+  cloud.change({ coins: 50 });
+  release();
+  await resolving;
+  assert.equal(server.save.data.coins, 100);
+  assert.equal(cloud.revision, 3);
+  assert.equal(cloud.dirty, true);
+  assert.equal(cloud.state, 'pending');
+  assert.equal(readCache(cloud.o.storage, 7).dirty, true);
+  // 조용해지면 바뀐 기록을 새 revision 으로 올린다
+  server.putSave = realPut;
+  await timers.runAll();
+  await cloud.busy;
+  assert.equal(server.save.data.coins, 50);
+  assert.equal(server.save.revision, 4);
+  assert.equal(cloud.dirty, false);
+  assert.equal(cloud.state, 'synced');
+});
+
+test('importLocal 이 409 로 고르기 창을 거쳐 이 기기 것을 쓰면 importId 도 같이 보내 다시 해도 두 번 쓰지 않는다', async () => {
+  const server = fakeServer();
+  server.save = { data: { ...newProgress(), coins: 1 }, revision: 3, updated: 1 };
+  const { cloud } = make(server, { choose: 'local' });
+  const local = { ...newProgress(), level: 9, coins: 900 };
+  await cloud.importLocal(local, 'jelly-conflict1');
+  const puts = server.calls.filter(c => c[0] === 'put');
+  assert.deepEqual(puts.map(c => [c[2], c[3]]), [[0, 'jelly-conflict1'], [3, 'jelly-conflict1']]);
+  assert.equal(server.save.data.coins, 900);
+  assert.equal(server.save.revision, 4);
+  // 응답을 못 받았다고 보고 다시 옮겨도 서버를 또 쓰지 않는다
+  const again = make(server, { choose: 'local' });
+  await again.cloud.importLocal(local, 'jelly-conflict1');
+  assert.equal(server.save.revision, 4);
+  assert.equal(again.conflicts.length, 0);
+});
+
 // ---------- 옮기기 ----------
 async function localAccount(name = '인혁', password = '1234') {
   const store = emptyStore();
