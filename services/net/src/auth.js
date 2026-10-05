@@ -37,7 +37,7 @@ export async function hashPassword(password, salt, iterations = PBKDF2_ITERATION
   return b64(bits);
 }
 
-function sameText(a, b) {
+export function sameText(a, b) {
   // 걸린 시간으로 비밀번호를 짐작하지 못하게 끝까지 비교한다.
   if (a.length !== b.length) return false;
   let diff = 0;

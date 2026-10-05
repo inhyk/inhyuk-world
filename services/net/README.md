@@ -175,7 +175,14 @@ await account.putSave('jelly-tower', localData, 0, { importId: 'device-1234abcd'
 
 `https://net.seonn.workers.dev/admin` 에서 신고(서버가 모은 기록과 신고자가 보낸 기록)를 보고 계정을 정지하거나 풀고, 신고를 무시하고, 닉네임으로 사용자를 찾습니다. 정지하면 그 계정의 로그인과 아직 안 쓴 표가 모두 지워지고, `/live` 연결, 들어가 있는 방, 매칭 줄이 바로 끊기며, 로그인과 매칭, 표로 방 들어가기가 거부됩니다. 방과 매칭 줄을 찾으려고 `Lobby` 가 사람마다 하루 안에 들어간 방과 줄을 20곳까지 적어 둡니다(방, 매칭 줄에 표로 들어올 때 적음). 코드로 만든 공개 방에 표 없이 들어간 연결은 누구인지 모르므로 끊지 못합니다. 관리 동작은 `admin_actions` 표에 남습니다.
 
-Cloudflare Access 가 이메일 일회용 코드로 막고, 서버도 Access 가 붙여 주는 `Cf-Access-Jwt-Assertion` JWT 를 다시 검사합니다(RS256 서명, `aud`, `iss`, 만료, `ADMIN_EMAILS`). `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`, `ADMIN_EMAILS` 중 하나라도 비어 있으면 관리 페이지는 항상 403 입니다. 관리 API 는 같은 주소의 페이지에서만 부를 수 있습니다(CORS 없음).
+관리자 비밀번호 하나로 들어갑니다. 비밀번호는 코드나 `wrangler.jsonc` 에 적지 않고 Worker secret `ADMIN_PASSWORD` 로 둡니다(아래 "처음 한 번 배포하기" 5번). 비밀번호가 없거나 12글자보다 짧으면 `/admin` 아래는 모두 403 이고 "관리자 비밀번호가 설정되지 않았어요" 만 보입니다.
+
+- 로그인이 맞으면 무작위 32바이트 토큰을 쿠키 `net_admin`(`HttpOnly; Secure; SameSite=Strict; Path=/admin`)으로 주고, 12시간 뒤 끝납니다. D1 `admin_sessions` 표에는 토큰의 SHA-256 만 저장합니다. "나가기" 를 누르면 지웁니다.
+- 비밀번호를 바꾸면 예전 로그인은 모두 풀립니다(로그인마다 그때 비밀번호의 지문을 같이 저장해 두고 비교).
+- 틀린 비밀번호는 IP 하나에서 10분에 5번, 모든 IP 합쳐 1시간에 20번까지입니다. 넘으면 맞는 비밀번호도 429 입니다. 맞으면 그 IP 의 기록을 지웁니다.
+- 비밀번호는 양쪽을 SHA-256 으로 바꾼 뒤 끝까지 비교합니다(걸린 시간으로 짐작하지 못하게).
+- 관리 API 와 로그인, 나가기는 같은 주소의 페이지에서만 부를 수 있습니다(Origin 검사, CORS 없음).
+- 관리 동작 기록(`admin_actions`)에는 누가(`admin`)와 IP 가 남습니다.
 
 ## 비밀번호 저장
 
@@ -210,7 +217,7 @@ npm run check     # 배포 없이 빌드만 확인 (wrangler deploy --dry-run)
    npx wrangler d1 create net
    npx wrangler d1 migrations apply net --remote
    ```
-   나중에 `migrations/` 에 파일이 늘면 `migrations apply net --remote` 만 다시 합니다. 이미 배포한 뒤 게임 저장(`0002_saves.sql`)을 더할 때도 배포 전에 이것만 하면 됩니다(적용 안 된 것만 적용).
+   나중에 `migrations/` 에 파일이 늘면 `migrations apply net --remote` 만 다시 합니다. 이미 배포한 뒤 게임 저장(`0002_saves.sql`)이나 관리자 로그인(`0003_admin_sessions.sql`)을 더할 때도 배포 전에 이것만 하면 됩니다(적용 안 된 것만 적용).
    ```bash
    npx wrangler d1 migrations apply net --remote
    ```
@@ -218,14 +225,14 @@ npm run check     # 배포 없이 빌드만 확인 (wrangler deploy --dry-run)
    ```bash
    npx wrangler deploy
    ```
-5. 관리 페이지를 Cloudflare Access 로 막습니다.
-   1. 대시보드 Zero Trust 에 처음 들어가면 팀 이름을 정합니다(예: `seonn` → 팀 도메인 `seonn.cloudflareaccess.com`).
-   2. Zero Trust → Settings → Authentication → Login methods 에 One-time PIN 이 있는지 봅니다(기본으로 켜져 있음).
-   3. Zero Trust → Access → Applications → Add an application → Self-hosted. 이름 `net admin`, 주소는 domain `net.seonn.workers.dev`, path `admin*` (그러면 `/admin` 과 `/admin/api/...` 가 모두 막힘). workers.dev 주소를 도메인으로 고를 수 없으면(확인 필요), 아래 6번 방법 A로 `net.seonn.dev` 를 붙이고 그 주소로 만듭니다. Workers 설정의 workers.dev "Cloudflare Access" 스위치는 Worker 전체를 막아 게임이 못 들어오므로 쓰지 않습니다. Access 를 거치지 않은 주소로 `/admin` 을 열면 JWT 가 없어서 403 입니다.
-   4. Policy: Action `Allow`, Include → Emails → `kubony@gmail.com`. 로그인 방법은 One-time PIN.
-   5. 저장한 애플리케이션의 Overview 에서 Application Audience (AUD) Tag 를 복사합니다.
-   6. `wrangler.jsonc` 의 `vars` 에 `ACCESS_TEAM_DOMAIN`(예 `seonn.cloudflareaccess.com`)과 `ACCESS_AUD` 를 적고 `npx wrangler deploy` 를 다시 합니다. `ADMIN_EMAILS` 는 이미 `kubony@gmail.com` 입니다(쉼표로 여럿).
-   7. https://net.seonn.workers.dev/admin 을 열면 이메일 코드를 묻고, 들어가면 신고 목록이 보입니다. 둘 중 하나라도 비어 있으면 403 만 나옵니다.
+5. 관리 페이지 비밀번호를 정합니다. 12글자 이상이어야 하고, 쉬운 낱말 3~4개를 이은 것(예: 서로 상관없는 낱말 넷을 `-` 로 이은 것)을 권합니다. 아래 명령을 치면 비밀번호를 묻습니다. 화면에 보이지 않고 Cloudflare 에만 저장됩니다.
+   ```bash
+   npx wrangler secret put ADMIN_PASSWORD
+   ```
+   그다음 https://net.seonn.workers.dev/admin 을 열어 비밀번호를 넣으면 신고 목록이 보입니다. 비밀번호를 정하기 전에는 "관리자 비밀번호가 설정되지 않았어요" 만 나옵니다.
+   - 관리자 로그인 표(`0003_admin_sessions.sql`)가 필요하므로, 이미 배포한 서버라면 먼저 `npx wrangler d1 migrations apply net --remote` 를 한 번 합니다(적용 안 된 것만 적용).
+   - 비밀번호를 바꿀 때도 같은 명령(`npx wrangler secret put ADMIN_PASSWORD`)을 다시 칩니다. 바꾸면 들어가 있던 곳은 모두 로그아웃됩니다.
+   - 비밀번호를 잊으면 같은 명령으로 새로 정하면 됩니다.
 6. 주소를 정합니다. 둘 중 하나를 고릅니다.
    - 방법 A, `net.seonn.dev` 쓰기: seonn.dev 의 DNS(네임서버)가 Cloudflare에 있어야 합니다. 지금 DNS가 다른 곳(도메인 산 곳, Vercel 등)에 있으면 Cloudflare 대시보드에서 "Add a site"로 seonn.dev 를 추가하고, 도메인 산 곳에서 네임서버를 Cloudflare가 알려 준 것으로 바꿉니다. 이때 Vercel로 가는 기존 레코드(A, CNAME)를 Cloudflare에 똑같이 옮겨야 사이트가 안 끊깁니다. 그다음 `wrangler.jsonc` 맨 아래 `routes` 줄의 주석을 풀고 `npx wrangler deploy` 를 다시 합니다.
    - 방법 B, DNS는 그대로 두고 workers.dev 주소 쓰기: 지금 쓰는 방법입니다. 기본값 `wss://net.seonn.workers.dev` 가 이 주소입니다. 나중에 방법 A로 옮기면 `packages/net/index.mjs` 의 `DEFAULT_SERVER` 한 줄만 `wss://net.seonn.dev` 로 바꿉니다.

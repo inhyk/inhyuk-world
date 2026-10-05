@@ -28,11 +28,9 @@
   ],
   "vars": {
     // 여기에 적힌 주소의 게임만 서버를 쓸 수 있다. http://localhost, http://127.0.0.1 은 언제나 허용.
-    "ALLOWED_ORIGINS": "https://seonn.dev,https://www.seonn.dev,capacitor://localhost,https://localhost",
-    // 관리 페이지(/admin): Cloudflare Access 설정 뒤 채운다. 하나라도 비어 있으면 관리 페이지는 닫혀 있다(403).
-    "ACCESS_TEAM_DOMAIN": "",  // 예: seonn.cloudflareaccess.com
-    "ACCESS_AUD": "",          // Access 애플리케이션의 Application Audience (AUD) Tag
-    "ADMIN_EMAILS": "kubony@gmail.com"
+    "ALLOWED_ORIGINS": "https://seonn.dev,https://www.seonn.dev,capacitor://localhost,https://localhost"
+    // 관리 페이지(/admin) 비밀번호는 여기 적지 않고 Worker secret 으로 둔다: npx wrangler secret put ADMIN_PASSWORD
+    // 없거나 12글자보다 짧으면 관리 페이지는 닫혀 있다(403).
   }
   // net.seonn.dev 를 쓰려면 seonn.dev DNS가 Cloudflare에 있어야 한다. README의 "배포" 참고.
   // "routes": [{ "pattern": "net.seonn.dev", "custom_domain": true }]

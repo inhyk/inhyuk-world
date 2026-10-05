@@ -30,10 +30,10 @@ export const fail = (status, code, extra) => { throw new HttpError(status, code,
 
 export const BODY_MAX = 64 * 1024;
 
-// JSON 몸을 읽는다. Content-Length 를 믿지 않고 실제로 읽은 바이트를 세어 64KB 를 넘으면 그 자리에서 413.
-export async function readJson(request) {
-  if (Number(request.headers.get('Content-Length') ?? 0) > BODY_MAX) fail(413, 'too-big');
-  if (!request.body) return {};
+// 몸을 글자로 읽는다. Content-Length 를 믿지 않고 실제로 읽은 바이트를 세어 max 를 넘으면 그 자리에서 413.
+export async function readText(request, max = BODY_MAX) {
+  if (Number(request.headers.get('Content-Length') ?? 0) > max) fail(413, 'too-big');
+  if (!request.body) return '';
   const reader = request.body.getReader();
   const chunks = [];
   let size = 0;
@@ -41,7 +41,7 @@ export async function readJson(request) {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > BODY_MAX) {
+    if (size > max) {
       try { await reader.cancel(); } catch { /* 이미 끝남 */ }
       fail(413, 'too-big');
     }
@@ -50,8 +50,15 @@ export async function readJson(request) {
   const bytes = new Uint8Array(size);
   let at = 0;
   for (const chunk of chunks) { bytes.set(chunk, at); at += chunk.byteLength; }
+  return new TextDecoder().decode(bytes);
+}
+
+// JSON 몸을 읽는다(64KB 까지). 잘못된 JSON 이면 {}.
+export async function readJson(request, max = BODY_MAX) {
+  const text = await readText(request, max);
+  if (!text) return {};
   try {
-    const body = JSON.parse(new TextDecoder().decode(bytes));
+    const body = JSON.parse(text);
     return body && typeof body === 'object' ? body : {};
   } catch { return {}; }
 }

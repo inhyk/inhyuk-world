@@ -1,100 +1,122 @@
 // 관리 페이지 (/admin) 와 관리 API (/admin/api/*).
-// Cloudflare Access 가 앞에서 이메일 인증(일회용 코드)을 하고, 여기서는 Access 가 붙여 준 JWT
-// (Cf-Access-Jwt-Assertion) 를 다시 검사한다: RS256 서명, aud, iss, 만료, 관리자 이메일 목록.
-// ACCESS_TEAM_DOMAIN, ACCESS_AUD, ADMIN_EMAILS 중 하나라도 비어 있으면 무조건 403 (닫힘).
-import { json, now, userId } from './http.js';
+// Worker secret ADMIN_PASSWORD 하나로 들어간다. 비어 있거나 12글자보다 짧으면 /admin 아래는 모두 403 (닫힘).
+// 맞으면 32바이트 무작위 토큰을 쿠키(net_admin)로 주고, D1 에는 토큰의 SHA-256 만 12시간 동안 둔다.
+import { json, now, userId, clientIp, readText, HttpError } from './http.js';
+import { hitStatements, sameText } from './auth.js';
 import { lobby } from './social.js';
 
-const KEYS_TTL_MS = 10 * 60 * 1000;
-const keyCache = new Map(); // team → { at, keys: Map(kid → CryptoKey) }
-// 모르는 kid 가 와도 공개키를 다시 받아 오는 것은 1분에 한 번까지 (가짜 kid 로 바깥 요청을 늘리지 못하게).
-const REFRESH_MS = 60 * 1000;
-const lastRefresh = new Map(); // team → 마지막으로 억지로 다시 받은 때
+export const PASSWORD_MIN = 12;
+const SESSION_MS = 12 * 60 * 60 * 1000;
+const COOKIE = 'net_admin';
+const ACTOR = 'admin'; // 관리 동작 기록에 남는 이름 (관리자는 한 사람)
+// 로그인 실패: IP 하나에서 10분에 5번, 모든 IP 합쳐 1시간에 20번까지.
+const FAIL_WINDOW_MS = 10 * 60 * 1000, FAILS_PER_IP = 5;
+const GLOBAL_WINDOW_MS = 60 * 60 * 1000, FAILS_GLOBAL = 20;
+const LOGIN_BODY_MAX = 4 * 1024;
 
-const b64urlBytes = text => {
-  const s = text.replace(/-/g, '+').replace(/_/g, '/');
-  const bin = atob(s + '='.repeat((4 - (s.length % 4)) % 4));
-  return Uint8Array.from(bin, c => c.charCodeAt(0));
-};
-const b64urlJson = text => JSON.parse(new TextDecoder().decode(b64urlBytes(text)));
+const enc = new TextEncoder();
+const hex = bytes => [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, '0')).join('');
+const sha256hex = async text => hex(await crypto.subtle.digest('SHA-256', enc.encode(text)));
+const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-export function accessConfig(env) {
-  const team = String(env?.ACCESS_TEAM_DOMAIN ?? '').trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
-  const aud = String(env?.ACCESS_AUD ?? '').trim();
-  const admins = String(env?.ADMIN_EMAILS ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  if (!team || !aud || !admins.length) return null;
-  return { team, aud, admins, issuer: `https://${team}` };
+// 비밀번호가 쓸 만하면 그 지문(SHA-256 앞 16글자), 아니면 ''.
+async function fingerprint(env) {
+  const password = env?.ADMIN_PASSWORD;
+  if (typeof password !== 'string' || password.length < PASSWORD_MIN) return '';
+  return (await sha256hex(password)).slice(0, 16);
 }
 
-async function accessKeys(team, refresh = false) {
-  const cached = keyCache.get(team);
-  if (cached && !refresh && now() - cached.at < KEYS_TTL_MS) return cached.keys;
-  const response = await fetch(`https://${team}/cdn-cgi/access/certs`);
-  if (!response.ok) throw Error(`certs ${response.status}`);
-  const body = await response.json();
-  const keys = new Map();
-  for (const jwk of body.keys ?? []) {
-    if (jwk.kty !== 'RSA' || !jwk.kid) continue;
-    keys.set(jwk.kid, await crypto.subtle.importKey('jwk', { kty: jwk.kty, n: jwk.n, e: jwk.e, alg: 'RS256', ext: true },
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']));
-  }
-  keyCache.set(team, { at: now(), keys });
-  return keys;
-}
-
-// 맞으면 관리자 이메일, 아니면 ''.
-export async function verifyAccessJwt(token, env) {
-  const config = accessConfig(env);
-  if (!config || typeof token !== 'string') return '';
-  const parts = token.split('.');
-  if (parts.length !== 3) return '';
-  try {
-    const header = b64urlJson(parts[0]);
-    const payload = b64urlJson(parts[1]);
-    if (header.alg !== 'RS256' || !header.kid) return '';
-    let key = (await accessKeys(config.team)).get(header.kid);
-    if (!key && now() - (lastRefresh.get(config.team) ?? 0) >= REFRESH_MS) {
-      lastRefresh.set(config.team, now()); // 키가 바뀌었을 수 있다
-      key = (await accessKeys(config.team, true)).get(header.kid);
+function readCookie(request) {
+  for (const part of (request.headers.get('Cookie') ?? '').split(';')) {
+    const [name, ...rest] = part.trim().split('=');
+    if (name === COOKIE) {
+      const value = rest.join('=');
+      return /^[A-Za-z0-9_-]{40,60}$/.test(value) ? value : '';
     }
-    if (!key) return '';
-    const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64urlBytes(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
-    if (!ok) return '';
-    const t = now() / 1000;
-    const auds = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-    if (payload.iss !== config.issuer || !auds.includes(config.aud)) return '';
-    if (typeof payload.exp !== 'number' || payload.exp < t) return '';
-    if (typeof payload.nbf === 'number' && payload.nbf > t + 60) return '';
-    const email = String(payload.email ?? '').toLowerCase();
-    return config.admins.includes(email) ? email : '';
-  } catch (error) {
-    console.error('access verify failed', error?.message);
-    return '';
   }
+  return '';
+}
+
+// 쿠키가 살아 있는 관리자 로그인이면 true. 만료됐거나 비밀번호가 바뀌었으면 false.
+async function hasSession(request, env, print) {
+  const token = readCookie(request);
+  if (!token) return false;
+  const row = await env.DB.prepare('SELECT fingerprint, expires FROM admin_sessions WHERE token_hash = ?').bind(await sha256hex(token)).first();
+  return !!row && row.expires > now() && sameText(row.fingerprint, print);
 }
 
 const SECURITY = {
   'Cache-Control': 'no-store',
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
-  'Referrer-Policy': 'no-referrer',
+  // same-origin: 같은 주소로 보내는 POST 에 Origin 이 붙어야 아래 Origin 검사를 통과한다 (no-referrer 면 Origin: null).
+  'Referrer-Policy': 'same-origin',
 };
+const CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+const html = (body, status = 200, headers = {}) => new Response(body, { status, headers: { ...SECURITY, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': CSP, ...headers } });
+const cookie = (value, maxAge) => `${COOKIE}=${value}; HttpOnly; Secure; SameSite=Strict; Path=/admin; Max-Age=${maxAge}`;
+const wantsJson = request => (request.headers.get('Content-Type') ?? '').toLowerCase().startsWith('application/json');
+
+async function login(request, env, print) {
+  const asJson = wantsJson(request);
+  const answer = (status, error) => asJson ? json({ error }, status, SECURITY) : html(loginPage(LOGIN_ERRORS[error] ?? '다시 해 보세요.'), status);
+  const ip = clientIp(request);
+  let password = '';
+  try {
+    const text = await readText(request, LOGIN_BODY_MAX);
+    if (asJson) { try { password = JSON.parse(text)?.password; } catch { /* 잘못된 JSON */ } }
+    else password = new URLSearchParams(text).get('password');
+  } catch (error) {
+    if (error instanceof HttpError) return answer(error.status, error.code);
+    throw error;
+  }
+  if (typeof password !== 'string' || !password) return answer(400, 'bad-login');
+  // 비교하기 전에 시도를 먼저 적고 센다(insert-then-count). 맞으면 이 IP 의 기록과 이번 전체 기록을 지운다.
+  const t = now();
+  const limits = [[`admin-login-ip:${ip}`, FAIL_WINDOW_MS, FAILS_PER_IP], ['admin-login-all', GLOBAL_WINDOW_MS, FAILS_GLOBAL]];
+  const results = await env.DB.batch(limits.flatMap(([key, windowMs]) => hitStatements(env, key, windowMs, t)));
+  if (limits.some(([, , max], i) => results[i * 2 + 1].results[0].n > max)) return answer(429, 'rate');
+  // 길이가 새지 않게 양쪽을 SHA-256 으로 같은 길이로 만든 뒤 끝까지 비교한다.
+  const ok = sameText(await sha256hex(password), await sha256hex(env.ADMIN_PASSWORD));
+  if (!ok) return answer(401, 'wrong-password');
+
+  const token = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM throttle WHERE key = ? OR rowid = ?').bind(limits[0][0], results[2].results[0].id),
+    env.DB.prepare('DELETE FROM admin_sessions WHERE expires < ?').bind(t),
+    env.DB.prepare('INSERT INTO admin_sessions (token_hash, fingerprint, created, expires, ip) VALUES (?, ?, ?, ?, ?)')
+      .bind(await sha256hex(token), print, t, t + SESSION_MS, ip),
+  ]);
+  const headers = { ...SECURITY, 'Set-Cookie': cookie(token, SESSION_MS / 1000) };
+  return asJson ? json({ ok: true }, 200, headers) : new Response(null, { status: 303, headers: { ...headers, Location: '/admin' } });
+}
+
+async function logout(request, env) {
+  const token = readCookie(request);
+  if (token) await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').bind(await sha256hex(token)).run();
+  const headers = { ...SECURITY, 'Set-Cookie': cookie('', 0) };
+  return wantsJson(request) ? json({ ok: true }, 200, headers) : new Response(null, { status: 303, headers: { ...headers, Location: '/admin' } });
+}
 
 export async function handleAdmin(request, env, parts) {
-  const email = await verifyAccessJwt(request.headers.get('Cf-Access-Jwt-Assertion'), env);
-  if (!email) return new Response('forbidden', { status: 403, headers: SECURITY });
+  const print = await fingerprint(env);
+  if (!print) return html(CLOSED_PAGE, 403);
   const url = new URL(request.url);
-  // 관리 API 는 같은 주소의 페이지에서만 부른다 (다른 사이트가 몰래 부르지 못하게).
+  // 쓰기는 같은 주소의 페이지에서만 한다 (다른 사이트가 몰래 부르지 못하게). 쿠키도 SameSite=Strict.
   const origin = request.headers.get('Origin');
   if (request.method !== 'GET' && origin !== url.origin) return new Response('forbidden', { status: 403, headers: SECURITY });
 
-  if (parts.length === 0 && request.method === 'GET') {
-    return new Response(PAGE, { headers: { ...SECURITY, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'" } });
-  }
+  if (parts.length === 1 && parts[0] === 'login' && request.method === 'POST') return login(request, env, print);
+  if (parts.length === 1 && parts[0] === 'logout' && request.method === 'POST') return logout(request, env);
+
+  const signedIn = await hasSession(request, env, print);
+  if (parts.length === 0 && request.method === 'GET') return html(signedIn ? PAGE : loginPage(''));
   if (parts[0] !== 'api') return new Response('not found', { status: 404, headers: SECURITY });
   const respond = (body, status = 200) => json(body, status, SECURITY);
+  if (!signedIn) return respond({ error: 'login-required' }, 401);
   const path = parts.slice(1).join('/');
   const db = env.DB;
+  const ip = clientIp(request);
 
   if (request.method === 'GET' && path === 'reports') {
     const status = ['open', 'dismissed', 'actioned'].includes(url.searchParams.get('status')) ? url.searchParams.get('status') : 'open';
@@ -103,7 +125,6 @@ export async function handleAdmin(request, env, parts) {
       FROM reports r JOIN users a ON a.id = r.reporter_id JOIN users b ON b.id = r.target_id
       WHERE r.status = ? ORDER BY r.id DESC LIMIT 100`).bind(status).all();
     return respond({
-      email,
       reports: results.map(r => ({
         id: r.id, created: r.created, status: r.status, reason: r.reason,
         reporter: { id: r.reporter_id, nickname: r.reporter_nickname },
@@ -127,8 +148,8 @@ export async function handleAdmin(request, env, parts) {
   if (request.method === 'POST' && m) {
     const id = Number(m[1]);
     await db.batch([
-      db.prepare("UPDATE reports SET status = 'dismissed', resolved_at = ?, resolved_by = ? WHERE id = ?").bind(now(), email, id),
-      db.prepare('INSERT INTO admin_actions (admin_email, action, target_id, detail, created) VALUES (?, ?, ?, ?, ?)').bind(email, 'dismiss-report', null, String(id), now()),
+      db.prepare("UPDATE reports SET status = 'dismissed', resolved_at = ?, resolved_by = ? WHERE id = ?").bind(now(), ACTOR, id),
+      db.prepare('INSERT INTO admin_actions (actor, ip, action, target_id, detail, created) VALUES (?, ?, ?, ?, ?, ?)').bind(ACTOR, ip, 'dismiss-report', null, String(id), now()),
     ]);
     return respond({ ok: true });
   }
@@ -144,14 +165,14 @@ export async function handleAdmin(request, env, parts) {
         db.prepare('UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ?').bind(now(), reason, id),
         db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id),
         db.prepare('DELETE FROM tickets WHERE user_id = ?').bind(id),
-        db.prepare("UPDATE reports SET status = 'actioned', resolved_at = ?, resolved_by = ? WHERE target_id = ? AND status = 'open'").bind(now(), email, id),
-        db.prepare('INSERT INTO admin_actions (admin_email, action, target_id, detail, created) VALUES (?, ?, ?, ?, ?)').bind(email, 'suspend', id, reason, now()),
+        db.prepare("UPDATE reports SET status = 'actioned', resolved_at = ?, resolved_by = ? WHERE target_id = ? AND status = 'open'").bind(now(), ACTOR, id),
+        db.prepare('INSERT INTO admin_actions (actor, ip, action, target_id, detail, created) VALUES (?, ?, ?, ?, ?, ?)').bind(ACTOR, ip, 'suspend', id, reason, now()),
       ]);
       await lobby(env).kick(id, 'suspended'); // 접속 중이면 바로 끊는다
     } else {
       await db.batch([
         db.prepare('UPDATE users SET suspended_at = NULL, suspended_reason = NULL WHERE id = ?').bind(id),
-        db.prepare('INSERT INTO admin_actions (admin_email, action, target_id, detail, created) VALUES (?, ?, ?, ?, ?)').bind(email, 'unsuspend', id, reason, now()),
+        db.prepare('INSERT INTO admin_actions (actor, ip, action, target_id, detail, created) VALUES (?, ?, ?, ?, ?, ?)').bind(ACTOR, ip, 'unsuspend', id, reason, now()),
       ]);
     }
     return respond({ ok: true });
@@ -160,25 +181,53 @@ export async function handleAdmin(request, env, parts) {
   return respond({ error: 'not-found' }, 404);
 }
 
+const LOGIN_ERRORS = {
+  'wrong-password': '비밀번호가 틀렸어요.',
+  rate: '너무 많이 틀렸어요. 조금 뒤에 다시 해 보세요.',
+  'bad-login': '비밀번호를 넣어 주세요.',
+  'too-big': '비밀번호가 너무 길어요.',
+};
+
+const STYLE = `body { font: 15px/1.5 system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 16px; color: #222; background: #fafafa; }
+  h1 { font-size: 20px; } h2 { font-size: 17px; margin-top: 28px; }
+  button { font: inherit; padding: 4px 10px; margin-right: 6px; border-radius: 6px; border: 1px solid #aaa; background: #fff; cursor: pointer; }
+  input { font: inherit; padding: 4px 8px; }
+  .error { color: #b00020; }`;
+
+const CLOSED_PAGE = `<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>net 관리</title></head>
+<body><p>관리자 비밀번호가 설정되지 않았어요.</p></body></html>`;
+
+const escape = text => text.replace(/[&<>"']/g, ch => `&#${ch.charCodeAt(0)};`);
+const loginPage = error => `<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>net 관리</title>
+<style>${STYLE}</style></head>
+<body>
+<h1>net 관리</h1>
+<form method="post" action="/admin/login">
+<p><label>관리자 비밀번호 <input type="password" name="password" autocomplete="current-password" required autofocus></label></p>
+<p><button>들어가기</button></p>
+${error ? `<p class="error">${escape(error)}</p>` : ''}
+</form>
+</body></html>`;
+
 const PAGE = `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>net 관리</title>
 <style>
-  body { font: 15px/1.5 system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 16px; color: #222; background: #fafafa; }
-  h1 { font-size: 20px; } h2 { font-size: 17px; margin-top: 28px; }
+  ${STYLE}
   .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 10px 0; }
   .meta { color: #666; font-size: 13px; }
   .lines { background: #f4f4f4; border-radius: 6px; padding: 8px; margin: 8px 0; max-height: 260px; overflow: auto; font-size: 14px; }
   .lines div { white-space: pre-wrap; word-break: break-all; }
   .target { color: #b00020; font-weight: 600; }
-  button { font: inherit; padding: 4px 10px; margin-right: 6px; border-radius: 6px; border: 1px solid #aaa; background: #fff; cursor: pointer; }
   button.danger { border-color: #b00020; color: #b00020; }
-  input { font: inherit; padding: 4px 8px; }
   table { border-collapse: collapse; width: 100%; } td, th { border-bottom: 1px solid #eee; padding: 6px; text-align: left; }
 </style></head>
 <body>
 <h1>net 관리</h1>
-<p class="meta" id="who"></p>
+<form method="post" action="/admin/logout"><button>나가기</button></form>
 <h2>신고 <select id="status"><option value="open">처리 전</option><option value="actioned">정지함</option><option value="dismissed">무시함</option></select></h2>
 <div id="reports">불러오는 중…</div>
 <h2>사용자 찾기</h2>
@@ -190,6 +239,7 @@ const el = (tag, text, cls) => { const e = document.createElement(tag); if (text
 const when = t => t ? new Date(t).toLocaleString('ko-KR') : '';
 async function api(path, body) {
   const res = await fetch('/admin/api/' + path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (res.status === 401) { location.reload(); throw Error(res.status); } // 로그인이 끝났다
   if (!res.ok) { alert('실패: ' + res.status); throw Error(res.status); }
   return res.json();
 }
@@ -215,7 +265,6 @@ function lines(list, targetId) {
 }
 async function load() {
   const data = await api('reports?status=' + $('#status').value);
-  $('#who').textContent = data.email + ' 로 들어옴';
   const root = $('#reports'); root.textContent = '';
   if (!data.reports.length) root.append(el('p', '신고가 없어요.'));
   for (const r of data.reports) {

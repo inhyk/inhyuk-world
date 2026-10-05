@@ -95,7 +95,7 @@ export default {
     const parts = url.pathname.split('/').filter(Boolean).map(p => { try { return decodeURIComponent(p); } catch { return p; } });
 
     if (parts.length === 0 && request.method === 'GET') return new Response('inhyuk net ok\n');
-    // 관리 페이지는 Cloudflare Access 뒤에 있고, 같은 주소에서만 부른다 (CORS 없음).
+    // 관리 페이지는 관리자 비밀번호로 들어가고, 같은 주소에서만 부른다 (CORS 없음).
     if (parts[0] === 'admin') return handleAdmin(request, env, parts.slice(1));
 
     const special = { rooms: parts.length >= 2 && parts.length <= 3, live: parts.length === 1, match: parts.length === 2 };

@@ -230,7 +230,7 @@ describe('11. smaller fixes', () => {
   });
 });
 
-describe('12. block, Access scope', () => {
+describe('12. block, admin scope', () => {
   it('DM and invite right after a block are refused both ways', async () => {
     const a = await signup(), b = await signup();
     await befriend(a, b);
@@ -244,7 +244,7 @@ describe('12. block, Access scope', () => {
     expect([inviteBA.status, inviteBA.data.error]).toEqual([404, 'not-found']);
   });
 
-  it('game APIs work without any Cloudflare Access header; only /admin needs it', async () => {
+  it('game APIs work without any admin password or cookie; only /admin needs it', async () => {
     const res = await SELF.fetch(`${BASE}/auth/signup`, { method: 'POST', headers: { Origin: ORIGIN, 'Content-Type': 'application/json' },
       body: JSON.stringify({ nickname: uniqueNick('acc'), password: 'pass' }) });
     expect(res.status).toBe(201);
@@ -252,8 +252,14 @@ describe('12. block, Access scope', () => {
     expect((await SELF.fetch(`${BASE}/me`, { headers: { Origin: ORIGIN, Authorization: `Bearer ${token}` } })).status).toBe(200);
     expect((await SELF.fetch(`${BASE}/rooms/access-test`, { method: 'POST', headers: { Origin: ORIGIN } })).status).toBe(200);
     expect((await SELF.fetch(`${BASE}/`)).status).toBe(200);
-    for (const path of ['/admin', '/admin/', '/admin/api/reports', '/admin/api/users?q=a']) {
-      expect((await SELF.fetch(`${BASE}${path}`, { headers: { Origin: ORIGIN } })).status, path).toBe(403);
+    // 관리 페이지는 로그인 화면만 보이고, 관리 API 는 401
+    for (const path of ['/admin', '/admin/']) {
+      const page = await SELF.fetch(`${BASE}${path}`, { headers: { Origin: ORIGIN } });
+      expect(page.status, path).toBe(200);
+      expect(await page.text(), path).toContain('action="/admin/login"');
+    }
+    for (const path of ['/admin/api/reports', '/admin/api/users?q=a']) {
+      expect((await SELF.fetch(`${BASE}${path}`, { headers: { Origin: ORIGIN } })).status, path).toBe(401);
     }
   });
 });
