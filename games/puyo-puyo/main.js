@@ -1599,6 +1599,7 @@ function toggleEmojiPanel(open = $('chat-emoji').hidden) {
   $('chat-emoji').hidden = !open;
   $('chat-emoji-toggle').setAttribute('aria-expanded', String(open));
   $('chat-emoji-toggle').classList.toggle('on', open);
+  if (open && chatWith) $('chat-log').scrollTop = $('chat-log').scrollHeight; // 판이 열려 채팅 칸이 줄어도 새 메시지가 보이게
 }
 // 이모지는 글자처럼 커서 자리에 넣는다
 function insertEmoji(emoji) {
@@ -1652,7 +1653,6 @@ function renderChat() {
   $('chat-dot').className = `dot${live ? ' on' : ''}`;
   const log = room ? roomLog : social().chats[friend.code] || [];
   $('chat-log').innerHTML = log.length ? log.map(chatLine).join('') : '<p class="fine empty">첫 인사를 해 봐! 👋</p>';
-  $('chat-log').scrollTop = $('chat-log').scrollHeight;
   $('chat-quick').innerHTML = QUICK.map((q, i) => `<button type="button" data-q="${i}"${canSend ? '' : ' disabled'}>${q}</button>`).join('');
   $('chat-input').disabled = !canSend;
   $('chat-emoji-toggle').disabled = !canSend;
@@ -1665,6 +1665,8 @@ function renderChat() {
   $('chat-tools').innerHTML = room
     ? `<button type="button" class="ghost" data-tool="mute">${roomMuted ? '🔔 채팅 다시 받기' : '🔇 이번 판 채팅 끄기'}</button><button type="button" class="ghost" data-tool="report">🚩 신고</button>`
     : `${live ? '<button type="button" class="ghost" data-tool="invite">🎮 같이 하자</button>' : ''}<button type="button" class="ghost danger" data-tool="block">🚫 차단</button><button type="button" class="ghost" data-tool="report">🚩 신고</button>`;
+  // 아래쪽(빠른 말·안내·단추)을 다 채운 다음에 맨 아래로 내린다. 먼저 내리면 그만큼 채팅 칸이 줄어서 새 메시지가 가려진다
+  $('chat-log').scrollTop = $('chat-log').scrollHeight;
 }
 async function sendChat({ q, text, sticker }) {
   if (!chatWith || !chatOn()) return;

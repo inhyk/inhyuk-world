@@ -14,6 +14,7 @@
 - `node games/puyo-puyo/reset-browser-check.mjs`: 제작자 모드에서 잊은 계정 비밀번호 다시 정하기 → 바로 들어가기
 - `node games/puyo-puyo/offline-chat-browser-check.mjs`: 친구가 게임을 꺼 둔 동안 친구 신청·메시지·젤리 이모티콘·이모지 → 켜면 도착 (사이트 빌드 + `JELLY_MAIL_MEMORY=1 next start`에서)
 - `node games/puyo-puyo/social-browser-check.mjs`: 두 사람(서로 다른 저장소)으로 방 채팅·친구 신청·친구 채팅·초대·차단을 PeerJS 연결 서버를 거쳐 끝까지
+- `node games/puyo-puyo/chat-layout-browser-check.mjs`: 채팅 칸이 넘칠 만큼 긴 친구 채팅에서 젤리 이모티콘·글이 겹치지 않고, 열 때와 이모티콘 판을 열 때 맨 아래 메시지가 보이는지 (컴퓨터·휴대폰 크기)
 - `node games/puyo-puyo/rounds-browser-check.mjs`: AI 대전·2인 플레이·온라인 대전에서 10·25·30·40·50판까지 고르기 (온라인은 두 창을 실제로 연결)
 - `node games/puyo-puyo/app-browser-check.mjs`: 가짜 Capacitor로 앱 전용 기능(시작 그림, 기기 저장소에 같이 저장·되살리기, 진동, 계정 지우기) 확인
 

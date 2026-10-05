@@ -435,13 +435,17 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 .chat-wrap.compact { inset: auto; top: calc(max(8px, env(safe-area-inset-top)) + 52px); right: max(10px, env(safe-area-inset-right)); padding: 0; background: none; display: block; }
 .chat-card { width: min(440px, calc(100vw - 32px)); max-height: min(640px, calc(100dvh - 32px)); display: flex; flex-direction: column; gap: 8px; padding: 14px; }
 .chat-wrap.compact .chat-card { width: min(330px, calc(100vw - 20px)); max-height: 48dvh; padding: 10px; box-shadow: 0 10px 30px rgba(30, 10, 70, .35), 0 0 0 3px #fff inset; }
+/* 대화가 길어 창이 꽉 차면 채팅 기록(과 열린 이모티콘 판)만 줄어들고 안에서 넘긴다. 빠른 말·안내·단추 줄은 납작해지지 않는다 */
+.chat-card > * { flex-shrink: 0; }
 .chat-head { display: flex; align-items: center; gap: 8px; }
 .chat-head b { font-size: 19px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-head small { flex: 1; font-family: var(--body-font); font-size: 12px; color: var(--soft); }
 .round-sm { width: 34px; height: 34px; padding: 0; border-radius: 50%; }
 .chat-log { flex: 1; min-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: #f6f1ff; border-radius: 14px; -webkit-user-select: text; user-select: text; }
 .chat-wrap.compact .chat-log { min-height: 70px; }
-.msg { max-width: 82%; display: flex; flex-direction: column; gap: 4px; }
+/* 채팅 한 줄. .msg는 로그인·제작자 화면의 빨간 오류 글에도 쓰는 이름이라 그쪽 높이·여백·색·가운데 정렬을 되돌린다.
+   flex-shrink: 0 — 대화가 길어져도 줄이 눌리지 않아서 젤리 이모티콘이 다음 줄과 겹치지 않는다 */
+.chat-log .msg { flex-shrink: 0; min-height: auto; margin: 0; max-width: 82%; display: flex; flex-direction: column; gap: 4px; color: var(--ink); text-align: left; }
 .msg span { padding: 7px 11px; border-radius: 14px; font-family: var(--body-font); font-size: 14px; line-height: 1.45; word-break: break-word; }
 .msg.me { align-self: flex-end; align-items: flex-end; }
 .msg.me span { background: linear-gradient(135deg, var(--pri1), var(--pri2)); color: #fff; border-bottom-right-radius: 4px; }
@@ -477,7 +481,7 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 /* 이모티콘: 😊 단추, 고르기 판, 젤리 이모티콘과 큰 이모지 */
 .emoji-toggle { flex: 0 0 auto; width: 44px; padding: 0; font-size: 22px; border: 2px solid var(--line); }
 .emoji-toggle.on { background: #ffe7a8; border-color: #ffc94a; }
-.chat-emoji { max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 14px; background: #f6f1ff; }
+.chat-emoji { flex-shrink: 1; max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 14px; background: #f6f1ff; }
 .chat-emoji small { font-family: var(--body-font); font-size: 12px; color: var(--soft); }
 .chat-stickers { display: grid; grid-auto-flow: column; grid-auto-columns: 68px; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
 .chat-stickers button { padding: 2px; background: #fff; border-radius: 12px; box-shadow: 0 2px 0 rgba(60, 30, 110, .12); }
