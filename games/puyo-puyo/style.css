@@ -149,11 +149,6 @@ h1, h2, h3 { font-weight: 400; margin: 0; }
 .keys p { margin: 6px 0; font-family: var(--body-font); font-size: 13px; }
 
 /* 온라인 */
-.room-code { text-align: center; margin: 10px 0; }
-.room-code small { display: block; color: var(--soft); }
-.room-code b { font-size: 48px; letter-spacing: 8px; font-weight: 400; color: #5b3bb3; }
-#room-join { margin: 12px 0; }
-#room-join input { max-width: 180px; text-transform: uppercase; text-align: center; font-size: 20px; letter-spacing: 3px; }
 .lobby { background: rgba(255, 255, 255, .85); border-radius: 20px; padding: 14px; margin-top: 14px; }
 .vsline { display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 20px; margin-bottom: 8px; }
 .vsline b { color: #ff5fa2; }
@@ -404,3 +399,45 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 /* 판 수 단추가 9개라 좁은 화면에서는 두 줄로 나뉘어도 단추 크기가 고르게 */
 .seg.first-to { justify-content: flex-end; }
 .seg.first-to button { min-width: 52px; padding: 8px 10px; }
+
+/* 온라인 계정: 친구, 1:1 대화, 대전 채팅, 초대, 저장 고르기 */
+.fine.center { text-align: center; margin: 10px 0 0; }
+.friends-btn, .friend button, .chat-toggle { position: relative; }
+.searching { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, .9); border-radius: 18px; padding: 12px 14px; }
+.searching b { flex: 1; font-weight: 400; font-size: 18px; }
+.pulse-dot { width: 14px; height: 14px; border-radius: 50%; background: #ff5fa2; animation: pulse .8s ease-in-out infinite; flex: 0 0 auto; }
+.search-row { margin: 6px 0 10px; }
+.search-row > input { flex: 3; }
+.friend-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.friend { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, .92); border-radius: 16px; padding: 8px 12px; border: 2px solid #fff; }
+.friend b { font-weight: 400; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend small { flex: 1; color: var(--soft); font-family: var(--body-font); font-size: 12px; }
+.friend button { padding: 8px 12px; white-space: nowrap; }
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #c9bfdc; flex: 0 0 auto; box-shadow: 0 0 0 2px #fff; }
+.dot.on { background: var(--good); }
+.chat-lines { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; font-family: var(--body-font); font-size: 14px; }
+.chat-lines .line { align-self: flex-start; max-width: 85%; background: #fff; border-radius: 14px 14px 14px 4px; padding: 6px 10px; box-shadow: 0 2px 0 rgba(60, 30, 110, .12); word-break: break-word; }
+.chat-lines .line.me { align-self: flex-end; background: #efe6ff; border-radius: 14px 14px 4px 14px; }
+.chat-lines .line b { display: block; font-size: 11px; color: #8a5cff; font-weight: 700; }
+.chat-lines .line small { display: block; font-size: 10px; color: var(--soft); text-align: right; }
+.dm-lines { background: rgba(255, 255, 255, .6); border-radius: 18px; padding: 12px; height: min(52dvh, 460px); margin-bottom: 10px; }
+.chat-form > input { flex: 3; }
+.chat-toggle { position: fixed; z-index: 6; right: max(10px, env(safe-area-inset-right)); top: calc(max(8px, env(safe-area-inset-top)) + 50px); }
+.chat-toggle .badge { top: -6px; right: -6px; }
+.chat-panel { position: fixed; z-index: 7; right: max(10px, env(safe-area-inset-right)); top: calc(max(8px, env(safe-area-inset-top)) + 100px); width: min(340px, calc(100vw - 20px)); max-height: 52dvh; display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.chat-panel .chat-lines { flex: 1; min-height: 80px; max-height: 30dvh; }
+.chat-head { display: flex; align-items: center; gap: 6px; }
+.chat-head b { flex: 1; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-head button { padding: 6px 8px; font-size: 13px; }
+.invite-pop { position: fixed; z-index: 15; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(380px, calc(100vw - 24px)); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; text-align: center; box-shadow: 0 16px 50px rgba(60, 20, 120, .35), 0 0 0 3px #ffd23f inset; animation: rise .2s ease-out; }
+.invite-pop b { font-weight: 400; font-size: 20px; }
+.invite-pop small { color: var(--soft); font-family: var(--body-font); }
+.result-social { margin-top: 10px; }
+.result-social button { font-size: 14px; padding: 8px 12px; }
+#ask, #cloud-conflict { z-index: 16; }
+.conflict { max-width: 400px; }
+.save-choice { display: grid; grid-template-columns: 1fr auto auto; gap: 2px 12px; align-items: center; text-align: left; border: 3px solid var(--line); padding: 12px 14px; }
+.save-choice span { font-size: 18px; }
+.save-choice b { font-weight: 400; font-size: 18px; color: #5b3bb3; }
+.save-choice small { grid-column: 1 / -1; color: var(--soft); font-family: var(--body-font); font-size: 12px; }
+.save-choice:hover { border-color: #8a5cff; }

@@ -32,9 +32,8 @@ async function unlock(page) {
 }
 try {
   const page = await setup();
-  await page.click('#go-signup');
-  await page.fill('#signup-name', '제작자검증'); await page.fill('#signup-pass', 'abcd');
-  await page.click('#signup-form button[type=submit]');
+  // 새 계정은 이제 서버(온라인 계정)에 만든다. 서버 없이 확인하려고 예전 방식의 이 기기 계정을 테스트용 함수로 만든다.
+  await page.evaluate(() => window.__puyo.localSignup('제작자검증', 'abcd'));
   await page.waitForSelector('#scr-menu:not([hidden])');
   await page.click('[data-go="creator"]');
   const before = await page.evaluate(() => JSON.stringify(window.__puyo.P()));

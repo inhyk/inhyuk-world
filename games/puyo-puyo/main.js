@@ -11,7 +11,7 @@ import { SKINS, EFFECTS, canBuy, buy, equip, grant, canRedeem, redeem } from './
 import { GROUPS, track, claim, missionView, unclaimedCount } from './missions.mjs';
 import {
   STORE_KEY, loadStore, saveStore, createAccount, login, logout, currentAccount, removeAccount, exportCode, importCode,
-  newProgress, xpToNext,
+  newProgress, xpToNext, sanitize,
 } from './profile.mjs';
 import { isApp, buzz, restoreSaves, mirrorSave, hideSplash } from './platform.mjs';
 import { calendarBonus, todayKey } from './calendar.mjs';
@@ -22,6 +22,11 @@ import { drawPreview } from './skins.mjs';
 import { Effects } from './effects.mjs';
 import { GARBAGE_ICONS } from './core.mjs';
 import { createOnline } from './online.mjs';
+import { Account, Social } from '../../packages/net/index.mjs';
+import { serverUrl, scopedStorage } from './net.mjs';
+import { CloudSave, CACHE_KEY } from './cloud.mjs';
+import { migrateLocal, checkLocalPassword, markMigrated, migrationMarker, importIdFor, MIGRATING_KEY } from './migrate.mjs';
+import { createSocialUI } from './social-ui.mjs';
 import { playEnding } from './ending.mjs';
 import { LESSONS, lessonCells, lessonSeq, newJudge, judge } from './tutorial.mjs';
 
@@ -35,9 +40,15 @@ const creator = createCreatorSession();
 let storage = null;
 try { storage = window.localStorage; storage.getItem('x'); } catch { storage = null; }
 const DEVICE_KEY = 'puyo-tower-device';
-await restoreSaves(storage, [STORE_KEY, DEVICE_KEY]); // 앱: 기기 저장소에 적어 둔 기록을 되살린다 (웹은 바로 지나감)
+// 온라인 계정(@inhyuk/net). 서버 주소는 개발과 테스트에서만 ?net= 이나 VITE_NET_SERVER 로 바꾼다 (net.mjs).
+const NET_SERVER = serverUrl(location.search, import.meta.env);
+const netStore = scopedStorage(storage, NET_SERVER, mirrorSave);
+await restoreSaves(storage, [STORE_KEY, DEVICE_KEY, netStore.key('inhyuk-net-session'), netStore.key(CACHE_KEY), netStore.key(MIGRATING_KEY)]); // 앱: 기기 저장소에 적어 둔 기록을 되살린다 (웹은 바로 지나감)
 const store = loadStore(storage);
-let account = currentAccount(store);
+const net = new Account({ server: NET_SERVER, storage: netStore });
+const marker = migrationMarker(netStore);
+let cloud = null, social = null; // 온라인 계정으로 들어갔을 때: 클라우드 세이브, 친구와 알림
+let account = net.loggedIn ? null : currentAccount(store); // 이 기기 계정, 또는 온라인 계정({ cloud: true, uid })
 let guest = null;
 let device = { sound: true, music: true, haptics: true };
 try { device = { ...device, ...JSON.parse(storage?.getItem(DEVICE_KEY) || '{}') }; } catch { /* 기본값 */ }
@@ -48,7 +59,8 @@ function persistStore() {
   mirrorSave(STORE_KEY, storage?.getItem(STORE_KEY));
 }
 function save() {
-  if (account) { account.last = Date.now(); persistStore(); }
+  if (account?.cloud) cloud?.change(account.progress); // 3초 조용하면 서버에 올린다
+  else if (account) { account.last = Date.now(); persistStore(); }
   try { storage?.setItem(DEVICE_KEY, JSON.stringify(device)); } catch { /* 저장 안 됨 */ }
   mirrorSave(DEVICE_KEY, storage?.getItem(DEVICE_KEY));
 }
@@ -84,7 +96,7 @@ function toast(text, gold = false) {
 }
 
 // ---------- 화면 ----------
-const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'online', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards'];
+const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'online', 'friends', 'dm', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards'];
 function show(name) {
   screen = name;
   for (const s of SCREENS) $(`scr-${s}`).hidden = s !== name;
@@ -111,6 +123,7 @@ function renderScreen(name) {
   if (name === 'help') renderHelp();
   if (name === 'creator') renderCreator();
   if (name === 'rewards') renderRewards();
+  ui.render(name); // 온라인, 친구, 1:1 대화
 }
 
 document.querySelectorAll('[data-go]').forEach(btn => btn.addEventListener('click', () => {
@@ -131,27 +144,41 @@ function startDemo() {
 }
 
 // ---------- 로그인 ----------
-let loginTarget = null;
+// 새 계정과 로그인은 서버의 온라인 계정이다. 이 기기에만 있던 예전 계정은 목록에 남아서 그대로 들어가거나 온라인 계정으로 옮긴다.
+let loginTarget = null, migrating = null; // migrating: { local, password } 기기 비밀번호를 확인한 뒤
 function renderLogin() {
   const list = $('login-accounts');
   list.innerHTML = '';
-  for (const a of store.accounts.slice().sort((x, y) => (y.last || 0) - (x.last || 0))) {
+  const locals = store.accounts.filter(a => !a.migratedTo);
+  for (const a of locals.sort((x, y) => (y.last || 0) - (x.last || 0))) {
     const b = document.createElement('button');
     b.innerHTML = `<span>👤 ${esc(a.name)}</span><small>Lv.${a.progress.level} · 🪙${fmt(a.progress.coins)}</small>`;
     b.onclick = () => { loginTarget = a; $('login-name').textContent = a.name; loginPanel('login'); $('login-pass').focus(); };
     list.append(b);
   }
-  loginPanel('main');
+  loginPanel(migrating ? 'migrate' : 'main');
 }
 function loginPanel(which) {
+  const locals = store.accounts.some(a => !a.migratedTo);
   $('login-main').hidden = which !== 'main';
-  $('login-accounts').hidden = which !== 'main' || !store.accounts.length;
+  $('login-accounts').hidden = which !== 'main' || !locals;
+  $('login-accounts-title').hidden = which !== 'main' || !locals;
   $('login-form').hidden = which !== 'login';
   $('signup-form').hidden = which !== 'signup';
+  $('net-login-form').hidden = which !== 'netLogin';
+  $('migrate-form').hidden = which !== 'migrate';
   $('import-form').hidden = which !== 'import';
   $('login-msg').textContent = '';
 }
+const loginMsg = text => { $('login-msg').textContent = text; sound.sfx('bump'); };
+// 단추를 누르고 서버 답을 기다리는 동안 다시 못 누르게
+async function busy(form, fn) {
+  const buttons = [...$(form).querySelectorAll('button')];
+  buttons.forEach(b => { b.disabled = true; });
+  try { return await fn(); } finally { buttons.forEach(b => { b.disabled = false; }); }
+}
 $('go-signup').onclick = () => { loginPanel('signup'); $('signup-name').focus(); };
+$('go-net-login').onclick = () => { loginPanel('netLogin'); $('net-login-name').focus(); };
 $('go-import').onclick = () => { loginPanel('import'); $('import-code').focus(); };
 $('go-guest').onclick = () => {
   guest = { name: '손님', guest: true, progress: newProgress() };
@@ -159,32 +186,172 @@ $('go-guest').onclick = () => {
   toast('손님은 기록이 저장되지 않아. 계정을 만들면 레벨·코인이 저장돼!');
   afterLogin();
 };
-['login-back', 'signup-back', 'import-back'].forEach(id => { $(id).onclick = () => loginPanel('main'); });
+['login-back', 'signup-back', 'net-login-back', 'import-back'].forEach(id => { $(id).onclick = () => loginPanel('main'); });
 $('login-form').onsubmit = async e => {
   e.preventDefault();
   const r = await login(store, loginTarget?.name, $('login-pass').value);
   $('login-pass').value = '';
-  if (!r.ok) { $('login-msg').textContent = r.error; sound.sfx('bump'); return; }
+  if (!r.ok) { loginMsg(r.error); return; }
   account = r.account; guest = null; save(); afterLogin();
 };
-$('signup-form').onsubmit = async e => {
+$('signup-form').onsubmit = e => {
   e.preventDefault();
-  const r = await createAccount(store, $('signup-name').value, $('signup-pass').value);
-  if (!r.ok) { $('login-msg').textContent = r.error; sound.sfx('bump'); return; }
-  $('signup-pass').value = '';
-  account = r.account; guest = null; save();
-  toast(`환영해, ${account.name}! 🪙100 선물이야.`, true);
-  afterLogin();
+  busy('signup-form', async () => {
+    try {
+      const user = await net.signup($('signup-name').value.trim(), $('signup-pass').value);
+      $('signup-pass').value = '';
+      await enterCloud(user);
+      toast(`환영해, ${user.nickname}! 🪙100 선물이야.`, true);
+      save();
+      afterLogin();
+    } catch (error) { loginMsg(error.message); }
+  });
+};
+$('net-login-form').onsubmit = e => {
+  e.preventDefault();
+  busy('net-login-form', async () => {
+    try {
+      const user = await net.login($('net-login-name').value.trim(), $('net-login-pass').value);
+      $('net-login-pass').value = '';
+      await enterCloud(user);
+      toast(`다시 왔구나, ${user.nickname}!`);
+      afterLogin();
+    } catch (error) { loginMsg(error.message); }
+  });
 };
 $('import-form').onsubmit = e => {
   e.preventDefault();
   const r = importCode(store, $('import-code').value);
   if (!r.ok) { $('login-msg').textContent = r.error; return; }
+  delete r.account.migratedTo;
   save();
   $('import-code').value = '';
-  toast(`${r.account.name} 기록을 가져왔어! 비밀번호로 로그인해 줘.`);
+  toast(`${r.account.name} 기록을 가져왔어! 비밀번호로 로그인하거나 온라인 계정으로 옮겨 줘.`);
   renderLogin();
 };
+
+// ---------- 이 기기 계정 → 온라인 계정 ----------
+// 기기 비밀번호를 다시 확인하고 같은 닉네임으로 가입한다. 닉네임이 이미 있으면 로그인하거나 새 닉네임을 고른다.
+// 서버 가입(또는 로그인)과 첫 저장 올리기가 모두 끝나야 기기 계정을 "옮김"으로 표시한다 (지우지 않음).
+$('migrate-go').onclick = async () => {
+  const local = loginTarget, password = $('login-pass').value;
+  if (!local) return;
+  if (!(await checkLocalPassword(local, password))) { loginMsg('비밀번호가 달라. 다시 해 봐!'); return; }
+  $('login-pass').value = '';
+  migrating = { local, password };
+  await runMigration({ nickname: local.name, password, mode: 'signup' });
+};
+function migratePanel(text, { fields = true, retry = false } = {}) {
+  loginPanel('migrate');
+  $('migrate-text').textContent = text;
+  $('migrate-fields').hidden = !fields;
+  $('migrate-retry').hidden = !retry;
+}
+async function runMigration(params) {
+  const { local } = migrating;
+  const result = await busy('migrate-form', () => busy('login-form', () => migrateLocal({
+    local, account: net, marker, ...params,
+    upload: async (progress, importId) => {
+      const acc = openCloud(net.user);
+      await cloud.importLocal(sanitize(progress), importId);
+      acc.progress = sanitize(cloud.data);
+      account = acc;
+    },
+  })));
+  if (result.ok) {
+    markMigrated(store, local.id, result.user.nickname);
+    persistStore();
+    migrating = null; guest = null;
+    startSocial();
+    toast(`☁️ ${result.user.nickname} 온라인 계정으로 옮겼어! 이제 다른 기기에서도 이어 할 수 있어.`, true);
+    save();
+    afterLogin();
+    return;
+  }
+  migrating.last = params;
+  if (result.step === 'upload') { stopCloud(); migratePanel(result.message, { fields: false, retry: true }); return; }
+  $('migrate-nick').value = params.nickname;
+  $('migrate-pass').value = '';
+  migratePanel(result.code === 'nickname-taken'
+    ? `"${params.nickname}" 닉네임은 이미 온라인에 있어. 내 온라인 계정이면 그 비밀번호로 로그인해서 옮기고, 아니면 새 닉네임과 비밀번호를 정해 줘.`
+    : result.message);
+}
+$('migrate-form').onsubmit = e => {
+  e.preventDefault();
+  if (migrating) runMigration({ nickname: $('migrate-nick').value.trim(), password: $('migrate-pass').value, mode: 'signup' });
+};
+$('migrate-login').onclick = () => {
+  if (migrating) runMigration({ nickname: $('migrate-nick').value.trim(), password: $('migrate-pass').value, mode: 'login' });
+};
+$('migrate-retry').onclick = () => { if (migrating?.last) runMigration(migrating.last); };
+// 그만두기: 기기 계정은 그대로. 옮기는 중에 서버에 로그인했으면 이 기기에서는 로그아웃한다.
+$('migrate-back').onclick = async () => {
+  migrating = null;
+  marker.clear();
+  stopCloud();
+  if (net.loggedIn) await net.logout().catch(() => {});
+  renderLogin();
+};
+
+// ---------- 온라인 계정 세션 ----------
+function openCloud(user) {
+  stopCloud();
+  const acc = { name: user.nickname, cloud: true, uid: user.id, progress: newProgress() };
+  cloud = new CloudSave({
+    client: net, uid: user.id, storage: netStore, initial: newProgress,
+    apply: data => { acc.progress = sanitize(data); if (account === acc && screen) renderScreen(screen); },
+    onConflict: info => ui.chooseSave(info),
+    onStatus: state => ui.cloudStatus(state),
+    onAuthLost: code => lostLogin(code),
+  });
+  if (cloud.data) acc.progress = sanitize(cloud.data);
+  return acc;
+}
+function stopCloud() { cloud?.stop(); cloud = null; }
+// 로그인한 뒤: 서버 저장을 읽고(wait 이면 다 읽을 때까지 기다림), 친구 알림을 켠다
+async function enterCloud(user, { wait = true } = {}) {
+  const acc = openCloud(user);
+  account = acc; guest = null;
+  if (store.current) { logout(store); persistStore(); }
+  const loading = cloud.start().then(data => { if (data && !cloud?.dirty) acc.progress = sanitize(data); }).catch(() => {});
+  if (wait) await loading; else loading.then(() => { if (account === acc && screen) renderScreen(screen); });
+  startSocial();
+}
+function startSocial() {
+  social?.close();
+  social = new Social(net, ui.socialHooks);
+  social.live().catch(() => {});
+  ui.refreshCounts();
+}
+function stopSocial() { social?.close(); social = null; ui.reset(); }
+// 로그인이 풀렸거나(다른 곳에서 로그아웃, 정지) 서버가 내보냈을 때
+function lostLogin(reason) {
+  if (!account?.cloud) return;
+  online.leave();
+  stopSocial(); stopCloud();
+  account = null; guest = null;
+  if (match) { match = null; game = null; $('result').hidden = true; startDemo(); }
+  toast(reason === 'suspended' ? '이 계정은 정지됐어.' : '다시 로그인해 줘.');
+  show('login');
+}
+// 옮기던 중 앱이 꺼졌으면(가입은 됐는데 첫 저장 전) 다음에 켤 때 마저 올린다. 안 되면 기기 계정으로 돌아간다.
+async function resumeMigration(local) {
+  const acc = openCloud(net.user);
+  try {
+    await cloud.importLocal(sanitize(local.progress), importIdFor(local));
+    acc.progress = sanitize(cloud.data);
+    markMigrated(store, local.id, net.user.nickname); persistStore();
+    marker.clear();
+    account = acc; guest = null;
+    startSocial();
+    toast(`☁️ ${net.user.nickname} 온라인 계정으로 옮겼어!`, true);
+    afterLogin();
+  } catch {
+    stopCloud(); marker.clear();
+    await net.logout().catch(() => {});
+    if (screen === 'login') { renderLogin(); $('login-msg').textContent = '온라인 계정으로 옮기던 기록을 올리지 못했어. 인터넷을 확인하고 다시 옮겨 줘.'; }
+  }
+}
 function afterLogin() {
   creator.lock();
   pendingPlay = 0; unsavedPlay = 0;
@@ -739,6 +906,7 @@ function finishMatch() {
   if (reward.bonus.birthday || reward.bonus.holidays.length) sub += ` · ${eventText(reward.bonus)}`;
   for (const level of lv.levels) trackEvent({ type: 'level', level });
   save();
+  cloud?.flush().catch(() => {}); // 판이 끝나면 바로 올린다
   const show = () => showResult({ title, sub, win: g.mode === 'solo' || g.mode === 'local' ? true : win, totals, coins, xp, lv, before, buttons, mode: g.mode, score: m.players[0].score });
   if (g.mode === 'tower') {
     const info = FLOORS[g.floor - 1];
@@ -778,6 +946,7 @@ function showResult(r) {
     b.onclick = () => { sound.sfx('click'); fn(); };
     row.append(b);
   }
+  ui.resultSocial(r.mode);
   if (consumePromo(P())) { save(); openPromo(); }
 }
 function closeResult() { $('result').hidden = true; }
@@ -1107,9 +1276,13 @@ function renderProfile() {
   $('set-ghost').checked = p.settings.ghost !== false;
   $('set-shake').checked = p.settings.shake !== false;
   $('set-haptic').checked = device.haptics !== false;
-  $('delete-zone').hidden = !account;
+  $('delete-zone').hidden = !account || !!account.cloud;
   $('delete-confirm').hidden = true;
   $('export-copy').disabled = !account;
+  // 온라인 계정은 기록 코드 대신 자동 저장 (서버 계정 지우기는 아직 없음)
+  for (const id of ['export-title', 'export-fine', 'export-copy']) $(id).hidden = !!account?.cloud;
+  $('cloud-note').hidden = $('cloud-delete-note').hidden = !account?.cloud;
+  if (account?.cloud) ui.cloudStatus(cloud?.state);
   $('logout').textContent = account ? '🚪 로그아웃' : '🔑 로그인하러 가기';
   $('export-code').hidden = true;
 }
@@ -1138,10 +1311,16 @@ $('export-copy').onclick = async () => {
   $('export-code').value = code;
   try { await navigator.clipboard.writeText(code); toast('📋 기록 코드를 복사했어!'); } catch { $('export-code').select(); toast('코드를 길게 눌러 복사해 줘.'); }
 };
-$('logout').onclick = () => {
+$('logout').onclick = async () => {
   creator.lock();
   save();
-  if (account) { logout(store); persistStore(); account = null; }
+  if (account?.cloud) {
+    online.leave();
+    await cloud?.flush().catch(() => {});
+    stopSocial(); stopCloud();
+    await net.logout().catch(() => {});
+    account = null;
+  } else if (account) { logout(store); persistStore(); account = null; }
   guest = null;
   show('login');
 };
@@ -1160,20 +1339,33 @@ function renderHelp() {
 
 // ---------- 온라인 ----------
 const online = createOnline({
-  $, toast, sound, esc,
-  me: () => ({ name: me()?.name || '손님', level: P().level, skin: P().equip.skin, effect: P().equip.effect }),
-  start: ({ seed, firstTo, peer, role, makeRemote }) => {
+  toast, sound,
+  social: () => social,
+  me: () => ({ level: P().level, skin: P().equip.skin, effect: P().equip.effect }), // 이름은 보내지 않는다 (상대는 서버가 준 닉네임을 씀)
+  start: ({ seed, firstTo, opponent, peer, role, makeRemote }) => {
     startGame({
-      mode: 'online', online: role, seed, firstTo, title: `온라인 · ${peer.name}`, theme: 'starry', music: 'battle',
+      mode: 'online', online: role, seed, firstTo, title: `온라인 · ${opponent.nickname}`, theme: 'starry', music: 'battle',
       specs: [{ kind: 'human' }, { kind: 'remote' }], makeRemote,
-      views: [myView({ char: null }), { name: peer.name, level: peer.level, skin: peer.skin || 'classic', effect: peer.effect || 'sparkle', char: null, color: '#9fe3ff' }],
+      views: [myView({ char: null }), { name: opponent.nickname, level: peer.level, skin: peer.skin || 'classic', effect: peer.effect || 'sparkle', char: null, color: '#9fe3ff' }],
     });
   },
   match: () => match,
-  finished: () => finishMatch(),
+  isFinished: () => !!game?.finished,
   quit: () => { if (match && game?.mode === 'online') { match = null; game = null; $('result').hidden = true; startDemo(); show('online'); } },
-  renderer,
+  render: () => ui.onlineChanged(),
+  chatLine: entry => ui.chatLine(entry),
+  chatReset: () => ui.chatReset(),
 });
+const ui = createSocialUI({
+  $, toast, sound, online,
+  show, screen: () => screen, social: () => social, user: () => (account?.cloud ? net.user : null), P,
+  leaveOnline: () => { if (game?.mode === 'online') quitGame(); else online.leave(); },
+  stopGame: () => { if (match) { $('pause').hidden = true; paused = false; quitGame(); } },
+  lost: reason => lostLogin(reason),
+});
+addEventListener('pagehide', () => { online.leave(); cloud?.flush().catch(() => {}); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) cloud?.flush().catch(() => {}); });
+addEventListener('online', () => cloud?.retryNow());
 
 // ---------- 창 크기 ----------
 addEventListener('resize', () => {
@@ -1193,17 +1385,26 @@ window.render_game_to_text = () => JSON.stringify({
   account: me()?.name || null, level: P().level, coins: P().coins, tower: P().tower,
   rewards: P().rewards, creatorUnlocked: creator.unlocked, ending: $('ending').hidden ? null : $('ending').dataset.kind,
   mode: game?.mode || null,
+  net: account?.cloud ? { nickname: net.user?.nickname, cloud: cloud?.state ?? null, live: social?.status ?? null } : null,
+  online: online.state(),
   match: match ? {
     phase: match.phase, round: match.round, wins: match.wins, frame: match.frame,
     players: match.players.map(p => ({ state: p.state, score: p.score, incoming: p.incoming, pieces: p.stats?.pieces, maxChain: p.stats?.maxChain, piece: p.piece ? { x: p.piece.x, y: Math.round(p.piece.y * 10) / 10, rot: p.piece.rot } : null })),
   } : null,
 });
 if (TEST) {
-  window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, P, store, startTower, startVs, startSolo, startLocal, startPractice, show, finishMatch, renderer, online, runEnding, recordPlayTime, pause, save };
+  window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, P, store, startTower, startVs, startSolo, startLocal, startPractice, show, finishMatch, renderer, online, runEnding, recordPlayTime, pause, save,
+    get cloud() { return cloud; }, get social() { return social; }, net,
+    // 예전 방식의 이 기기 계정 만들기 (화면에서는 더 이상 만들지 않는다. 브라우저 확인용)
+    async localSignup(name, password) { const r = await createAccount(store, name, password); if (r.ok) { account = r.account; guest = null; save(); afterLogin(); } return r.ok; } };
 }
 
 // ---------- 시작 ----------
-show(account ? 'menu' : 'login');
+if (net.loggedIn && net.user) {
+  const pending = marker.get(), local = pending && store.accounts.find(a => a.id === pending.localId);
+  if (local) { show('login'); resumeMigration(local); } // 옮기던 중이었으면 마저 올린다
+  else { enterCloud(net.user, { wait: false }); show('menu'); }
+} else show(account ? 'menu' : 'login');
 requestAnimationFrame(loop);
 // 앱: 첫 화면이 그려진 다음에 시작 그림을 걷는다
 requestAnimationFrame(() => requestAnimationFrame(hideSplash));
