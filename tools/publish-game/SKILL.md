@@ -125,5 +125,5 @@ sleep 90 && curl -s -o /dev/null -w "%{http_code}\n" https://seonn.dev/games/<sl
 - 설정은 `~/inhyuk/inhyuk-world/tools/config.json`
 - 허브 사이트 소스는 `~/inhyuk/inhyuk-world` (없으면 자동으로 내려받음)
 - 카드 데이터는 허브의 `src/data/games.json`
-- Node 서버가 필요한 게임(멀티플레이 등)은 Vercel 정적 배포에서 일부 기능이 안 될 수 있음 — 미리 알려주기
-- 친구와 같이 하는 온라인 게임은 PeerJS 코드를 복사하지 말고 `@inhyuk/net`(`packages/net`, 서버 `services/net`)을 씁니다 — 저장소 루트 `AGENTS.md`의 "멀티플레이" 참고
+- 게임에 Node 서버를 따로 만들지 않습니다. 친구와 같이 하는 온라인 기능(방 코드, 게임 찾기, 친구, 채팅, 클라우드 저장)은 공용 서버 `@inhyuk/net`(`packages/net`, 서버 `services/net`, `https://net.seonn.workers.dev`)을 씁니다. PeerJS 코드를 복사하지 않습니다. 쓰는 법과 규칙은 저장소 루트 `AGENTS.md`의 "멀티플레이"
+- 공용 서버를 고쳐야 하면 배포는 부모님께 부탁합니다(Cloudflare 로그인 필요). 게임만 올리는 이 스킬은 서버를 배포하지 않습니다
