@@ -9,7 +9,7 @@
 //   host(peerId)             방장이 바뀜 (방장이 나가면 가장 먼저 들어온 사람이 방장)
 //   error(code)              too-big | rate | bad  (메시지가 너무 크거나 너무 자주 보냄)
 export const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-export const DEFAULT_SERVER = 'wss://net.seonn.dev';
+export const DEFAULT_SERVER = 'wss://net.seonn.workers.dev';
 export const PING = '{"t":"ping"}';
 const CODE_LENGTH = 6;
 const CONNECT_MS = 15000, PING_MS = 4000, SILENT_MS = 12000;

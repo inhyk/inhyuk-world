@@ -1,7 +1,7 @@
 {
   // 모든 게임이 같이 쓰는 멀티플레이 서버. 자세한 설명은 README.md
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "inhyuk-net",
+  "name": "net",
   "main": "src/index.js",
   "compatibility_date": "2026-08-01",
   "durable_objects": {

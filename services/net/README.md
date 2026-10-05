@@ -1,6 +1,6 @@
 # net: 모든 게임이 같이 쓰는 멀티플레이 서버
 
-seonn.dev 게임들이 친구와 같이 놀 때 쓰는 중계 서버입니다. Cloudflare Worker 하나와 Durable Object `Room`으로 되어 있고, 주소는 `net.seonn.dev`(예정)입니다.
+seonn.dev 게임들이 친구와 같이 놀 때 쓰는 중계 서버입니다. Cloudflare Worker 하나와 Durable Object `Room`으로 되어 있고, 주소는 `net.seonn.workers.dev` 입니다. 나중에 seonn.dev DNS를 Cloudflare로 옮기면 `net.seonn.dev` 로 바꿀 수 있습니다.
 
 - 방 하나 = Durable Object 하나 (`<게임 이름>:<방 코드>`). 다른 게임끼리는 코드가 같아도 다른 방입니다.
 - 서버는 게임 내용을 모릅니다. 들어온 사람에게 번호(`p1`, `p2`, ...)를 주고, 들어오고 나간 걸 알리고, 게임이 보낸 JSON을 다른 사람에게 그대로 전합니다.
@@ -23,7 +23,7 @@ room.send({ t: 'move', x: 3 });  // 모두에게. 한 명에게만은 room.sendT
 - `status`: `offline` / `connecting` / `waiting`(방에 나 혼자) / `connected`(친구가 1명 이상) / `error`. 두 번째 인자는 아이에게 보여 줄 한국어 문장입니다.
 - `join(id)`, `depart(id)`, `host(id)`, `error(code)` 훅도 있습니다. `room.peers`(나를 뺀 사람들), `room.id`, `room.host`, `room.maxPlayers`.
 - `game` 은 영어 소문자, 숫자, `-` 로 32글자까지. `maxPlayers` 는 2~8(기본 2). 방 코드는 `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` 중 6글자.
-- 서버 주소는 `options.server` 로 바꿀 수 있습니다(기본 `wss://net.seonn.dev`). 로컬에서는 `ws://127.0.0.1:8787`.
+- 서버 주소는 `options.server` 로 바꿀 수 있습니다(기본 `wss://net.seonn.workers.dev`). 로컬에서는 `ws://127.0.0.1:8787`.
 
 ### 정해 둔 규칙
 
@@ -64,13 +64,13 @@ npm run check     # 배포 없이 빌드만 확인 (wrangler deploy --dry-run)
    npm install
    npx wrangler login
    ```
-3. 배포합니다. 끝나면 `https://inhyuk-net.<계정이름>.workers.dev` 주소가 나옵니다.
+3. 배포합니다. 끝나면 `https://net.<계정 서브도메인>.workers.dev` 주소가 나옵니다. 지금 계정의 서브도메인은 `seonn` 이라서 `https://net.seonn.workers.dev` 입니다.
    ```bash
    npx wrangler deploy
    ```
 4. 주소를 정합니다. 둘 중 하나를 고릅니다.
    - 방법 A, `net.seonn.dev` 쓰기: seonn.dev 의 DNS(네임서버)가 Cloudflare에 있어야 합니다. 지금 DNS가 다른 곳(도메인 산 곳, Vercel 등)에 있으면 Cloudflare 대시보드에서 "Add a site"로 seonn.dev 를 추가하고, 도메인 산 곳에서 네임서버를 Cloudflare가 알려 준 것으로 바꿉니다. 이때 Vercel로 가는 기존 레코드(A, CNAME)를 Cloudflare에 똑같이 옮겨야 사이트가 안 끊깁니다. 그다음 `wrangler.jsonc` 맨 아래 `routes` 줄의 주석을 풀고 `npx wrangler deploy` 를 다시 합니다.
-   - 방법 B, DNS는 그대로 두고 workers.dev 주소 쓰기: 3번에서 나온 주소를 게임의 `options.server` 에 `wss://inhyuk-net.<계정이름>.workers.dev` 로 넣습니다. 나중에 방법 A로 바꾸면 기본값 `wss://net.seonn.dev` 로 돌아가면 됩니다.
+   - 방법 B, DNS는 그대로 두고 workers.dev 주소 쓰기: 지금 쓰는 방법입니다. 기본값 `wss://net.seonn.workers.dev` 가 이 주소입니다. 나중에 방법 A로 옮기면 `packages/net/index.mjs` 의 `DEFAULT_SERVER` 한 줄만 `wss://net.seonn.dev` 로 바꿉니다.
 
 ## 무료 요금제 한도
 
