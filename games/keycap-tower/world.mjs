@@ -11,7 +11,7 @@ import { TrailMesh } from '@babylonjs/core/Meshes/trailMesh';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
 import '@babylonjs/core/Meshes/instancedMesh';
-import { WORLDS, TRAILS, SKINS, LOBBY_R, PILLAR_R, R, getWorld, boxAt, vanishPhase, spinnerAngle, pathPoint, buttonReady, ownsTread, levelOf, fmt } from './core.mjs';
+import { WORLDS, TRAILS, SKINS, EGG, LOBBY_R, PILLAR_R, R, getWorld, boxAt, vanishPhase, spinnerAngle, pathPoint, buttonReady, ownsTread, levelOf, fmt } from './core.mjs';
 
 const FONT='"Arial Rounded MT Bold", Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 const CONFETTI=['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#9775fa','#f783ac'];
@@ -62,7 +62,7 @@ export function createWorld(canvas){
  const yawOf=o=>Math.atan2(o.tx,o.tz);
  const bright=hex=>{const c=Color3.FromHexString(hex);return c.r*.3+c.g*.59+c.b*.11>.6;};
 
- let root=null,W=null,theme=null,keyed=new Map(),movers=[],blinks=[],spinners=[],walls=[],buttons=[],treads=[],floaters=[],chaser=null,belt=0;
+ let egg=null,root=null,W=null,theme=null,keyed=new Map(),movers=[],blinks=[],spinners=[],walls=[],buttons=[],treads=[],floaters=[],chaser=null,belt=0;
  const yellow=()=>mat('#ffd43b',{glow:.55}),gray=()=>mat('#868e96',{glow:.1});
  function keycap(o,color,fg,opt){
   const body=cap(color,opt);body.parent=root;body.scaling.set(o.w,o.h,o.d);body.rotation.y=yawOf(o);body.position.set(o.x,o.top-o.h/2,o.z);
@@ -122,6 +122,9 @@ export function createWorld(canvas){
   ctx.globalAlpha=1;tex.update();tex.uScale=10;tex.vScale=H/9;
   const pm=new StandardMaterial('pillar',scene);pm.diffuseTexture=tex;pm.emissiveTexture=tex;pm.emissiveColor=new Color3(.45,.45,.45);pm.specularColor=new Color3(0,0,0);pillar.material=pm;
   const crown=sign(`${W.def.emoji} ${w+1}월드 · ${W.def.name}`,{w:16,h:2.6,bg:theme.dark?'#000000aa':'#ffffffdd',fg:soft,size:100});crown.position.set(R+6,9,-8);
+  // 이스터 에그: 기둥에 반쯤 박힌 알. 표지판 없이 숨겨 둔다.
+  egg=null;if(W.egg){egg=MeshBuilder.CreateSphere('easter egg',{diameter:1.5,segments:12},scene);egg.parent=root;egg.scaling.y=1.35;egg.position.set(W.egg.x,1.25,W.egg.z);egg.material=mat('#fff3bf',{glow:.75});egg.isPickable=false;
+   for(let i=0;i<3;i++){const band=MeshBuilder.CreateTorus('egg band',{diameter:[1.05,1.5,1.2][i],thickness:.12,tessellation:20},scene);band.parent=egg;band.position.y=[-.42,0,.36][i];band.material=mat(['#ff8fab','#74c0fc','#b197fc'][i],{glow:.9});}}
   // 로비 시설
   const zoneLook={item:['🛒 아이템 상점','#63e6be'],stat:['📊 스탯 상점','#4dabf7'],world:['🌍 월드 포탈','#b197fc'],rebirth:['🔁 환생의 제단','#ff8787']};
   for(const z of W.zones){
@@ -194,6 +197,7 @@ export function createWorld(canvas){
   if(view.onTread!=null)belt+=dt*6;
   for(const t of treads){t.locked.setEnabled(!ownsTread(s,s.world,t.o.index));const run=view.onTread===t.o.index?belt:0;t.stripes.forEach((st,i)=>{st.position.z=t.o.d/2-((i*t.o.d/6+run)%t.o.d+t.o.d)%t.o.d;});}
   for(const f of floaters){f.mesh.rotation.y+=dt*f.spin;f.mesh.position.y=f.y+Math.sin(clock*.5+f.ph)*2;}
+  if(egg){const ready=(s.cool.egg??-1e9)+EGG.cd<=s.clock;egg.rotation.y+=dt*(ready?1.5:.2);egg.scaling.x=egg.scaling.z=ready?1+Math.sin(clock*4)*.06:.8;}
   chaser.setEnabled(!!s.chaser);
   if(s.chaser){const p=pathPoint(s.chaser.pos);chaser.position.set(p.x,p.y+Math.abs(Math.sin(clock*7))*.8,p.z);chaser.rotation.y=Math.atan2(p.tx,p.tz);}
   // 캐릭터

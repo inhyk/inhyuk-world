@@ -4,6 +4,8 @@ export const GRAVITY=32,JUMP_VY=12.5,MAX_FALL=45,HW=.4,HEIGHT=1.8,STEP=.6,FALL_L
 export const R=30,PITCH=16,TURN=2*Math.PI*R,SLOPE=PITCH/TURN,BASE=.6,LOBBY_R=52,PILLAR_R=15;
 export const AIR=2*JUMP_VY/GRAVITY;
 export const VANISH_DELAY=.8,VANISH_BACK=3,BUTTON_R=2.1,BUTTON_CD=30,GOLD_CD=25,TREAD_STEPS=3,MAX_REBIRTH=200,EVENT_EVERY=3600,EVENT_LENGTH=600,EVENT_BOOST=2;
+// 이스터 에그: 2월드 기둥 뒤쪽에 숨은 알. 닿으면 트로피를 딱 1000 준다.
+export const EGG={world:1,angle:1.2,r:1.7,gain:1000,cd:60};
 const KEYLIKE=new Set(['key','mover','blink']);
 const LETTERS='QWERTYUIOPASDFGHJKLZXCVBNM1234567890';
 
@@ -156,7 +158,8 @@ function buildWorld(w){
  const zones=[['stat',-1.25],['item',-1.62],['world',-2],['rebirth',2.2]].map(([id,th])=>({id,r:3.4,...place({s:th*R,lat:14})}));
  const spawn=place({s:-.5*R,lat:11});
  const solids=objects.filter(o=>o.type!=='spinner');
- return {index:w,def,objects,solids,stages,spinners,zones,spawn,lobby:{id:'lobby',type:'lobby',top:0},byId:new Map(objects.map(o=>[o.id,o])),top:BASE+cur*SLOPE,length:cur};
+ const egg=w===EGG.world?{x:Math.cos(EGG.angle)*PILLAR_R,z:Math.sin(EGG.angle)*PILLAR_R}:null;
+ return {index:w,def,egg,objects,solids,stages,spinners,zones,spawn,lobby:{id:'lobby',type:'lobby',top:0},byId:new Map(objects.map(o=>[o.id,o])),top:BASE+cur*SLOPE,length:cur};
 }
 const cache=[];
 export const getWorld=w=>cache[w]??=buildWorld(w);
@@ -180,17 +183,17 @@ export const buttonWait=(s,w,k)=>Math.max(0,(s.cool[`b${w}-${k}`]??-1e9)+BUTTON_
 
 // 상태
 export function fresh(){
- const s={version:1,world:0,checkpoint:0,speed:0,wins:0,totalWins:0,rebirths:0,stats:{power:0,wins:0,tread:0,run:0,jump:0},treads:[],trails:[],trail:-1,items:[],skins:[0],skin:0,unlocked:0,reached:WORLDS.map(()=>0),deaths:0,sound:true,music:true,winBoost:1,
+ const s={version:1,world:0,checkpoint:0,speed:0,wins:0,totalWins:0,rebirths:0,stats:{power:0,wins:0,tread:0,run:0,jump:0},treads:[],trails:[],trail:-1,items:[],skins:[0],skin:0,unlocked:0,reached:WORLDS.map(()=>0),deaths:0,eggs:0,sound:true,music:true,winBoost:1,
   x:0,y:0,z:0,vx:0,vy:0,vz:0,facing:0,grounded:true,groundId:'lobby',lastKey:null,lastGroundY:0,clock:0,vanish:{},cool:{},chaser:null};
  respawn(s);return s;
 }
-const SAVED=['version','world','checkpoint','speed','wins','totalWins','rebirths','stats','treads','trails','trail','items','skins','skin','unlocked','reached','deaths','sound','music'];
+const SAVED=['version','world','checkpoint','speed','wins','totalWins','rebirths','stats','treads','trails','trail','items','skins','skin','unlocked','reached','deaths','eggs','sound','music'];
 export function serialize(s){const o={};for(const k of SAVED)o[k]=s[k];return o;}
 export function restore(raw){
  const s=fresh();let d;try{d=typeof raw==='string'?JSON.parse(raw):raw;}catch{d=null;}
  if(!d||d.version!==1)return s;
  const num=(v,min,max,dflt=min)=>Number.isFinite(v)?Math.min(max,Math.max(min,v)):dflt,int=(v,min,max)=>Math.floor(num(v,min,max));
- s.speed=num(d.speed,0,1e300);s.wins=num(d.wins,0,1e300);s.totalWins=num(d.totalWins,0,1e300);s.rebirths=int(d.rebirths,0,MAX_REBIRTH);s.deaths=int(d.deaths,0,1e9);
+ s.speed=num(d.speed,0,1e300);s.wins=num(d.wins,0,1e300);s.totalWins=num(d.totalWins,0,1e300);s.rebirths=int(d.rebirths,0,MAX_REBIRTH);s.deaths=int(d.deaths,0,1e9);s.eggs=int(d.eggs,0,1e9);
  for(const k of Object.keys(STATS))s.stats[k]=int(d.stats?.[k],0,STATS[k].max);
  s.unlocked=int(d.unlocked,0,WORLDS.length-1);s.world=int(d.world,0,s.unlocked);
  s.reached=WORLDS.map((W,i)=>int(d.reached?.[i],0,W.levels.length));s.checkpoint=int(d.checkpoint,0,s.reached[s.world]);
@@ -262,6 +265,7 @@ export function step(s,input,dt){
    if(KEYLIKE.has(t)){const gain=keyGain(s,ground);s.speed+=gain;ev.push({t:'speed',gain,id:ground.id});}
    else if(t==='gold'&&(s.cool[ground.id]??-1e9)+GOLD_CD<=s.clock){s.cool[ground.id]=s.clock;const gain=Math.max(1,Math.round(winAmount(s,s.world,ground.stage)*.3));addWins(s,gain);ev.push({t:'gold',gain});}
   }
+  if(t==='lobby'&&W.egg&&Math.hypot(s.x-W.egg.x,s.z-W.egg.z)<EGG.r&&(s.cool.egg??-1e9)+EGG.cd<=s.clock){s.cool.egg=s.clock;s.eggs++;addWins(s,EGG.gain);ev.push({t:'egg',gain:EGG.gain});}
   if(t==='blink')s.vanish[ground.id]??=s.clock;
   else if(t==='safe'){
    if(ground.cp>s.checkpoint){s.checkpoint=ground.cp;s.reached[s.world]=Math.max(s.reached[s.world],ground.cp);ev.push({t:'checkpoint',cp:ground.cp});}

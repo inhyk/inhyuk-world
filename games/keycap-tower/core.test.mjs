@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ITEMS,SKINS,EVENT_EVERY,EVENT_LENGTH,buyItem,buySkin,eventInfo,globalMult,WORLDS,STATS,TRAILS,AIR,JUMP_VY,GRAVITY,BUTTON_CD,fmt,needSpeed,levelOf,runSpeed,getWorld,pathPoint,pathS,boxAt,fresh,restore,serialize,step,respawn,toLobby,warpStage,enterWorld,buyStat,buyTread,buyTrail,rebirth,canRebirth,rebirthReq,keyGain,treadRate,winAmount,ownsTread,refreshUnlock} from './core.mjs';
+import {EGG,PILLAR_R,ITEMS,SKINS,EVENT_EVERY,EVENT_LENGTH,buyItem,buySkin,eventInfo,globalMult,WORLDS,STATS,TRAILS,AIR,JUMP_VY,GRAVITY,BUTTON_CD,fmt,needSpeed,levelOf,runSpeed,getWorld,pathPoint,pathS,boxAt,fresh,restore,serialize,step,respawn,toLobby,warpStage,enterWorld,buyStat,buyTread,buyTrail,rebirth,canRebirth,rebirthReq,keyGain,treadRate,winAmount,ownsTread,refreshUnlock} from './core.mjs';
 
 const DT=1/60;
 const idle=(s,sec,input={})=>{const all=[];for(let i=0;i<sec*60;i++)all.push(...step(s,input,DT));return all;};
@@ -170,4 +170,14 @@ test('1시간마다 10분 동안 트로피가 2배',()=>{
  assert.deepEqual(eventInfo(0),{active:true,boost:2,remain:EVENT_LENGTH});assert.deepEqual(eventInfo(EVENT_LENGTH),{active:false,boost:1,remain:EVENT_EVERY-EVENT_LENGTH});
  assert.equal(eventInfo(EVENT_EVERY*7+30).active,true);assert.equal(eventInfo(EVENT_EVERY*7-1).remain,1);
  const s=fresh();assert.equal(winAmount(s,0,3),20);s.winBoost=2;assert.equal(winAmount(s,0,3),40);
+});
+
+test('이스터 에그: 2월드 기둥의 알에 닿으면 트로피 1000',()=>{
+ assert.equal(getWorld(0).egg,null);assert.equal(getWorld(2).egg,null);assert.equal(EGG.gain,1000);
+ const s=fresh();s.unlocked=1;enterWorld(s,1);s.stats.wins=3;s.winBoost=2;
+ const egg=getWorld(1).egg,far=(PILLAR_R+6)/PILLAR_R;s.x=egg.x*far;s.z=egg.z*far;
+ assert.equal(idle(s,.5).filter(e=>e.t==='egg').length,0,'멀리서는 안 받는다');
+ const ev=idle(s,2,{x:-egg.x,z:-egg.z});assert.equal(ev.filter(e=>e.t==='egg').length,1);assert.equal(s.wins,1000,'배수와 상관없이 딱 1000');assert.equal(s.eggs,1);
+ // 알 앞에 그대로 서 있으면 60초 뒤에 다시 받는다
+ idle(s,EGG.cd-5);assert.equal(s.wins,1000);idle(s,6);assert.equal(s.wins,2000);assert.equal(s.eggs,2);
 });

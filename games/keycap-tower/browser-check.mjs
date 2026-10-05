@@ -57,6 +57,10 @@ try{
   st=await state(page);assert.equal(st.world3d.world,w);assert.equal(st.bgm.world,w,'월드가 바뀌면 음악도 바뀐다');assert.equal(st.player.grounded,true,`grounded at ${name}`);
   await page.screenshot({path:`${out}/keycap-tower-${name}.png`});
  }
+ // 이스터 에그: 2월드 기둥의 알에 걸어가 닿으면 트로피 +1000
+ await page.evaluate(()=>{window.keycap_tower_debug.warp(1,0);window.keycap_tower_debug.egg();});await page.waitForTimeout(700);const w0=(await state(page)).wins;
+ await page.screenshot({path:`${out}/keycap-tower-egg.png`});
+ await page.keyboard.down('KeyW');await page.waitForTimeout(900);await page.keyboard.up('KeyW');st=await state(page);assert.equal(st.wins,w0+1000);assert.equal(st.eggs,1);
  // 월드 메뉴에서 1월드로 돌아가기, 환생
  await page.locator('.actions [data-tab=world]').click();await page.screenshot({path:`${out}/keycap-tower-menu-world.png`});
  // 광고: 10월드에 들어가면 뜨고, 10초 뒤에야 X가 눌린다

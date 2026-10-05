@@ -228,6 +228,7 @@ function handle(ev){
   else if(e.t==='speed'){sfx.key();pop(`+${fmt(e.gain)} ⚡`);}
   else if(e.t==='tread'){tread=e.index;treadGain+=e.gain;}
   else if(e.t==='locked')lockedTread=e.index;
+  else if(e.t==='egg'){sfx.big();flash('good');pop(`🥚 +${fmt(e.gain)} 🏆`,'win');world.burst(s.x,s.y+1.5,s.z,120);toast('🥚 이스터 에그 발견! 트로피 +1000',3000);save();}
   else if(e.t==='gold'){sfx.win();pop(`★ +${fmt(e.gain)} 🏆`,'win');}
   else if(e.t==='win'){
    sfx.win();flash('good');pop(`+${fmt(e.gain)} 🏆`,'win');world.burst(s.x,s.y+1,s.z,e.crown?140:40);
@@ -269,6 +270,7 @@ window.keycap_tower_debug={
  set(patch){Object.assign(s,patch);hud();},
  warp(w,cp){s.unlocked=Math.max(s.unlocked,w);s.world=w;s.reached[w]=Math.max(s.reached[w],cp);s.checkpoint=cp;respawn(s);world.snapCamera(s);hud();},
  put(x,y,z){s.x=x;s.y=y;s.z=z;s.vy=0;s.lastGroundY=y;world.snapCamera(s);},
+ egg(){const g=getWorld(s.world).egg,k=1.25;s.x=g.x*k;s.z=g.z*k;s.y=0;s.lastGroundY=0;s.facing=Math.atan2(-g.x,-g.z);world.snapCamera(s);},
  ad:showAd,event(shift){eventShift=shift;hud();},
  tread(i){const o=getWorld(s.world).objects.find(o=>o.type==='tread'&&o.index===i);s.x=o.x;s.z=o.z;s.y=o.top;s.lastGroundY=o.top;s.facing=Math.atan2(o.tx,o.tz);world.snapCamera(s);},
 };
