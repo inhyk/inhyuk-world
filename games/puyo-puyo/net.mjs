@@ -24,7 +24,8 @@ export function scopedStorage(storage, server, mirror) {
   return {
     key: k,
     getItem: key => { try { return storage?.getItem(k(key)) ?? null; } catch { return null; } },
-    setItem: (key, value) => { try { storage?.setItem(k(key), value); mirror?.(k(key), String(value)); } catch { /* 저장 안 됨 */ } },
-    removeItem: key => { try { storage?.removeItem(k(key)); mirror?.(k(key), ''); } catch { /* 저장 안 됨 */ } },
+    // 저장에 실패하면(저장 공간이 꽉 참 등) 던지지 않고 false 를 돌려준다. 성공하면 true.
+    setItem: (key, value) => { try { storage?.setItem(k(key), value); mirror?.(k(key), String(value)); return true; } catch { return false; } },
+    removeItem: key => { try { storage?.removeItem(k(key)); mirror?.(k(key), ''); return true; } catch { return false; } },
   };
 }

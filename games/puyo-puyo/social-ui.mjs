@@ -108,10 +108,15 @@ export function createSocialUI(deps) {
       $('conflict-server').onclick = () => pick('server');
     });
   }
-  function cloudStatus(state) {
+  // localFailed: 이 기기에 적지 못했다 (저장 공간이 꽉 참 등). 그때는 "이 기기에 있음"이라고 하지 않는다.
+  function cloudStatus(state, localFailed = false) {
     const b = $('cloud-badge');
     if (!b) return;
     b.hidden = !deps.user();
+    if (localFailed) {
+      b.textContent = state === 'synced' ? '⚠️ 서버에는 저장됨, 이 기기에는 못 함' : '⚠️ 이 기기에도 서버에도 저장 못 함, 창을 닫지 마';
+      return;
+    }
     b.textContent = { synced: '☁️ 저장됨', pending: '☁️ 저장 중…', offline: '☁️ 인터넷 기다리는 중', conflict: '☁️ 골라 줘!', 'too-big': '⚠️ 너무 커서 서버에 못 올림 (이 기기에는 있음)' }[state] || '☁️';
   }
 

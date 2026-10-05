@@ -55,7 +55,7 @@ await restoreSaves(storage, [STORE_KEY, DEVICE_KEY, netStore.key('inhyuk-net-ses
 const store = loadStore(storage);
 const net = new Account({ server: NET_SERVER, storage: netStore });
 const marker = migrationMarker(netStore);
-let cloud = null, hub = null; // 온라인 계정으로 들어갔을 때: 클라우드 세이브, 친구와 알림(@inhyuk/net Social)
+let cloud = null, hub = null, cloudWarned = 0; // 온라인 계정으로 들어갔을 때: 클라우드 세이브, 친구와 알림(@inhyuk/net Social)
 let account = net.loggedIn ? null : currentAccount(store); // 이 기기 계정, 또는 온라인 계정({ cloud: true, uid })
 let guest = null;
 let device = { sound: true, music: true, haptics: true };
@@ -329,9 +329,23 @@ function openCloud(user) {
     apply: data => { acc.progress = sanitize(data); if (account === acc && screen) renderScreen(screen); },
     onConflict: info => ui.chooseSave(info),
     onStatus: state => {
-      ui.cloudStatus(state);
-      if (state === 'too-big') toast('⚠️ 기록이 너무 커서 서버에 저장하지 못했어. 이 기기에는 그대로 있고, 조금 뒤에 다시 올려 볼게.');
+      const localFailed = !!cloud?.localFailed;
+      ui.cloudStatus(state, localFailed);
+      if (state === 'too-big') toast(localFailed
+        ? '⚠️ 기록이 너무 커서 서버에 저장하지 못했고, 이 기기에도 저장하지 못했어. 창을 닫지 마.'
+        : '⚠️ 기록이 너무 커서 서버에 저장하지 못했어. 이 기기에는 그대로 있고, 조금 뒤에 다시 올려 볼게.');
     },
+    // 이 기기에 적지 못함: 서버 저장은 계속 시도하되, 기기에 남았다고 안내하지 않는다
+    onPersistError: state => {
+      ui.cloudStatus(state, true);
+      if (Date.now() - cloudWarned > 30000) {
+        cloudWarned = Date.now();
+        toast(state === 'synced'
+          ? '⚠️ 이 기기에 기록을 저장하지 못했어. 서버에는 올라갔지만 저장 공간을 확인해 줘.'
+          : '⚠️ 이 기기에 기록을 저장하지 못했어. 서버에 올라갈 때까지 창을 닫지 마.');
+      }
+    },
+    onPersistOk: () => ui.cloudStatus(cloud?.state, false),
     onAuthLost: code => lostLogin(code),
   });
   if (cloud.data) acc.progress = sanitize(cloud.data);
@@ -1393,7 +1407,7 @@ function renderProfile() {
   // 온라인 계정은 기록 코드 대신 자동 저장 (서버 계정 지우기는 아직 없음)
   for (const id of ['export-title', 'export-fine', 'export-copy']) $(id).hidden = !!account?.cloud;
   $('cloud-note').hidden = $('cloud-delete-note').hidden = !account?.cloud;
-  if (account?.cloud) ui.cloudStatus(cloud?.state);
+  if (account?.cloud) ui.cloudStatus(cloud?.state, !!cloud?.localFailed);
   $('logout').textContent = account ? '🚪 로그아웃' : '🔑 로그인하러 가기';
   $('export-code').hidden = true;
 }

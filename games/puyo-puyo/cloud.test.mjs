@@ -7,6 +7,8 @@ import { maxProgress, bytes } from './save-size.fixture.mjs';
 import { migrateLocal, markMigrated, migrationMarker, importIdFor, checkLocalPassword } from './migrate.mjs';
 import { emptyStore, createAccount, newProgress } from './profile.mjs';
 import { memoryStorage } from '../../packages/net/social.mjs';
+import { scopedStorage } from './net.mjs';
+import { writeCache } from './cloud.mjs';
 
 class NetError extends Error { constructor(code) { super(code); this.code = code; } }
 
@@ -488,4 +490,30 @@ test('옮기다가 413 이면 ok:false(too-big), 옮기던 표시와 기기 계�
   assert.deepEqual(marker.get(), { localId: local.id, nickname: '인혁' });
   assert.equal(store.accounts[0].migratedTo, undefined);
   assert.equal(server.save, null);
+});
+
+test('기기 저장 공간이 꽉 차면(scopedStorage 경유) 저장한 것으로 치지 않고 알린다', async () => {
+  const raw = { getItem: () => null, setItem() { throw Error('QuotaExceededError'); }, removeItem() {} };
+  const storage = scopedStorage(raw, 'http://127.0.0.1:8787');
+  assert.equal(storage.setItem('x', '1'), false);
+  assert.equal(writeCache(storage, 7, { data: { coins: 1 }, revision: 0, dirty: true }), false);
+  // 인터넷도 없을 때: 기기에도 서버에도 없으므로 synced 로 치면 안 되고, 기기 저장 실패를 알려야 한다
+  const server = fakeServer();
+  server.save = { data: { coins: 1 }, revision: 1, updated: 1 };
+  const errors = [];
+  const { cloud } = make(server, { storage, options: { onPersistError: state => errors.push(state) } });
+  await cloud.start();
+  server.down = true;
+  cloud.change({ coins: 50 });
+  await cloud.flush();
+  assert.equal(cloud.localFailed, true);
+  assert.ok(errors.length >= 1);
+  assert.equal(cloud.dirty, true);
+  assert.notEqual(cloud.state, 'synced');
+  assert.equal(readCache(storage, 7), null);
+  // 서버가 돌아오면 서버에는 올라가지만, 기기 저장 실패 표시는 그대로 남는다
+  server.down = false;
+  await cloud.flush();
+  assert.equal(server.save.data.coins, 50);
+  assert.equal(cloud.localFailed, true);
 });

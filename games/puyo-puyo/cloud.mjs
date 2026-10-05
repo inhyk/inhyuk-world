@@ -38,8 +38,8 @@ export function writeCache(storage, uid, entry) {
   try {
     const all = JSON.parse(storage?.getItem(CACHE_KEY) || '{}');
     if (entry) all[uid] = entry; else delete all[uid];
-    storage?.setItem(CACHE_KEY, JSON.stringify(all));
-    return true;
+    // localStorage 는 실패하면 던지고, net.mjs 의 scopedStorage 는 false 를 돌려준다. 둘 다 실패로 친다.
+    return storage?.setItem(CACHE_KEY, JSON.stringify(all)) !== false;
   } catch { return false; }
 }
 
@@ -49,7 +49,8 @@ const tooBig = error => error?.code === 'too-big' || error?.status === 413;
 export class CloudSave {
   // options: client, uid, storage, initial() → 새 progress, apply(data) 서버 것을 게임에 넣기,
   //          onConflict({ local, server }) → 'local' | 'server', onStatus(state) 'synced'|'pending'|'offline'|'conflict'|'too-big',
-  //          onAuthLost() 로그인이 풀림(토큰이 지워짐), delay(ms, 기본 3000), retryMs(기본 20000), tooBigRetryMs(기본 5분),
+  //          onAuthLost() 로그인이 풀림(토큰이 지워짐), onPersistError(state) 기기에 못 적음, onPersistOk() 다시 적음,
+  //          delay(ms, 기본 3000), retryMs(기본 20000), tooBigRetryMs(기본 5분),
   //          timers({ setTimeout, clearTimeout }), now()
   constructor(options) {
     this.o = { delay: 3000, retryMs: 20000, tooBigRetryMs: 5 * 60 * 1000, now: () => Date.now(), timers: globalThis, ...options };
@@ -63,8 +64,13 @@ export class CloudSave {
   }
   get hasCache() { return !!this.data; }
 
+  // 기기에 적는다. 못 적으면 onPersistError 로 알린다 (기기에 남았다고 안내하면 안 되므로).
+  // localFailed: 마지막으로 적으려던 것이 기기에 없다는 뜻. 다시 적는 데 성공하면 onPersistOk.
   persist() {
-    writeCache(this.o.storage, this.o.uid, { data: this.data, revision: this.revision, dirty: this.dirty, updated: this.updated });
+    const ok = writeCache(this.o.storage, this.o.uid, { data: this.data, revision: this.revision, dirty: this.dirty, updated: this.updated });
+    if (!ok) { this.localFailed = true; this.o.onPersistError?.(this.state); }
+    else if (this.localFailed) { this.localFailed = false; this.o.onPersistOk?.(); }
+    return ok;
   }
   setState(state) { if (this.state !== state) { this.state = state; this.o.onStatus?.(state); } }
   clearTimers() { this.o.timers.clearTimeout(this.timer); this.o.timers.clearTimeout(this.retryTimer); this.timer = this.retryTimer = null; }
