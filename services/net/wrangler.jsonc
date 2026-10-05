@@ -21,8 +21,8 @@
     {
       "binding": "DB",
       "database_name": "net",
-      // `npx wrangler d1 create net` 이 알려 주는 database_id 로 바꾼다 (README "배포").
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // 2026-10-05 `npx wrangler d1 create net --location apac` 로 만든 DB.
+      "database_id": "5ff14c58-17fb-4cbb-af5d-bc0b933fb964",
       "migrations_dir": "migrations"
     }
   ],
