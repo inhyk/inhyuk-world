@@ -1,52 +1,135 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-    Room, MAX_PLAYERS, STATE_STRIDE, generateCode, normaliseCode, trimName, unpackPlayer,
+    Room, MAX_PLAYERS, STATE_STRIDE, SEND_GAP, CODE_LENGTH, HOST_LEFT,
+    normaliseCode, trimName, unpackPlayer, describeError,
 } from "../src/net/room.js";
+import { serverUrl } from "../src/net/server.js";
+import { DEFAULT_SERVER, MESSAGES } from "../../../packages/net/index.mjs";
 
 /**
- * The transport needs a browser; the protocol does not. These drive the
- * message handlers directly with fake connections, which is where every bug
- * that actually bit during development lived — roster drift, a body drawn at
- * the origin before its first packet, a hit resolved by the wrong client.
+ * A pretend net server: the same welcome / join / leave / host / msg frames
+ * services/net sends, in memory, so whole rooms of real `Room`s (and the real
+ * `@inhyuk/net` client under them) can talk without a network.
  */
-function fakeConnection(peer) {
-    const sent = [];
-    const handlers = new Map();
-    const conn = {
-        peer, open: true, sent,
-        send: (msg) => sent.push(msg),
-        close() { this.open = false; handlers.get("close")?.(); },
-        on(event, fn) {
-            handlers.set(event, fn);
-            // PeerJS fires "open" as soon as the channel is up; here it already is.
-            if (event === "open") fn();
-            return conn;
-        },
-        emit(event, ...args) { handlers.get(event)?.(...args); },
-    };
-    return conn;
-}
+function hub() {
+    const rooms = new Map();
+    let next = 0;
+    const codes = ["QWERTY", "ASDFGH", "ZXCVBN"];
+    const log = { packets: [] };
 
-function hostRoom(hooks = {}) {
-    const room = new Room(hooks);
-    room.isHost = true;
-    room.code = "ABCDE";
-    room.selfId = "snowflow-room-abcde";
-    room.players.set(room.selfId, {
-        id: room.selfId, name: "호스트", colorIndex: 0, isHost: true,
-        state: new Array(STATE_STRIDE).fill(0), hasState: true, lastSeen: Date.now(),
-    });
-    return room;
-}
-
-test("room codes are five unambiguous characters, and typing is forgiving", () => {
-    for (let i = 0; i < 50; i++) {
-        const code = generateCode();
-        assert.match(code, /^[A-HJ-NP-Z2-9]{5}$/, code);
+    class Socket {
+        constructor(url) {
+            this.url = url; this.readyState = 1; this.listeners = {};
+            const [, game, code] = url.match(/\/rooms\/([^/]+)\/([^/?]+)/);
+            this.game = game; this.code = code;
+            // The browser socket opens on its own; welcome follows.
+            setTimeout(() => this._arrive(), 0);
+        }
+        addEventListener(type, fn) { (this.listeners[type] ??= []).push(fn); }
+        _emit(type, payload) { for (const fn of this.listeners[type] ?? []) fn(payload); }
+        _serve(message) { if (this.readyState === 1) this._emit("message", { data: JSON.stringify(message) }); }
+        _arrive() {
+            const room = rooms.get(this.code);
+            if (!room) { this._serve({ t: "error", code: "not-found" }); return this._close(); }
+            if (room.members.length >= room.max) { this._serve({ t: "error", code: "full", max: room.max }); return this._close(); }
+            this.id = `p${++room.seat}`;
+            if (!room.host) room.host = this.id;
+            const peers = room.members.map((m) => m.id);
+            for (const m of room.members) m._serve({ t: "join", id: this.id });
+            room.members.push(this);
+            this.room = room;
+            this._serve({ t: "welcome", id: this.id, host: room.host, max: room.max, peers });
+        }
+        send(text) {
+            const msg = JSON.parse(text);
+            if (msg.t === "ping") return this._serve({ t: "pong" });
+            if (msg.t === "bye") return this._close();
+            if (msg.t !== "send") return;
+            assert.ok(text.length <= 16 * 1024, "server limit: 16KB per message");
+            log.packets.push({ from: this.id, at: Date.now(), data: msg.data });
+            for (const m of this.room.members) {
+                if (m === this || (msg.to && m.id !== msg.to)) continue;
+                m._serve({ t: "msg", from: this.id, data: msg.data });
+            }
+        }
+        close() { this._close(); }
+        _close() {
+            if (this.readyState !== 1) return;
+            this.readyState = 3;
+            const room = this.room;
+            if (room) {
+                room.members = room.members.filter((m) => m !== this);
+                for (const m of room.members) m._serve({ t: "leave", id: this.id });
+                if (room.host === this.id && room.members.length) {
+                    room.host = room.members[0].id;
+                    for (const m of room.members) m._serve({ t: "host", id: room.host });
+                }
+            }
+            this._emit("close", {});
+        }
+        /** The network vanishing under this client, not a goodbye. */
+        drop() { this._close(); }
     }
-    assert.equal(normaliseCode(" ab-cd e "), "ABCDE");
-    assert.equal(normaliseCode("abcdefgh"), "ABCDE");
+
+    const sockets = [];
+    const options = {
+        server: "ws://local.test",
+        fetch: async (url, init) => {
+            const code = codes[next++ % codes.length];
+            const body = JSON.parse(init.body);
+            rooms.set(code, { max: body.maxPlayers, members: [], seat: 0, host: "" });
+            return { ok: true, json: async () => ({ code, maxPlayers: body.maxPlayers }) };
+        },
+        connect: (url) => { const s = new Socket(url); sockets.push(s); return s; },
+    };
+    return { options, rooms, sockets, log };
+}
+
+const wait = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Long enough for every outbox to have flushed once. */
+const settle = () => wait(SEND_GAP * 2 + 10);
+
+function recorder() {
+    const seen = { status: [], rosters: [], hurts: [], hits: [], casts: [], balls: [], monsters: [], clocks: [], match: [] };
+    return {
+        seen,
+        hooks: {
+            onStatus: (kind, detail) => seen.status.push(detail ? [kind, detail] : [kind]),
+            onRoster: (players) => seen.rosters.push(players.map((p) => p.name)),
+            onHurt: (d, from) => seen.hurts.push([d, from]),
+            onMonsterHit: (id, d, k) => seen.hits.push([id, d, k]),
+            onCast: (k, p, from) => seen.casts.push([k, p, from]),
+            onBall: (b, from) => seen.balls.push([b, from]),
+            onMonsters: (m, d) => seen.monsters.push([m, d]),
+            onClock: (c) => seen.clocks.push(c),
+            onMatchRequest: (want) => seen.match.push(want),
+        },
+    };
+}
+
+async function party(n) {
+    const server = hub();
+    const host = recorder();
+    const hostRoom = new Room(host.hooks, server.options);
+    const code = await hostRoom.host("방장");
+    const guests = [];
+    for (let i = 1; i < n; i++) {
+        const r = recorder();
+        const room = new Room(r.hooks, server.options);
+        await room.join(code.toLowerCase(), `친구${i}`);
+        guests.push({ room, seen: r.seen });
+    }
+    await settle();
+    return { server, code, host: { room: hostRoom, seen: host.seen }, guests };
+}
+
+const body = (x, hp = 100) => [{ x, y: 1, z: -x }, 0.5, 0, 0.3, hp, false, 0, 2, { x: 0, y: 0, z: 1 }];
+
+test("room codes are the server's six letters, and typing is forgiving", () => {
+    assert.equal(CODE_LENGTH, 6);
+    assert.equal(normaliseCode(" ab-cd e2 "), "ABCDE2");
+    assert.equal(normaliseCode("abcdefgh"), "ABCDEF");
     assert.equal(normaliseCode(null), "");
 });
 
@@ -56,225 +139,233 @@ test("names are trimmed, capped and never empty", () => {
     assert.equal(trimName("   "), "이름없는 마법사");
 });
 
+test("the server address is production unless a local one is asked for", () => {
+    assert.equal(serverUrl(""), DEFAULT_SERVER);
+    assert.equal(serverUrl("?net=http://127.0.0.1:8787/"), "http://127.0.0.1:8787");
+    assert.equal(serverUrl("?net=ws://localhost:9000"), "ws://localhost:9000");
+    assert.equal(serverUrl("?net=https://evil.example"), DEFAULT_SERVER, "only loopback");
+    assert.equal(serverUrl("", { VITE_NET_SERVER: "wss://x.test/" }), "wss://x.test");
+});
+
+test("the library's sentences come out in this game's voice", () => {
+    assert.equal(describeError(MESSAGES.notFound), "그 코드의 방을 찾지 못했어요.");
+    assert.equal(describeError(MESSAGES.full(4)), "방이 가득 찼어요 (최대 4명).");
+    assert.equal(describeError(MESSAGES.lost), "인터넷 연결이 끊겼어요.");
+    assert.equal(describeError("뭔가 다른 일"), "뭔가 다른 일");
+});
+
 test("a body is packed and unpacked without losing the flags", () => {
     const state = [1.23, 4.56, -7.89, 0.5, 1, 0.75, 62, 1 | (7 << 1)];
-    const body = unpackPlayer(state);
-    assert.equal(body.x, 1.23);
-    assert.equal(body.z, -7.89);
-    assert.equal(body.hp, 62);
-    assert.equal(body.downed, true);
-    assert.equal(body.castKey, 7);
+    const b = unpackPlayer(state);
+    assert.equal(b.x, 1.23);
+    assert.equal(b.z, -7.89);
+    assert.equal(b.hp, 62);
+    assert.equal(b.downed, true);
+    assert.equal(b.castKey, 7);
     assert.equal(unpackPlayer([0, 0, 0, 0, 0, 0, 100, 0]).downed, false);
-});
-
-test("a guest joins, is drawn only after its first body, and leaves cleanly", () => {
-    const rosters = [];
-    const room = hostRoom({ onRoster: (players) => rosters.push(players.length) });
-    const conn = fakeConnection("guest-1");
-
-    room._acceptGuest(conn);
-    room._onGuestMessage(conn, { t: "hello", name: "친구" });
-    assert.equal(room.players.size, 2);
-    assert.equal(room.players.get("guest-1").hasState, false, "not drawn yet");
-    assert.equal(room.others.length, 1);
-    assert.notEqual(room.players.get("guest-1").colorIndex, 0, "colours do not collide");
-
-    room._onGuestMessage(conn, { t: "state", s: [1, 2, 3, 0, 0, 0, 90, 0] });
-    assert.equal(room.players.get("guest-1").hasState, true);
-    assert.equal(unpackPlayer(room.others[0].state).hp, 90);
-
-    room._onGuestMessage(conn, { t: "bye" });
-    assert.equal(room.players.size, 1);
-    // Two announcements: the join and the leave. The host's own arrival is
-    // announced by `host()`, which these tests stand in for.
-    assert.deepEqual(rosters, [2, 1]);
-});
-
-test("a full room turns the fifth player away instead of dropping someone", () => {
-    const room = hostRoom();
-    for (let i = 1; i < MAX_PLAYERS; i++) {
-        const conn = fakeConnection(`guest-${i}`);
-        room._acceptGuest(conn);
-        room._onGuestMessage(conn, { t: "hello", name: `친구${i}` });
-    }
-    assert.equal(room.players.size, MAX_PLAYERS);
-    assert.ok(room.full);
-
-    const extra = fakeConnection("guest-late");
-    room._acceptGuest(extra);
-    room._onGuestMessage(extra, { t: "hello", name: "늦은친구" });
-    assert.equal(room.players.size, MAX_PLAYERS, "nobody was displaced");
-    assert.equal(extra.sent.at(-1).t, "denied");
-});
-
-test("a reported hit reaches the host, and duel damage is only ever forwarded", () => {
-    const hits = [];
-    const hurts = [];
-    const room = hostRoom({
-        onMonsterHit: (id, d) => hits.push([id, d]),
-        onHurt: (d, from) => hurts.push([d, from]),
-    });
-    const a = fakeConnection("guest-a");
-    const b = fakeConnection("guest-b");
-    for (const conn of [a, b]) {
-        room._acceptGuest(conn);
-        room._onGuestMessage(conn, { t: "hello", name: conn.peer });
-    }
-
-    room._onGuestMessage(a, { t: "hit", id: 3, d: 2 });
-    assert.deepEqual(hits, [[3, 2]]);
-
-    // Aimed at the host: the host's own body resolves it.
-    room._onGuestMessage(a, { t: "pvp", target: room.selfId, d: 18 });
-    assert.deepEqual(hurts, [[18, "guest-a"]]);
-
-    // Aimed at another guest: relayed untouched, never resolved here.
-    room._onGuestMessage(a, { t: "pvp", target: "guest-b", d: 18 });
-    assert.equal(hurts.length, 1, "the host does not apply damage for others");
-    assert.deepEqual(b.sent.at(-1), { t: "pvp", target: "guest-b", d: 18, from: "guest-a" });
-});
-
-test("the party the shadows spawn around holds only bodies that have arrived", () => {
-    const room = hostRoom();
-    room.peer = { destroyed: false }; // `active` without a real socket
-    const conn = fakeConnection("guest-1");
-    room._acceptGuest(conn);
-    room._onGuestMessage(conn, { t: "hello", name: "친구" });
-
-    const me = { x: 0, y: 0, z: 0 };
-    assert.deepEqual(room.partyPositions(me), [me], "a silent guest is not a spawn anchor");
-
-    room._onGuestMessage(conn, { t: "state", s: [30, 1, -12, 0, 0, 0, 100, 0] });
-    const party = room.partyPositions(me);
-    assert.equal(party.length, 2);
-    assert.deepEqual(party[1], { x: 30, y: 1, z: -12 });
-});
-
-test("a guest adopts the host's roster and drops anyone missing from it", () => {
-    const room = new Room();
-    room.selfId = "guest-me";
-    room.peer = { destroyed: false };
-    room._onHostMessage({
-        t: "roster", duel: true, host: "host-1",
-        roster: [
-            { id: "host-1", name: "방장", colorIndex: 0, isHost: true },
-            { id: "guest-me", name: "나", colorIndex: 1, isHost: false },
-            { id: "guest-2", name: "친구", colorIndex: 2, isHost: false },
-        ],
-    });
-    assert.equal(room.players.size, 3);
-    assert.equal(room.duel, true);
-    assert.equal(room.others.length, 2, "you are never in your own pool");
-
-    room._onHostMessage({ t: "players", p: [["guest-2", [5, 0, 5, 0, 0, 0, 44, 0]]] });
-    assert.equal(room.players.get("guest-2").hasState, true);
-    assert.equal(unpackPlayer(room.players.get("guest-2").state).hp, 44);
-
-    room._onHostMessage({
-        t: "roster", duel: false, host: "host-1",
-        roster: [{ id: "host-1", name: "방장", colorIndex: 0, isHost: true },
-            { id: "guest-me", name: "나", colorIndex: 1, isHost: false }],
-    });
-    assert.equal(room.players.has("guest-2"), false);
-    assert.equal(room.duel, false);
-});
-
-test("the host's world message carries the shadows, the clock and the tally", () => {
-    const room = hostRoom();
-    room.peer = { destroyed: false };
-    const conn = fakeConnection("guest-1");
-    room._connections.set("guest-1", conn);
-
-    room.publishWorld([1, 2, 3], 123.456, 7);
-    const message = conn.sent.at(-1);
-    assert.equal(message.t, "world");
-    assert.deepEqual(message.m, [1, 2, 3]);
-    assert.equal(message.c, 123.5, "quantised, because nobody can see a millisecond");
-    assert.equal(message.d, 7);
-});
-
-test("in a two-player room a hit lands on the body that owns it, both ways", () => {
-    const hostHurts = [];
-    const guestHurts = [];
-    const host = hostRoom({ onHurt: (d, from) => hostHurts.push([d, from]) });
-    host.peer = { destroyed: false };
-    host.duel = true;
-
-    const guest = new Room({ onHurt: (d, from) => guestHurts.push([d, from]) });
-    guest.selfId = "guest-1";
-    guest.peer = { destroyed: false };
-
-    // Wire the two ends together: what the host writes down the connection is
-    // what the guest reads, and what the guest writes up its link is what the
-    // host reads.
-    const conn = fakeConnection("guest-1");
-    conn.send = (msg) => guest._onHostMessage(msg);
-    host._acceptGuest(conn);
-    host._onGuestMessage(conn, { t: "hello", name: "친구" });
-    guest._uplink = { open: true, send: (msg) => host._onGuestMessage(conn, msg) };
-
-    assert.equal(guest.duel, true, "the mode travels with the roster");
-
-    host.sendPlayerDamage("guest-1", 18);
-    assert.deepEqual(guestHurts, [[18, host.selfId]], "host → guest");
-    assert.equal(hostHurts.length, 0, "and not back onto the caster");
-
-    guest.sendPlayerDamage(host.selfId, 18);
-    assert.deepEqual(hostHurts, [[18, "guest-1"]], "guest → host");
-    assert.equal(guestHurts.length, 1);
-});
-
-test("outside a duel nothing is sent at all", () => {
-    const hurts = [];
-    const host = hostRoom({ onHurt: (d) => hurts.push(d) });
-    host.peer = { destroyed: false };
-    const conn = fakeConnection("guest-1");
-    const seen = [];
-    conn.send = (msg) => seen.push(msg.t);
-    host._acceptGuest(conn);
-    host._onGuestMessage(conn, { t: "hello", name: "친구" });
-
-    host.sendPlayerDamage("guest-1", 18);
-    assert.equal(seen.includes("pvp"), false, "friendly fire is off by default");
-
-    host.setDuel(true);
-    host.sendPlayerDamage("guest-1", 18);
-    assert.equal(seen.includes("pvp"), true);
-});
-
-test("a cast is one message, relayed to everyone but its caster", () => {
-    const casts = [];
-    const host = hostRoom({ onCast: (k, p, from) => casts.push([k, p, from]) });
-    host.peer = { destroyed: false };
-    const a = fakeConnection("guest-a");
-    const b = fakeConnection("guest-b");
-    for (const conn of [a, b]) {
-        host._acceptGuest(conn);
-        host._onGuestMessage(conn, { t: "hello", name: conn.peer });
-    }
-    a.sent.length = 0; b.sent.length = 0;
-
-    // Guest A places a Bloom. The host replays it and hands it on to B only.
-    host._onGuestMessage(a, { t: "cast", k: 3, p: [10, 0.5, -4] });
-    assert.deepEqual(casts, [[3, [10, 0.5, -4], "guest-a"]]);
-    assert.equal(a.sent.filter((m) => m.t === "cast").length, 0, "never back to the caster");
-    assert.deepEqual(b.sent.filter((m) => m.t === "cast"),
-        [{ t: "cast", k: 3, p: [10, 0.5, -4], from: "guest-a" }]);
-
-    // The host's own cast goes to both guests, quantised.
-    host.castSpell(1, [0.70710678, 0, 0.70710678]);
-    const toA = a.sent.filter((m) => m.t === "cast").at(-1);
-    assert.deepEqual(toA, { t: "cast", k: 1, p: [0.707, 0, 0.707], from: host.selfId });
-    assert.equal(b.sent.filter((m) => m.t === "cast").length, 2);
-});
-
-test("the body now carries where its owner is looking", () => {
-    const state = new Array(STATE_STRIDE).fill(0);
-    state[9] = 0.3; state[10] = -0.2; state[11] = 0.93;
-    const body = unpackPlayer(state);
-    assert.equal(body.aimX, 0.3);
-    assert.equal(body.aimZ, 0.93);
-    // An older, shorter packet still unpacks, aimed straight ahead.
     const old = unpackPlayer([0, 0, 0, 0, 0, 0, 100, 0, 0]);
-    assert.deepEqual([old.aimX, old.aimY, old.aimZ], [0, 0, 1]);
+    assert.deepEqual([old.aimX, old.aimY, old.aimZ], [0, 0, 1], "a short packet aims ahead");
+});
+
+test("host makes a room, a guest joins by code, and both see the same roster", async () => {
+    const { host, guests, code } = await party(2);
+    const guest = guests[0];
+    assert.equal(code.length, CODE_LENGTH);
+    assert.equal(host.room.isHost, true);
+    assert.equal(guest.room.isHost, false);
+    assert.equal(guest.room.code, code);
+    assert.deepEqual(host.seen.status, [["connecting"], ["open"]]);
+    assert.deepEqual(guest.seen.status, [["connecting"], ["open"]]);
+    assert.deepEqual(host.seen.rosters.at(-1), ["방장", "친구1"]);
+    assert.deepEqual(guest.seen.rosters.at(-1), ["방장", "친구1"]);
+    const colours = [...guest.room.players.values()].map((p) => p.colorIndex);
+    assert.deepEqual(colours, [0, 1], "colours do not collide");
+    assert.equal(guest.room.others.length, 1, "you are never in your own pool");
+    host.room.leave(); guest.room.leave();
+});
+
+test("bodies flow both ways, and nobody is drawn before their first body", async () => {
+    const { host, guests } = await party(2);
+    const guest = guests[0];
+    const fromGuest = host.room.players.get(guest.room.selfId);
+    assert.equal(fromGuest.hasState, false, "not drawn yet");
+    assert.deepEqual(host.room.partyPositions({ x: 0, y: 0, z: 0 }).length, 1, "a silent guest is not a spawn anchor");
+
+    host.room.publishSelf(...body(5, 90));
+    guest.room.publishSelf(...body(30, 44));
+    await settle();
+
+    assert.equal(unpackPlayer(host.room.others[0].state).hp, 44);
+    assert.equal(unpackPlayer(guest.room.others[0].state).hp, 90);
+    assert.deepEqual(host.room.partyPositions({ x: 0, y: 0, z: 0 })[1], { x: 30, y: 1, z: -30 });
+    host.room.leave(); guest.room.leave();
+});
+
+test("the host's world reaches guests: shadows, clock, tally, match", async () => {
+    const { host, guests } = await party(2);
+    const wire = [1, 2, 3];
+    host.room.publishWorld(wire, 123.456, 7, { phase: 2, timer: 9.87 }, [4, 5], 1);
+    wire[0] = 99; // the pools reuse their arrays
+    await settle();
+    const seen = guests[0].seen;
+    assert.deepEqual(seen.monsters.at(-1), [[1, 2, 3], 7]);
+    assert.equal(seen.clocks.at(-1), 123.5, "quantised, because nobody can see a millisecond");
+    host.room.leave(); guests[0].room.leave();
+});
+
+test("events reach the right client: hits and match requests only the host", async () => {
+    const { host, guests } = await party(3);
+    const [a, b] = guests;
+    a.room.reportMonsterHit(3, 2, "w");
+    a.room.requestMatch(true);
+    a.room.castSpell(1, [0.70710678, 0, 0.70710678]);
+    a.room.throwBall([1, 2, 3, 4, 5, 6]);
+    await settle();
+
+    assert.deepEqual(host.seen.hits, [[3, 2, "w"]]);
+    assert.deepEqual(host.seen.match, [true]);
+    assert.deepEqual(b.seen.hits, [], "guests never resolve hits");
+    for (const who of [host, b]) {
+        assert.deepEqual(who.seen.casts, [[1, [0.707, 0, 0.707], a.room.selfId]]);
+        assert.deepEqual(who.seen.balls, [[[1, 2, 3, 4, 5, 6], a.room.selfId]]);
+    }
+    assert.deepEqual(a.seen.casts, [], "never back to the caster");
+    for (const g of [host, ...guests]) g.room.leave();
+});
+
+test("duel damage lands only on the body it was aimed at, and only in a duel", async () => {
+    const { host, guests } = await party(3);
+    const [a, b] = guests;
+    a.room.sendPlayerDamage(b.room.selfId, 18);
+    await settle();
+    assert.deepEqual(b.seen.hurts, [], "friendly fire is off by default");
+
+    host.room.setDuel(true);
+    await settle();
+    assert.equal(a.room.duel, true, "the mode travels with the roster");
+
+    a.room.sendPlayerDamage(b.room.selfId, 18);
+    host.room.sendPlayerDamage(a.room.selfId, 7);
+    b.room.sendPlayerDamage(host.room.selfId, 5);
+    await settle();
+    assert.deepEqual(b.seen.hurts, [[18, a.room.selfId]]);
+    assert.deepEqual(a.seen.hurts, [[7, host.room.selfId]]);
+    assert.deepEqual(host.seen.hurts, [[5, b.room.selfId]]);
+    for (const g of [host, ...guests]) g.room.leave();
+});
+
+test("a full room turns the fifth player away", async () => {
+    const { server, code, host, guests } = await party(MAX_PLAYERS);
+    assert.equal(host.room.count, MAX_PLAYERS);
+    const late = new Room({}, server.options);
+    await assert.rejects(late.join(code, "늦은친구"), { message: "방이 가득 찼어요 (최대 4명)." });
+    assert.equal(late.active, false);
+    assert.equal(host.room.count, MAX_PLAYERS, "nobody was displaced");
+    for (const g of [host, ...guests]) g.room.leave();
+});
+
+test("a wrong code says so in Korean", async () => {
+    const server = hub();
+    const room = new Room({}, server.options);
+    await assert.rejects(room.join("NOPE22", "나"), { message: "그 코드의 방을 찾지 못했어요." });
+    await assert.rejects(room.join("abc", "나"), { message: "방 코드는 여섯 글자예요." });
+});
+
+test("a guest leaving is dropped from everyone's roster", async () => {
+    const { host, guests } = await party(3);
+    const [a, b] = guests;
+    a.room.leave();
+    await settle();
+    assert.deepEqual(host.seen.rosters.at(-1), ["방장", "친구2"]);
+    assert.deepEqual(b.seen.rosters.at(-1), ["방장", "친구2"]);
+    assert.deepEqual(a.seen.status.at(-1), ["closed"]);
+    host.room.leave(); b.room.leave();
+});
+
+test("the host leaving ends the room for every guest with a clear reason", async () => {
+    const { host, guests } = await party(3);
+    host.room.leave();
+    await settle();
+    for (const g of guests) {
+        assert.deepEqual(g.seen.status.at(-1), ["closed", HOST_LEFT]);
+        assert.equal(g.room.active, false);
+        assert.equal(g.room.players.size, 0);
+    }
+});
+
+test("a guest whose network dies is told, and the host lets them go", async () => {
+    const { server, host, guests } = await party(2);
+    const g = guests[0];
+    server.sockets.find((s) => s.id === g.room.selfId).drop();
+    await settle();
+    assert.deepEqual(g.seen.status.at(-1), ["closed", "인터넷 연결이 끊겼어요."]);
+    assert.equal(g.room.active, false);
+    assert.deepEqual(host.seen.rosters.at(-1), ["방장"]);
+    host.room.leave();
+});
+
+test("a busy frame loop never sends more than one packet per gap", async () => {
+    const { server, host, guests } = await party(2);
+    const g = guests[0];
+    server.log.packets.length = 0;
+    const started = Date.now();
+    // A frame every 4 ms for a second, everything firing every frame — far
+    // more than the game ever does.
+    while (Date.now() - started < 1000) {
+        g.room.publishSelf(...body(Math.random() * 10));
+        g.room.castSpell(2, [1]);
+        g.room.reportMonsterHit(1, 1);
+        host.room.publishSelf(...body(1));
+        host.room.publishWorld([1, 2], 1, 0, null, [], 0);
+        await wait(4);
+    }
+    await settle();
+    const span = (Date.now() - started) / 1000;
+    for (const id of [host.room.selfId, g.room.selfId]) {
+        const mine = server.log.packets.filter((p) => p.from === id);
+        const rate = mine.length / span;
+        assert.ok(rate <= 1000 / SEND_GAP + 1, `${id}: ${rate.toFixed(1)}/s`);
+        assert.ok(rate < 30, "under the server's 30 a second");
+    }
+    // Nothing was thrown away to keep under it.
+    const casts = server.log.packets.filter((p) => p.from === g.room.selfId)
+        .flatMap((p) => p.data.e ?? []).filter((e) => e.t === "cast").length;
+    assert.equal(host.seen.casts.length, casts);
+    assert.ok(casts > 200, `every cast arrived (${casts})`);
+    host.room.leave(); g.room.leave();
+});
+
+test("a burst of events too big for one packet is split, never cut", async () => {
+    const { server, host, guests } = await party(2);
+    const g = guests[0];
+    server.log.packets.length = 0;
+    // 600 casts with long parameter lists: far more than 16KB in one go.
+    for (let i = 0; i < 600; i++) g.room.castSpell(i % 9, [i, 0.123, 0.456, 0.789, 1.234, 5.678]);
+    g.room.reportMonsterHit(4, 2);
+    await wait(SEND_GAP * 12);
+    assert.equal(host.seen.casts.length, 600);
+    assert.deepEqual(host.seen.casts.map((c) => c[1][0]), [...Array(600).keys()], "in order");
+    assert.deepEqual(host.seen.hits, [[4, 2, "m"]]);
+    const mine = server.log.packets.filter((p) => p.from === g.room.selfId);
+    assert.ok(mine.length > 1, `split into ${mine.length} packets`);
+    for (const p of mine) assert.ok(JSON.stringify(p.data).length < 16 * 1024);
+    host.room.leave(); g.room.leave();
+});
+
+test("waiting alone sends nothing", async () => {
+    const server = hub();
+    const room = new Room({}, server.options);
+    await room.host("혼자");
+    for (let i = 0; i < 10; i++) { room.publishSelf(...body(i)); room.castSpell(1, [1]); await wait(10); }
+    await settle();
+    assert.equal(server.log.packets.length, 0);
+    room.leave();
+});
+
+test("STATE_STRIDE matches what publishSelf writes", async () => {
+    const { host, guests } = await party(2);
+    host.room.publishSelf(...body(1));
+    await settle();
+    assert.equal(guests[0].room.others[0].state.length, STATE_STRIDE);
+    host.room.leave(); guests[0].room.leave();
 });

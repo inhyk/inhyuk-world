@@ -6,13 +6,12 @@
  * two methods it returns, which `main.js` wires into that room's hooks.
  *
  * Every message here is written for someone who is ten. No error type, no
- * peer id, no "WebRTC" — just what happened and what to try instead.
+ * seat id, no "WebSocket" — just what happened and what to try instead.
  */
 
-import { MAX_PLAYERS, PLAYER_COLORS, normaliseCode, trimName } from "../net/room.js";
+import { CODE_LENGTH, MAX_PLAYERS, PLAYER_COLORS, normaliseCode, trimName } from "../net/room.js";
 
 const NAME_KEY = "snowflow.name";
-const CODE_LENGTH = 5;
 
 const css = (colour) => `rgb(${colour.map((c) => Math.round(Math.min(1, c) * 255)).join(",")})`;
 
