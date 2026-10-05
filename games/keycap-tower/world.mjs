@@ -11,7 +11,7 @@ import { TrailMesh } from '@babylonjs/core/Meshes/trailMesh';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
 import '@babylonjs/core/Meshes/instancedMesh';
-import { WORLDS, TRAILS, LOBBY_R, PILLAR_R, R, getWorld, boxAt, vanishPhase, spinnerAngle, pathPoint, buttonReady, ownsTread, levelOf, fmt } from './core.mjs';
+import { WORLDS, TRAILS, SKINS, LOBBY_R, PILLAR_R, R, getWorld, boxAt, vanishPhase, spinnerAngle, pathPoint, buttonReady, ownsTread, levelOf, fmt } from './core.mjs';
 
 const FONT='"Arial Rounded MT Bold", Arial, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 const CONFETTI=['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#9775fa','#f783ac'];
@@ -60,6 +60,7 @@ export function createWorld(canvas){
   return tops.get(key).createInstance('keycap label');
  }
  const yawOf=o=>Math.atan2(o.tx,o.tz);
+ const bright=hex=>{const c=Color3.FromHexString(hex);return c.r*.3+c.g*.59+c.b*.11>.6;};
 
  let root=null,W=null,theme=null,keyed=new Map(),movers=[],blinks=[],spinners=[],walls=[],buttons=[],treads=[],floaters=[],chaser=null,belt=0;
  const yellow=()=>mat('#ffd43b',{glow:.55}),gray=()=>mat('#868e96',{glow:.1});
@@ -76,7 +77,7 @@ export function createWorld(canvas){
   hemi.intensity=theme.dark?.9:.62;sun.intensity=theme.dark?.6:.5;hemi.groundColor=Color3.FromHexString(theme.dark?'#3a3560':'#c99a8a');
   const soft=theme.dark?'#ffffff':'#4a2c1a';
   for(const o of W.objects){
-   if(o.type==='key'){const c=theme.keys[(o.stage+Math.round(o.s))%theme.keys.length];keycap(o,c,['#fff4e6','#f8f9fa','#fcc419','#a0e7e5','#4ade80','#22d3ee'].includes(c)?'#2b2140':'#ffffff');}
+   if(o.type==='key'){const c=theme.keys[(o.stage+Math.round(o.s))%theme.keys.length];keycap(o,c,bright(c)?'#2b2140':'#ffffff');}
    else if(o.type==='mover')movers.push(keycap(o,theme.accent,'#3d2b00'));
    else if(o.type==='blink')blinks.push(keycap(o,'#66e0ff','#0b4f5c',{alpha:.82}));
    else if(o.type==='del')keycap(o,'#fa5252','#ffffff');
@@ -122,7 +123,7 @@ export function createWorld(canvas){
   const pm=new StandardMaterial('pillar',scene);pm.diffuseTexture=tex;pm.emissiveTexture=tex;pm.emissiveColor=new Color3(.45,.45,.45);pm.specularColor=new Color3(0,0,0);pillar.material=pm;
   const crown=sign(`${W.def.emoji} ${w+1}월드 · ${W.def.name}`,{w:16,h:2.6,bg:theme.dark?'#000000aa':'#ffffffdd',fg:soft,size:100});crown.position.set(R+6,9,-8);
   // 로비 시설
-  const zoneLook={stat:['📊 스탯 상점','#4dabf7'],world:['🌍 월드 포탈','#b197fc'],rebirth:['🔁 환생의 제단','#ff8787']};
+  const zoneLook={item:['🛒 아이템 상점','#63e6be'],stat:['📊 스탯 상점','#4dabf7'],world:['🌍 월드 포탈','#b197fc'],rebirth:['🔁 환생의 제단','#ff8787']};
   for(const z of W.zones){
    const [text,color]=zoneLook[z.id],pad=MeshBuilder.CreateCylinder(`zone ${z.id}`,{diameter:z.r*2,height:.16,tessellation:36},scene);pad.parent=root;pad.position.set(z.x,.08,z.z);pad.material=mat(color,{glow:.7});
    const arch=MeshBuilder.CreateTorus('arch',{diameter:5.4,thickness:.45,tessellation:36},scene);arch.parent=root;arch.rotation.x=Math.PI/2;arch.rotation.y=yawOf(z)+Math.PI/2;arch.position.set(z.x+z.ox*2.6,2.7,z.z+z.oz*2.6);arch.material=mat(color,{glow:.8});
@@ -144,7 +145,12 @@ export function createWorld(canvas){
 
  // 캐릭터
  const player=new TransformNode('player',scene);
- const skin=mat('#ffd8b1'),hoodie=mat('#4263eb'),pants=mat('#343a40'),hair=mat('#5c3d2e'),black=mat('#111111');
+ // 스킨을 갈아입으면 이 네 가지 색이 바뀐다.
+ const own=name=>{const m=new StandardMaterial(`skin ${name}`,scene);m.specularColor=new Color3(.12,.12,.12);return m;};
+ const skin=own('skin'),hoodie=own('hoodie'),pants=own('pants'),hair=own('hair'),black=mat('#111111');
+ let skinIndex=-1;
+ function setSkin(i){if(i===skinIndex)return;skinIndex=i;const k=SKINS[i]??SKINS[0];skin.diffuseColor=Color3.FromHexString(k.skin);hoodie.diffuseColor=Color3.FromHexString(k.hoodie);pants.diffuseColor=Color3.FromHexString(k.pants);hair.diffuseColor=Color3.FromHexString(k.hair);}
+ setSkin(0);
  const part=(name,w,h,d,m,parent,x,y,z)=>{const b=MeshBuilder.CreateBox(name,{width:w,height:h,depth:d},scene);b.material=m;b.parent=parent;b.position.set(x,y,z);b.isPickable=false;return b;};
  const pivot=(x,y)=>{const n=new TransformNode('pivot',scene);n.parent=player;n.position.set(x,y,0);return n;};
  const legL=pivot(-.19,.8),legR=pivot(.19,.8),armL=pivot(-.5,1.35),armR=pivot(.5,1.35);
@@ -175,7 +181,7 @@ export function createWorld(canvas){
  scene.executeWhenReady(()=>{ready=true;});
  function sync(s,dt,view={}){
   if(s.world!==loaded){load(s.world);loaded=s.world;trailIndex=-2;}
-  clock+=dt;setTrail(s.trail);
+  clock+=dt;setTrail(s.trail);setSkin(s.skin);
   const level=levelOf(s.speed);
   for(const k of keyed.values()){
    const b=boxAt(k.o,s.clock),want=s.grounded&&s.groundId===k.o.id?.2:0;k.press+=(want-k.press)*Math.min(1,dt*18);

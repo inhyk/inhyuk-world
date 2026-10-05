@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {WORLDS,STATS,TRAILS,AIR,JUMP_VY,GRAVITY,BUTTON_CD,fmt,needSpeed,levelOf,runSpeed,getWorld,pathPoint,pathS,boxAt,fresh,restore,serialize,step,respawn,toLobby,warpStage,enterWorld,buyStat,buyTread,buyTrail,rebirth,canRebirth,rebirthReq,keyGain,treadRate,winAmount,ownsTread,refreshUnlock} from './core.mjs';
+import {ITEMS,SKINS,EVENT_EVERY,EVENT_LENGTH,buyItem,buySkin,eventInfo,globalMult,WORLDS,STATS,TRAILS,AIR,JUMP_VY,GRAVITY,BUTTON_CD,fmt,needSpeed,levelOf,runSpeed,getWorld,pathPoint,pathS,boxAt,fresh,restore,serialize,step,respawn,toLobby,warpStage,enterWorld,buyStat,buyTread,buyTrail,rebirth,canRebirth,rebirthReq,keyGain,treadRate,winAmount,ownsTread,refreshUnlock} from './core.mjs';
 
 const DT=1/60;
 const idle=(s,sec,input={})=>{const all=[];for(let i=0;i<sec*60;i++)all.push(...step(s,input,DT));return all;};
@@ -12,12 +12,16 @@ test('숫자를 한국어 단위로 보여 준다',()=>{
 
 test('레벨은 스피드가 쌓일수록 오르고 필요 스피드와 맞는다',()=>{
  assert.equal(levelOf(0),0);assert.equal(levelOf(4),0);assert.equal(levelOf(5),1);
+ assert.ok(needSpeed(2001)>needSpeed(2000)&&needSpeed(5000)/needSpeed(2000)>10);
  for(const L of [1,3,25,120,400,1000]){assert.equal(levelOf(needSpeed(L)),L);assert.equal(levelOf(needSpeed(L)-1),L-1);}
  assert.ok(runSpeed(0)===8&&runSpeed(2000)<25&&runSpeed(120)>runSpeed(25));
 });
 
-test('월드는 네 개이고 1월드부터 순서대로 열린다',()=>{
- assert.equal(WORLDS.length,4);assert.deepEqual(WORLDS.map(w=>w.req),[0,120,400,1000]);
+test('월드는 50개이고 1월드부터 순서대로 열리며 뒤로 갈수록 타워가 높다',()=>{
+ assert.equal(WORLDS.length,50);assert.deepEqual(WORLDS.slice(0,5).map(w=>w.req),[0,120,400,1000,5000]);
+ for(let i=5;i<50;i++)assert.equal(WORLDS[i].req-WORLDS[i-1].req,3000,'5월드부터는 레벨이 3000씩 올라야 다음 월드');
+ assert.equal(new Set(WORLDS.map(w=>w.name)).size,50);assert.ok(getWorld(49).top>getWorld(4).top&&WORLDS[49].levels.length>WORLDS[4].levels.length);
+ assert.ok(Number.isFinite(needSpeed(WORLDS[49].levels.at(-1)))&&needSpeed(WORLDS[49].levels.at(-1))<1e72);
  WORLDS.forEach((w,i)=>{
   const W=getWorld(i);assert.equal(W.stages.length,w.levels.length);assert.equal(w.names.length,w.levels.length);assert.equal(w.wins.length,w.levels.length);assert.equal(w.segs.length,w.levels.length);
   assert.equal(w.levels[0],w.req);assert.equal(w.treads.length,3);assert.equal(w.treads[0].cost,0);
@@ -112,7 +116,8 @@ test('레벨이 오르면 다음 월드가 열리고 들어갈 수 있다',()=>{
  s.speed=needSpeed(120)-1;const key=getWorld(0).objects.find(o=>o.type==='key');putOn(s,key);s.y+=.2;
  const ev=idle(s,.3);assert.ok(ev.some(e=>e.t==='unlock'&&e.world===1));assert.equal(s.unlocked,1);
  assert.equal(enterWorld(s,1),true);assert.equal(s.world,1);assert.equal(s.groundId,'lobby');assert.ok(ownsTread(s,1,0));
- s.speed=needSpeed(1000);refreshUnlock(s);assert.equal(s.unlocked,3);assert.equal(enterWorld(s,3),true);idle(s,.3);assert.equal(s.grounded,true);
+ s.speed=needSpeed(1000);refreshUnlock(s);assert.equal(s.unlocked,3);
+ s.speed=needSpeed(WORLDS[49].req);refreshUnlock(s);assert.equal(s.unlocked,49);assert.equal(enterWorld(s,49),true);idle(s,.3);assert.equal(s.grounded,true);s.speed=needSpeed(1000);assert.equal(enterWorld(s,3),true);idle(s,.3);assert.equal(s.grounded,true);
  assert.equal(enterWorld(s,0),true,'1월드로 돌아갈 수 있다');
 });
 
@@ -140,9 +145,26 @@ test('쫓아오는 괴물은 서 있으면 잡고, 안전지대에 닿으면 사
 });
 
 test('저장과 불러오기, 망가진 저장은 새로 시작',()=>{
- const s=fresh();s.speed=12345;s.wins=99;s.stats.power=5;s.treads=['0-1'];s.trails=[1];s.trail=1;s.unlocked=1;s.world=1;s.reached=[8,2,0,0];s.checkpoint=2;s.rebirths=2;
+ const s=fresh();s.speed=12345;s.wins=99;s.stats.power=5;s.treads=['0-1'];s.trails=[1];s.trail=1;s.unlocked=1;s.world=1;s.reached[0]=8;s.reached[1]=2;s.items=['chocolate'];s.skins=[0,2];s.skin=2;s.checkpoint=2;s.rebirths=2;
  const r=restore(JSON.stringify(serialize(s)));assert.deepEqual(serialize(r),serialize(s));assert.equal(r.groundId,getWorld(1).stages[1].safe.id);
  assert.deepEqual(serialize(restore('{bad')),serialize(fresh()));
  const odd=restore({version:1,world:3,unlocked:0,speed:-5,stats:{power:999},treads:['9-9',3],trail:4,checkpoint:50});
- assert.deepEqual([odd.world,odd.speed,odd.stats.power,odd.treads.length,odd.trail,odd.checkpoint],[0,0,60,0,-1,0]);
+ assert.deepEqual([odd.world,odd.speed,odd.stats.power,odd.treads.length,odd.trail,odd.checkpoint,odd.skin,odd.items.length],[0,0,400,0,-1,0,0,0]);
+});
+
+test('아이템 상점: 초콜릿 1.5배, 키캡 3배, 큰 키캡 10배',()=>{
+ assert.deepEqual(ITEMS.map(i=>[i.rarity,i.name,i.mult,i.cost,i.price]),[['일반','초콜릿',1.5,3000,'3.0K트로피'],['에픽','키캡',3,100000,'100K트로피'],['비밀','큰 키캡',10,1000000,'1.0M트로피']]);
+ const s=fresh();assert.equal(buyItem(s,'chocolate'),false);s.wins=3000;assert.equal(buyItem(s,'chocolate'),true);assert.equal(s.wins,0);assert.equal(globalMult(s),1.5);
+ assert.equal(buyItem(s,'chocolate'),false,'두 번 살 수 없다');s.wins=1.1e6;buyItem(s,'keycap');buyItem(s,'bigkeycap');assert.equal(globalMult(s),45);assert.equal(s.wins,0);
+});
+
+test('스킨은 사서 입고, 가진 스킨은 그냥 갈아입는다',()=>{
+ const s=fresh();assert.equal(s.skin,0);assert.equal(buySkin(s,1),false);s.wins=SKINS[1].cost;assert.equal(buySkin(s,1),true);assert.equal(s.skin,1);assert.equal(s.wins,0);
+ assert.equal(buySkin(s,0),true);assert.equal(s.skin,0);assert.equal(buySkin(s,1),true);assert.equal(s.skin,1);
+});
+
+test('1시간마다 10분 동안 트로피가 2배',()=>{
+ assert.deepEqual(eventInfo(0),{active:true,boost:2,remain:EVENT_LENGTH});assert.deepEqual(eventInfo(EVENT_LENGTH),{active:false,boost:1,remain:EVENT_EVERY-EVENT_LENGTH});
+ assert.equal(eventInfo(EVENT_EVERY*7+30).active,true);assert.equal(eventInfo(EVENT_EVERY*7-1).remain,1);
+ const s=fresh();assert.equal(winAmount(s,0,3),20);s.winBoost=2;assert.equal(winAmount(s,0,3),40);
 });

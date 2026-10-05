@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "키캡 타워 · KEYCAP TOWER",
-  description: "키캡을 밟을 때마다 스피드 +1! 러닝머신과 스탯으로 빨라져서 네 개 월드의 3D 키캡 타워를 올라가요.",
+  description: "키캡을 밟을 때마다 스피드 +1! 트로피로 아이템·스킨·트레일을 사고 50개 월드의 3D 키캡 타워를 올라가요.",
 };
 
 export default function KeycapTowerPage() {

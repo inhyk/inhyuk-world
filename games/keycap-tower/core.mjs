@@ -3,10 +3,11 @@ export const GRAVITY=32,JUMP_VY=12.5,MAX_FALL=45,HW=.4,HEIGHT=1.8,STEP=.6,FALL_L
 // 타워는 기둥을 감고 올라가는 나선 길이다. s는 길을 따라 잰 거리, lat은 바깥쪽으로 벗어난 거리.
 export const R=30,PITCH=16,TURN=2*Math.PI*R,SLOPE=PITCH/TURN,BASE=.6,LOBBY_R=52,PILLAR_R=15;
 export const AIR=2*JUMP_VY/GRAVITY;
-export const VANISH_DELAY=.8,VANISH_BACK=3,BUTTON_R=2.1,BUTTON_CD=30,GOLD_CD=25,TREAD_STEPS=3,MAX_REBIRTH=30;
+export const VANISH_DELAY=.8,VANISH_BACK=3,BUTTON_R=2.1,BUTTON_CD=30,GOLD_CD=25,TREAD_STEPS=3,MAX_REBIRTH=200,EVENT_EVERY=3600,EVENT_LENGTH=600,EVENT_BOOST=2;
 const KEYLIKE=new Set(['key','mover','blink']);
 const LETTERS='QWERTYUIOPASDFGHJKLZXCVBNM1234567890';
 
+function rng(seed){return ()=>(seed=(seed*16807)%2147483647)/2147483647;}
 export const WORLDS=[
  {name:'캔디 타워',emoji:'🍬',req:0,keyMult:1,
   levels:[0,3,8,15,25,40,60,90],
@@ -37,10 +38,31 @@ export const WORLDS=[
   treads:[{name:'별빛 러닝머신',mult:50000,cost:0},{name:'성운 러닝머신',mult:120000,cost:2e11},{name:'은하 러닝머신',mult:300000,cost:2e12}],
   theme:{sky:'#050418',fog:'#0d0a33',floor:'#14113a',keys:['#fcc419','#748ffc','#e599f7','#f8f9fa'],safe:'#2b2a5c',accent:'#63e6be',pillar:'#060518',ink:'#1a1440',dark:true}},
 ];
+// 5월드부터 50월드까지는 규칙으로 만든다. 월드가 올라갈수록 스테이지가 늘어 타워가 더 높아진다.
+const WORLD_GAP=3000;
+const MORE=[['얼음','🧊',195],['정글','🌴',130],['사막','🏜️',40],['바다','🌊',210],['구름','☁️',200],['과자','🍪',30],['로봇','🤖',220],['유령','👻',270],['무지개','🌈',320],['황금','🥇',48],
+ ['수정','🔮',285],['번개','⚡',55],['꿈','💤',250],['장난감','🧸',15],['해적','🏴‍☠️',5],['공룡','🦖',110],['닌자','🥷',240],['마법','🪄',300],['눈꽃','❄️',185],['폭풍','🌪️',225],
+ ['버섯','🍄',0],['꿀벌','🐝',50],['젤리','🍮',335],['레이저','🔦',350],['달빛','🌙',235],['태양','☀️',35],['심해','🐙',205],['화석','🦴',28],['다이아','💎',180],['픽셀','👾',140],
+ ['음악','🎵',290],['팝콘','🍿',45],['초코민트','🍫',165],['솜사탕','🍭',325],['블랙홀','🕳️',265],['시간','⏰',20],['거울','🪞',190],['용','🐉',120],['불사조','🔥',12],['천둥','🌩️',230],
+ ['오로라','🌠',160],['크리스탈','🧿',215],['혜성','☄️',25],['은하수','✨',255],['우주 끝','🚀',275],['전설의 키캡','👑',45]];
+const MIDDLE=['징검다리','흔들 다리','함정 길','깜빡 길','회전 구간','엘리베이터','추격 구간','미로','질주','절벽'];
+const KINDS=['zig:4','mover:4','lift:3','blink:5','del:4','spin','plain:3'];
+function hsl(h,s,l){h=((h%360)+360)%360;s/=100;l/=100;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)))).toString(16).padStart(2,'0');};return `#${f(0)}${f(8)}${f(4)}`;}
+MORE.forEach(([nm,emoji,h],j)=>{
+ const i=j+4,n=Math.min(12,7+Math.floor(j/6)),req=5000+j*WORLD_GAP,rnd=rng(500+i*37),dark=i%3!==0,base=5e4*11**(i-3),win=5e12*10**j;
+ WORLDS.push({name:`${nm} 타워`,emoji,req,keyMult:base,
+  levels:Array.from({length:n},(_,k)=>req+Math.round(k*2550/(n-1))),
+  names:Array.from({length:n},(_,k)=>k===0?`${nm} 입구`:k===n-1?`${nm} 왕관`:`${nm} ${MIDDLE[(k-1+j)%MIDDLE.length]}`),
+  segs:Array.from({length:n},(_,k)=>['plain:3',...Array.from({length:2+(k>n/2?1:0)+(k===n-1?1:0)},()=>KINDS[Math.floor(rnd()*KINDS.length)])]),
+  chasers:Array.from({length:n},(_,k)=>k).filter(k=>k%3===2||k===n-1),
+  wins:Array.from({length:n},(_,k)=>Math.round(win*1.2**k)),
+  treads:[{name:`${nm} 러닝머신`,mult:base,cost:0},{name:`슈퍼 ${nm} 러닝머신`,mult:base*2.5,cost:win*40},{name:`울트라 ${nm} 러닝머신`,mult:base*6,cost:win*400}],
+  theme:{sky:dark?hsl(h,50,9):hsl(h,75,84),fog:dark?hsl(h,50,16):hsl(h,75,91),floor:dark?hsl(h,30,18):hsl(h+20,70,88),keys:[hsl(h,75,58),hsl(h+35,75,66),hsl(h+180,65,62),dark?'#f1f3f5':'#495057'],safe:dark?hsl(h,35,30):hsl(h+20,80,94),accent:hsl(h+60,95,62),pillar:dark?hsl(h,45,7):hsl(h,35,32),dark}});
+});
 export const STATS={
- power:{name:'발걸음 힘',icon:'💪',max:60,cost:l=>Math.ceil(3*1.6**l),value:l=>Math.ceil(1.35**l),show:v=>`+${fmt(v)}`,desc:'키캡을 밟을 때 얻는 스피드'},
- wins:{name:'윈 배수',icon:'🏆',max:30,cost:l=>Math.ceil(25*2.4**l),value:l=>1.5**l,show:v=>`×${fmt(v)}`,desc:'노란 버튼에서 받는 윈'},
- tread:{name:'러닝머신 효율',icon:'🏃',max:40,cost:l=>Math.ceil(15*2**l),value:l=>1+.25*l,show:v=>`×${v.toFixed(2)}`,desc:'러닝머신에서 얻는 스피드'},
+ power:{name:'발걸음 힘',icon:'💪',max:400,cost:l=>Math.ceil(3*1.6**l),value:l=>Math.ceil(1.35**l),show:v=>`+${fmt(v)}`,desc:'키캡을 밟을 때 얻는 스피드'},
+ wins:{name:'트로피 배수',icon:'🏆',max:150,cost:l=>Math.ceil(25*2.4**l),value:l=>1.5**l,show:v=>`×${fmt(v)}`,desc:'노란 버튼에서 받는 트로피'},
+ tread:{name:'러닝머신 효율',icon:'🏃',max:200,cost:l=>Math.ceil(15*2**l),value:l=>1+.25*l,show:v=>`×${v.toFixed(2)}`,desc:'러닝머신에서 얻는 스피드'},
  run:{name:'달리기',icon:'👟',max:8,cost:l=>Math.ceil(10*3**l),value:l=>1+.03*l,show:v=>`×${v.toFixed(2)}`,desc:'움직이는 빠르기'},
  jump:{name:'점프력',icon:'🦘',max:8,cost:l=>Math.ceil(10*3**l),value:l=>1+.04*l,show:v=>`×${v.toFixed(2)}`,desc:'점프 높이'},
 };
@@ -51,33 +73,53 @@ export const TRAILS=[
  {name:'은하 트레일',mult:10,cost:5e8,color:'#74c0fc'},
  {name:'무한 트레일',mult:20,cost:5e10,color:'#ffd43b'},
 ];
+// 아이템 상점: 사 두면 얻는 스피드에 배수가 붙는다.
+export const ITEMS=[
+ {id:'chocolate',rarity:'일반',name:'초콜릿',mult:1.5,cost:3e3,price:'3.0K트로피'},
+ {id:'keycap',rarity:'에픽',name:'키캡',mult:3,cost:1e5,price:'100K트로피'},
+ {id:'bigkeycap',rarity:'비밀',name:'큰 키캡',mult:10,cost:1e6,price:'1.0M트로피'},
+];
+export const SKINS=[
+ {name:'기본',cost:0,hoodie:'#4263eb',pants:'#343a40',hair:'#5c3d2e',skin:'#ffd8b1'},
+ {name:'초콜릿',cost:100,hoodie:'#8d5a3b',pants:'#4a2c1a',hair:'#2b1a10',skin:'#ffd8b1'},
+ {name:'딸기 우유',cost:2e3,hoodie:'#ff8fab',pants:'#fff0f6',hair:'#f783ac',skin:'#ffe3d3'},
+ {name:'네온 게이머',cost:5e4,hoodie:'#22d3ee',pants:'#1e1b4b',hair:'#a855f7',skin:'#ffd8b1'},
+ {name:'닌자',cost:1e6,hoodie:'#212529',pants:'#212529',hair:'#c92a2a',skin:'#e9c9a6'},
+ {name:'로봇',cost:5e7,hoodie:'#adb5bd',pants:'#495057',hair:'#fa5252',skin:'#dee2e6'},
+ {name:'용암',cost:5e9,hoodie:'#ff6b35',pants:'#3a2420',hair:'#ffd43b',skin:'#ffb38a'},
+ {name:'황금 키캡',cost:5e12,hoodie:'#fcc419',pants:'#e67700',hair:'#fff3bf',skin:'#ffe8a1'},
+];
 
 // 숫자
-const UNITS=[[1e24,'자'],[1e20,'해'],[1e16,'경'],[1e12,'조'],[1e8,'억'],[1e4,'만']];
+const UNITS=[[1e68,'무량대수'],[1e64,'불가사의'],[1e60,'나유타'],[1e56,'아승기'],[1e52,'항하사'],[1e48,'극'],[1e44,'재'],[1e40,'정'],[1e36,'간'],[1e32,'구'],[1e28,'양'],[1e24,'자'],[1e20,'해'],[1e16,'경'],[1e12,'조'],[1e8,'억'],[1e4,'만']];
 export function fmt(n){
  n=Number(n)||0;if(n<1e4)return Number.isInteger(n)?n.toLocaleString('en-US'):(+n.toFixed(n<10?2:1)).toLocaleString('en-US');
  for(const [u,name] of UNITS)if(n>=u){const v=n/u;return `${v>=100?Math.floor(v).toLocaleString('en-US'):+v.toFixed(v>=10?1:2)}${name}`;}
  return String(n);
 }
-export const needSpeed=L=>L<=0?0:Math.round(5*L**1.6*1.012**L);
-export function levelOf(speed){let lo=0,hi=6000;while(lo<hi){const mid=Math.ceil((lo+hi)/2);if(needSpeed(mid)<=speed)lo=mid;else hi=mid-1;}return lo;}
+// 레벨 2000까지는 가파르게, 그 뒤로는 월드 하나(레벨 3000)에 약 11배씩 늘어난다.
+const CURVE_END=2000,curve=L=>5*L**1.6*1.012**L;
+export const needSpeed=L=>L<=0?0:Math.round(L<=CURVE_END?curve(L):curve(CURVE_END)*1.0008**(L-CURVE_END));
+export function levelOf(speed){let lo=0,hi=200000;while(lo<hi){const mid=Math.ceil((lo+hi)/2);if(needSpeed(mid)<=speed)lo=mid;else hi=mid-1;}return lo;}
 export const runSpeed=(level,run=0)=>(8+16*(1-Math.exp(-level/150)))*STATS.run.value(run);
 export const jumpVy=(jump=0)=>JUMP_VY*STATS.jump.value(jump);
 export const rebirthMult=r=>2**r;
 export const rebirthReq=r=>50*(r+1);
 export const trailMult=s=>s.trail>=0?TRAILS[s.trail].mult:1;
-export const globalMult=s=>rebirthMult(s.rebirths)*trailMult(s);
+export const itemMult=s=>ITEMS.reduce((m,it)=>s.items.includes(it.id)?m*it.mult:m,1);
+export const globalMult=s=>rebirthMult(s.rebirths)*trailMult(s)*itemMult(s);
 export const stepPower=s=>STATS.power.value(s.stats.power);
 export const keyGain=(s,o)=>stepPower(s)*WORLDS[s.world].keyMult*(o.stage+1)*globalMult(s);
 export const treadRate=(s,tr)=>TREAD_STEPS*stepPower(s)*tr.mult*STATS.tread.value(s.stats.tread)*globalMult(s);
-export const winAmount=(s,w,k)=>Math.round(WORLDS[w].wins[k]*STATS.wins.value(s.stats.wins));
+export const winAmount=(s,w,k)=>Math.round(WORLDS[w].wins[k]*STATS.wins.value(s.stats.wins)*(s.winBoost||1));
+// 1시간마다 10분 동안 트로피 2배 이벤트 (now는 초)
+export function eventInfo(now){const t=((now%EVENT_EVERY)+EVENT_EVERY)%EVENT_EVERY,active=t<EVENT_LENGTH;return {active,boost:active?EVENT_BOOST:1,remain:active?EVENT_LENGTH-t:EVENT_EVERY-t};}
 export const treadId=(w,i)=>`${w}-${i}`;
 export const ownsTread=(s,w,i)=>WORLDS[w].treads[i].cost===0||s.treads.includes(treadId(w,i));
 
 // 나선 길 위의 한 점
 export function pathPoint(sv,lat=0){const th=sv/R,ox=Math.cos(th),oz=Math.sin(th),r=R+lat;return {x:r*ox,z:r*oz,y:BASE+sv*SLOPE,ox,oz,tx:-oz,tz:ox};}
 function place(o){const p=pathPoint(o.s,o.lat||0);o.x=p.x;o.z=p.z;o.ox=p.ox;o.oz=p.oz;o.tx=p.tx;o.tz=p.tz;return o;}
-function rng(seed){return ()=>(seed=(seed*16807)%2147483647)/2147483647;}
 
 function buildWorld(w){
  const def=WORLDS[w],rnd=rng(97+w*131),objects=[],stages=[],spinners=[];let n=0,cur=2;
@@ -111,7 +153,7 @@ function buildWorld(w){
  });
  // 로비: 러닝머신 세 대와 상점·포탈·환생 자리
  def.treads.forEach((tr,i)=>add('tread',{s:(Math.PI+(i-1)*.24)*R,lat:13,w:4.5,d:8,h:.4,top:.4,index:i}));
- const zones=[['stat',-1.25],['world',-2],['rebirth',2.2]].map(([id,th])=>({id,r:3.4,...place({s:th*R,lat:14})}));
+ const zones=[['stat',-1.25],['item',-1.62],['world',-2],['rebirth',2.2]].map(([id,th])=>({id,r:3.4,...place({s:th*R,lat:14})}));
  const spawn=place({s:-.5*R,lat:11});
  const solids=objects.filter(o=>o.type!=='spinner');
  return {index:w,def,objects,solids,stages,spinners,zones,spawn,lobby:{id:'lobby',type:'lobby',top:0},byId:new Map(objects.map(o=>[o.id,o])),top:BASE+cur*SLOPE,length:cur};
@@ -138,11 +180,11 @@ export const buttonWait=(s,w,k)=>Math.max(0,(s.cool[`b${w}-${k}`]??-1e9)+BUTTON_
 
 // 상태
 export function fresh(){
- const s={version:1,world:0,checkpoint:0,speed:0,wins:0,totalWins:0,rebirths:0,stats:{power:0,wins:0,tread:0,run:0,jump:0},treads:[],trails:[],trail:-1,unlocked:0,reached:[0,0,0,0],deaths:0,sound:true,
+ const s={version:1,world:0,checkpoint:0,speed:0,wins:0,totalWins:0,rebirths:0,stats:{power:0,wins:0,tread:0,run:0,jump:0},treads:[],trails:[],trail:-1,items:[],skins:[0],skin:0,unlocked:0,reached:WORLDS.map(()=>0),deaths:0,sound:true,winBoost:1,
   x:0,y:0,z:0,vx:0,vy:0,vz:0,facing:0,grounded:true,groundId:'lobby',lastKey:null,lastGroundY:0,clock:0,vanish:{},cool:{},chaser:null};
  respawn(s);return s;
 }
-const SAVED=['version','world','checkpoint','speed','wins','totalWins','rebirths','stats','treads','trails','trail','unlocked','reached','deaths','sound'];
+const SAVED=['version','world','checkpoint','speed','wins','totalWins','rebirths','stats','treads','trails','trail','items','skins','skin','unlocked','reached','deaths','sound'];
 export function serialize(s){const o={};for(const k of SAVED)o[k]=s[k];return o;}
 export function restore(raw){
  const s=fresh();let d;try{d=typeof raw==='string'?JSON.parse(raw):raw;}catch{d=null;}
@@ -152,9 +194,11 @@ export function restore(raw){
  for(const k of Object.keys(STATS))s.stats[k]=int(d.stats?.[k],0,STATS[k].max);
  s.unlocked=int(d.unlocked,0,WORLDS.length-1);s.world=int(d.world,0,s.unlocked);
  s.reached=WORLDS.map((W,i)=>int(d.reached?.[i],0,W.levels.length));s.checkpoint=int(d.checkpoint,0,s.reached[s.world]);
- s.treads=Array.isArray(d.treads)?d.treads.filter(id=>typeof id==='string'&&/^[0-3]-[0-2]$/.test(id)):[];
+ s.treads=Array.isArray(d.treads)?d.treads.filter(id=>typeof id==='string'&&/^\d{1,2}-[0-2]$/.test(id)&&parseInt(id,10)<WORLDS.length):[];
  s.trails=Array.isArray(d.trails)?d.trails.filter(i=>Number.isInteger(i)&&i>=0&&i<TRAILS.length):[];
- s.trail=s.trails.includes(d.trail)?d.trail:-1;s.sound=d.sound!==false;
+ s.trail=s.trails.includes(d.trail)?d.trail:-1;
+ s.items=Array.isArray(d.items)?ITEMS.map(it=>it.id).filter(id=>d.items.includes(id)):[];
+ s.skins=[0,...(Array.isArray(d.skins)?d.skins.filter(i=>Number.isInteger(i)&&i>0&&i<SKINS.length):[])];s.skin=s.skins.includes(d.skin)?d.skin:0;s.sound=d.sound!==false;
  respawn(s);return s;
 }
 export function respawn(s){
@@ -170,6 +214,8 @@ export function enterWorld(s,w){if(w<0||w>s.unlocked||w===s.world)return false;s
 export function buyStat(s,key){const st=STATS[key],l=s.stats[key];if(!st||l>=st.max)return false;const c=st.cost(l);if(s.wins<c)return false;s.wins-=c;s.stats[key]=l+1;return true;}
 export function buyTread(s,w,i){const tr=WORLDS[w]?.treads[i];if(!tr||w>s.unlocked||ownsTread(s,w,i)||s.wins<tr.cost)return false;s.wins-=tr.cost;s.treads.push(treadId(w,i));return true;}
 export function buyTrail(s,i){const t=TRAILS[i];if(!t)return false;if(!s.trails.includes(i)){if(s.wins<t.cost)return false;s.wins-=t.cost;s.trails.push(i);}s.trail=i;return true;}
+export function buyItem(s,id){const it=ITEMS.find(x=>x.id===id);if(!it||s.items.includes(id)||s.wins<it.cost)return false;s.wins-=it.cost;s.items.push(id);return true;}
+export function buySkin(s,i){const k=SKINS[i];if(!k)return false;if(!s.skins.includes(i)){if(s.wins<k.cost)return false;s.wins-=k.cost;s.skins.push(i);}s.skin=i;return true;}
 export const canRebirth=s=>s.rebirths<MAX_REBIRTH&&levelOf(s.speed)>=rebirthReq(s.rebirths);
 export function rebirth(s){if(!canRebirth(s))return false;s.rebirths++;s.speed=0;toLobby(s);return true;}
 

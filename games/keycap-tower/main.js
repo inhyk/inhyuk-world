@@ -1,5 +1,5 @@
 import './style.css';
-import {WORLDS,STATS,TRAILS,MAX_REBIRTH,getWorld,restore,serialize,fresh,step,respawn,toLobby,warpStage,enterWorld,buyStat,buyTread,buyTrail,rebirth,canRebirth,rebirthReq,rebirthMult,globalMult,stepPower,treadRate,ownsTread,levelOf,needSpeed,runSpeed,onPath,pathS,buttonWait,fmt} from './core.mjs';
+import {WORLDS,STATS,TRAILS,ITEMS,SKINS,MAX_REBIRTH,eventInfo,buyItem,buySkin,itemMult,getWorld,restore,serialize,fresh,step,respawn,toLobby,warpStage,enterWorld,buyStat,buyTread,buyTrail,rebirth,canRebirth,rebirthReq,rebirthMult,globalMult,stepPower,treadRate,ownsTread,levelOf,needSpeed,runSpeed,onPath,pathS,buttonWait,fmt} from './core.mjs';
 import {createWorld} from './world.mjs';
 const $=id=>document.getElementById(id);
 const KEY='keycap-tower-v1';
@@ -9,7 +9,7 @@ let world;
 try{world=createWorld(canvas);}catch(error){$('resume-note').textContent='3D 화면을 열 수 없어요. 브라우저의 하드웨어 가속을 켜고 다시 열어 주세요.';throw error;}
 world.snapCamera(s);
 
-let playing=false,audio,saveTimer=0,toastTimer,hudTimer=0,gateTimer=0,lookIdle=9,onTread=null,treadGain=0,treadTimer=0,zone=null,lockedTread=null;
+let eventShift=0,playing=false,audio,saveTimer=0,toastTimer,hudTimer=0,gateTimer=0,lookIdle=9,onTread=null,treadGain=0,treadTimer=0,zone=null,lockedTread=null;
 function save(){try{localStorage.setItem(KEY,JSON.stringify(serialize(s)));}catch{}}
 function tone(freq,dur=.12,type='square',slide=1,vol=.06){
  if(!s.sound)return;
@@ -43,6 +43,10 @@ function hud(){
  const st=W.stages[s.checkpoint];
  $('stage-name').textContent=!onPath(s)&&s.checkpoint===0?'로비':st?`STAGE ${st.k+1} · ${st.name}`:`👑 ${W.def.name} 정상`;
  $('rebirth-button').classList.toggle('ready',canRebirth(s));
+ const ev=eventInfo(Date.now()/1000+eventShift),mm=Math.floor(ev.remain/60),ss=String(Math.floor(ev.remain%60)).padStart(2,'0');
+ $('event').textContent=ev.active?`🏆 트로피 2배 이벤트! ${mm}:${ss} 남음`:`다음 트로피 2배 이벤트까지 ${mm}:${ss}`;$('event').classList.toggle('on',ev.active);
+ if(ev.active&&s.winBoost===1){sfx.big();toast('🏆 트로피 2배 이벤트 시작! 10분 동안 트로피가 2배',3000);}
+ s.winBoost=ev.boost;
  $('sound').textContent=s.sound?'🔊':'🔇';$('sound').setAttribute('aria-pressed',String(s.sound));$('sound').setAttribute('aria-label',s.sound?'소리 끄기':'소리 켜기');
 }
 hud();
@@ -86,39 +90,50 @@ stickEl.addEventListener('pointerup',endStick);stickEl.addEventListener('pointer
 $('jump').addEventListener('pointerdown',e=>{e.preventDefault();jumpQueued=true;});
 
 // 메뉴
-const TITLES={stat:'📊 스탯',tread:'🏃 러닝머신',world:'🌍 월드',rebirth:'🔁 환생',trail:'🌈 트레일'};
+const TITLES={item:'🛒 아이템 상점',skin:'👕 스킨',stat:'📊 스탯',tread:'🏃 러닝머신',world:'🌍 월드',rebirth:'🔁 환생',trail:'🌈 트레일'};
 let tab='stat';
 const item=(icon,name,sub,button,now=false)=>`<div class="item${now?' now':''}"><div class="icon">${icon}</div><div class="info"><b>${name}</b><span>${sub}</span></div>${button}</div>`;
 const buyButton=(act,cost,label='사기')=>`<button class="buy" data-act="${act}" ${s.wins<cost?'disabled':''}>${label} · ${fmt(cost)}🏆</button>`;
 function renderMenu(){
  const lv=levelOf(s.speed);let h='';
  if(tab==='stat'){
-  h+=`<div class="summary"><div><small>레벨</small><b>${lv}</b></div><div><small>⚡ 스피드</small><b>${fmt(Math.floor(s.speed))}</b></div><div><small>🏆 윈</small><b>${fmt(s.wins)}</b></div><div><small>달리기 빠르기</small><b>${runSpeed(lv,s.stats.run).toFixed(1)}</b></div><div><small>키캡 한 번</small><b>+${fmt(stepPower(s)*WORLDS[s.world].keyMult*globalMult(s))}</b></div><div><small>전체 배수</small><b>×${fmt(globalMult(s))}</b></div></div>`;
+  h+=`<div class="summary"><div><small>레벨</small><b>${lv}</b></div><div><small>⚡ 스피드</small><b>${fmt(Math.floor(s.speed))}</b></div><div><small>🏆 트로피</small><b>${fmt(s.wins)}</b></div><div><small>달리기 빠르기</small><b>${runSpeed(lv,s.stats.run).toFixed(1)}</b></div><div><small>키캡 한 번</small><b>+${fmt(stepPower(s)*WORLDS[s.world].keyMult*globalMult(s))}</b></div><div><small>전체 배수</small><b>×${fmt(globalMult(s))}</b></div></div>`;
   for(const [k,st] of Object.entries(STATS)){const l=s.stats[k],max=l>=st.max;
    h+=item(st.icon,`${st.name} <small>Lv ${l}/${st.max}</small>`,`${st.desc} · ${st.show(st.value(l))}${max?'':` → ${st.show(st.value(l+1))}`}`,max?'<button disabled>최대</button>':buyButton(`stat:${k}`,st.cost(l),'올리기'));}
+ }else if(tab==='item'){
+  const pics={chocolate:'<i></i>'.repeat(9),keycap:'<i>A</i>',bigkeycap:[...'ABCDEFGHIJKL'].map(c=>`<i>${c}</i>`).join('')},cls={일반:'common',에픽:'epic',비밀:'secret'};
+  h+=`<p class="note">아이템을 사 두면 얻는 스피드에 배수가 붙어요. 지금 아이템 배수 ×${fmt(itemMult(s))}</p><div class="shop">`;
+  for(const it of ITEMS){const own=s.items.includes(it.id);
+   h+=`<div class="card ${cls[it.rarity]}"><div class="frame"><div class="rarity">${it.rarity}</div><div class="pic ${it.id}">${pics[it.id]}</div></div><div class="name">${it.name}</div><div class="mult">${it.mult.toFixed(1)}배</div><button class="price${own?' owned':''}" data-act="item:${it.id}" ${own||s.wins<it.cost?'disabled':''}>${own?'보유 중':it.price}</button></div>`;}
+  h+='</div>';
+ }else if(tab==='skin'){
+  h+='<p class="note">트로피로 스킨을 사서 갈아입어요. 한 번 산 스킨은 언제든 다시 입을 수 있어요.</p>';
+  SKINS.forEach((k,i)=>{const own=s.skins.includes(i),on=s.skin===i;
+   h+=item(`<span class="swatch"><i style="background:${k.hair}"></i><i style="background:${k.hoodie}"></i><i style="background:${k.pants}"></i></span>`,`${k.name} 스킨`,own?'가지고 있어요':'트로피로 살 수 있어요',on?'<button disabled>입는 중</button>':own?`<button data-act="skin:${i}">입기</button>`:buyButton(`skin:${i}`,k.cost),on);});
  }else if(tab==='tread'){
-  h+='<p class="note">러닝머신은 로비 건너편에 있어요. 위에 올라서 있기만 하면 스피드가 계속 올라요.</p>';
-  WORLDS.forEach((W,w)=>W.treads.forEach((tr,i)=>{
+  h+=`<p class="note">러닝머신은 로비 건너편에 있어요. 위에 올라서 있기만 하면 스피드가 계속 올라요. 월드마다 세 대씩 있어요.</p>`;
+  WORLDS.forEach((W,w)=>w===s.world&&W.treads.forEach((tr,i)=>{
    const own=ownsTread(s,w,i)&&w<=s.unlocked,here=w===s.world;
    h+=item('🏃',`${tr.name} ×${fmt(tr.mult)}`,`${w+1}월드 · 1초에 +${fmt(treadRate(s,tr))}`,w>s.unlocked?`<button disabled>🔒 ${w+1}월드</button>`:own?`<button disabled>${here?'보유 중':`${w+1}월드에 있어요`}</button>`:buyButton(`tread:${w}:${i}`,tr.cost),here&&own);
   }));
  }else if(tab==='world'){
   WORLDS.forEach((W,w)=>{
    const open=w<=s.unlocked,here=w===s.world;
-   h+=item(W.emoji,`${w+1}월드 · ${W.name}`,`레벨 ${W.req} 필요 · 키캡 ×${fmt(W.keyMult)} · 스테이지 ${W.levels.length}개 · ${s.reached[w]}개 클리어`,here?'<button disabled>지금 여기</button>':open?`<button class="buy" data-act="world:${w}">들어가기</button>`:`<button disabled>🔒 레벨 ${W.req}</button>`,here);
+   if(w>s.unlocked+3&&(w+1)%10)return;
+  h+=item(W.emoji,`${w+1}월드 · ${W.name}`,`레벨 ${W.req} 필요 · 키캡 ×${fmt(W.keyMult)} · 스테이지 ${W.levels.length}개 · ${s.reached[w]}개 클리어`,here?'<button disabled>지금 여기</button>':open?`<button class="buy" data-act="world:${w}">들어가기</button>`:`<button disabled>🔒 레벨 ${W.req}</button>`,here);
   });
   const W=getWorld(s.world);
-  h+=`<p class="note">${s.world+1}월드 순간이동 — 가 본 스테이지부터 다시 올라가요.</p><div class="warps"><button data-act="warp:0">🏠 로비</button>`;
+  h+=`<p class="note">월드는 모두 ${WORLDS.length}개! 지금 ${s.unlocked+1}월드까지 열었어요.</p><p class="note">${s.world+1}월드 순간이동 — 가 본 스테이지부터 다시 올라가요.</p><div class="warps"><button data-act="warp:0">🏠 로비</button>`;
   for(let cp=1;cp<=s.reached[s.world]&&cp<W.stages.length;cp++)h+=`<button data-act="warp:${cp}">STAGE ${cp+1} · ${W.stages[cp].name}</button>`;
   h+='</div><button data-act="reset" class="danger">🗑 처음부터 다시</button>';
  }else if(tab==='rebirth'){
   const max=s.rebirths>=MAX_REBIRTH,req=rebirthReq(s.rebirths);
-  h+=`<p class="big">지금 ×${fmt(rebirthMult(s.rebirths))} ${max?'(최대)':`→ 환생하면 <b>×${fmt(rebirthMult(s.rebirths+1))}</b>`}</p><p class="note">환생하면 스피드와 레벨이 0이 되지만, 얻는 스피드가 영원히 2배가 돼요. 윈·스탯·러닝머신·월드는 그대로예요.</p>`;
+  h+=`<p class="big">지금 ×${fmt(rebirthMult(s.rebirths))} ${max?'(최대)':`→ 환생하면 <b>×${fmt(rebirthMult(s.rebirths+1))}</b>`}</p><p class="note">환생하면 스피드와 레벨이 0이 되지만, 얻는 스피드가 영원히 2배가 돼요. 트로피·스탯·러닝머신·월드는 그대로예요.</p>`;
   if(!max)h+=item('🔁',`${s.rebirths+1}번째 환생`,`레벨 ${req} 필요 · 지금 레벨 ${lv}`,`<button class="buy" data-act="rebirth" ${canRebirth(s)?'':'disabled'}>환생하기</button>`);
  }else{
   h+='<p class="note">트레일을 끼우면 얻는 스피드에 배수가 붙고, 달릴 때 뒤에 빛이 따라와요.</p>';
   TRAILS.forEach((t,i)=>{const own=s.trails.includes(i),on=s.trail===i;
-   h+=item(`<span style="color:${t.color}">●</span>`,`${t.name} ×${t.mult}`,own?'가지고 있어요':'윈으로 살 수 있어요',on?'<button disabled>끼우는 중</button>':own?`<button data-act="trail:${i}">끼우기</button>`:buyButton(`trail:${i}`,t.cost),on);});
+   h+=item(`<span style="color:${t.color}">●</span>`,`${t.name} ×${t.mult}`,own?'가지고 있어요':'트로피로 살 수 있어요',on?'<button disabled>끼우는 중</button>':own?`<button data-act="trail:${i}">끼우기</button>`:buyButton(`trail:${i}`,t.cost),on);});
  }
  $('menu-title').textContent=TITLES[tab];$('menu-body').innerHTML=h;
  for(const b of $('menu').querySelectorAll('.tabs [data-tab]'))b.setAttribute('aria-selected',String(b.dataset.tab===tab));
@@ -133,20 +148,30 @@ $('menu-body').addEventListener('click',e=>{
  if(act==='stat')ok=buyStat(s,a);
  else if(act==='tread')ok=buyTread(s,+a,+c);
  else if(act==='trail')ok=buyTrail(s,+a);
- else if(act==='world'){if(enterWorld(s,+a)){sfx.big();moved(`${WORLDS[+a].emoji} ${+a+1}월드 · ${WORLDS[+a].name}`);}return;}
+ else if(act==='item')ok=buyItem(s,a);
+ else if(act==='skin')ok=buySkin(s,+a);
+ else if(act==='world'){if(enterWorld(s,+a)){sfx.big();moved(`${WORLDS[+a].emoji} ${+a+1}월드 · ${WORLDS[+a].name}`);if((+a+1)%10===0)showAd();}return;}
  else if(act==='warp'){if(warpStage(s,+a)){sfx.checkpoint();moved(+a?`STAGE ${+a+1}부터 다시 올라가요`:'🏠 로비로 돌아왔어요');}return;}
  else if(act==='rebirth'){if(rebirth(s)){sfx.big();flash('good');moved(`🔁 환생! 이제 스피드 ×${fmt(rebirthMult(s.rebirths))}`);world.burst(s.x,s.y+2,s.z,90);}return;}
  else if(act==='reset'){$('menu').close();$('reset-dialog').showModal();return;}
  if(ok){sfx.buy();save();hud();renderMenu();}else sfx.no();
 });
+// 광고: 월드 10개를 넘을 때마다(10·20·30·40·50월드에 들어갈 때) 뜨고, 10초 뒤에 X로 닫는다.
+let adTimer;
+function showAd(){
+ const b=$('ad-close');let left=10;keys.clear();b.disabled=true;b.textContent=`${left}초뒤에 X`;$('ad').showModal();clearInterval(adTimer);
+ adTimer=setInterval(()=>{left--;if(left>0)b.textContent=`${left}초뒤에 X`;else{clearInterval(adTimer);b.disabled=false;b.textContent='X';}},1000);
+}
+$('ad-close').addEventListener('click',()=>{$('ad').close();canvas.focus();});
+$('ad').addEventListener('cancel',e=>{if($('ad-close').disabled)e.preventDefault();});
 $('cancel-reset').addEventListener('click',()=>$('reset-dialog').close());
 $('confirm-reset').addEventListener('click',()=>{const sound=s.sound;s=fresh();s.sound=sound;world.snapCamera(s);save();hud();$('reset-dialog').close();toast('처음부터 다시 시작! 1월드 로비');});
 $('home').addEventListener('click',()=>{toLobby(s);world.snapCamera(s);hud();save();toast('🏠 로비로 돌아왔어요');canvas.focus();});
 $('sound').addEventListener('click',()=>{s.sound=!s.sound;hud();save();if(s.sound)tone(660,.1,'triangle');});
 // 로비 시설 앞이나 잠긴 러닝머신 위에서 뜨는 버튼
-const ZONE_TEXT={stat:'📊 스탯 상점 열기',world:'🌍 월드 포탈 열기',rebirth:'🔁 환생의 제단 열기'};
+const ZONE_TEXT={item:'🛒 아이템 상점 열기',stat:'📊 스탯 상점 열기',world:'🌍 월드 포탈 열기',rebirth:'🔁 환생의 제단 열기'};
 $('prompt').addEventListener('click',()=>{
- if(lockedTread!=null){const tr=WORLDS[s.world].treads[lockedTread];if(buyTread(s,s.world,lockedTread)){sfx.buy();toast(`${tr.name} 구매! 올라서면 스피드 ×${fmt(tr.mult)}`);save();hud();}else{sfx.no();toast(`윈이 모자라요 · ${fmt(tr.cost)}🏆 필요`);}}
+ if(lockedTread!=null){const tr=WORLDS[s.world].treads[lockedTread];if(buyTread(s,s.world,lockedTread)){sfx.buy();toast(`${tr.name} 구매! 올라서면 스피드 ×${fmt(tr.mult)}`);save();hud();}else{sfx.no();toast(`트로피가 모자라요 · ${fmt(tr.cost)}🏆 필요`);}}
  else if(zone)openMenu(zone);
  canvas.focus();
 });
@@ -175,7 +200,7 @@ function handle(ev){
    if(e.crown){sfx.big();toast(`👑 ${WORLDS[s.world].name} 정상 도착! +${fmt(e.gain)}🏆`,3000);}
    save();
   }
-  else if(e.t==='checkpoint'){sfx.checkpoint();toast(`✓ STAGE ${e.cp} 클리어! 노란 버튼을 밟아 윈을 받아요`,2200);save();}
+  else if(e.t==='checkpoint'){sfx.checkpoint();toast(`✓ STAGE ${e.cp} 클리어! 노란 버튼을 밟아 트로피를 받아요`,2200);save();}
   else if(e.t==='death'){sfx.death();flash('death');world.snapCamera(s);toast({del:'앗! DEL 키를 밟았어요',spinner:'앗! 빨간 막대에 맞았어요',chaser:'ESC 괴물에게 잡혔어요!',fall:'앗! 떨어졌어요'}[e.why],1300);}
   else if(e.t==='gate'&&gateTimer<=0){gateTimer=1.5;sfx.no();toast(`🔒 레벨 ${e.req}이 되어야 지나갈 수 있어요 · 러닝머신에서 스피드를 올려요`,2200);}
   else if(e.t==='chase'){sfx.chase();toast('ESC 괴물이 쫓아와요! 달려요!',1500);}
@@ -210,5 +235,6 @@ window.keycap_tower_debug={
  set(patch){Object.assign(s,patch);hud();},
  warp(w,cp){s.unlocked=Math.max(s.unlocked,w);s.world=w;s.reached[w]=Math.max(s.reached[w],cp);s.checkpoint=cp;respawn(s);world.snapCamera(s);hud();},
  put(x,y,z){s.x=x;s.y=y;s.z=z;s.vy=0;s.lastGroundY=y;world.snapCamera(s);},
+ ad:showAd,event(shift){eventShift=shift;hud();},
  tread(i){const o=getWorld(s.world).objects.find(o=>o.type==='tread'&&o.index===i);s.x=o.x;s.z=o.z;s.y=o.top;s.lastGroundY=o.top;s.facing=Math.atan2(o.tx,o.tz);world.snapCamera(s);},
 };
