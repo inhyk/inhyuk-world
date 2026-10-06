@@ -4,7 +4,7 @@
 //   GAME_URL=http://127.0.0.1:5173/ node games/mineral-valley/online-browser-check.mjs
 // net 서버: MV_NET 이 없으면 services/net 에서 빈 로컬 D1 로 wrangler dev 를 새로 띄우고(포트 MV_NET_PORT, 기본 8841) 끝나면 끈다.
 //   이미 띄운 로컬 서버: MV_NET=http://127.0.0.1:8787
-//   진짜 서버(https://net.seonn.workers.dev): MV_NET=prod  (코드 방은 DB에 아무것도 남기지 않는다)
+//   진짜 서버(https://net.seonn.workers.dev): MV_NET=prod  (임시 방과 요청 횟수 제한 기록이 생기므로 로컬 검사를 기본으로 한다)
 // 실제 화면 속도(60fps)로 보낸 수를 보려면 MV_CHANNEL=chrome MV_GPU=1 (기본은 소프트웨어 WebGL 이라 느리다)
 // 화면 사진: MV_SHOTS (기본 /tmp), 이름은 net-mineral-valley-*.png
 import assert from 'node:assert/strict';
