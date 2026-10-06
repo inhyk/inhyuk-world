@@ -4,7 +4,7 @@
 //   2) npm run snowflow:dev (http://127.0.0.1:5173)
 //   3) cd tools && npm ci, 그다음
 //      SNOWFLOW_URL=http://127.0.0.1:5173/ NET=http://127.0.0.1:8791 PLAYERS=3 node games/snowflow/tests/online-check.mjs
-//   NET 을 비우면 진짜 서버(wss://net.seonn.workers.dev)에 붙는다. 코드 방은 서버에 아무것도 저장하지 않는다.
+//   NET 을 비우면 진짜 서버(wss://net.seonn.workers.dev)에 붙는다. 임시 방과 요청 횟수 제한 기록이 생기므로 로컬 검사를 기본으로 한다.
 //   SHOTS=폴더 를 주면 그 폴더에 스크린숏을 남긴다.
 import { chromium } from "../../../tools/node_modules/playwright/index.mjs";
 import assert from "node:assert/strict";
@@ -23,14 +23,14 @@ const countSends = () => {
     window.__netSent = sent;
     const original = WebSocket.prototype.send;
     WebSocket.prototype.send = function (data) {
-        if (typeof data === "string" && data.startsWith('{"t":"send"')) sent.push([performance.now(), data.length]);
+        if (typeof data === "string" && data.startsWith('{"t":"send"')) sent.push([performance.now(), new TextEncoder().encode(data).length]);
         return original.call(this, data);
     };
 };
 
 const browser = await chromium.launch({
     channel: "chrome", headless: true,
-    args: ["--enable-unsafe-webgpu", "--enable-features=Vulkan", "--use-angle=metal", "--ignore-gpu-blocklist"],
+    args: ["--enable-unsafe-webgpu", "--enable-features=Vulkan", "--use-angle=metal", "--ignore-gpu-blocklist", "--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows"],
 });
 const errors = [];
 const pages = [];
@@ -158,6 +158,7 @@ try {
     })));
     log("send rate per page:", JSON.stringify(rates));
     for (const r of rates) {
+        assert.ok(r.total > 0 && Number.isFinite(r.biggest), "rate check must observe actual game packets");
         assert.ok(r.peak < 30, `peak ${r.peak}/s`);
         assert.ok(r.biggest < 16 * 1024, `biggest ${r.biggest} bytes`);
     }
