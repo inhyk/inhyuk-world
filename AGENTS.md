@@ -33,12 +33,13 @@ seonn.dev 게임 허브입니다. 게임은 `games/<이름>/`, 아이폰과 안�
 ### 시험해 보기 (내 컴퓨터에서)
 
 ```bash
-# 1) 로컬 서버 (빈 DB로 새로 띄움)
-cd services/net && npm ci
-ST=$(mktemp -d) && CI=1 npx wrangler d1 migrations apply net --local --persist-to $ST && CI=1 npx wrangler dev --port 8787 --ip 127.0.0.1 --persist-to $ST
-# 2) 게임 개발 서버를 띄우고, 게임 주소 뒤에 ?net=http://127.0.0.1:8787 을 붙이면 로컬 서버를 씁니다 (젤리 타워 net.mjs 방식)
-# 3) 서버 테스트
-cd services/net && npx vitest run
+# 각 터미널은 저장소 루트에서 시작합니다.
+# 1) 첫 번째 터미널: 로컬 서버 (빈 DB로 새로 띄움)
+npm --prefix services/net ci
+(cd services/net && ST=$(mktemp -d) && CI=1 npx wrangler d1 migrations apply net --local --persist-to "$ST" && CI=1 npx wrangler dev --port 8787 --ip 127.0.0.1 --persist-to "$ST")
+# 2) 다른 터미널: 게임 개발 서버를 띄우고, 게임 주소 뒤에 ?net=http://127.0.0.1:8787 을 붙입니다.
+# 3) 다른 터미널: 서버 테스트
+npm --prefix services/net test
 # 4) 전체 테스트
 npm test
 ```
