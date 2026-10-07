@@ -16,6 +16,16 @@ export const GAME = 'jelly-tower';
 // 서버에 올리는 기록. 친구 코드 기록(progress.social: 우체통 열쇠, 친구 대화)은 이 기기에만 둔다.
 // (친구 30명 대화를 끝까지 채우면 2MB 가 넘어 서버 한도 32KB 에 들어가지도 않는다. save-size.fixture.mjs)
 export function cloudPayload(progress) { return { ...sanitize(progress), social: emptySocial() }; }
+// 두 기록의 내용이 같은가 (칸 순서가 달라도, 옛 버전이 올려서 새 칸이 빠져 있어도). 같으면 고를 것이 없다.
+function stable(v) {
+  if (Array.isArray(v)) return `[${v.map(stable).join(',')}]`;
+  if (v && typeof v === 'object') return `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${stable(v[k])}`).join(',')}}`;
+  return JSON.stringify(v) ?? 'null';
+}
+export function sameSave(a, b) {
+  if (!a || !b) return false;
+  try { return stable(cloudPayload(a)) === stable(cloudPayload(b)); } catch { return false; }
+}
 export const CACHE_KEY = 'jelly-cloud-v1';
 const MAX_CONFLICT_ROUNDS = 3;
 
@@ -187,6 +197,9 @@ export class CloudSave {
   // strict: 옮기기 중이면 끝내 못 쓴 경우 던진다 (평소 자동 저장은 pending 으로 두고 다음 flush 에 다시 한다).
   async resolve(server, round = 0, options = {}, strict = false) {
     // 서버에 저장이 없으면 고를 것 없이 이 기기 것을 쓴다.
+    // 서버 기록이 이 기기 기록과 똑같으면 고를 것이 없다. 창을 닫으면서 올린 저장이 서버에는 갔는데
+    // 답을 못 받은 경우가 이렇다 (번호만 어긋남). 묻지 않고 서버 번호에 맞춘다.
+    if (server.data && sameSave(this.data, server.data)) { this.adopt(server); this.setState('synced'); return; }
     let choice = 'local';
     if (server.data) {
       this.setState('conflict');

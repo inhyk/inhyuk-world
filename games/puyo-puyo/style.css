@@ -564,3 +564,95 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
   .rank-head, .rank-row { grid-template-columns: 40px minmax(0, 1fr) 54px 96px; gap: 6px; padding: 8px 6px; }
   .rank-row { font-size: 15px; }
 }
+
+/* ---------- 「뿌요뿌요 (업그레이드)」 기획서: 펫, 2배 부스트, 배우기, 맵 투표, 친구 선물 ---------- */
+.menu-btn.pets { background: linear-gradient(135deg, #fff3c9, #ffdcec); }
+.menu-btn.boost { background: linear-gradient(135deg, #fff6a8, #ffd9b0); }
+.bonus-chip { display: block; margin: 0 auto 8px; padding: 8px 16px; border: 2px solid #fff; border-radius: 999px; background: linear-gradient(110deg, #fff6a8, #ffdcec); font-size: 15px; line-height: 1.4; }
+.time-rewards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+
+/* 맵 고르기 (AI 대전, 온라인 투표): 2인 플레이보다 작은 카드 */
+.map-grid.compact { gap: 8px; }
+.map-grid.compact .map-card { position: relative; padding: 10px 6px; gap: 3px; }
+.map-grid.compact .map-card span { font-size: 26px; }
+.map-grid.compact .map-card b { font-size: 16px; }
+.map-grid.compact .map-card small { font-size: 11px; line-height: 1.4; }
+.vote-box { margin: 12px 0 4px; }
+.vote-box h3 { font-size: 20px; }
+.vote-box .event-banner { margin: 10px auto 0; font-size: 14px; }
+.map-card .vote-tags { position: absolute; top: -9px; right: -4px; display: flex; gap: 3px; font-size: 11px; }
+.vote-tag { padding: 1px 8px; border-radius: 10px; background: #7851c9; color: #fff; font-style: normal; font-size: 11px; line-height: 1.6; }
+.vote-tag.you { background: #ff7a2e; }
+
+/* 펫 화면: 기획서 그림처럼 큰 네모 안에 왼쪽 위 "뒤로", 가운데 "알", "펫 뽑기 1000원", 펫 다섯 칸 */
+.pet-board { background: rgba(255, 255, 255, .94); border: 4px solid #5b3bb3; border-radius: 22px; padding: 14px 16px 14px; }
+.pet-head { margin-bottom: 0; justify-content: space-between; }
+.pet-head .back.pet-back { border: 3px solid #5b3bb3; border-radius: 999px; padding: 6px 20px; font-size: 18px; }
+.egg-wrap { position: relative; width: 150px; margin: -36px auto 0; }
+.egg-wrap canvas { display: block; width: 150px; height: 160px; }
+.egg-label { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-size: 28px; color: #8a5a2b; text-shadow: 0 1px 0 #fff, 0 0 6px #fff; pointer-events: none; }
+.pet-draw { display: block; margin: 2px auto 0; width: min(320px, 100%); font-size: 22px; border: 3px solid #5b3bb3; border-radius: 12px; }
+.pet-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.pet-card { display: grid; grid-template-columns: 70px 1fr; gap: 0 10px; align-items: center; padding: 8px 12px; border: 3px solid #5b3bb3; border-radius: 12px; background: #fffdf5; text-align: left; }
+.pet-card.wide { grid-column: 1 / -1; }
+.pet-card canvas { width: 70px; height: 70px; grid-row: span 2; }
+.pet-card .l1 { font-size: 21px; align-self: end; }
+.pet-card .l2 { font-size: 21px; color: #5b3bb3; align-self: start; }
+.pet-card .own { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 4px; font-family: var(--body-font); font-size: 12px; color: var(--soft); min-height: 34px; }
+.pet-card .own button { padding: 6px 12px; font-size: 13px; font-family: 'Jua', var(--body-font); }
+.pet-card.equipped { background: linear-gradient(135deg, #dcffe4, #fffdf5); border-color: #1f9d50; }
+.pet-result { text-align: center; align-items: center; }
+.pet-result canvas { width: 160px; height: 160px; }
+.pet-result h2 { font-size: 26px; }
+@media (max-width: 480px) {
+  .pet-board { padding: 10px; }
+  .pet-cards { gap: 8px; }
+  .pet-card { grid-template-columns: 44px 1fr; padding: 6px 8px; gap: 0 6px; }
+  .pet-card canvas { width: 44px; height: 44px; }
+  .pet-card .l1, .pet-card .l2 { font-size: 14.5px; white-space: nowrap; }
+  .pet-card .own { flex-direction: column; align-items: stretch; text-align: center; }
+  .egg-wrap { margin-top: -30px; width: 124px; }
+  .egg-wrap canvas { width: 124px; height: 132px; }
+}
+
+/* 2배 부스트와 지금 내 배수 */
+.boost-card, .bonus-card { text-align: center; margin-bottom: 14px; }
+.boost-icon { font-size: 54px; line-height: 1.1; }
+.boost-card.on { box-shadow: 0 0 0 4px #ffd23f, 0 16px 50px rgba(255, 170, 40, .35); }
+.boost-card.on .boost-icon { animation: boostPulse 1s ease-in-out infinite; }
+@keyframes boostPulse { 50% { transform: scale(1.18); } }
+.boost-card h3 { font-size: 26px; }
+.bonus-card h3 { font-size: 22px; }
+.bonus-rows { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0; }
+.bonus-rows div { background: #f7f2ff; border-radius: 16px; padding: 10px 6px; }
+.bonus-rows small { display: block; font: 12px/1.5 var(--body-font); color: var(--soft); }
+.bonus-rows b { display: block; font-size: 26px; font-weight: 400; color: #5b3bb3; }
+.bonus-line { margin-top: 8px; padding: 8px 12px; border-radius: 14px; background: linear-gradient(110deg, #e8f7ff, #f1e6ff); border: 2px solid #b9a6ff; font-size: 15px; line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .boost-card.on .boost-icon { animation: none; } }
+
+/* 뿌요뿌요 배우기: 초급 → 중급 → 상급 → 최상급 */
+.school-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 22px; }
+.grade { position: relative; display: grid; grid-template-columns: 60px 1fr auto; gap: 12px; align-items: center; background: rgba(255, 255, 255, .93); border: 3px solid #fff; border-radius: 20px; padding: 12px 14px; }
+.grade + .grade::before { content: '▼'; position: absolute; top: -21px; left: 50%; transform: translateX(-50%); color: #5b3bb3; font-size: 15px; }
+.grade .em { font-size: 40px; text-align: center; }
+.grade h3 { font-size: 22px; }
+.grade p { margin: 2px 0 0; font: 12px/1.6 var(--body-font); color: var(--soft); }
+.grade .state { font-family: 'Jua', var(--body-font); font-size: 13px; color: var(--ink); }
+.grade.open { border-color: #ffb13b; box-shadow: 0 0 0 3px rgba(255, 177, 59, .35), 0 8px 24px rgba(255, 150, 40, .25); }
+.grade.done { background: linear-gradient(90deg, #e7fff0, #fff); }
+.grade.locked { opacity: .6; filter: grayscale(.6); }
+@media (max-width: 480px) { .grade { grid-template-columns: 44px 1fr auto; gap: 8px; padding: 10px; } .grade .em { font-size: 30px; } .grade h3 { font-size: 19px; } }
+
+/* 친구에게 선물하기 */
+.gift-card { width: min(540px, 100%); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; gap: 10px; }
+.gift-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gift-head h2 { font-size: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gift-card .lead { margin: 0; }
+.gift-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; overflow-y: auto; min-height: 110px; padding: 3px; }
+.gift-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border: 2px solid var(--line); }
+.gift-item .ico { font-size: 28px; line-height: 1.1; }
+.gift-item b { font-weight: 400; font-size: 16px; }
+.gift-item small { font: 12px/1.4 var(--body-font); color: #b07800; }
+.gift-btn { color: #b0308a; }
+.chat-lines .line.gift { background: linear-gradient(110deg, #fff3b8, #ffdcec); border: 2px solid #ffc94a; }
+.chat-lines .line.gift span { font-family: 'Jua', var(--body-font); font-size: 16px; }

@@ -112,21 +112,21 @@ test('매일 선물·시간 선물·스핀은 교환권을 주고 추가 스핀�
   claimDaily(p, normal); assert.equal(p.tickets.effect, 1);
   addPlayTime(p, 1800, normal);
   claimTime(p, '5m', normal); claimTime(p, '15m', normal); claimTime(p, '30m', normal);
-  assert.deepEqual(p.tickets, { skin: 1, effect: 2, spin: 1 });
+  assert.deepEqual(p.tickets, { skin: 1, effect: 2, spin: 1, pet: 0, boost: 0 });
   spin(p, normal, () => .4); assert.equal(p.tickets.skin, 2); assert.equal(p.tickets.spin, 1); // 무료 우선
   assert.equal(rewardView(p, normal).spinClaimed, false);
   spin(p, normal, () => .6); assert.equal(p.tickets.effect, 3); assert.equal(p.tickets.spin, 0);
   assert.equal(rewardView(p, normal).spinClaimed, true);
   const before = structuredClone(p); assert.equal(spin(p, normal), null); assert.equal(claimTime(p, '30m', normal), null); assert.deepEqual(p, before);
   grantReward(p, { tickets: { skin: 1, effect: 2, spin: 3 } }, new Date('2027-05-12T12:00:00+09:00'));
-  assert.deepEqual(p.tickets, { skin: 3, effect: 5, spin: 3 }); // 생일 배율은 교환권에 적용하지 않음
+  assert.deepEqual(p.tickets, { skin: 3, effect: 5, spin: 3, pet: 0, boost: 0 }); // 생일 배율은 교환권에 적용하지 않음
 });
 
 test('옛 기록을 복원하고 교환권·새 보스·안내 횟수·맵 선택도 기록 코드에 보존', async () => {
-  assert.deepEqual(sanitize({}).tickets, { skin: 0, effect: 0, spin: 0 });
-  assert.deepEqual(sanitize({ tickets: { skin: -2, effect: 'oops', spin: Infinity } }).tickets, { skin: 0, effect: 0, spin: 0 });
+  assert.deepEqual(sanitize({}).tickets, { skin: 0, effect: 0, spin: 0, pet: 0, boost: 0 });
+  assert.deepEqual(sanitize({ tickets: { skin: -2, effect: 'oops', spin: Infinity, pet: -1, boost: 'x' } }).tickets, { skin: 0, effect: 0, spin: 0, pet: 0, boost: 0 });
   const { account } = await createAccount(emptyStore(), '우주왕', 'abcd');
-  account.progress.tickets = { skin: 2, effect: 3, spin: 4 }; account.progress.tower.nova = true;
+  account.progress.tickets = { skin: 2, effect: 3, spin: 4, pet: 5, boost: 6 }; account.progress.tower.nova = true;
   account.progress.promo.lastGame = 10; account.progress.settings.localMap = 'six';
   const imported = importCode(emptyStore(), exportCode(account)).account.progress;
   assert.deepEqual(imported.tickets, account.progress.tickets); assert.equal(imported.tower.nova, true);

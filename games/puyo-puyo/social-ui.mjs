@@ -4,6 +4,8 @@
 // 상대 이름은 서버가 준 닉네임만 보여 주고, 사람이 쓴 글은 모두 textContent 로 넣는다.
 import { NET_GAME } from './net.mjs';
 import { QUICK, STICKERS, EMOJIS, validSticker, bigEmoji } from './chat.mjs';
+import { GIFT_COINS, giftable, giftBody, giftCost, giftText, parseGift, looksLikeGift } from './gifts.mjs';
+import { SKINS, EFFECTS } from './shop.mjs';
 
 // 1:1 대화의 뿌요 이모티콘: 서버는 글만 받으므로 [[st:번호]] 로 보내고, 받는 쪽이 그림으로 바꾼다
 export const stickerBody = n => `[[st:${n}]]`;
@@ -34,11 +36,14 @@ function button(label, cls, onclick) {
 // deps: $, toast, sound, show(name), screen() → 지금 화면, online, social() → Social | null, user() → { id, nickname } | null,
 //       P() → 내 기록, leaveOnline() → 온라인 판/방을 접는다, stopGame() → 다른 판을 하고 있으면 접는다,
 //       chatOn() → 설정에서 채팅을 켰는지, stickerImg(n) → 뿌요 이모티콘 <img> 의 src,
-//       watch(entry) → 그 대전을 관전한다 (entry: 관전 목록의 한 줄)
+//       watch(entry) → 그 대전을 관전한다 (entry: 관전 목록의 한 줄),
+//       friendsChanged(n) → 서버에서 받아 온 친구 수 (친구 배수),
+//       gifts: { pay(gift) → 값을 치렀나, refund(gift), sent(gift, nickname), receive(gift, { from, nickname, id }) } 친구 선물 (gifts.mjs)
 export function createSocialUI(deps) {
   const { $, toast, sound, online } = deps;
   let friends = [], incoming = [], outgoing = [], unread = new Map(), dmWith = null, dmLines = [], invite = null, inviteTimer = null;
   let live = new Map(); // 친구 번호 → 지금 하는 대전 (관전하기)
+  let giftTo = null, giftTab = 'coins', giftBusy = false; // 선물하기 창: 받을 친구, 고른 종류, 보내는 중
 
   // ---------- 알림 개수 (메뉴, 온라인 화면의 친구 단추) ----------
   function counts() {
@@ -53,9 +58,86 @@ export function createSocialUI(deps) {
       const [reqs, list, mine] = await Promise.all([s.requests(), s.unread(), s.friends()]);
       incoming = reqs.incoming; outgoing = reqs.outgoing; friends = mine;
       unread = new Map(list.map(u => [u.id, u.count]));
+      deps.friendsChanged?.(friends.length);
+      collectGifts(list); // 꺼 둔 동안 온 선물을 받는다
     } catch { /* 다음에 다시 */ }
     counts();
   }
+
+  // ---------- 친구 선물 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 7번): 코인, 스킨, 터짐 효과 ----------
+  // 선물은 1:1 대화에 정해진 모양의 글로 오간다 (gifts.mjs). 받은 글이 나에게 온 선물이면 기록에 넣는다.
+  // 같은 메시지를 여러 번 봐도 메시지 번호로 한 번만 받는다.
+  function takeGift(message, from) {
+    if (!message || !from?.id || message.from !== from.id || message.to !== deps.user()?.id) return false;
+    const gift = parseGift(message.body);
+    if (!gift) return false;
+    deps.gifts?.receive(gift, { from: from.id, nickname: from.nickname, id: message.id });
+    return true;
+  }
+  // 안 읽은 메시지가 있는 친구들의 대화를 훑어서 선물을 받는다
+  async function collectGifts(list) {
+    const s = deps.social();
+    for (const u of list.slice(0, 20)) {
+      if (!s || s !== deps.social()) return;
+      try { for (const m of (await s.history(u.id)).messages) takeGift(m, u); } catch { /* 다음에 다시 */ }
+    }
+  }
+  function giftNote(text) { $('gift-note').textContent = text; }
+  function openGift(friend) {
+    if (!deps.social() || !friend?.id) return;
+    giftTo = { id: friend.id, nickname: friend.nickname };
+    giftTab = 'coins';
+    $('gift-pop').hidden = false;
+    giftNote('');
+    paintGift();
+  }
+  function closeGift() { giftTo = null; $('gift-pop').hidden = true; }
+  function paintGift() {
+    if (!giftTo) return;
+    const coins = deps.P().coins;
+    $('gift-title').textContent = `🎁 ${giftTo.nickname}에게 선물하기`;
+    $('gift-coins').textContent = fmt(coins);
+    $('gift-tabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === giftTab));
+    const gifts = giftTab === 'coins' ? GIFT_COINS.map(amount => ({ kind: 'coins', amount }))
+      : (giftTab === 'skin' ? SKINS : EFFECTS).filter(item => giftable(giftTab, item.id)).map(item => ({ kind: giftTab, id: item.id, name: item.name }));
+    $('gift-list').replaceChildren(...gifts.map(gift => {
+      const cost = giftCost(gift);
+      const b = button('', 'gift-item', () => { sound.sfx('click'); sendGift(gift); });
+      b.disabled = giftBusy || coins < cost;
+      b.dataset.gift = gift.kind === 'coins' ? `coins-${gift.amount}` : `${gift.kind}-${gift.id}`;
+      b.append(el('span', 'ico', gift.kind === 'coins' ? '🪙' : gift.kind === 'skin' ? '🟢' : '✨'),
+        el('b', '', gift.kind === 'coins' ? `코인 ${fmt(gift.amount)}개` : gift.name), el('small', '', `내 코인 🪙 ${fmt(cost)}`));
+      return b;
+    }));
+  }
+  async function sendGift(gift) {
+    const s = deps.social(), to = giftTo;
+    if (!s || !to || giftBusy) return;
+    const a = await ask({ title: '🎁 선물할까?', text: `${to.nickname}에게 ${giftText(gift)}을(를) 선물할까? 내 코인 🪙 ${fmt(giftCost(gift))}개가 들어. 보낸 선물은 되돌릴 수 없어.`, ok: '선물하기' });
+    if (!a.ok || giftTo !== to) return;
+    if (!deps.gifts?.pay(gift)) { giftNote('코인이 모자라서 선물하지 못했어.'); paintGift(); return; }
+    giftBusy = true; paintGift();
+    try {
+      const message = await s.sendDm(to.id, giftBody(gift));
+      if (!parseGift(message?.body)) throw new Error('선물을 보내지 못했어. 다시 해 볼래?');
+      deps.gifts.sent(gift, to.nickname);
+      giftNote(`✔ ${to.nickname}에게 ${giftText(gift)}을(를) 보냈어!`);
+      if (deps.screen() === 'dm' && dmWith?.id === to.id) { dmLines.push(message); paintDm(); }
+    } catch (error) {
+      deps.gifts.refund(gift); // 보내지 못했으면 코인을 돌려준다
+      giftNote(error.message || '선물을 보내지 못했어. 코인은 그대로야.');
+      toast(error.message || '선물을 보내지 못했어.');
+    }
+    giftBusy = false;
+    paintGift();
+  }
+  $('gift-close').onclick = () => { sound.sfx('click'); closeGift(); };
+  $('gift-tabs').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    giftTab = b.dataset.v; giftNote(''); paintGift();
+  });
+  $('dm-gift').onclick = () => { sound.sfx('click'); if (dmWith) openGift(dmWith); };
 
   // ---------- 묻는 창 (차단, 신고) ----------
   function ask({ title, text, ok = '확인', reason = false }) {
@@ -177,7 +259,8 @@ export function createSocialUI(deps) {
     const talk = button('💬 대화', 'ghost', () => { sound.sfx('click'); openDm(f); });
     const n = unread.get(f.id);
     if (n) talk.append(el('i', 'badge', String(n)));
-    row.append(inv, talk);
+    const gift = button('🎁 선물', 'ghost gift-btn', () => { sound.sfx('click'); openGift(f); });
+    row.append(inv, talk, gift);
     // 친구가 지금 온라인 대전 중이면 보러 갈 수 있다 (인혁이 기획서 4번)
     if (game) row.append(button('👀 관전', 'ghost watch-btn', () => deps.watch(game)));
     return row;
@@ -221,6 +304,7 @@ export function createSocialUI(deps) {
       const [list, reqs, un, matches] = await Promise.all([s.friends(), s.requests(), s.unread(), s.matches(NET_GAME).catch(() => [])]);
       friends = list; incoming = reqs.incoming; outgoing = reqs.outgoing;
       unread = new Map(un.map(u => [u.id, u.count]));
+      deps.friendsChanged?.(friends.length);
       live = new Map();
       for (const m of matches) for (const p of m.players) live.set(p.id, m);
     } catch (error) { toast(error.message); }
@@ -262,10 +346,11 @@ export function createSocialUI(deps) {
   }
   function dmRow(m) {
     const mine = m.from === deps.user()?.id;
-    const sticker = bodySticker(m.body);
-    const row = el('div', `line ${mine ? 'me' : 'them'}${sticker !== null ? ' sticker' : bigEmoji(m.body) ? ' emoji-big' : ''}`);
+    const sticker = bodySticker(m.body), gift = parseGift(m.body);
+    const row = el('div', `line ${mine ? 'me' : 'them'}${gift ? ' gift' : sticker !== null ? ' sticker' : bigEmoji(m.body) ? ' emoji-big' : ''}`);
     let body;
-    if (sticker !== null) {
+    if (gift) body = el('span', '', `🎁 ${giftText(gift)} 선물${mine ? '을 보냈어!' : '을 받았어!'}`);
+    else if (sticker !== null) {
       body = el('img', 'dm-sticker');
       body.src = deps.stickerImg(sticker);
       body.alt = `뿌요 이모티콘 ${STICKERS[sticker].text}`;
@@ -289,6 +374,7 @@ export function createSocialUI(deps) {
     try {
       const { messages } = await s.history(dmWith.id);
       dmLines = messages;
+      for (const m of messages) takeGift(m, dmWith);
       paintDm();
       if (unread.get(dmWith.id)) { await s.markRead(dmWith.id); unread.delete(dmWith.id); counts(); }
     } catch (error) { toast(error.message); }
@@ -297,6 +383,7 @@ export function createSocialUI(deps) {
   async function sendDm(body, { clear = false } = {}) {
     const s = deps.social();
     if (!s || !dmWith || !body || !deps.chatOn()) return;
+    if (looksLikeGift(body)) { toast('선물은 🎁 선물하기 단추로 보내 줘.'); return; }
     try {
       const message = await s.sendDm(dmWith.id, body);
       if (clear) $('dm-input').value = '';
@@ -420,10 +507,12 @@ export function createSocialUI(deps) {
       toast(`🤝 ${friend.nickname}와 친구가 됐어!`, true);
       outgoing = outgoing.filter(r => r.id !== friend.id);
       if (!friends.some(f => f.id === friend.id)) friends.push(friend);
+      deps.friendsChanged?.(friends.length);
       if (deps.screen() === 'friends') renderFriends();
     },
-    friendRemoved(id) { friends = friends.filter(f => f.id !== id); if (deps.screen() === 'friends') paintFriends(); },
+    friendRemoved(id) { friends = friends.filter(f => f.id !== id); deps.friendsChanged?.(friends.length); if (deps.screen() === 'friends') paintFriends(); },
     dm({ message, from }) {
+      const gift = takeGift(message, from); // 선물이면 바로 받는다 (알림은 받는 쪽에서 띄운다)
       if (deps.screen() === 'dm' && dmWith?.id === from.id) {
         dmLines.push(message); paintDm();
         deps.social()?.markRead(from.id).catch(() => {});
@@ -431,7 +520,7 @@ export function createSocialUI(deps) {
       }
       unread.set(from.id, (unread.get(from.id) ?? 0) + 1);
       counts();
-      if (deps.chatOn()) toast(`💬 ${from.nickname}이(가) 말을 걸었어. 친구 화면에서 볼 수 있어.`);
+      if (deps.chatOn() && !gift) toast(`💬 ${from.nickname}이(가) 말을 걸었어. 친구 화면에서 볼 수 있어.`);
       if (deps.screen() === 'friends') paintFriends();
     },
     invite: showInvite,
@@ -451,7 +540,7 @@ export function createSocialUI(deps) {
       if (name === 'dm') renderDm();
     },
     onlineChanged() { if (deps.screen() === 'online') renderOnline(); },
-    reset() { friends = []; incoming = []; outgoing = []; unread.clear(); live = new Map(); dmWith = null; hideInvite(); counts(); },
+    reset() { friends = []; incoming = []; outgoing = []; unread.clear(); live = new Map(); dmWith = null; hideInvite(); closeGift(); counts(); },
     get friends() { return friends.slice(); },
   };
 }

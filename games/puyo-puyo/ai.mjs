@@ -19,6 +19,8 @@ export const AI_LEVELS = [
 ];
 
 // ---------- 빠른 필드 계산 ----------
+// 같은 색 몇 개가 모여야 터지나 (보통 4개, 쫀득 연구소 맵은 6개). think() 가 판 규칙에 맞춰 정한다.
+let NEED = 4;
 const visit = new Uint32Array(N);
 let stamp = 1;
 const stack = new Int16Array(N), group = new Int16Array(N), clear = new Int16Array(N);
@@ -70,7 +72,7 @@ function runChain(cells, out) {
         if (j >= W && visit[j - W] !== stamp && cells[j - W] === c) { visit[j - W] = stamp; stack[top++] = j - W; }
         if (j + W < VIS && visit[j + W] !== stamp && cells[j + W] === c) { visit[j + W] = stamp; stack[top++] = j + W; }
       }
-      if (n >= 4) {
+      if (n >= NEED) {
         for (let k = 0; k < n; k++) clear[cleared++] = group[k];
         puyos += n;
         colors |= 1 << c;
@@ -162,7 +164,7 @@ export function potential(cells, h, palette) {
         if (y + need > VISIBLE) break;
         potBuf.set(cells);
         for (let d = 0; d < need; d++) potBuf[i + d * W] = k;
-        if (groupSize(potBuf, i) < 4) continue;
+        if (groupSize(potBuf, i) < NEED) continue;
         runChain(potBuf, chainOut);
         const chain = chainOut[0];
         if (chain > bestChain || (chain === bestChain && (need < bestNeed || (need === bestNeed && chainOut[1] > bestScore)))) {
@@ -236,7 +238,7 @@ function apply(src, h, mv, a, c, dst, dh) {
   dst.set(src);
   const n = place(dst, h, mv.x, mv.rot, a, c, placedBuf);
   let fired = false;
-  for (let k = 0; k < n; k++) if (groupSize(dst, placedBuf[k]) >= 4) { fired = true; break; }
+  for (let k = 0; k < n; k++) if (groupSize(dst, placedBuf[k]) >= NEED) { fired = true; break; }
   let chain = 0, score = 0;
   if (fired) { runChain(dst, chainOut); chain = chainOut[0]; score = chainOut[1]; }
   heightsOf(dst, dh);
@@ -250,8 +252,12 @@ export function killAmount(oppHeights) {
   return Math.max(12, Math.min(90, need));
 }
 
-// state: { cells, pairs:[[a,c],[a,c],[a,c]], palette, incoming, target, oppHeights, oppBusy }
+// state: { cells, pairs:[[a,c],[a,c],[a,c]], palette, incoming, target, oppHeights, oppBusy, minGroup }
 export function think(state, cfg, random = Math.random) {
+  NEED = Number.isInteger(state.minGroup) && state.minGroup >= 2 ? state.minGroup : 4;
+  try { return plan(state, cfg, random); } finally { NEED = 4; }
+}
+function plan(state, cfg, random) {
   const { cells, pairs, palette } = state;
   const target = state.target || 70;
   const h0 = hs[0];
@@ -357,7 +363,7 @@ export class AIController {
     if (p !== this.pieceRef) {
       this.pieceRef = p;
       const state = {
-        cells: player.cells, pairs: [[p.a, p.c], ...player.next], palette: player.seq.palette, incoming: player.incoming,
+        cells: player.cells, pairs: [[p.a, p.c], ...player.next], palette: player.seq.palette, incoming: player.incoming, minGroup: player.minGroup,
         target: view?.target, oppHeights: view?.oppHeights ? Array.from(view.oppHeights) : null, oppBusy: view?.oppBusy,
       };
       this.wait = Math.round(this.cfg.think * this.slow * (0.8 + this.random() * 0.4));

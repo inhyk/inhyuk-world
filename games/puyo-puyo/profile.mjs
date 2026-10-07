@@ -3,9 +3,21 @@
 // 다른 기기로 옮기고 싶으면 "기록 코드"를 복사해서 붙여 넣는다.
 
 import { emptySocial, sanitizeSocial } from './chat.mjs';
+import { emptyPets, sanitizePets } from './pets.mjs';
+import { MAPS } from './maps.mjs';
 
 export const STORE_KEY = 'puyo-tower-v1';
 export const NAME_MAX = 10, PASS_MIN = 4, PASS_MAX = 16, LEVEL_MAX = 99;
+// 선물 주머니에 담기는 것: 스킨·효과 교환권, 추가 스핀, 펫 뽑기권, 2배 부스트
+export const TICKET_KINDS = ['skin', 'effect', 'spin', 'pet', 'boost'];
+// 시간 선물 이름 (rewards.mjs 의 TIME_REWARDS 와 같아야 한다)
+export const TIME_IDS = ['5m', '10m', '15m', '20m', '30m', '45m', '60m'];
+// 뿌요뿌요 배우기의 등급 이름 (tutorial.mjs 의 GRADES 와 같아야 한다). 초급은 tutorial 칸에 적는다.
+export const SCHOOL_IDS = ['middle', 'high', 'master'];
+// 맵을 고르는 설정 칸: 2인 플레이, AI 대전, 혼자 하기, 온라인 대전(내 표)
+export const MAP_SETTINGS = ['localMap', 'vsMap', 'soloMap', 'onlineMap'];
+export const emptyGifts = () => ({ seen: {}, day: '', dayCoins: 0, sent: 0, got: 0 });
+export const GIFT_SEEN_MAX = 100; // 선물 받은 번호를 적어 두는 친구 수
 
 export function newProgress() {
   return {
@@ -14,9 +26,14 @@ export function newProgress() {
     owned: { skin: ['classic'], effect: ['sparkle'] },
     equip: { skin: 'classic', effect: 'sparkle' },
     tower: { best: 0, cleared: false, comet: false, nova: false, losses: {}, endings: 0, cometEndings: 0 },
-    tickets: { skin: 0, effect: 0, spin: 0 },
+    tickets: { skin: 0, effect: 0, spin: 0, pet: 0, boost: 0 },
     promo: { lastGame: 0 },
-    tutorial: false, // 연습하기를 끝냈는지 (처음 끝내면 선물)
+    tutorial: false, // 연습하기(뿌요뿌요 배우기 초급)를 끝냈는지 (처음 끝내면 선물)
+    school: [], // 뿌요뿌요 배우기에서 끝낸 등급: 'middle'(중급), 'high'(상급), 'master'(최상급)
+    pets: emptyPets(), // 가진 펫과 데리고 다니는 펫 (pets.mjs)
+    boost: { until: 0 }, // 2배 부스트가 끝나는 때 (bonus.mjs)
+    friendCount: 0, // 마지막으로 본 온라인 계정 친구 수 (친구 배수)
+    gifts: emptyGifts(), // 친구 선물: 친구마다 어디까지 받았는지, 오늘 받은 코인
     social: emptySocial(), // 내 친구 코드, 친구 목록, 차단, 친구마다 최근 대화
     missions: {},
     daily: null,
@@ -25,7 +42,7 @@ export function newProgress() {
       games: 0, wins: 0, losses: 0, maxChain: 0, maxScore: 0, popped: 0, allClears: 0, offsets: 0,
       garbageSent: 0, onlineGames: 0, onlineWins: 0, localGames: 0, endlessBest: 0, playSeconds: 0,
     },
-    settings: { ghost: true, shake: true, localMap: 'garden', chat: true },
+    settings: { ghost: true, shake: true, localMap: 'garden', vsMap: 'garden', soloMap: 'garden', onlineMap: 'garden', chat: true },
   };
 }
 
@@ -47,12 +64,19 @@ export function sanitize(p) {
   };
   out.tower = { ...base.tower, ...(out.tower || {}) };
   out.tower.best = clampInt(out.tower.best, 0, 6);
-  out.tickets = Object.fromEntries(['skin', 'effect', 'spin'].map(k => [k, clampInt(out.tickets?.[k], 0, 1e6)]));
+  out.tickets = Object.fromEntries(TICKET_KINDS.map(k => [k, clampInt(out.tickets?.[k], 0, 1e6)]));
   out.promo = { lastGame: clampInt(out.promo?.lastGame, 0, 1e9) };
   out.tutorial = out.tutorial === true;
+  out.school = uniq(arr(out.school).filter(id => SCHOOL_IDS.includes(id)));
+  out.pets = sanitizePets(out.pets);
+  out.boost = { until: clampInt(out.boost?.until, 0, 1e14) };
+  out.friendCount = clampInt(out.friendCount, 0, 1000);
+  out.gifts = sanitizeGifts(out.gifts);
   out.social = sanitizeSocial(out.social);
   out.stats = { ...base.stats, ...(out.stats || {}) };
   out.settings = { ...base.settings, ...(out.settings || {}) };
+  // 2인 플레이 맵은 예전 기록의 이름을 그대로 둔다 (없는 맵이면 쓸 때 뿌요 정원으로 본다)
+  for (const key of MAP_SETTINGS.slice(1)) if (!MAPS.some(map => map.id === out.settings[key])) out.settings[key] = 'garden';
   out.missions = out.missions && typeof out.missions === 'object' ? out.missions : {};
   const r = out.rewards || {};
   const date = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '';
@@ -60,8 +84,22 @@ export function sanitize(p) {
     dailyDate: date(r.dailyDate), dailyStreak: clampInt(r.dailyStreak, 0, 1e6),
     spinDate: date(r.spinDate), spinIndex: Number.isInteger(r.spinIndex) && r.spinIndex >= 0 && r.spinIndex < 6 ? r.spinIndex : null,
     date: date(r.date), playSeconds: Math.max(0, Math.min(86400, Number(r.playSeconds) || 0)),
-    claimedTime: uniq(arr(r.claimedTime).filter(id => ['5m', '15m', '30m'].includes(id))),
+    claimedTime: uniq(arr(r.claimedTime).filter(id => TIME_IDS.includes(id))),
   };
+  return out;
+}
+// 친구 선물 기록. seen: 친구 번호 → 그 친구가 보낸 선물 중 마지막으로 받은 메시지 번호
+function sanitizeGifts(g) {
+  const out = emptyGifts();
+  // 너무 많으면 가장 최근에 선물을 준 친구(메시지 번호가 큰 쪽)부터 남긴다
+  const seen = Object.entries(g?.seen && typeof g.seen === 'object' ? g.seen : {})
+    .filter(([id, last]) => /^\d{1,12}$/.test(id) && Number.isInteger(last) && last > 0)
+    .sort((a, b) => b[1] - a[1]).slice(0, GIFT_SEEN_MAX);
+  for (const [id, last] of seen) out.seen[id] = last;
+  out.day = typeof g?.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(g.day) ? g.day : '';
+  out.dayCoins = clampInt(g?.dayCoins, 0, 1e9);
+  out.sent = clampInt(g?.sent, 0, 1e9);
+  out.got = clampInt(g?.got, 0, 1e9);
   return out;
 }
 const arr = v => (Array.isArray(v) ? v.filter(x => typeof x === 'string') : []);

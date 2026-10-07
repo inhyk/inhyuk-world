@@ -67,7 +67,7 @@ for (const [i, n] of [1000, 5000, 25000, 50000, 200000].entries())
 for (const n of [2, 3, 7, 15, 25, 30, 40, 50])
   MISSIONS.push(m(`grow-level-${n}`, 'grow', `레벨 ${n} 달성`, n, 'level', e => e.level, { coins: n * 30, xp: 0 }));
 for (const map of MAPS) for (const n of [1, 5, 15])
-  MISSIONS.push(m(`map-${map.id}-${n}`, 'maps', `${map.name}에서 ${n}번 대전 완료`, n, 'match', e => e.mode === 'local' && e.map === map.id ? 1 : 0, prize(n), 'sum'));
+  MISSIONS.push(m(`map-${map.id}-${n}`, 'maps', `${map.name}에서 ${n}번 대전 완료`, n, 'match', e => (e.map === map.id ? 1 : 0), prize(n), 'sum'));
 for (const [kind, title] of [['daily', '출석 선물'], ['spin', '스핀 선물'], ['time', '시간 선물']]) for (const n of [1, 5, 15])
   MISSIONS.push(m(`gift-${kind}-${n}`, 'gifts', `${title} ${n}번 받기`, n, 'gift', e => e.kind === kind ? 1 : 0, { ...prize(n), tickets: n === 15 ? { skin: 1 } : { spin: 1 } }, 'sum'));
 for (const [kind, title] of [['skin', '스킨'], ['effect', '터짐 효과']]) for (const n of [3, 5, 10, 15, 18])

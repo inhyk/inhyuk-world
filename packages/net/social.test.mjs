@@ -327,3 +327,26 @@ test('stats, rankings, live matches and watching hit the right endpoints', async
   assert.deepEqual(messages, [[{ t: 's', sc: 5 }, 'p1']]);
   room.leave();
 });
+
+test('deleteAccount sends the password, forgets the login only when the server really deleted it', async () => {
+  let answer = [403, { error: 'wrong-password' }];
+  const { options, calls, storage } = setup({ 'POST /auth/delete': () => answer });
+  const account = new Account(options);
+  await account.login('인혁', '1234');
+  await assert.rejects(() => account.deleteAccount('nope'), error => error instanceof NetError && error.code === 'wrong-password' && error.status === 403 && error.message === SOCIAL_MESSAGES['wrong-password']);
+  assert.deepEqual(calls.at(-1), { method: 'POST', path: '/auth/delete', body: { password: 'nope' }, auth: 'Bearer tok-1' });
+  assert.equal(account.loggedIn, true); // 틀리면 로그인은 그대로
+  assert.ok(storage.getItem('inhyuk-net-session').includes('tok-1'));
+  answer = [200, { ok: true }];
+  await account.deleteAccount('1234');
+  assert.equal(account.loggedIn, false);
+  assert.equal(storage.getItem('inhyuk-net-session'), null);
+});
+
+test('deleteAccount on a server that does not know it yet fails with 404 and keeps the login', async () => {
+  const { options } = setup(); // 예전 서버: /auth/delete 가 없다
+  const account = new Account(options);
+  await account.login('인혁', '1234');
+  await assert.rejects(() => account.deleteAccount('1234'), error => error.status === 404);
+  assert.equal(account.loggedIn, true);
+});

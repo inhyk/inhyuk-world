@@ -2,11 +2,14 @@
 // 온라인 계정은 online.mjs(net 서버의 게임 찾기, 친구 초대)를 쓴다. 예전 버전 게임과 같이 할 수 있게 주고받는 모양은 바꾸지 않는다.
 // 각자 자기 필드를 계산하고, 상대에게는 필드 모습(초당 20번)과
 // 방해뿌요·연쇄 시작/끝·쓰러짐만 보낸다. 판정(누가 이겼나)은 방장이 한다.
+// 맵 투표(online.mjs 와 같은 모양): 서로 { t: 'vote', m: 맵 번호 } 를 보내고, 방장이 정한 맵 번호를 start 의 m 에 싣는다.
+// 예전 버전 게임은 vote 를 보내지도 읽지도 않으므로, 상대 표가 없으면 기본 맵(뿌요 정원 = 예전 규칙)으로 한다.
 import { PuyoRoom, normaliseCode } from './room.mjs';
 import { clampFirstTo } from './match.mjs';
 import { QUICK, cleanChat, rateLimiter, validSticker } from './chat.mjs';
 import { W, H, heights } from './core.mjs';
 import { emptyTotals } from './match.mjs';
+import { MAPS, cleanMapIndex, voteResult } from './maps.mjs';
 
 const SEND_EVERY = 3;   // 3프레임마다 (초당 20번)
 
@@ -71,6 +74,7 @@ export function createPeerOnline(api) {
   const { $, toast, sound } = api;
   let peer = null, firstTo = 2, remote = null, clock = 0, last = '', lastRound = 0;
   let wantAgain = false, peerAgain = false, inGame = false;
+  let myVote = 0, peerVote = null; // 맵 투표: 내 표, 상대 표(예전 버전이면 끝까지 null)
   let chatIn = rateLimiter(6, 5000); // 상대가 너무 빨리 보내면 넘친 건 버린다
   const options = import.meta.env?.DEV && new URLSearchParams(location.search).has('localPeer') ? { host: location.hostname, port: 9003, path: '/puyo', secure: false } : {};
   const room = new PuyoRoom({ status, join, depart, message }, options);
@@ -95,13 +99,15 @@ export function createPeerOnline(api) {
   function join() {
     chatIn = rateLimiter(6, 5000);
     api.roomJoined?.();
+    myVote = cleanMapIndex(api.vote?.()) ?? 0; peerVote = null;
     room.send({ t: 'hello', ...api.me() });
+    room.send({ t: 'vote', m: myVote });
     sound.sfx('coin');
   }
   function depart() {
     const was = peer;
     api.roomLeft?.();
-    peer = null; wantAgain = false; peerAgain = false;
+    peer = null; wantAgain = false; peerAgain = false; peerVote = null;
     $('online-lobby').hidden = true;
     if (inGame) { toast(`${was?.name || '친구'}와 연결이 끊겼어.`); inGame = false; api.quit(); }
   }
@@ -114,10 +120,11 @@ export function createPeerOnline(api) {
     $('online-start').hidden = !room.host;
     $('online-wait').hidden = room.host;
     if (!room.host) $('online-wait').textContent = `방장이 시작하기를 기다리는 중… (${firstTo}판 먼저 이기면 승리)`;
+    api.lobbyChanged?.();
   }
-  function begin(seed, role) {
+  function begin(seed, role, map = 0, tie = false) {
     wantAgain = false; peerAgain = false; inGame = true; lastRound = 1; clock = 0; last = '';
-    api.start({ seed, firstTo, peer, role, makeRemote: seq => (remote = new RemoteView(seq)) });
+    api.start({ seed, firstTo, peer, role, map: MAPS[map].id, tie, makeRemote: seq => (remote = new RemoteView(seq)) });
   }
 
   function message(m) {
@@ -125,16 +132,21 @@ export function createPeerOnline(api) {
     switch (m.t) {
       case 'hello':
         peer = cleanPeer(m);
-        if (!m.re) room.send({ t: 'hello', re: 1, ...api.me() });
+        if (!m.re) { room.send({ t: 'hello', re: 1, ...api.me() }); room.send({ t: 'vote', m: myVote }); }
         if (room.host) room.send({ t: 'first', n: firstTo });
         lobby();
         toast(`🌐 ${peer.name}와 연결됐어!`);
         break;
+      case 'vote': {
+        const v = cleanMapIndex(m.m);
+        if (v !== null) { peerVote = v; api.lobbyChanged?.(); }
+        break;
+      }
       case 'first':
         if (!room.host) { firstTo = clampFirstTo(m.n); lobby(); }
         break;
       case 'start':
-        if (!room.host && Number.isFinite(m.seed)) { firstTo = clampFirstTo(m.first); begin(m.seed >>> 0, 'guest'); }
+        if (!room.host && Number.isFinite(m.seed)) { firstTo = clampFirstTo(m.first); begin(m.seed >>> 0, 'guest', cleanMapIndex(m.m) ?? 0, !!m.tie); }
         break;
       case 'atk':
         if (match && inGame && match.phase === 'play') { const n = Math.max(0, Math.min(2000, Number(m.n) | 0)); match.players[0].receive(n); match.remoteChaining = true; }
@@ -179,8 +191,9 @@ export function createPeerOnline(api) {
   }
   function restart() {
     const seed = (Math.random() * 2 ** 31) >>> 0;
-    room.send({ t: 'start', seed, first: firstTo });
-    begin(seed, 'host');
+    const { map, tie } = peerVote === null ? { map: 0, tie: false } : voteResult([myVote, peerVote]);
+    room.send({ t: 'start', seed, first: firstTo, m: map, tie: tie ? 1 : 0 });
+    begin(seed, 'host', map, tie);
   }
 
   $('room-host').onclick = async () => { sound.sfx('click'); try { await room.open(); } catch { /* 상태 글자로 알려 줌 */ } };
@@ -228,6 +241,8 @@ export function createPeerOnline(api) {
       else toast('친구를 기다리는 중… 친구도 “한 번 더!”를 누르면 시작해.');
     },
     setFirstTo(n) { firstTo = n; if (room.host) room.send({ t: 'first', n }); },
+    // 맵 투표: 내 표를 바꾸고 상대에게 알린다
+    setVote(n) { const v = cleanMapIndex(n); if (v === null) return; myVote = v; if (room.ready) room.send({ t: 'vote', m: v }); api.lobbyChanged?.(); },
     // 방 채팅 보내기: 빠른 말 번호(q), 뿌요 이모티콘 번호(sticker) 또는 직접 쓴 말(text)
     say({ q, text, sticker }) {
       if (!room.ready) return false;
@@ -243,6 +258,6 @@ export function createPeerOnline(api) {
     async join(code) { try { await room.open(code); } catch { /* 상태 글자로 알려 줌 */ } return room.active; },
     peerName: () => peer?.name || '친구',
     leave() { inGame = false; room.leave(); },
-    state: () => ({ role: room.role, code: room.code, status: room.status, peer }),
+    state: () => ({ role: room.role, code: room.code, status: room.status, peer, vote: myVote, peerVote }),
   };
 }

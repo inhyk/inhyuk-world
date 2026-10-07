@@ -169,6 +169,45 @@ export async function logout(request, env) {
   return json({ ok: true });
 }
 
+// POST /auth/delete { password }  내 계정 지우기 (앱 안에서 계정을 지울 수 있어야 한다: 앱스토어 5.1.1).
+// 비밀번호를 한 번 더 확인하고, 그 계정의 모든 것을 지운다: 로그인, 친구, 친구 요청, 차단, 1:1 대화(양쪽), 신고,
+// 모든 게임의 저장과 랭킹 기록. 되돌릴 수 없고, 닉네임은 다시 쓸 수 있게 된다.
+// - 정지된 계정은 로그인(🔑)이 안 되므로 지울 수도 없다 (지우고 같은 닉네임으로 다시 만들어 정지를 피하지 못하게).
+// - 그 계정에 걸린 신고도 같이 지워지므로, 누가 언제 지웠는지와 열려 있던 신고 수를 admin_actions 에 남긴다.
+// - 비밀번호가 틀리면 401 이 아니라 403 `wrong-password` (401 은 "로그인이 풀림" 이라 클라이언트가 토큰을 버린다).
+const DELETE_WINDOW_MS = 10 * 60 * 1000, DELETE_TRIES = 5;
+export async function deleteAccount(request, env) {
+  const user = await requireUser(request, env);
+  const body = await readJson(request);
+  if (typeof body.password !== 'string') fail(400, 'bad-login');
+  await limit(env, `delete:${user.id}`, DELETE_WINDOW_MS, DELETE_TRIES);
+  const db = env.DB, id = user.id;
+  const row = await db.prepare('SELECT pass_hash, salt, iterations FROM users WHERE id = ?').bind(id).first();
+  const hash = await hashPassword(body.password.slice(0, PASS_MAX * 4), row?.salt ?? 'no-such-user', row?.iterations ?? iterationsFor(env));
+  if (!row || !sameText(hash, row.pass_hash)) fail(403, 'wrong-password');
+  const open = await db.prepare("SELECT COUNT(*) AS n FROM reports WHERE target_id = ? AND status = 'open'").bind(id).first();
+  // 표마다 직접 지운다 (외래 키의 ON DELETE CASCADE 에 기대지 않는다). users 를 맨 마지막에.
+  await db.batch([
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(id),
+    db.prepare('DELETE FROM tickets WHERE user_id = ?').bind(id),
+    db.prepare('DELETE FROM friend_requests WHERE from_id = ?1 OR to_id = ?1').bind(id),
+    db.prepare('DELETE FROM friends WHERE user_id = ?1 OR friend_id = ?1').bind(id),
+    db.prepare('DELETE FROM blocks WHERE blocker_id = ?1 OR blocked_id = ?1').bind(id),
+    db.prepare('DELETE FROM dms WHERE from_id = ?1 OR to_id = ?1').bind(id),
+    db.prepare('DELETE FROM reports WHERE reporter_id = ?1 OR target_id = ?1').bind(id),
+    db.prepare('DELETE FROM saves WHERE user_id = ?').bind(id),
+    db.prepare('DELETE FROM save_imports WHERE user_id = ?').bind(id),
+    db.prepare('DELETE FROM player_stats WHERE user_id = ?').bind(id),
+    db.prepare('DELETE FROM live_rooms WHERE p1 = ?1 OR p2 = ?1').bind(id),
+    db.prepare('DELETE FROM users WHERE id = ?').bind(id),
+    db.prepare("INSERT INTO admin_actions (actor, ip, action, target_id, detail, created) VALUES ('user', ?, 'self-delete', ?, ?, ?)")
+      .bind(clientIp(request), id, `${user.nickname} (열려 있던 신고 ${open?.n ?? 0}건)`, now()),
+  ]);
+  // 다른 기기에서 접속 중이면 바로 끊는다 (/live, 들어가 있는 방, 매칭 줄)
+  try { await env.LOBBY.get(env.LOBBY.idFromName('lobby')).kick(id, 'deleted'); } catch (error) { console.error('kick failed', error?.message); }
+  return json({ ok: true });
+}
+
 export async function me(request, env) {
   const user = await requireUser(request, env);
   return json({ user: { id: user.id, nickname: user.nickname, created: user.created } });

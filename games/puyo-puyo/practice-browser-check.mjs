@@ -43,7 +43,8 @@ try {
   // ---------- PC: 키보드로 ----------
   const page = await open({ viewport: { width: 1280, height: 800 } });
   assert.equal(await page.locator('#practice-badge').isVisible(), true); // 처음에는 NEW
-  await page.click('[data-go="practice"]');
+  await page.click('#scr-menu [data-go="school"]'); // 뿌요뿌요 배우기 → 초급(예전 연습하기)
+  await page.click('#school-list .grade[data-grade="beginner"] button');
   await lessonIs(page, 0);
   assert.match(await page.textContent('#coach-step'), /연습 1 \/ 3/);
   assert.match(await page.textContent('#coach-text'), /Space/); // 키보드에서는 키 이름으로 알려 준다
@@ -97,7 +98,8 @@ try {
   // ---------- 휴대폰: 화면 버튼으로 ----------
   const phone = await open({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const tap = async act => { await phone.locator(`#touch [data-act="${act}"][data-pad="0"]`).dispatchEvent('pointerdown', { pointerId: 3, pointerType: 'touch' }); await phone.locator(`#touch [data-act="${act}"][data-pad="0"]`).dispatchEvent('pointerup', { pointerId: 3, pointerType: 'touch' }); };
-  await phone.click('[data-go="practice"]');
+  await phone.click('#scr-menu [data-go="school"]');
+  await phone.click('#school-list .grade[data-grade="beginner"] button');
   await lessonIs(phone, 0);
   assert.match(await phone.textContent('#coach-text'), /◀ ▶/); // 휴대폰에서는 화면 버튼 모양으로 알려 준다
   await coachClear(phone);

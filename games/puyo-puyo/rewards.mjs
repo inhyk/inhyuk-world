@@ -1,4 +1,4 @@
-import { addXp } from './profile.mjs';
+import { addXp, TICKET_KINDS } from './profile.mjs';
 import { calendarBonus, todayKey, shiftDay } from './calendar.mjs';
 
 export const DAILY_REWARDS = [
@@ -10,22 +10,28 @@ export const SPIN_PRIZES = [
   { coins: 100, xp: 0 }, { coins: 0, xp: 100 }, { coins: 100, xp: 30, tickets: { skin: 1 } },
   { coins: 150, xp: 0, tickets: { effect: 1 } }, { coins: 0, xp: 200, tickets: { effect: 1 } }, { coins: 500, xp: 100, tickets: { skin: 1, effect: 1 } },
 ];
+// 시간 선물 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 2번 "시간 선물을 더 만들어주고, 거기에 조금씩 펫도 조금 넣어줘"):
+// 3개(5·15·30분)에서 7개로. 20분과 60분 선물에는 🥚 펫 뽑기권, 10분과 45분 선물에는 ⚡ 2배 부스트가 들어 있다.
 export const TIME_REWARDS = [
   { id: '5m', seconds: 300, coins: 100, xp: 40, tickets: { spin: 1 } },
+  { id: '10m', seconds: 600, coins: 150, xp: 60, tickets: { boost: 1 } },
   { id: '15m', seconds: 900, coins: 200, xp: 80, tickets: { effect: 1 } },
+  { id: '20m', seconds: 1200, coins: 250, xp: 100, tickets: { pet: 1 } },
   { id: '30m', seconds: 1800, coins: 400, xp: 150, tickets: { skin: 1 } },
+  { id: '45m', seconds: 2700, coins: 500, xp: 200, tickets: { boost: 1, spin: 1 } },
+  { id: '60m', seconds: 3600, coins: 700, xp: 300, tickets: { pet: 1 } },
 ];
 export function rewardPreview(reward, now = new Date()) {
   const bonus = calendarBonus(now);
-  const tickets = Object.fromEntries(['skin', 'effect', 'spin'].map(k => [k, Math.max(0, Math.floor(Number(reward.tickets?.[k]) || 0))]));
+  const tickets = Object.fromEntries(TICKET_KINDS.map(k => [k, Math.max(0, Math.floor(Number(reward.tickets?.[k]) || 0))]));
   return { tickets, coins: Math.max(0, Math.round(Number(reward.coins) || 0)) * bonus.coinMultiplier,
     xp: Math.max(0, Math.round(Number(reward.xp) || 0)) * bonus.xpMultiplier, bonus };
 }
 // 경기, 챌린지, 출석, 스핀, 시간 보상 모두 이 경로로 지급하여 배율을 한 번만 적용한다.
 export function grantReward(progress, reward, now = new Date()) {
   const result = rewardPreview(reward, now);
-  progress.tickets ||= { skin: 0, effect: 0, spin: 0 };
-  for (const k of ['skin', 'effect', 'spin']) progress.tickets[k] += result.tickets[k];
+  progress.tickets ||= {};
+  for (const k of TICKET_KINDS) progress.tickets[k] = (progress.tickets[k] || 0) + result.tickets[k];
   progress.coins += result.coins;
   const lv = addXp(progress, result.xp, result.bonus.coinMultiplier);
   return { ...result, lv };

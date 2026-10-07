@@ -1,5 +1,5 @@
 import { MISSIONS, DAILY_POOL, ensureDaily, track } from './missions.mjs';
-import { SKINS, EFFECTS, grant } from './shop.mjs';
+import { SKINS, EFFECTS, grant, equip, findItem } from './shop.mjs';
 import { TOP_FLOOR, clearFloor } from './tower.mjs';
 import { resetPassword } from './profile.mjs';
 
@@ -35,6 +35,12 @@ export function createCreatorSession() {
         }
         for (const slot of ensureDaily(progress).list) slot.v = DAILY_POOL.find(d => d.id === slot.id).goal;
         return '🎯 모든 챌린지와 오늘의 미션 완료! 챌린지에서 보상을 받아 줘.';
+      }
+      if (action === 'legend') {
+        // 99레벨·코인 30,000 이 있어야 사는 「전설의 뿌요」를 바로 받아서 낀다
+        grant(progress, 'skin', 'legend');
+        equip(progress, 'skin', 'legend');
+        return `🌈 ${findItem('skin', 'legend').name} 스킨을 받아서 바로 꼈어! 다음 판부터 이 스킨으로 나와.`;
       }
       if (action === 'skins') {
         // 온라인 랭킹 5등 보상(챔피언)은 진짜 5등 안에 들어야만 받는다

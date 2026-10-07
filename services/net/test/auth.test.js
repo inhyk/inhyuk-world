@@ -1,7 +1,7 @@
 // 계정: 가입, 로그인, 정지, 횟수 제한
 import { describe, it, expect } from 'vitest';
 import { env } from 'cloudflare:test';
-import { api, signup, uniqueNick, randomIp } from './helpers.js';
+import { api, signup, befriend, uniqueNick, randomIp } from './helpers.js';
 import { hashPassword, PBKDF2_ITERATIONS } from '../src/auth.js';
 
 describe('accounts', () => {
@@ -107,5 +107,75 @@ describe('accounts', () => {
     expect(preflight.res.headers.get('Access-Control-Allow-Headers')).toContain('Authorization');
     expect((await api('/nope')).status).toBe(404);
     expect((await api('/me', { method: 'POST' })).status).toBe(405);
+  });
+});
+
+// POST /auth/delete: 내 계정 지우기 (비밀번호 확인, 모든 기록 삭제, 닉네임은 다시 쓸 수 있음)
+describe('deleting my account', () => {
+  const del = (user, password) => api('/auth/delete', { method: 'POST', token: user.token, body: password === undefined ? {} : { password } });
+  const count = async (sql, ...binds) => (await env.DB.prepare(sql).bind(...binds).first()).n;
+
+  it('needs a login and the right password, and leaves the account alone otherwise', async () => {
+    const a = await signup(uniqueNick('Del'), 'abcd');
+    expect((await api('/auth/delete', { method: 'POST', body: { password: 'abcd' } })).status).toBe(401);
+    expect((await del(a)).status).toBe(400);
+    const wrong = await del(a, 'nope');
+    expect(wrong.status).toBe(403);
+    expect(wrong.data.error).toBe('wrong-password');
+    expect((await api('/me', { token: a.token })).status).toBe(200); // 틀려도 로그인은 그대로
+    expect(await count('SELECT COUNT(*) AS n FROM users WHERE id = ?', a.id)).toBe(1);
+  });
+
+  it('removes the account and everything that belongs to it, on every device', async () => {
+    const a = await signup(uniqueNick('Bye'), 'abcd'), b = await signup(), c = await signup();
+    const other = await api('/auth/login', { method: 'POST', body: { nickname: a.nickname, password: 'abcd' }, ip: randomIp() });
+    await befriend(a, b);
+    await api('/friends/requests', { method: 'POST', token: c.token, body: { id: a.id } });
+    await api(`/dm/${b.id}`, { method: 'POST', token: a.token, body: { body: '안녕' } });
+    await api(`/dm/${a.id}`, { method: 'POST', token: b.token, body: { body: '잘 가' } });
+    await api('/saves/jelly-tower', { method: 'PUT', token: a.token, body: { data: { level: 9 }, baseRevision: 0 } });
+    await api('/stats/jelly-tower', { method: 'PUT', token: a.token, body: { level: 9, xp: 10, trophies: 3 } });
+    await api('/reports', { method: 'POST', token: b.token, body: { target: a.id, context: { kind: 'profile' }, reason: 'test' } });
+    await api(`/blocks/${a.id}`, { method: 'POST', token: c.token });
+
+    const done = await del(a, 'abcd');
+    expect(done.status).toBe(200);
+    expect(done.data).toEqual({ ok: true });
+    // 어느 기기에서도 로그인이 풀렸고, 같은 비밀번호로 다시 들어갈 수 없다
+    expect((await api('/me', { token: a.token })).status).toBe(401);
+    expect((await api('/me', { token: other.data.token })).status).toBe(401);
+    expect((await api('/auth/login', { method: 'POST', body: { nickname: a.nickname, password: 'abcd' }, ip: randomIp() })).status).toBe(401);
+    // 그 계정에 딸린 것이 하나도 남지 않는다
+    for (const [table, where] of [['users', 'id = ?1'], ['sessions', 'user_id = ?1'], ['friends', 'user_id = ?1 OR friend_id = ?1'],
+      ['friend_requests', 'from_id = ?1 OR to_id = ?1'], ['blocks', 'blocker_id = ?1 OR blocked_id = ?1'], ['dms', 'from_id = ?1 OR to_id = ?1'],
+      ['reports', 'reporter_id = ?1 OR target_id = ?1'], ['saves', 'user_id = ?1'], ['player_stats', 'user_id = ?1']]) {
+      expect(await count(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where}`, a.id), table).toBe(0);
+    }
+    // 친구였던 사람의 목록과 대화에서도 사라진다. 다른 사람의 계정은 그대로다.
+    expect((await api('/friends', { token: b.token })).data.friends).toEqual([]);
+    expect((await api('/dm', { token: b.token })).data.unread).toEqual([]);
+    expect((await api('/me', { token: b.token })).status).toBe(200);
+    expect((await api('/friends/requests', { token: c.token })).data.outgoing).toEqual([]);
+    // 누가 지웠는지와 열려 있던 신고 수가 관리 기록에 남는다
+    const log = await env.DB.prepare("SELECT * FROM admin_actions WHERE action = 'self-delete' AND target_id = ?").bind(a.id).first();
+    expect(log.actor).toBe('user');
+    expect(log.detail).toBe(`${a.nickname} (열려 있던 신고 1건)`);
+    // 닉네임은 다시 쓸 수 있고, 새 계정은 빈 기록으로 시작한다
+    const again = await signup(a.nickname, 'efgh');
+    expect(again.id).not.toBe(a.id);
+    expect((await api('/saves/jelly-tower', { token: again.token })).status).toBe(404);
+    expect((await api('/friends', { token: again.token })).data.friends).toEqual([]);
+  });
+
+  it('cannot be used to escape a suspension, and wrong guesses are limited', async () => {
+    const a = await signup(uniqueNick('Sus'), 'abcd');
+    await env.DB.prepare('UPDATE users SET suspended_at = 1, suspended_reason = ? WHERE id = ?').bind('test', a.id).run();
+    expect((await del(a, 'abcd')).status).toBe(403);
+    expect(await count('SELECT COUNT(*) AS n FROM users WHERE id = ?', a.id)).toBe(1); // 정지된 계정은 그대로 남는다
+
+    const b = await signup(uniqueNick('Lim'), 'abcd');
+    for (let i = 0; i < 5; i++) expect((await del(b, 'wrong')).status).toBe(403);
+    expect((await del(b, 'abcd')).status).toBe(429); // 5번 틀리면 잠깐 막힌다 (맞는 비밀번호도)
+    expect(await count('SELECT COUNT(*) AS n FROM users WHERE id = ?', b.id)).toBe(1);
   });
 });

@@ -75,13 +75,15 @@ try {
       await p.click('[data-go="online"]');
       return p;
     };
-    const host = await netPage(`판수${tag}`);
-    const guest = await netPage(`손님${tag}`);
-    await host.click('#online-find');
-    await host.waitForFunction(() => window.__puyo.online.searching);
-    await guest.click('#online-find');
-    await host.waitForSelector('#online-lobby:not([hidden])', { timeout: 30000 });
-    await guest.waitForSelector('#online-lobby:not([hidden])', { timeout: 30000 });
+    const first = await netPage(`판수${tag}`);
+    const second = await netPage(`손님${tag}`);
+    await first.click('#online-find');
+    await first.waitForFunction(() => window.__puyo.online.searching);
+    await second.click('#online-find');
+    await first.waitForSelector('#online-lobby:not([hidden])', { timeout: 30000 });
+    await second.waitForSelector('#online-lobby:not([hidden])', { timeout: 30000 });
+    // 방장은 방에 먼저 들어온 사람이라, 먼저 찾기를 누른 쪽이 아닐 수도 있다
+    const [host, guest] = (await first.evaluate(() => window.__puyo.online.host)) ? [first, second] : [second, first];
     assert.deepEqual(await labels(host, 'online-first'), LABELS);
     await host.waitForFunction(() => !document.getElementById('online-start').disabled, null, { timeout: 15000 });
     await host.click('#online-first [data-v="40"]');

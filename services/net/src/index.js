@@ -54,6 +54,7 @@ const ROUTES = [
   ['POST', 'auth/signup', (r, e) => auth.signup(r, e)],
   ['POST', 'auth/login', (r, e) => auth.login(r, e)],
   ['POST', 'auth/logout', (r, e) => auth.logout(r, e)],
+  ['POST', 'auth/delete', (r, e) => auth.deleteAccount(r, e)],
   ['POST', 'auth/ticket', (r, e) => auth.ticket(r, e)],
   ['GET', 'me', (r, e) => auth.me(r, e)],
   ['GET', 'users/search', social.search],

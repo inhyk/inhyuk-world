@@ -13,10 +13,14 @@
 // - 관전: 다른 사람이 보기만 하러 들어올 수 있다(서버가 채팅 글은 보내지 않는다). 처음 인사(hello)와 판 수(first)는
 //   keep 으로 보내서 나중에 들어온 사람도 받는다. 지금 몇 명이 보는지는 watchers 로 알려 준다.
 // - 대전이 끝나면 몇 번째 대전인지(n)와 내가 이겼는지를 서버에 보고한다(report). 두 사람 보고가 같으면 온라인 승리 1개.
+// - 맵 투표 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 4번): 두 사람이 하고 싶은 맵에 표를 던진다({ t: 'vote', m: 맵 번호 }).
+//   방장이 시작할 때 표가 더 많은 맵(둘이 다르면 둘 중에서 뽑기)을 정해서 start 에 번호(m)로 같이 보낸다.
+//   맵 이름은 글자열이라 서버가 거를 수 있어서 번호만 보낸다. 표를 보내지 않는 예전 버전 상대와는 기본 맵(뿌요 정원)으로 한다.
 import { clampFirstTo, emptyTotals } from './match.mjs';
 import { W, H, heights } from './core.mjs';
 import { NET_GAME } from './net.mjs';
 import { QUICK, STICKERS, validSticker } from './chat.mjs';
+import { MAPS, cleanMapIndex, voteResult } from './maps.mjs';
 
 const SEND_EVERY = 5;        // 5프레임마다 (초당 12번)
 export const CHAT_MAX = 60;  // 짧은 말만 (서버는 200글자까지)
@@ -95,13 +99,16 @@ export function eventMessage(e) {
 
 // api: $, toast, sound, social() → Social | null, me() → { level, skin, effect }, start({ seed, firstTo, opponent, peer, role, makeRemote }),
 //      match() → 지금 판, isFinished() → 결과가 나왔는지, quit() → 판을 접고 온라인 화면으로,
-//      render() 온라인 화면 다시 그리기, chatLine(entry) 대화 한 줄({ who, text } 또는 { who, sticker }), chatReset()
+//      render() 온라인 화면 다시 그리기, chatLine(entry) 대화 한 줄({ who, text } 또는 { who, sticker }), chatReset(),
+//      vote() → 내가 고른 맵 번호 (저장해 둔 것), start 에는 map(맵 이름)과 tie(뽑기로 정했는지)도 같이 준다
 export function createOnline(api) {
   const { toast, sound } = api;
   let room = null, opponent = null, peer = null, firstTo = 2, remote = null, clock = 0, last = '', lastRound = 0;
   let wantAgain = false, peerAgain = false, inGame = false, searching = false, inviting = null, helloPending = false;
   let matchNo = 0, reported = 0, watchers = 0; // 이 방에서 몇 번째 대전인지, 결과를 보고한 대전, 보고 있는 사람 수
   let lines = [], recent = null; // recent: 방금 같이 한 사람 { id, nickname, room } (방을 나간 뒤에도 친구 요청, 신고에 씀)
+  let myVote = 0, peerVote = null; // 맵 투표: 내 표, 상대 표(아직 안 왔으면 null)
+  const random = api.random || Math.random;
 
   const hooks = {
     status(state, msg = '') {
@@ -131,7 +138,9 @@ export function createOnline(api) {
   function hello() {
     helloPending = false;
     room?.send({ t: 'hello', ...api.me() }, { keep: true });
+    sendVote();
   }
+  function sendVote() { room?.send({ t: 'vote', m: myVote }); }
 
   function enter(result) {
     searching = false; inviting = null;
@@ -141,6 +150,7 @@ export function createOnline(api) {
     lines = [];
     peer = null; wantAgain = false; peerAgain = false; firstTo = 2;
     matchNo = 0; reported = 0; watchers = 0;
+    myVote = cleanMapIndex(api.vote?.()) ?? 0; peerVote = null;
     api.chatReset?.();
     if (helloPending || room.peers.length) hello();
     sound.sfx('coin');
@@ -158,10 +168,10 @@ export function createOnline(api) {
     render();
   }
 
-  function begin(seed, role) {
+  function begin(seed, role, map = 0, tie = false) {
     wantAgain = false; peerAgain = false; inGame = true; lastRound = 1; clock = 0; last = '';
     matchNo++;
-    api.start({ seed, firstTo, opponent, peer: peer || cleanPeer({}), role, makeRemote: seq => (remote = new RemoteView(seq)) });
+    api.start({ seed, firstTo, opponent, peer: peer || cleanPeer({}), role, map: MAPS[map].id, tie, makeRemote: seq => (remote = new RemoteView(seq)) });
   }
 
   function line(who, text, sticker) {
@@ -183,15 +193,20 @@ export function createOnline(api) {
     switch (m.t) {
       case 'hello':
         peer = cleanPeer(m);
-        if (!m.re) room?.send({ t: 'hello', re: 1, ...api.me() }, { keep: true });
+        if (!m.re) { room?.send({ t: 'hello', re: 1, ...api.me() }, { keep: true }); sendVote(); }
         if (room?.host) room.send({ t: 'first', n: firstTo }, { keep: true });
         render();
         break;
+      case 'vote': {
+        const v = cleanMapIndex(m.m);
+        if (v !== null) { peerVote = v; render(); }
+        break;
+      }
       case 'first':
         if (!room?.host) { firstTo = clampFirstTo(m.n); render(); }
         break;
       case 'start':
-        if (!room?.host && Number.isFinite(m.seed)) { firstTo = clampFirstTo(m.first); begin(m.seed >>> 0, 'guest'); }
+        if (!room?.host && Number.isFinite(m.seed)) { firstTo = clampFirstTo(m.first); begin(m.seed >>> 0, 'guest', cleanMapIndex(m.m) ?? 0, !!m.tie); }
         break;
       case 'atk':
         if (match && inGame && match.phase === 'play') { const n = Math.max(0, Math.min(2000, Number(m.n) | 0)); match.players[0].receive(n); match.remoteChaining = true; }
@@ -228,8 +243,10 @@ export function createOnline(api) {
   }
   function restart() {
     const seed = (Math.random() * 2 ** 31) >>> 0;
-    room.send({ t: 'start', seed, first: firstTo });
-    begin(seed, 'host');
+    // 상대 표가 없으면(예전 버전) 맵 규칙을 모르는 것이니 기본 맵으로 한다
+    const { map, tie } = peerVote === null ? { map: 0, tie: false } : voteResult([myVote, peerVote], random);
+    room.send({ t: 'start', seed, first: firstTo, m: map, tie: tie ? 1 : 0 });
+    begin(seed, 'host', map, tie);
   }
 
   return {
@@ -298,6 +315,8 @@ export function createOnline(api) {
       restart();
     },
     setFirstTo(n) { firstTo = clampFirstTo(n); if (room?.host) room.send({ t: 'first', n: firstTo }, { keep: true }); },
+    // 맵 투표: 내 표를 바꾼다 (방에 있으면 상대에게도 알린다)
+    setVote(n) { const v = cleanMapIndex(n); if (v === null) return; myVote = v; sendVote(); render(); },
     // 대전이 끝났다: 내가 이겼는지 서버에 한 번만 알린다 (온라인 승리 세기)
     report(won) {
       if (!room?.ready || !matchNo || reported === matchNo) return false;
@@ -351,6 +370,6 @@ export function createOnline(api) {
       else toast('친구를 기다리는 중… 친구도 “한 번 더!”를 누르면 시작해.');
     },
     peerName: () => opponent?.nickname || '친구',
-    state: () => ({ active: !!room, searching, inviting: inviting?.nickname ?? null, host: !!room?.host, opponent, peer, inGame, firstTo }),
+    state: () => ({ active: !!room, searching, inviting: inviting?.nickname ?? null, host: !!room?.host, opponent, peer, inGame, firstTo, vote: myVote, peerVote }),
   };
 }
