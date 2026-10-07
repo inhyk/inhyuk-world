@@ -30,7 +30,7 @@ import { CloudSave, CACHE_KEY, cloudPayload, writeCache } from './cloud.mjs';
 import { migrateLocal, checkLocalPassword, markMigrated, migrationMarker, importIdFor, MIGRATING_KEY } from './migrate.mjs';
 import { createSocialUI } from './social-ui.mjs';
 import { playEnding } from './ending.mjs';
-import { GRADES, gradeDone, gradeOpen, finishGrade, lessonCells, lessonSeq, newJudge, judge } from './tutorial.mjs';
+import { GRADES, gradeDone, gradeOpen, finishGrade, lessonCells, lessonSeq, lessonStep, newJudge, judge } from './tutorial.mjs';
 import { PETS, PET_PRICE, drawPet, drawWith, equipPet, equippedPet, ownedCount, petName, multText, chanceText, chanceTotal } from './pets.mjs';
 import { drawPet as paintPet, drawEgg } from './pet-art.mjs';
 import { BOOST_PRICE, boostLeft, spendBoost, buyBoost, matchBonus, applyBonus, clockText } from './bonus.mjs';
@@ -679,15 +679,29 @@ const stepText = () => `${practice.grade ? GRADES[practice.grade].name : '연습
 function setLesson(index, grade = practice?.grade ?? 0) {
   practice = { index, grade, judge: newJudge(), freeze: false };
   const lessons = lessonsNow(), lesson = lessons[index];
+  const next = () => { sound.sfx('click'); if (index + 1 < lessons.length) setLesson(index + 1); else finishPractice(); };
   showCoach({
-    step: stepText(), title: lesson.title, mood: 'idle',
-    text: lesson.text || (coarse ? lesson.touch : lesson.keys),
+    step: stepText(), title: lesson.title, mood: lesson.tip ? 'happy' : 'idle',
+    text: lessonStep(lesson) || lesson.text || (coarse ? lesson.touch : lesson.keys),
     // 초급은 건너뛸 수 있다. 중급부터는 선물이 걸려 있어서 건너뛰지 못하고, 막히면 처음 모양으로 되돌린다.
-    buttons: grade
-      ? [['ghost', '↺ 처음 모양으로', () => { sound.sfx('click'); setLesson(index); }]]
-      : [['ghost', '건너뛰기', () => { sound.sfx('click'); if (index + 1 < lessons.length) setLesson(index + 1); else finishPractice(); }]],
+    // 비결(tip)은 풀 것 없이 읽고 넘어간다.
+    buttons: lesson.tip ? [['primary', index + 1 < lessons.length ? '알겠어! ▶' : '다 배웠어! 🎉', next]]
+      : grade ? [['ghost', '↺ 처음 모양으로', () => { sound.sfx('click'); setLesson(index); }]]
+        : [['ghost', '건너뛰기', next]],
   });
   resetLessonField(match.players[0], lesson);
+  if (lesson.tip) {
+    // 비결을 읽는 동안에는 뿌요가 나오지 않는다 (필드는 보기 그림). 3, 2, 1 을 세는 중이었으면 건너뛴다.
+    practice.freeze = true;
+    if (match.phase === 'countdown') { match.phase = 'play'; match.timer = 0; }
+  }
+}
+// 직접 쌓는 수업: 짝을 하나 놓을 때마다 꼬마 뿌요의 안내를 바꾼다
+function coachHint(text) {
+  if (!text || $('coach-text').textContent === text) return;
+  $('coach-text').textContent = text;
+  if (match) renderer.setInsets(computeInsets());
+  $('toasts').style.top = `${Math.round($('coach').getBoundingClientRect().bottom + 8)}px`;
 }
 // 필드를 수업 모양으로 되돌리고, 짝 순서도 처음부터
 function resetLessonField(p, lesson) {
@@ -703,6 +717,7 @@ function practiceEvent(e) {
   if (!practice || practice.freeze) return;
   const lesson = lessonNow(), lessons = lessonsNow();
   const verdict = judge(lesson, practice.judge, e);
+  if (!verdict && e.type === 'spawn') coachHint(lessonStep(lesson, practice.judge.pieces));
   if (verdict === 'done') {
     practice.freeze = true;
     sound.sfx('mission'); haptic('success');
@@ -749,7 +764,7 @@ function finishPractice() {
   const next = GRADES[gi + 1];
   showCoach({
     step: `${grade.name} 끝!`, title: next ? `다음은 ${next.name}!` : '모두 배웠어! 👑', mood: 'happy',
-    text: next ? `${grade.name}을 모두 배웠어. 이어서 ${next.name}에 도전해 볼까?` : '초급부터 최상급까지 모두 끝냈어! 이제 타워와 온라인 대전에서 실력을 보여 줘.',
+    text: next ? `${grade.name}을 모두 배웠어. 이어서 ${next.name}에 도전해 볼까?` : '초급부터 마지막까지 뿌요뿌요 배우기를 모두 끝냈어! 이제 타워와 온라인 대전에서 진짜 연쇄를 보여 줘.',
     buttons: [
       next ? ['primary', `${next.emoji} ${next.name} 배우기`, () => { sound.sfx('click'); startPractice(0, gi + 1); }]
         : ['primary', '🗼 타워로', () => { sound.sfx('click'); quitGame(); show('tower'); }],
@@ -757,7 +772,7 @@ function finishPractice() {
     ],
   });
 }
-// 배우기 목록: 초급 → 중급 → 상급 → 최상급. 앞 등급을 끝내야 다음 등급이 열린다.
+// 배우기 목록: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막. 앞 등급을 끝내야 다음 등급이 열린다.
 function renderSchool() {
   const p = P(), list = $('school-list');
   list.innerHTML = '';
@@ -767,7 +782,7 @@ function renderSchool() {
     li.className = `grade ${done ? 'done' : open ? 'open' : 'locked'}`;
     li.dataset.grade = grade.id;
     const state = done ? '✔ 다 배웠어' : open ? '▶ 배울 수 있어' : `🔒 ${GRADES[i - 1].name}을 끝내면 열려`;
-    li.innerHTML = `<div class="em">${grade.emoji}</div><div><h3>${grade.name}</h3><p>${esc(grade.desc)}</p><p class="state">${state}</p><p>${done ? '선물 받음' : '끝내면 선물'}: ${esc(rewardText(rewardPreview(grade.reward)))}</p></div>`;
+    li.innerHTML = `<div class="em">${grade.emoji}</div><div><h3>${grade.name}</h3><p>${esc(grade.desc)} (${grade.lessons.length}가지)</p><p class="state">${state}</p><p>${done ? '선물 받음' : '끝내면 선물'}: ${esc(rewardText(rewardPreview(grade.reward)))}</p></div>`;
     const b = document.createElement('button');
     if (open) {
       b.className = done ? 'ghost' : 'primary';

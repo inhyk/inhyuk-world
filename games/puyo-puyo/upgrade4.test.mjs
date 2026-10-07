@@ -6,7 +6,7 @@ import { PETS, PET_PRICE, WEIGHT_TOTAL, rollPet, drawPet, drawWith, equipPet, eq
 import { BOOST_MS, BOOST_PRICE, friendMultiplier, boostLeft, spendBoost, buyBoost, matchBonus, applyBonus, clockText } from './bonus.mjs';
 import { TIME_REWARDS, rewardView, addPlayTime, claimTime, grantReward } from './rewards.mjs';
 import { newProgress, sanitize, TIME_IDS, SCHOOL_IDS, TICKET_KINDS } from './profile.mjs';
-import { GRADES, LESSONS, gradeDone, gradeOpen, finishGrade, lessonCells, lessonSeq, newJudge, judge } from './tutorial.mjs';
+import { GRADES, LESSONS, gradeDone, gradeOpen, finishGrade, lessonCells, lessonSeq, lessonStep, newJudge, judge } from './tutorial.mjs';
 import { MAPS, getMap, mapIndex, cleanMapIndex, voteResult } from './maps.mjs';
 import { Player, makeSequence, findGroups, parseField } from './core.mjs';
 import { Match } from './match.mjs';
@@ -281,10 +281,15 @@ const ALL_PLACES = [];
 for (let x = 0; x < 6; x++) { ALL_PLACES.push([x, 0], [x, 2]); if (x < 5) ALL_PLACES.push([x, 1]); if (x > 0) ALL_PLACES.push([x, 3]); }
 const lesson = id => GRADES.flatMap(g => g.lessons).find(l => l.id === id);
 
-test('배우기: 초급 → 중급 → 상급 → 최상급 순서, 등급마다 세 가지', () => {
-  assert.deepEqual(GRADES.map(g => g.name), ['초급', '중급', '상급', '최상급']);
+test('배우기: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막 순서', () => {
+  assert.deepEqual(GRADES.map(g => g.name), ['초급', '중급', '상급', '최상급', '초초상급', '마지막']);
   assert.deepEqual(GRADES.slice(1).map(g => g.id), SCHOOL_IDS);
-  for (const g of GRADES) assert.equal(g.lessons.length, 3);
+  for (const g of GRADES.slice(0, 5)) assert.equal(g.lessons.length, 3);
+  // 마지막: 다섯 등급 복습 5개 → 빈 필드에서 직접 쌓기 → 진짜 연쇄를 잘하는 비결 4개 (맨 끝에)
+  const last = GRADES[5].lessons;
+  assert.deepEqual(last.map(l => l.id), ['review1', 'review2', 'review3', 'review4', 'review5', 'scratch', 'tip-wait', 'tip-stairs', 'tip-center', 'tip-next']);
+  assert.deepEqual(last.slice(0, 5).map(l => l.title.split(' · ')[0]), ['복습 ① 초급', '복습 ② 중급', '복습 ③ 상급', '복습 ④ 최상급', '복습 ⑤ 초초상급']);
+  assert.deepEqual(last.map(l => !!l.tip), [false, false, false, false, false, false, true, true, true, true]);
   assert.equal(GRADES[0].lessons, LESSONS); // 초급은 예전 연습하기 그대로
   const ids = GRADES.flatMap(g => g.lessons.map(l => l.id));
   assert.equal(new Set(ids).size, ids.length);
@@ -293,13 +298,19 @@ test('배우기: 초급 → 중급 → 상급 → 최상급 순서, 등급마다
 
 test('배우기: 앞 등급을 끝내야 다음 등급이 열리고, 끝낸 선물은 한 번만', () => {
   const p = newProgress();
-  assert.deepEqual(GRADES.map((_, i) => gradeOpen(p, i)), [true, false, false, false]);
+  assert.deepEqual(GRADES.map((_, i) => gradeOpen(p, i)), [true, false, false, false, false, false]);
   assert.equal(finishGrade(p, 0), true); assert.equal(p.tutorial, true); assert.equal(finishGrade(p, 0), false);
-  assert.deepEqual(GRADES.map((_, i) => gradeOpen(p, i)), [true, true, false, false]);
+  assert.deepEqual(GRADES.map((_, i) => gradeOpen(p, i)), [true, true, false, false, false, false]);
   assert.equal(finishGrade(p, 1), true); assert.equal(finishGrade(p, 2), true);
-  assert.deepEqual(GRADES.map((_, i) => gradeDone(p, i)), [true, true, true, false]);
+  assert.deepEqual(GRADES.map((_, i) => gradeDone(p, i)), [true, true, true, false, false, false]);
   assert.equal(finishGrade(p, 3), true); assert.equal(finishGrade(p, 3), false); assert.equal(finishGrade(p, 9), false);
   assert.deepEqual(sanitize(p).school, ['middle', 'high', 'master']);
+  // 최상급까지 끝낸 예전 기록에서는 초초상급이 열려 있고, 마지막은 초초상급을 끝내야 열린다
+  assert.deepEqual([gradeOpen(p, 4), gradeOpen(p, 5)], [true, false]);
+  assert.equal(finishGrade(p, 4), true);
+  assert.deepEqual([gradeOpen(p, 5), gradeDone(p, 5)], [true, false]);
+  assert.equal(finishGrade(p, 5), true); assert.equal(finishGrade(p, 5), false);
+  assert.deepEqual(sanitize(p).school, ['middle', 'high', 'master', 'ultra', 'final']);
   assert.deepEqual(sanitize({ school: ['master', 'master', 'beginner', 7, 'boss'] }).school, ['master']);
   // 예전 기록(연습하기만 끝냄)은 초급을 끝낸 것으로 본다
   const old = sanitize({ tutorial: true });
@@ -312,7 +323,7 @@ test('배우기: 처음 필드에는 터질 것도, 떠 있는 뿌요도 없다'
     assert.equal(findGroups(cells).length, 0, `${l.id}: 시작하자마자 터지면 안 된다`);
     for (let x = 0; x < 6; x++) for (let y = 1; y < 12; y++) if (cells[y * 6 + x]) assert.ok(cells[(y - 1) * 6 + x], `${l.id}: (${x}, ${y}) 가 떠 있다`);
     for (const row of l.field) assert.equal(row.length, 6, `${l.id}: 한 줄은 6칸`);
-    assert.ok(l.title && l.done && (l.text || (l.touch && l.keys)), `${l.id}: 설명이 있어야 한다`);
+    assert.ok(l.title && (l.tip || l.done) && (l.text || l.steps || (l.touch && l.keys)), `${l.id}: 설명이 있어야 한다`);
   }
 });
 
@@ -322,10 +333,13 @@ test('배우기: 알려 준 대로 놓으면 성공한다 (진짜 판으로 확�
     stairs3: [[0, 0]], double: [[3, 1]], garbage: [[3, 0]],
     stairs4: [[0, 0]], build3: [[1, 0], [0, 0]], allclear: [[3, 0]],
     stairs5: [[0, 0]], build4: [[1, 0], [0, 0]], clear3: [[1, 0], [0, 0]],
+    sandwich: [[1, 0]], build5: [[1, 0], [0, 0]], stairs6: [[0, 0]],
+    review1: [[5, 0]], review2: [[5, 0]], review3: [[4, 0], [5, 0]], review4: [[5, 0]], review5: [[4, 0]],
+    scratch: [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [0, 0]],
   };
   for (const [id, moves] of Object.entries(answers)) assert.equal(playLesson(lesson(id), moves), 'done', `${id} 정답`);
   assert.equal(playLesson(lesson('move'), [[0, 0], [2, 0], [4, 0]]), 'done'); // 3번 내려놓기
-  assert.deepEqual(Object.keys(answers).length + 1, GRADES.flatMap(g => g.lessons).length); // 빠진 수업이 없다
+  assert.deepEqual(Object.keys(answers).length + 1, GRADES.flatMap(g => g.lessons).filter(l => !l.tip).length); // 빠진 수업이 없다 (비결은 풀 것이 없다)
 });
 
 test('배우기: 다르게 놓으면 "다시 해 보자"', () => {
@@ -337,10 +351,40 @@ test('배우기: 다르게 놓으면 "다시 해 보자"', () => {
   assert.equal(playLesson(lesson('build3'), [[0, 0], [1, 0]]), 'retry'); // 순서가 틀림
   assert.equal(playLesson(lesson('clear3'), [[1, 1], [0, 0]]), 'retry'); // 파랑을 눕히면 먼저 터져 버린다
   assert.equal(playLesson(lesson('stairs5'), [[0, 2]]), 'retry');
+  assert.equal(playLesson(lesson('sandwich'), [[3, 0]]), 'retry'); // 빨강에 닿지 않음
+  assert.equal(playLesson(lesson('stairs6'), [[5, 0]]), 'retry'); // 반대쪽 끝에 놓으면 한 번만 터진다
+  assert.equal(playLesson(lesson('review2'), [[0, 0]]), 'retry'); // 복습은 오른쪽으로 뒤집혀 있다
+  assert.equal(playLesson(lesson('review3'), [[5, 0], [4, 0]]), 'retry');
+});
+
+test('배우기 마지막: 빈 필드에서 여섯 번 놓아 3연쇄, 놓을 때마다 안내가 바뀐다', () => {
+  const l = lesson('scratch');
+  assert.equal(l.field.length, 0); assert.equal(l.steps.length, l.pairs.length); assert.equal(l.goal.moves, 6);
+  assert.deepEqual(l.steps.map(t => t.match(/[①-⑥]/)?.[0]), ['①', '②', '③', '④', '⑤', '⑥']);
+  assert.equal(lessonStep(l), l.steps[0]); assert.equal(lessonStep(l, 3), l.steps[3]); assert.equal(lessonStep(l, 99), l.steps[5]);
+  assert.equal(lessonStep(lesson('stairs3')), null);
+  // 마지막 짝을 잘못 놓으면 다시, 중간에 4개가 닿아 먼저 터져도 다시
+  assert.equal(playLesson(l, [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [5, 0]]), 'retry');
+  assert.equal(playLesson(l, [[0, 0], [0, 0]]), null); // 아직 여섯 번을 다 놓지 않았다
+  assert.equal(playLesson(l, [[0, 0], [1, 0], [2, 0], [0, 1], [2, 0]]), 'retry'); // 파랑 짝을 파랑 줄에 세우면 4개가 먼저 터져 버린다 (1연쇄)
+});
+
+test('배우기 마지막: 비결은 풀 것 없이 읽고 넘어간다 (어떤 사건으로도 끝나지 않음)', () => {
+  const tips = GRADES[5].lessons.filter(l => l.tip);
+  assert.equal(tips.length, 4);
+  assert.deepEqual(tips.map(l => l.title.slice(0, 4)), ['비결 ①', '비결 ②', '비결 ③', '비결 ④']);
+  for (const l of tips) {
+    const state = newJudge();
+    for (const e of [{ type: 'spawn' }, { type: 'lock' }, { type: 'pop', colors: [1, 2], garbage: 3 }, { type: 'chainEnd', chain: 9, allClear: true }, { type: 'spawn' }, { type: 'lock' }, { type: 'spawn' }, { type: 'spawn' }])
+      assert.equal(judge(l, state, e), null, l.id);
+    assert.ok(l.text.length > 30 && l.field.length >= 2, `${l.id}: 글과 보기 그림`);
+  }
+  assert.match(tips.at(-1).text, /진짜 연쇄 고수/);
 });
 
 test('배우기: 모든 수업은 정해진 횟수 안에 풀 수 있고, 아무 데나 놓아서는 안 풀린다', () => {
   for (const l of GRADES.slice(1).flatMap(g => g.lessons)) {
+    if (l.tip || l.steps) continue; // 비결은 풀 것이 없고, 직접 쌓기(여섯 번)는 위에서 정답으로 확인한다
     const moves = l.goal.moves;
     assert.ok(moves === 1 || moves === 2, `${l.id}: 몇 번 안에 푸는지 적혀 있어야 한다`);
     let solved = 0, total = 0;

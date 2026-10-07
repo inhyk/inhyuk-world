@@ -2,7 +2,8 @@
 // 1. 펫: 그림대로 왼쪽 위 "뒤로", 가운데 "알", "펫 뽑기 1000원", 펫 다섯 칸(적힌 글 그대로) → 뽑기 → 경험치 배수
 // 2. 시간 선물 7개와 펫 뽑기권   3. 2배 부스트 (사기, 쓰기, 결과 화면의 배수)
 // 4. AI 대전·혼자 하기에서 2인 플레이의 맵 고르기, 온라인 대전의 맵 투표(같은 맵 / 다르면 뽑기)
-// 5. 뿌요뿌요 배우기: 초급 → 중급 → 상급 → 최상급 순서로 열리고, 아홉 문제를 실제로 풀기
+// 5. 뿌요뿌요 배우기: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막 순서로 열리고, 문제를 실제로 풀기
+//    (마지막: 다섯 등급 복습 → 빈 필드에서 직접 쌓기 → 진짜 연쇄를 잘하는 비결 4가지)
 // 6. 친구가 생기면 경험치·코인 배수   7. 친구에게 코인·스킨·터짐 효과 선물 (접속 중, 꺼 둔 동안, 한 번만 받기)
 // 그리고 같은 날 인혁이가 말한 것: 제작자 모드 「전설의 뿌요 바로 쓰기」, 온라인 계정의 「계정 지우기」 단추
 //
@@ -114,7 +115,7 @@ try {
   await hideToasts(g);
   for (const to of ['pets', 'boost', 'school', 'solo']) assert.equal(await g.locator(`#scr-menu [data-go="${to}"]`).count(), 1, `메뉴에 ${to} 단추`);
   assert.equal(await g.locator('#scr-menu [data-go="practice"]').count(), 0); // 연습하기는 배우기(초급)로 들어갔다
-  assert.equal(await g.textContent('#scr-menu [data-go="school"] small'), '초급 → 중급 → 상급 → 최상급');
+  assert.equal(await g.textContent('#scr-menu [data-go="school"] small'), '초급부터 마지막까지 6단계');
   assert.equal(await g.locator('#practice-badge').isVisible(), true);
   assert.equal(await g.locator('#menu-bonus').isVisible(), false); // 아직 배수가 없다
   await settle(g); await g.screenshot({ path: `${shots}/menu.png` });
@@ -252,7 +253,7 @@ try {
   // ---------- 5. 뿌요뿌요 배우기: 초급 → 중급 → 상급 → 최상급 ----------
   await g.click('#scr-menu [data-go="school"]'); await screenIs(g, 'school');
   assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => [r.querySelector('h3').textContent, r.classList.contains('open'), r.querySelector('button').disabled])),
-    [['초급', true, false], ['중급', false, true], ['상급', false, true], ['최상급', false, true]]);
+    [['초급', true, false], ['중급', false, true], ['상급', false, true], ['최상급', false, true], ['초초상급', false, true], ['마지막', false, true]]);
   await settle(g); await g.screenshot({ path: `${shots}/school.png` });
   // 초급(예전 연습하기)은 건너뛸 수 있다
   await g.click('#school-list .grade[data-grade="beginner"] button');
@@ -263,7 +264,7 @@ try {
   await g.click('#coach-buttons button.ghost'); await screenIs(g, 'menu');
   assert.equal(await g.locator('#practice-badge').isVisible(), false);
   await go(g, 'school');
-  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'open', 'locked', 'locked']);
+  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'open', 'locked', 'locked', 'locked', 'locked']);
   // 중급 1: 뒤집어 놓으면 "다시 해 보자", 알려 준 대로 놓으면 3연쇄
   const ticketsBefore = (await read(g)).tickets;
   await g.click('#school-list .grade[data-grade="middle"] button');
@@ -278,22 +279,51 @@ try {
     [1, [[[0, 0]], [[3, 1]], [[3, 0]]]],
     [2, [[[0, 0]], [[1, 0], [0, 0]], [[3, 0]]]],
     [3, [[[0, 0]], [[1, 0], [0, 0]], [[1, 0], [0, 0]]]],
+    [4, [[[1, 0]], [[1, 0], [0, 0]], [[0, 0]]]], // 초초상급: 끼워 넣기, 직접 쌓아서 5연쇄, 여섯 칸 6연쇄
+    // 마지막: 복습 다섯(오른쪽으로 뒤집은 문제) + 빈 필드에서 여섯 번 놓아 직접 쌓기. 그 뒤의 비결 4가지는 아래에서 따로 본다
+    [5, [[[5, 0]], [[5, 0]], [[4, 0], [5, 0]], [[5, 0]], [[4, 0]], [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [0, 0]]]],
   ];
+  const nextTitle = ['', '다음은 상급!', '다음은 최상급!', '다음은 초초상급!', '다음은 마지막!', '모두 배웠어!'];
   for (const [grade, lessons] of answers) {
     for (const [index, moves] of lessons.entries()) {
       await lessonIs(g, grade, index);
-      for (const [x, rot] of moves) await place(g, x, rot);
-      await coachTitle(g, index < 2 ? '잘했어!' : ['', '다음은 상급!', '다음은 최상급!', '모두 배웠어!'][grade]);
+      if (grade === 4 && index === 0) { assert.equal(await g.textContent('#coach-step'), '초초상급 1 / 3'); await settle(g); await g.screenshot({ path: `${shots}/lesson-ultra.png` }); }
+      if (grade === 5 && index === 0) { assert.equal(await g.textContent('#coach-step'), '마지막 1 / 10'); assert.match(await g.textContent('#coach-title'), /복습 ① 초급/); }
+      for (const [n, [x, rot]] of moves.entries()) {
+        if (grade === 5 && index === 5) {
+          // 직접 쌓기: 짝을 놓을 때마다 꼬마 뿌요의 안내가 ① → ⑥ 으로 바뀐다
+          await g.waitForFunction(mark => document.getElementById('coach-text').textContent.includes(mark), '①②③④⑤⑥'[n], T);
+          if (n === 4) { await settle(g); await g.screenshot({ path: `${shots}/lesson-scratch.png` }); }
+        }
+        await place(g, x, rot);
+      }
+      if (grade === 5 && index === 5) assert.equal(await g.evaluate(() => window.__puyo.match.players[0].lastChain), 3); // 빈 필드에서 직접 만든 3연쇄
+      await coachTitle(g, grade === 5 || index < 2 ? '잘했어!' : nextTitle[grade]);
     }
     if (grade === 3) await g.screenshot({ path: `${shots}/lesson-master-done.png` });
-    if (grade < 3) await g.click('#coach-buttons button.primary'); // 다음 등급 배우기
+    if (grade < 5) await g.click('#coach-buttons button.primary'); // 다음 등급 배우기
   }
+  // 마지막의 끝: 진짜 연쇄를 잘하는 비결 4가지. 풀 것 없이 읽고 단추로 넘어가고, 그동안 뿌요는 나오지 않는다
+  for (const [k, title] of ['비결 ① 3개까지만 모으고 참기', '비결 ② 계단으로 쌓기', '비결 ③ 가운데는 비워 두기', '비결 ④ 다음 뿌요를 보고, 위험하면 바로 터뜨리기'].entries()) {
+    await g.waitForFunction(([i, t]) => window.__puyo.practice?.index === i && document.getElementById('coach-title').textContent === t, [6 + k, title], T);
+    assert.equal(await g.textContent('#coach-step'), `마지막 ${7 + k} / 10`);
+    assert.equal(await g.textContent('#coach-buttons button'), k < 3 ? '알겠어! ▶' : '다 배웠어! 🎉');
+    assert.ok((await g.textContent('#coach-text')).length > 30);
+    await g.waitForTimeout(500);
+    assert.deepEqual(await g.evaluate(() => { const p = window.__puyo.match.players[0]; return [window.__puyo.practice.freeze, p.piece, p.cells.some(v => v > 0)]; }), [true, null, true]);
+    if (k === 1 || k === 3) { await settle(g); await g.screenshot({ path: `${shots}/lesson-tip${k + 1}.png` }); }
+    await g.click('#coach-buttons button');
+  }
+  await coachTitle(g, nextTitle[5]);
+  assert.match(await g.textContent('#coach-text'), /초급부터 마지막까지 뿌요뿌요 배우기를 모두 끝냈어/);
+  await settle(g); await g.screenshot({ path: `${shots}/lesson-final-done.png` });
   s = await read(g);
-  assert.deepEqual(s.school, ['middle', 'high', 'master']);
-  // 등급 선물: 중급 부스트 1, 상급 펫 뽑기권 1, 최상급 펫 뽑기권 1 + 부스트 1
-  assert.equal(s.tickets.pet, ticketsBefore.pet + 2); assert.equal(s.tickets.boost, ticketsBefore.boost + 2);
+  assert.deepEqual(s.school, ['middle', 'high', 'master', 'ultra', 'final']);
+  // 등급 선물: 중급 부스트 1, 상급 펫 뽑기권 1, 최상급 펫 뽑기권 1 + 부스트 1, 초초상급 펫 뽑기권 2 + 부스트 1, 마지막 펫 뽑기권 3 + 부스트 2 + 스킨·효과 교환권
+  assert.equal(s.tickets.pet, ticketsBefore.pet + 7); assert.equal(s.tickets.boost, ticketsBefore.boost + 5);
+  assert.equal(s.tickets.skin, ticketsBefore.skin + 1); assert.equal(s.tickets.effect, ticketsBefore.effect + 1);
   await g.click('#coach-buttons button.ghost'); await screenIs(g, 'school'); // 배우기 목록으로
-  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'done', 'done', 'done']);
+  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'done', 'done', 'done', 'done', 'done']);
   // 다시 배워도 선물은 한 번만
   await g.click('#school-list .grade[data-grade="middle"] button');
   for (const [index, moves] of answers[0][1].entries()) { await lessonIs(g, 1, index); for (const [x, rot] of moves) await place(g, x, rot); }
@@ -528,7 +558,7 @@ try {
   assert.deepEqual((await read(b2)).bonus, { xp: 1, coins: 1 });
 
   assert.deepEqual(errors, []);
-  console.log(`PASS: 펫(그림대로 뒤로·알·펫 뽑기 1000원·다섯 칸, 뽑기, ???, 뽑기권) → 시간 선물 7개 → 2배 부스트(사기·쓰기·이어 쓰기) → AI 대전 쫀득 연구소와 결과 배수 → 혼자 하기 맵 → 배우기 초급~최상급 아홉 문제 → 친구 배수 ×1.1 → 선물(코인·스킨·터짐 효과, 접속 중·꺼 둔 동안, 한 번만, 직접 쓴 글은 막음) → 온라인 맵 투표(다르면 뽑기, 같으면 그 맵) → 제작자 모드 전설의 뿌요 바로 쓰기 → 온라인 계정 지우기(틀린 비밀번호, 배포 전 서버 안내, 지운 뒤 로그인 안 됨, 친구 목록에서 사라짐) — 오류 없음 (net ${NET}, 사진 ${shots})`);
+  console.log(`PASS: 펫(그림대로 뒤로·알·펫 뽑기 1000원·다섯 칸, 뽑기, ???, 뽑기권) → 시간 선물 7개 → 2배 부스트(사기·쓰기·이어 쓰기) → AI 대전 쫀득 연구소와 결과 배수 → 혼자 하기 맵 → 배우기 초급~마지막(초초상급, 다섯 등급 복습, 빈 필드에서 직접 쌓기, 비결 4가지) → 친구 배수 ×1.1 → 선물(코인·스킨·터짐 효과, 접속 중·꺼 둔 동안, 한 번만, 직접 쓴 글은 막음) → 온라인 맵 투표(다르면 뽑기, 같으면 그 맵) → 제작자 모드 전설의 뿌요 바로 쓰기 → 온라인 계정 지우기(틀린 비밀번호, 배포 전 서버 안내, 지운 뒤 로그인 안 됨, 친구 목록에서 사라짐) — 오류 없음 (net ${NET}, 사진 ${shots})`);
 } finally {
   await browser.close();
   stopServer();
