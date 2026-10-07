@@ -295,3 +295,35 @@ test('loadSave and putSave return plain results, and a conflict carries the serv
   assert.deepEqual(await account.putSave('jelly-tower', { level: 3 }, 0), { conflict: true, server: { data: { level: 2 }, revision: 1, updated: 5 } });
   assert.deepEqual(await new Social(account).loadSave('jelly-tower'), { data: { level: 2 }, revision: 1, updated: 5 });
 });
+
+test('stats, rankings, live matches and watching hit the right endpoints', async () => {
+  const ranking = { by: 'level', list: [{ rank: 1, id: 2, nickname: '민준', level: 30, trophies: 4, wins: 1 }], me: { rank: 3, ranks: { trophies: 2, level: 3, wins: null }, top5: true } };
+  const live = [{ code: 'QWERTY', started: 1, friend: true, players: [{ id: 2, nickname: '민준', level: 30 }, { id: 3, nickname: '지우', level: 4 }] }];
+  const { options, calls, sockets } = setup({
+    'PUT /stats/jelly-tower': () => [200, { ok: true }],
+    'GET /rankings/jelly-tower': () => [200, ranking],
+    'GET /matches/jelly-tower': () => [200, { matches: live }],
+  });
+  const account = new Account(options);
+  await account.login('인혁', '1234');
+  const social = new Social(account, {}, { connect: options.connect });
+  assert.deepEqual(await social.putStats('jelly-tower', { level: 12, xp: 30, trophies: 5, coins: 999 }), { ok: true });
+  assert.deepEqual(calls.at(-1), { method: 'PUT', path: '/stats/jelly-tower', body: { level: 12, xp: 30, trophies: 5 }, auth: 'Bearer tok-1' });
+  assert.deepEqual(await social.rankings('jelly-tower', 'level'), ranking);
+  assert.equal(calls.at(-1).path, '/rankings/jelly-tower?by=level');
+  await social.rankings('jelly-tower');
+  assert.equal(calls.at(-1).path, '/rankings/jelly-tower?by=trophies');
+  assert.deepEqual(await social.matches('jelly-tower'), live);
+
+  const messages = [];
+  const watching = social.watch('jelly-tower', 'QWERTY', { message: (data, from) => messages.push([data, from]) });
+  await until(() => sockets.length === 1);
+  assert.equal(sockets[0].url, 'wss://net.test/rooms/jelly-tower/QWERTY?ticket=ticket-1&watch=1');
+  sockets[0].serve({ t: 'welcome', id: 'w1', watch: true, host: 'p1', max: 2, peers: ['p1', 'p2'] });
+  const room = await watching;
+  assert.ok(room instanceof Room);
+  assert.equal(room.watcher, true);
+  sockets[0].serve({ t: 'msg', from: 'p1', data: { t: 's', sc: 5 } });
+  assert.deepEqual(messages, [[{ t: 's', sc: 5 }, 'p1']]);
+  room.leave();
+});

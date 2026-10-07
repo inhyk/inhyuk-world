@@ -6,7 +6,7 @@ import { MAPS } from './maps.mjs';
 import { newProgress, sanitize, emptyStore, createAccount, exportCode, importCode } from './profile.mjs';
 import { clearFloor, floorState, floorReward, currentFloor } from './tower.mjs';
 import { AI_LEVELS, AIController } from './ai.mjs';
-import { SKINS, EFFECTS, redeem, canRedeem } from './shop.mjs';
+import { SKINS, EFFECTS, RANK_SKIN, redeem, canRedeem, canBuy, buy } from './shop.mjs';
 import { SKIN_IDS } from './skins.mjs';
 import { grantReward, claimDaily, claimTime, addPlayTime, spin, rewardView } from './rewards.mjs';
 import { MISSIONS, track, claim, missionView } from './missions.mjs';
@@ -64,7 +64,7 @@ test('혜성을 깨야 노바 해제, 노바의 첫 보상·재도전 보상·�
 
 test('새 스킨은 실제 그림이 있고 교환권은 원하는 판매 상품만 한 번 해제한다', () => {
   for (const item of SKINS) assert.ok(SKIN_IDS.includes(item.id), item.id);
-  assert.equal(SKINS.length, 20); assert.equal(EFFECTS.length, 19);
+  assert.equal(SKINS.length, 33); assert.equal(EFFECTS.length, 21);
   const p = newProgress(); p.tickets.skin = 2; p.tickets.effect = 1;
   assert.equal(canRedeem(p, 'skin', 'aurora'), false);
   assert.equal(canRedeem(p, 'effect', 'nova'), false);
@@ -73,6 +73,38 @@ test('새 스킨은 실제 그림이 있고 교환권은 원하는 판매 상품
   assert.equal(redeem(p, 'skin', 'astronaut'), false); assert.equal(p.tickets.skin, 1);
   assert.equal(redeem(p, 'effect', 'portal'), true); assert.equal(p.equip.effect, 'portal');
   assert.equal(redeem(p, 'effect', 'butterfly'), false);
+});
+
+// 업그레이드 3 (인혁이 기획서 2번): 30·40·50·60·70·99레벨 고난이도 스킨과 30·50레벨 효과
+test('고난이도 레벨 상품은 그 레벨이 되어야 코인으로 사고, 교환권으로는 받을 수 없다', () => {
+  const hardSkins = SKINS.filter(s => s.noTicket), hardEffects = EFFECTS.filter(s => s.noTicket);
+  assert.deepEqual(hardSkins.map(s => s.level), [30, 40, 50, 60, 70, 99]);
+  assert.deepEqual(hardEffects.map(s => s.level), [30, 50]);
+  const p = newProgress(); p.tickets.skin = 5; p.tickets.effect = 5; p.coins = 1e6;
+  for (const item of hardSkins) {
+    assert.equal(canRedeem(p, 'skin', item.id), false, item.id);
+    assert.equal(redeem(p, 'skin', item.id), false, item.id);
+    p.level = item.level - 1; assert.equal(canBuy(p, 'skin', item.id), 'level', item.id);
+    p.level = item.level; assert.equal(canBuy(p, 'skin', item.id), 'ok', item.id);
+  }
+  for (const item of hardEffects) assert.equal(canRedeem(p, 'effect', item.id), false, item.id);
+  assert.equal(p.tickets.skin, 5); assert.equal(p.tickets.effect, 5);
+  // 레벨이 되어도 코인이 모자라면 못 산다
+  p.level = 30; p.coins = 4999; assert.equal(canBuy(p, 'skin', 'knight'), 'coins');
+  p.coins = 5000; assert.equal(buy(p, 'skin', 'knight'), 'bought'); assert.equal(p.coins, 0); assert.equal(p.equip.skin, 'knight');
+  // 레벨 제한이 없는 새 스킨 6가지는 교환권으로도 받는다
+  for (const id of ['chick', 'penguin', 'cookie', 'ninja', 'pumpkin', 'octopus']) assert.equal(canRedeem(p, 'skin', id), true, id);
+});
+
+// 기획서 6번: 온라인 랭킹 5등 안에 든 사람만 받는 스킨
+test('랭킹 5등 스킨은 코인, 교환권, 제작자 모드로 받을 수 없다', () => {
+  const item = SKINS.find(s => s.id === RANK_SKIN);
+  assert.equal(item.reward, 'ranking');
+  const p = newProgress(); p.level = 99; p.coins = 1e9; p.tickets.skin = 9;
+  assert.equal(canBuy(p, 'skin', RANK_SKIN), 'reward');
+  assert.equal(buy(p, 'skin', RANK_SKIN), 'reward');
+  assert.equal(canRedeem(p, 'skin', RANK_SKIN), false);
+  assert.equal(p.owned.skin.includes(RANK_SKIN), false);
 });
 
 test('매일 선물·시간 선물·스핀은 교환권을 주고 추가 스핀권을 정확히 소모한다', () => {

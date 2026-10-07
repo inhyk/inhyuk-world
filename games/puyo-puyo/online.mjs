@@ -1,15 +1,18 @@
 // 온라인 대전. 방 코드 없이 "게임 찾기"(랜덤 매칭)나 친구 초대로 같은 방(@inhyuk/net Room)에 들어간다.
-// 각자 자기 필드를 계산하고, 상대에게는 필드 모습(초당 12번)과 방해 젤리, 연쇄 시작/끝, 쓰러짐만 보낸다.
+// 각자 자기 필드를 계산하고, 상대에게는 필드 모습(초당 12번)과 방해 뿌요, 연쇄 시작/끝, 쓰러짐만 보낸다.
 // 판정(누가 이겼나)은 방장(먼저 들어온 사람)이 한다.
 // - 상대 이름은 서버가 준 opponent.nickname 만 쓴다. 상대가 보낸 글자는 이름으로 쓰지 않는다 (hello 에 이름을 넣지도 않는다).
 // - 매칭, 초대 방에서는 서버가 data 안의 모든 글자열을 거르고 숫자 8개 이상을 가린다.
 //   그래서 필드 모습은 글자열이 아니라 숫자 배열로 보낸다.
 // - 서버는 한 연결에서 1초에 30개(몰아서 60개)까지만 전한다. 필드 모습을 초당 12번으로 줄여 공격 메시지가 버려지지 않게 한다.
-// - 직접 쓴 채팅은 room.chat(text) (data.chat) 으로만 보낸다. 빠른 말과 젤리 이모티콘은 번호만 보낸다
+// - 직접 쓴 채팅은 room.chat(text) (data.chat) 으로만 보낸다. 빠른 말과 뿌요 이모티콘은 번호만 보낸다
 //   ({ t: 'say', quick: n } / { t: 'say', sticker: n }). 번호라서 거를 글자가 없고, 받는 쪽이 정해진 말과 그림으로 바꾼다.
 // - 다시 접속(rejoin): 상대 계정이 다른 연결로 다시 들어오면 판을 맞추지 않고 이번 대전을 끝낸다(둘 다 온라인 화면으로).
-//   필드를 다시 맞추려면 양쪽 젤리 순서와 방해 젤리 수를 모두 다시 보내야 해서, 끝내는 쪽이 간단하고 어긋나지 않는다.
+//   필드를 다시 맞추려면 양쪽 뿌요 순서와 방해 뿌요 수를 모두 다시 보내야 해서, 끝내는 쪽이 간단하고 어긋나지 않는다.
 //   내 연결이 끊기거나(lost) 다른 기기에서 같은 계정이 들어오면(replaced) 지금처럼 대전을 끝내고 온라인 화면으로 돌아간다.
+// - 관전: 다른 사람이 보기만 하러 들어올 수 있다(서버가 채팅 글은 보내지 않는다). 처음 인사(hello)와 판 수(first)는
+//   keep 으로 보내서 나중에 들어온 사람도 받는다. 지금 몇 명이 보는지는 watchers 로 알려 준다.
+// - 대전이 끝나면 몇 번째 대전인지(n)와 내가 이겼는지를 서버에 보고한다(report). 두 사람 보고가 같으면 온라인 승리 1개.
 import { clampFirstTo, emptyTotals } from './match.mjs';
 import { W, H, heights } from './core.mjs';
 import { NET_GAME } from './net.mjs';
@@ -97,6 +100,7 @@ export function createOnline(api) {
   const { toast, sound } = api;
   let room = null, opponent = null, peer = null, firstTo = 2, remote = null, clock = 0, last = '', lastRound = 0;
   let wantAgain = false, peerAgain = false, inGame = false, searching = false, inviting = null, helloPending = false;
+  let matchNo = 0, reported = 0, watchers = 0; // 이 방에서 몇 번째 대전인지, 결과를 보고한 대전, 보고 있는 사람 수
   let lines = [], recent = null; // recent: 방금 같이 한 사람 { id, nickname, room } (방을 나간 뒤에도 친구 요청, 신고에 씀)
 
   const hooks = {
@@ -119,13 +123,14 @@ export function createOnline(api) {
       if (code === 'chat-rate') toast('채팅은 천천히! 1초에 한 줄씩 보낼 수 있어.');
     },
     message(m) { received(m); },
+    watchers(n) { watchers = n; api.watchersChanged?.(n); },
   };
 
   const render = () => api.render?.();
 
   function hello() {
     helloPending = false;
-    room?.send({ t: 'hello', ...api.me() });
+    room?.send({ t: 'hello', ...api.me() }, { keep: true });
   }
 
   function enter(result) {
@@ -135,6 +140,7 @@ export function createOnline(api) {
     recent = { ...opponent, room: room.code };
     lines = [];
     peer = null; wantAgain = false; peerAgain = false; firstTo = 2;
+    matchNo = 0; reported = 0; watchers = 0;
     api.chatReset?.();
     if (helloPending || room.peers.length) hello();
     sound.sfx('coin');
@@ -146,6 +152,7 @@ export function createOnline(api) {
     const playing = inGame && !api.isFinished();
     const r = room;
     room = null; peer = null; inGame = false; wantAgain = false; peerAgain = false; helloPending = false;
+    if (watchers) { watchers = 0; api.watchersChanged?.(0); }
     try { r?.leave(); } catch { /* 이미 닫힘 */ }
     if (playing) api.quit();
     render();
@@ -153,6 +160,7 @@ export function createOnline(api) {
 
   function begin(seed, role) {
     wantAgain = false; peerAgain = false; inGame = true; lastRound = 1; clock = 0; last = '';
+    matchNo++;
     api.start({ seed, firstTo, opponent, peer: peer || cleanPeer({}), role, makeRemote: seq => (remote = new RemoteView(seq)) });
   }
 
@@ -175,8 +183,8 @@ export function createOnline(api) {
     switch (m.t) {
       case 'hello':
         peer = cleanPeer(m);
-        if (!m.re) room?.send({ t: 'hello', re: 1, ...api.me() });
-        if (room?.host) room.send({ t: 'first', n: firstTo });
+        if (!m.re) room?.send({ t: 'hello', re: 1, ...api.me() }, { keep: true });
+        if (room?.host) room.send({ t: 'first', n: firstTo }, { keep: true });
         render();
         break;
       case 'first':
@@ -289,7 +297,14 @@ export function createOnline(api) {
       if (!room?.host || !peer) return;
       restart();
     },
-    setFirstTo(n) { firstTo = clampFirstTo(n); if (room?.host) room.send({ t: 'first', n: firstTo }); },
+    setFirstTo(n) { firstTo = clampFirstTo(n); if (room?.host) room.send({ t: 'first', n: firstTo }, { keep: true }); },
+    // 대전이 끝났다: 내가 이겼는지 서버에 한 번만 알린다 (온라인 승리 세기)
+    report(won) {
+      if (!room?.ready || !matchNo || reported === matchNo) return false;
+      reported = matchNo;
+      return room.report(matchNo, !!won);
+    },
+    get watchers() { return watchers; },
 
     chat(text) {
       const t = String(text ?? '').trim().slice(0, CHAT_MAX);
@@ -298,7 +313,7 @@ export function createOnline(api) {
       line('me', t);
       return true;
     },
-    // 빠른 말(quick)과 젤리 이모티콘(sticker)은 번호만 보낸다
+    // 빠른 말(quick)과 뿌요 이모티콘(sticker)은 번호만 보낸다
     say({ quick, sticker }) {
       if (!room?.ready) return false;
       if (validSticker(sticker)) { if (!room.send({ t: 'say', sticker })) return false; line('me', '', sticker); return true; }
@@ -310,7 +325,7 @@ export function createOnline(api) {
     reportPayload(reason) {
       const who = recent;
       if (!who?.id) return null;
-      return { target: who.id, context: { kind: 'room', game: NET_GAME, room: who.room }, reason, messages: lines.map(l => ({ text: `${l.who === 'me' ? '나' : '상대'}: ${validSticker(l.sticker) ? `[젤리 이모티콘: ${STICKERS[l.sticker].text}]` : l.text}` })) };
+      return { target: who.id, context: { kind: 'room', game: NET_GAME, room: who.room }, reason, messages: lines.map(l => ({ text: `${l.who === 'me' ? '나' : '상대'}: ${validSticker(l.sticker) ? `[뿌요 이모티콘: ${STICKERS[l.sticker].text}]` : l.text}` })) };
     },
 
     send: m => room?.send(m),

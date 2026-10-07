@@ -364,7 +364,7 @@ body.duo #touch button { width: 52px; height: 52px; font-size: 22px; }
   #hud-title { font-size: 13px; }
 }
 
-/* 아이폰 앱(젤리 타워 앱)에서만 다른 것 */
+/* 아이폰 앱(뿌요뿌요 타워 앱)에서만 다른 것 */
 body:not(.app) .app-only { display: none !important; }
 body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사이트가 없다 */
 .delete-zone { margin-top: 22px; }
@@ -373,7 +373,7 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 .delete-confirm { margin-top: 10px; padding: 16px; }
 .delete-confirm p { margin: 0 0 12px; font-family: var(--body-font); font-size: 14px; line-height: 1.6; }
 
-/* 연습하기: 꼬마 젤리 말풍선 */
+/* 연습하기: 꼬마 뿌요 말풍선 */
 #coach { position: fixed; z-index: 6; top: calc(max(8px, env(safe-area-inset-top)) + 48px); left: 10px; right: 10px; margin: 0 auto;
   max-width: 620px; min-height: 88px; display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 6px;
   background: #fffdf8f2; border-radius: 20px; box-shadow: 0 8px 26px rgba(30, 10, 70, .28), 0 0 0 3px #ffd36b inset; animation: rise .2s ease-out; }
@@ -439,7 +439,7 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 .chat-log { flex: 1; min-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: #f6f1ff; border-radius: 14px; -webkit-user-select: text; user-select: text; }
 .chat-wrap.compact .chat-log { min-height: 70px; }
 /* 채팅 한 줄. .msg는 로그인·제작자 화면의 빨간 오류 글에도 쓰는 이름이라 그쪽 높이·여백·색·가운데 정렬을 되돌린다.
-   flex-shrink: 0 — 대화가 길어져도 줄이 눌리지 않아서 젤리 이모티콘이 다음 줄과 겹치지 않는다 */
+   flex-shrink: 0 — 대화가 길어져도 줄이 눌리지 않아서 뿌요 이모티콘이 다음 줄과 겹치지 않는다 */
 .chat-log .msg { flex-shrink: 0; min-height: auto; margin: 0; max-width: 82%; display: flex; flex-direction: column; gap: 4px; color: var(--ink); text-align: left; }
 .msg span { padding: 7px 11px; border-radius: 14px; font-family: var(--body-font); font-size: 14px; line-height: 1.45; word-break: break-word; }
 .msg.me { align-self: flex-end; align-items: flex-end; }
@@ -473,7 +473,7 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 .sent-list { margin: 6px auto; text-align: center; }
 .sent-code { display: inline-flex; align-items: center; gap: 4px; margin: 2px 4px; padding: 2px 4px 2px 10px; border-radius: 999px; background: #fff; border: 2px solid var(--line); font-family: 'Jua', var(--body-font); letter-spacing: 1px; }
 
-/* 이모티콘: 😊 단추, 고르기 판, 젤리 이모티콘과 큰 이모지 */
+/* 이모티콘: 😊 단추, 고르기 판, 뿌요 이모티콘과 큰 이모지 */
 .emoji-toggle { flex: 0 0 auto; width: 44px; padding: 0; font-size: 22px; border: 2px solid var(--line); }
 .emoji-toggle.on { background: #ffe7a8; border-color: #ffc94a; }
 .chat-emoji { flex-shrink: 1; max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 14px; background: #f6f1ff; }
@@ -527,3 +527,40 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 .chat-lines .line.sticker { background: none; box-shadow: none; padding: 0; }
 .chat-lines .line img.dm-sticker { display: block; width: 96px; height: 96px; }
 .chat-lines .line.emoji-big span { font-size: 36px; line-height: 1.15; }
+
+/* 업그레이드 3 (인혁이 기획서 3~6번): 트로피, 관전 목록, 온라인 랭킹, 고난이도 레벨 상품 */
+.menu-btn.ranking { background: linear-gradient(135deg, #fff3c4, #ffe1ef); }
+.online-more { margin-top: 4px; flex-wrap: wrap; }
+.hud-watchers { flex: 0 0 auto; padding: 4px 10px; border-radius: 999px; background: rgba(20, 10, 50, .6); color: #fff; font-family: var(--body-font); font-size: 13px; white-space: nowrap; }
+.trophy-line { margin-top: 8px; padding: 8px 12px; border-radius: 14px; background: linear-gradient(110deg, #fff3b8, #ffe0a8); border: 2px solid #ffc94a; text-align: center; font-size: 18px; }
+.hard-tag { display: block; padding: 2px 6px; border-radius: 8px; background: #fff3c4; color: #8a5200; font-family: var(--body-font); font-size: 11px; }
+/* 랭킹: 그림처럼 맨 위에 "닉네임 레벨" 칸, 그 아래로 한 사람에 한 줄 */
+.rank-tabs { display: flex; justify-content: center; margin: 4px 0 6px; }
+.rank-board { margin-top: 8px; padding: 10px; border-radius: 20px; background: rgba(255, 255, 255, .92); }
+.rank-head, .rank-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 72px 116px; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 12px; }
+.rank-head { background: linear-gradient(135deg, var(--pri1), var(--pri2)); color: #fff; font-size: 15px; }
+.rank-row { font-size: 17px; }
+.rank-row:nth-child(even) { background: rgba(138, 92, 255, .07); }
+.rank-row.me { background: #fff3c4; box-shadow: 0 0 0 2px #ffc94a inset; }
+.rank-row.top .rk { font-size: 21px; }
+.rank-head .rk, .rank-row .rk, .rank-head .lv, .rank-row .lv { text-align: center; }
+.rank-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-row .lv { color: var(--soft); font-size: 15px; }
+.rank-head .val, .rank-row .val { text-align: right; white-space: nowrap; }
+#rank-list .fine { margin: 14px 0; text-align: center; }
+.rank-me { margin: 10px 0 4px; padding: 10px 14px; border: 2px solid #ffc94a; border-radius: 14px; background: #fff3c4; text-align: center; font-size: 17px; }
+.rank-me:empty { display: none; }
+.rank-reward { text-align: center; }
+/* 관전 목록: 한 대전에 한 줄 */
+.watch-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.watch-list .fine { text-align: center; }
+.watch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; border: 2px solid #fff; border-radius: 16px; background: rgba(255, 255, 255, .92); }
+.watch-row .vsline { flex: 1; flex-wrap: wrap; justify-content: flex-start; gap: 8px; margin: 0; font-size: 17px; }
+.watch-row .friend-tag { font-family: var(--body-font); font-size: 12px; color: #c2478a; }
+.watch-row button { white-space: nowrap; }
+/* 친구 줄에 관전 단추까지 들어가면 좁은 화면에서는 단추가 다음 줄로 내려간다 */
+#friends-net .friend { flex-wrap: wrap; }
+@media (max-width: 480px) {
+  .rank-head, .rank-row { grid-template-columns: 40px minmax(0, 1fr) 54px 96px; gap: 6px; padding: 8px 6px; }
+  .rank-row { font-size: 15px; }
+}

@@ -9,7 +9,7 @@ export const FRIEND_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 // 게임 중에 빠르게 누르는 말 (글자를 치지 않아도 되고, 나쁜 말이 섞일 수 없다)
 export const QUICK = ['👋 안녕!', '👍 잘한다!', '😮 와!', '🔥 간다!', '😅 아깝다~', '🙏 봐줘~', '🎉 GG!', '💪 한 판 더!'];
 
-// 젤리 이모티콘: 게임 캐릭터를 그려서 보여 주는 스티커. 번호로만 주고받아서 나쁜 말이 섞일 수 없다.
+// 뿌요 이모티콘: 게임 캐릭터를 그려서 보여 주는 스티커. 번호로만 주고받아서 나쁜 말이 섞일 수 없다.
 export const STICKERS = [
   { char: 'hero', mood: 'happy', text: '좋아!' },
   { char: 'poyo', mood: 'happy', text: '고마워' },
@@ -101,7 +101,7 @@ export function makeMailKey() {
   return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 }
 export const REQUEST_MAX = 20;   // 받은 친구 신청은 20개까지 기억
-// 대화 한 줄 (글자 또는 젤리 이모티콘). 이상한 값은 null
+// 대화 한 줄 (글자 또는 뿌요 이모티콘). 이상한 값은 null
 export function cleanEntry(m) {
   if (!m || typeof m !== 'object') return null;
   const time = Number(m.time) || 0, me = m.me === true;

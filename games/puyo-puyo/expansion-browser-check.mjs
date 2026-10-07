@@ -126,10 +126,10 @@ try {
   await page.getByRole('button', { name: '타워로', exact: true }).click(); await shot(page, 'tower-expanded');
   await page.click('#scr-tower [data-go="menu"]'); await unlock(page); await page.click('[data-creator="skins"]');
   await page.click('#scr-creator [data-go="menu"]'); await page.click('[data-go="shop"]');
-  await page.click('#shop-tabs [data-v="skin"]'); assert.equal(await page.locator('.item').count(), 20);
-  await page.locator('.item').filter({ has: page.getByText('토끼 젤리', { exact: true }) }).scrollIntoViewIfNeeded();
+  await page.click('#shop-tabs [data-v="skin"]'); assert.equal(await page.locator('.item').count(), 33); // 업그레이드 3: 스킨 20종 → 33종
+  await page.locator('.item').filter({ has: page.getByText('토끼 뿌요', { exact: true }) }).scrollIntoViewIfNeeded();
   await shot(page, 'skins');
-  await page.click('#shop-tabs [data-v="effect"]'); assert.equal(await page.locator('.item').count(), 19);
+  await page.click('#shop-tabs [data-v="effect"]'); assert.equal(await page.locator('.item').count(), 21); // 업그레이드 3: 효과 19종 → 21종
   await page.locator('.item').filter({ has: page.getByText('나비 정원', { exact: true }) }).scrollIntoViewIfNeeded();
   await shot(page, 'effects');
   // 휴대폰에서 지도, 선물, 필터, 안내창이 화면에 맞고 닫힌다.
@@ -155,6 +155,6 @@ try {
   await phone.evaluate(() => window.__puyo.startLocal(1, 'garden'));
   assert.equal(await phone.locator('#seonn-promo').isVisible(), false);
   assert.deepEqual(errors, []);
-  console.log('PASS: 6개 맵 실전 규칙·6개 터짐, 5판 광고(5초 뒤에 ✕)/닫기/저장, 151개 챌린지·맵 진행, 교환권 실제 교환, 노바 AI/전용 보상, 새 스킨20/효과19 미리보기, 모바일 — 오류 없음');
+  console.log('PASS: 6개 맵 실전 규칙·6개 터짐, 5판 광고(5초 뒤에 ✕)/닫기/저장, 151개 챌린지·맵 진행, 교환권 실제 교환, 노바 AI/전용 보상, 스킨 33종·효과 21종 상점 목록, 모바일 — 오류 없음');
   console.log(`Screenshots: ${shots}`);
 } finally { await browser.close(); }

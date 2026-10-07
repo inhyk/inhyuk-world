@@ -99,7 +99,7 @@ test('친구 연결 이름과, 둘이 동시에 연결해도 양쪽이 같은 �
   assert.equal(keepLink('AAAAAA', 'BBBBBB', false), false);
 });
 
-test('이모티콘: 이모지는 반으로 잘리지 않고, 이모지만 1~3개면 크게, 젤리 이모티콘 번호만 통과', async () => {
+test('이모티콘: 이모지는 반으로 잘리지 않고, 이모지만 1~3개면 크게, 뿌요 이모티콘 번호만 통과', async () => {
   const { STICKERS, EMOJIS, validSticker, bigEmoji, graphemes, cleanChat: clean } = await import('./chat.mjs');
   assert.equal(clean('😂'.repeat(70)), '😂'.repeat(60)); // 60글자 = 이모지 60개 (반쪽 이모지 없음)
   assert.equal(graphemes('👍🏽❤️🇰🇷').length, 3);
@@ -112,7 +112,7 @@ test('이모티콘: 이모지는 반으로 잘리지 않고, 이모지만 1~3개
   for (const e of EMOJIS) assert.equal(clean(e), e); // 고르기 판의 이모지는 그대로 보내진다
 });
 
-test('우체통 열쇠·받은 신청·보낸 신청·젤리 이모티콘 대화가 저장되고, 이상한 값은 걸러진다', async () => {
+test('우체통 열쇠·받은 신청·보낸 신청·뿌요 이모티콘 대화가 저장되고, 이상한 값은 걸러진다', async () => {
   const { sanitizeSocial, makeMailKey, validMailKey, STICKERS } = await import('./chat.mjs');
   const key = makeMailKey();
   assert.equal(validMailKey(key), true); assert.equal(validMailKey('xyz'), false);

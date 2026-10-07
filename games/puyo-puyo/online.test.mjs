@@ -102,7 +102,7 @@ test('채팅: data.chat 으로만 보내고, 받은 글은 서버가 준 그대�
   assert.equal(report.messages.length, 2);
 });
 
-test('빠른 말과 젤리 이모티콘은 번호만 보내고(글자가 없어서 거를 것도 없다), 받으면 정해진 말과 그림으로 바꾼다', async () => {
+test('빠른 말과 뿌요 이모티콘은 번호만 보내고(글자가 없어서 거를 것도 없다), 받으면 정해진 말과 그림으로 바꾼다', async () => {
   const { online, room, calls } = setup();
   await online.find();
   assert.equal(online.say({ quick: 6 }), true);
@@ -116,7 +116,7 @@ test('빠른 말과 젤리 이모티콘은 번호만 보내고(글자가 없어�
   online.hooks.message({ t: 'say', sticker: 9 });
   online.hooks.message({ t: 'say', quick: 'x', sticker: 'y' }); // 이상한 값은 버린다
   assert.deepEqual(calls.lines.map(l => [l.who, l.text ?? l.sticker]), [['me', QUICK[6]], ['me', 4], ['them', QUICK[0]], ['them', 9]]);
-  assert.match(online.reportPayload('').messages[3].text, /^상대: \[젤리 이모티콘: /);
+  assert.match(online.reportPayload('').messages[3].text, /^상대: \[뿌요 이모티콘: /);
 });
 
 test('상대가 나가거나 다시 접속하면 대전을 끝낸다 (결과가 나온 뒤면 결과 화면은 둔다)', async () => {

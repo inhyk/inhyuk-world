@@ -52,9 +52,9 @@ try {
 
   // 2) 계정을 만들면 기기 저장소에도 똑같이 적힌다.
   // 새 계정은 이제 서버(온라인 계정)에 만든다. 서버 없이 확인하려고 예전 방식의 이 기기 계정을 테스트용 함수로 만든다.
-  await page.evaluate(() => window.__puyo.localSignup('앱젤리', 'abcd')); await page.waitForSelector('#scr-menu:not([hidden])');
+  await page.evaluate(() => window.__puyo.localSignup('앱뿌요', 'abcd')); await page.waitForSelector('#scr-menu:not([hidden])');
   assert.equal(await page.locator('.back-site').isVisible(), false);
-  await page.waitForFunction(key => (window.__prefs[key] || '').includes('앱젤리'), STORE_KEY);
+  await page.waitForFunction(key => (window.__prefs[key] || '').includes('앱뿌요'), STORE_KEY);
   assert.equal((await prefs(page))[STORE_KEY], await page.evaluate(key => localStorage.getItem(key), STORE_KEY));
 
   // 3) 진동 설정: 끄고 켜면 설정이 저장되고, 켤 때 톡 한 번.
@@ -86,19 +86,19 @@ try {
   await first.context.close();
   const second = await openApp(saved);
   page = second.page;
-  assert.equal(await page.evaluate(key => localStorage.getItem(key)?.includes('앱젤리'), STORE_KEY), true);
+  assert.equal(await page.evaluate(key => localStorage.getItem(key)?.includes('앱뿌요'), STORE_KEY), true);
   await page.waitForSelector('#scr-menu:not([hidden])'); // 마지막으로 들어가 있던 계정으로 바로 시작
-  assert.equal(await page.textContent('#chip-name'), '앱젤리');
+  assert.equal(await page.textContent('#chip-name'), '앱뿌요');
 
   // 6) 계정 지우기: 한 번 더 물어보고, 지우면 기기 저장소에서도 사라진다.
   await page.click('#profile-chip'); await page.waitForSelector('#scr-profile:not([hidden])');
   await page.click('#delete-account');
-  assert.match(await page.textContent('#delete-question'), /앱젤리 계정을 지울까/);
+  assert.match(await page.textContent('#delete-question'), /앱뿌요 계정을 지울까/);
   await page.click('#delete-cancel'); assert.equal(await page.locator('#delete-confirm').isVisible(), false);
   await page.click('#delete-account'); await page.click('#delete-yes');
   await page.waitForSelector('#scr-login:not([hidden])');
   const store = JSON.parse((await prefs(page))[STORE_KEY]);
-  assert.equal(store.accounts.some(a => a.name === '앱젤리'), false);
+  assert.equal(store.accounts.some(a => a.name === '앱뿌요'), false);
   assert.equal(await page.locator('#login-accounts button').count(), 0);
   await second.context.close();
 

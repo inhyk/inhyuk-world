@@ -1,11 +1,11 @@
 // 온라인 계정으로 하는 것들의 화면: 온라인 대전(게임 찾기, 친구 초대), 닉네임 친구, 1:1 대화, 초대 알림,
 // 차단과 신고, 결과 화면의 "친구 요청", 저장 충돌 고르기 창. 게임 규칙과 계정 관리는 main.js 에 있다.
-// 대전 채팅 창(빠른 말, 젤리 이모티콘, 이모지)과 이 기기 계정의 친구 코드 친구도 main.js 에 있다.
+// 대전 채팅 창(빠른 말, 뿌요 이모티콘, 이모지)과 이 기기 계정의 친구 코드 친구도 main.js 에 있다.
 // 상대 이름은 서버가 준 닉네임만 보여 주고, 사람이 쓴 글은 모두 textContent 로 넣는다.
 import { NET_GAME } from './net.mjs';
 import { QUICK, STICKERS, EMOJIS, validSticker, bigEmoji } from './chat.mjs';
 
-// 1:1 대화의 젤리 이모티콘: 서버는 글만 받으므로 [[st:번호]] 로 보내고, 받는 쪽이 그림으로 바꾼다
+// 1:1 대화의 뿌요 이모티콘: 서버는 글만 받으므로 [[st:번호]] 로 보내고, 받는 쪽이 그림으로 바꾼다
 export const stickerBody = n => `[[st:${n}]]`;
 export function bodySticker(body) {
   const m = /^\[\[st:(\d{1,2})\]\]$/.exec(String(body ?? '').trim());
@@ -33,10 +33,12 @@ function button(label, cls, onclick) {
 
 // deps: $, toast, sound, show(name), screen() → 지금 화면, online, social() → Social | null, user() → { id, nickname } | null,
 //       P() → 내 기록, leaveOnline() → 온라인 판/방을 접는다, stopGame() → 다른 판을 하고 있으면 접는다,
-//       chatOn() → 설정에서 채팅을 켰는지, stickerImg(n) → 젤리 이모티콘 <img> 의 src
+//       chatOn() → 설정에서 채팅을 켰는지, stickerImg(n) → 뿌요 이모티콘 <img> 의 src,
+//       watch(entry) → 그 대전을 관전한다 (entry: 관전 목록의 한 줄)
 export function createSocialUI(deps) {
   const { $, toast, sound, online } = deps;
   let friends = [], incoming = [], outgoing = [], unread = new Map(), dmWith = null, dmLines = [], invite = null, inviteTimer = null;
+  let live = new Map(); // 친구 번호 → 지금 하는 대전 (관전하기)
 
   // ---------- 알림 개수 (메뉴, 온라인 화면의 친구 단추) ----------
   function counts() {
@@ -168,13 +170,16 @@ export function createSocialUI(deps) {
     row.dataset.id = f.id;
     const dot = el('i', `dot${f.online ? ' on' : ''}`);
     dot.title = f.online ? '접속 중' : '접속 안 함';
-    row.append(dot, el('b', '', f.nickname), el('small', '', f.online ? '접속 중' : ''));
+    const game = live.get(f.id);
+    row.append(dot, el('b', '', f.nickname), el('small', '', game ? '대전 중' : f.online ? '접속 중' : ''));
     const inv = button('🎮 초대', f.online ? 'primary' : '', () => { sound.sfx('click'); deps.show('online'); online.invite(f); });
     inv.disabled = !f.online || online.active || !!online.inviting || online.searching;
     const talk = button('💬 대화', 'ghost', () => { sound.sfx('click'); openDm(f); });
     const n = unread.get(f.id);
     if (n) talk.append(el('i', 'badge', String(n)));
     row.append(inv, talk);
+    // 친구가 지금 온라인 대전 중이면 보러 갈 수 있다 (인혁이 기획서 4번)
+    if (game) row.append(button('👀 관전', 'ghost watch-btn', () => deps.watch(game)));
     return row;
   }
   function paintFriends() {
@@ -213,9 +218,11 @@ export function createSocialUI(deps) {
     if (!s) return; // 온라인 계정이 아니면 main.js 의 친구 코드 화면
     paintFriends();
     try {
-      const [list, reqs, un] = await Promise.all([s.friends(), s.requests(), s.unread()]);
+      const [list, reqs, un, matches] = await Promise.all([s.friends(), s.requests(), s.unread(), s.matches(NET_GAME).catch(() => [])]);
       friends = list; incoming = reqs.incoming; outgoing = reqs.outgoing;
       unread = new Map(un.map(u => [u.id, u.count]));
+      live = new Map();
+      for (const m of matches) for (const p of m.players) live.set(p.id, m);
     } catch (error) { toast(error.message); }
     if (deps.screen() === 'friends') paintFriends();
   }
@@ -261,7 +268,7 @@ export function createSocialUI(deps) {
     if (sticker !== null) {
       body = el('img', 'dm-sticker');
       body.src = deps.stickerImg(sticker);
-      body.alt = `젤리 이모티콘 ${STICKERS[sticker].text}`;
+      body.alt = `뿌요 이모티콘 ${STICKERS[sticker].text}`;
     } else body = el('span', '', m.body);
     row.append(el('b', '', mine ? '나' : dmWith.nickname), body, el('small', '', when(m.created)));
     return row;
@@ -286,7 +293,7 @@ export function createSocialUI(deps) {
       if (unread.get(dmWith.id)) { await s.markRead(dmWith.id); unread.delete(dmWith.id); counts(); }
     } catch (error) { toast(error.message); }
   }
-  // 보내기: 직접 쓴 말, 빠른 말(그대로 글), 젤리 이모티콘([[st:번호]]). 서버가 모두 거른다.
+  // 보내기: 직접 쓴 말, 빠른 말(그대로 글), 뿌요 이모티콘([[st:번호]]). 서버가 모두 거른다.
   async function sendDm(body, { clear = false } = {}) {
     const s = deps.social();
     if (!s || !dmWith || !body || !deps.chatOn()) return;
@@ -310,7 +317,7 @@ export function createSocialUI(deps) {
       $('dm-stickers').replaceChildren(...STICKERS.map((st, i) => {
         const b = button('', '', () => { sound.sfx('click'); sendDm(stickerBody(i)); dmEmoji(false); });
         b.dataset.sticker = i;
-        b.setAttribute('aria-label', `젤리 이모티콘 ${st.text}`);
+        b.setAttribute('aria-label', `뿌요 이모티콘 ${st.text}`);
         const img = el('img'); img.src = deps.stickerImg(i); img.alt = ''; img.draggable = false;
         b.append(img);
         return b;
@@ -444,7 +451,7 @@ export function createSocialUI(deps) {
       if (name === 'dm') renderDm();
     },
     onlineChanged() { if (deps.screen() === 'online') renderOnline(); },
-    reset() { friends = []; incoming = []; outgoing = []; unread.clear(); dmWith = null; hideInvite(); counts(); },
+    reset() { friends = []; incoming = []; outgoing = []; unread.clear(); live = new Map(); dmWith = null; hideInvite(); counts(); },
     get friends() { return friends.slice(); },
   };
 }

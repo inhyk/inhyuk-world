@@ -51,7 +51,7 @@ try {
   assert.deepEqual(await logTexts(B), ['안녕 ♡♡ 같이 하자']);
   await B.click('#chat-quick [data-q="1"]'); // 👍 잘한다!
   await A.waitForFunction(() => [...document.querySelectorAll('#chat-log .msg.them span')].some(s => s.textContent === '👍 잘한다!'), null, T);
-  // 젤리 이모티콘과 큰 이모지도 방 채팅으로
+  // 뿌요 이모티콘과 큰 이모지도 방 채팅으로
   await B.click('#chat-emoji-toggle'); await B.click('#chat-stickers [data-sticker="3"]'); // ㅋㅋㅋ
   await A.waitForSelector('#chat-log .msg.them.sticker img[alt*="ㅋㅋㅋ"]', T);
   await B.click('#chat-emojis [data-emoji="🥳"]'); await B.click('#chat-form button[type=submit]');
@@ -173,6 +173,6 @@ try {
 
   assert.deepEqual(errors, []);
   const mode = await A.evaluate(() => (window.__puyo.mailState === 'on' ? '우체통 켬' : '우체통 없음(직접 연결만)'));
-  console.log(`[${mode}] PASS: 방 채팅(나쁜 말 ♡, 빠른 말, 젤리 이모티콘·큰 이모지, 전화번호 막기, 게임 중 말풍선, 채팅 끄기) · 친구 신청/받기 · 친구 채팅(이메일 막기, 안 읽음 표시) · 새로고침 뒤 기록 · 대전 초대로 같은 방 · 차단 · 손님 — 오류 없음`);
+  console.log(`[${mode}] PASS: 방 채팅(나쁜 말 ♡, 빠른 말, 뿌요 이모티콘·큰 이모지, 전화번호 막기, 게임 중 말풍선, 채팅 끄기) · 친구 신청/받기 · 친구 채팅(이메일 막기, 안 읽음 표시) · 새로고침 뒤 기록 · 대전 초대로 같은 방 · 차단 · 손님 — 오류 없음`);
   console.log(`Screenshots: ${shots}`);
 } finally { await browser.close(); }

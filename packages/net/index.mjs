@@ -8,6 +8,12 @@
 //   message(data, fromId)    친구가 보낸 메시지
 //   host(peerId)             방장이 바뀜 (방장이 나가면 가장 먼저 들어온 사람이 방장)
 //   error(code)              too-big | rate | chat-rate | bad  (메시지가 너무 크거나 너무 자주 보냄)
+//   watchers(n)              지금 이 방을 보고 있는(관전) 사람 수
+//
+// 관전: open(code, { ticket, watch: true }) 로 들어가면 보기만 한다 (role 'watcher', send 는 false).
+// 두 사람이 보낸 메시지를 message(data, fromId) 로 받는다. 채팅 글은 오지 않는다. 두 사람이 다 나가면 'ended' 로 끝난다.
+// send(message, { keep: true }): 관전하러 나중에 들어온 사람에게도 먼저 보내 줄 메시지 (처음 인사 같은 것. 종류(t)마다 마지막 것)
+// report(n, won): 랜덤 매칭, 초대 방에서 n 번째 대전이 끝났을 때 내가 이겼는지 서버에 알린다 (온라인 승리 세기)
 //
 // 채팅 약속: 사람이 쓴 글은 room.chat('안녕') 또는 send({ chat: '안녕', ... }) 처럼 data.chat 에만 넣는다.
 // 서버가 욕설, 전화번호, 링크를 가려서 보낸다(200글자까지, 1초에 1줄). 다른 칸은 그대로 전달된다.
@@ -37,6 +43,9 @@ export const MESSAGES = {
   left: '친구가 나갔어. 새 친구가 같은 코드로 들어올 수 있어.',
   replaced: '다른 곳에서 이 방에 다시 들어갔어.',
   suspended: '이 계정은 정지됐어.',
+  notWatchable: '이 대전은 볼 수 없어.',
+  watchFull: max => `이 대전은 벌써 ${max ?? 10}명이 보고 있어.`,
+  ended: '대전이 끝났어.',
 };
 
 export const httpBase = server => server.replace(/^ws(s?):\/\//, 'http$1://').replace(/\/+$/, '');
@@ -49,10 +58,11 @@ export class Room {
     this.hooks = hooks; this.options = options;
     this.generation = 0; this.role = ''; this.code = ''; this.status = 'offline';
     this.id = ''; this.hostId = ''; this.list = []; this.max = options.maxPlayers ?? 2;
-    this.socket = null; this.ready = false; this.lastSeen = 0; this.settle = null;
+    this.socket = null; this.ready = false; this.lastSeen = 0; this.settle = null; this.users = {};
   }
   get host() { return this.role === 'host'; }
   get guest() { return this.role === 'guest'; }
+  get watcher() { return this.role === 'watcher'; }
   get active() { return !!this.role; }
   get peers() { return [...this.list]; }
   get maxPlayers() { return this.max; }
@@ -60,17 +70,21 @@ export class Room {
   statusChanged(status, message = '') { this.status = status; this.hooks.status?.(status, message); }
 
   // extra.ticket: 로그인한 사람의 한 번짜리 표 (랜덤 매칭, 초대로 만든 방은 이게 있어야 들어간다)
+  // extra.watch: 보기만 하러 들어간다 (관전, 표가 있어야 한다)
   async open(code, extra = {}) {
     this.leave();
     const generation = this.generation;
-    this.role = code ? 'guest' : 'host';
+    this.role = extra?.watch ? 'watcher' : code ? 'guest' : 'host';
     this.code = code ? normaliseCode(code) : '';
-    if (code && this.code.length !== CODE_LENGTH) { this.leave(); throw Error(MESSAGES.code); }
+    if ((code || extra?.watch) && this.code.length !== CODE_LENGTH) { this.leave(); throw Error(MESSAGES.code); }
     this.statusChanged('connecting');
     try {
       if (this.host) await this.create();
       if (generation !== this.generation) return;
-      const query = extra?.ticket ? `?ticket=${encodeURIComponent(extra.ticket)}` : '';
+      const params = [];
+      if (extra?.ticket) params.push(`ticket=${encodeURIComponent(extra.ticket)}`);
+      if (extra?.watch) params.push('watch=1');
+      const query = params.length ? `?${params.join('&')}` : '';
       const url = `${wsBase(this.server)}/rooms/${this.options.game}/${this.code}${query}`;
       let socket;
       try { socket = await (this.options.connect ?? defaultConnect)(url); } catch { throw Error(MESSAGES.network); }
@@ -128,7 +142,8 @@ export class Room {
     switch (msg.t) {
       case 'welcome':
         this.id = msg.id; this.hostId = msg.host; this.max = msg.max; this.list = [...msg.peers];
-        this.role = this.hostId === this.id ? 'host' : 'guest';
+        this.role = msg.watch ? 'watcher' : this.hostId === this.id ? 'host' : 'guest';
+        this.users = { ...(msg.users ?? {}) }; // 관전할 때만: 자리(p1) → 사용자 번호
         this.ready = true;
         this.statusChanged(this.list.length ? 'connected' : 'waiting');
         this.settle?.resolve();
@@ -137,6 +152,7 @@ export class Room {
       case 'join':
         if (this.list.includes(msg.id)) return;
         this.list.push(msg.id);
+        if (msg.user) this.users[msg.id] = msg.user;
         if (this.list.length === 1) this.statusChanged('connected');
         this.hooks.join?.(msg.id);
         return;
@@ -148,8 +164,11 @@ export class Room {
         return;
       case 'host':
         this.hostId = msg.id;
-        this.role = msg.id === this.id ? 'host' : 'guest';
+        if (!this.watcher) this.role = msg.id === this.id ? 'host' : 'guest';
         this.hooks.host?.(msg.id);
+        return;
+      case 'watchers':
+        this.hooks.watchers?.(Number(msg.n) || 0);
         return;
       case 'rejoin': // 같은 사람이 다른 연결로 다시 들어왔다 (번호는 그대로). 게임 상태를 다시 보내 줄 때 쓴다.
         this.hooks.rejoin?.(msg.id);
@@ -158,9 +177,10 @@ export class Room {
         if (this.ready) this.hooks.message?.(msg.data, msg.from);
         return;
       case 'error':
-        if (this.settle && (msg.code === 'not-found' || msg.code === 'full' || msg.code === 'not-member')) {
-          this.settle.reject(Error(msg.code === 'full' ? MESSAGES.full(msg.max) : msg.code === 'not-member' ? MESSAGES.notMember : MESSAGES.notFound));
-        } else if (msg.code === 'replaced' || msg.code === 'suspended') {
+        if (this.settle && ['not-found', 'full', 'not-member', 'not-watchable', 'watch-full'].includes(msg.code)) {
+          this.settle.reject(Error(msg.code === 'full' ? MESSAGES.full(msg.max) : msg.code === 'not-member' ? MESSAGES.notMember
+            : msg.code === 'not-watchable' ? MESSAGES.notWatchable : msg.code === 'watch-full' ? MESSAGES.watchFull(msg.max) : MESSAGES.notFound));
+        } else if (msg.code === 'replaced' || msg.code === 'suspended' || msg.code === 'ended') {
           this.hooks.error?.(msg.code);
           this.fail(MESSAGES[msg.code]);
         } else this.hooks.error?.(msg.code);
@@ -179,10 +199,14 @@ export class Room {
     if (this.socket?.readyState !== 1) return false;
     try { this.socket.send(text); return true; } catch { return false; }
   }
-  send(message) { return this.ready && this.raw(JSON.stringify({ t: 'send', data: message })); }
+  send(message, { keep = false } = {}) {
+    return this.ready && !this.watcher && this.raw(JSON.stringify(keep ? { t: 'send', data: message, keep: true } : { t: 'send', data: message }));
+  }
   // 채팅 한 줄 (서버가 걸러서 보낸다). 받는 쪽은 message hook 의 data.chat 으로 받는다.
   chat(text, extra = {}) { return this.send({ ...extra, chat: String(text ?? '') }); }
-  sendTo(peerId, message) { return this.ready && this.raw(JSON.stringify({ t: 'send', to: peerId, data: message })); }
+  sendTo(peerId, message) { return this.ready && !this.watcher && this.raw(JSON.stringify({ t: 'send', to: peerId, data: message })); }
+  // n 번째 대전이 끝났다: 내가 이겼나 (랜덤 매칭, 초대 방의 온라인 승리 세기)
+  report(n, won) { return this.ready && !this.watcher && this.raw(JSON.stringify({ t: 'report', n, won: !!won })); }
   fail(message) { this.leave(); this.statusChanged('error', message); }
 
   leave() {
@@ -193,7 +217,7 @@ export class Room {
     const settle = this.settle;
     this.socket = null; this.ready = false; this.settle = null;
     settle?.resolve(); // 연결 중에 나가면 open()은 조용히 끝난다
-    this.role = ''; this.code = ''; this.id = ''; this.hostId = ''; this.list = [];
+    this.role = ''; this.code = ''; this.id = ''; this.hostId = ''; this.list = []; this.users = {};
     try { socket?.close(1000, 'bye'); } catch { /* 이미 닫힘 */ }
     if (wasActive) this.hooks.depart?.();
     if (this.status !== 'offline') this.statusChanged('offline');

@@ -21,7 +21,7 @@ async function open(options) {
 }
 const lessonIs = (page, n) => page.waitForFunction(n => window.__puyo.practice?.index === n && !window.__puyo.practice.freeze, n, { timeout: 15000 });
 const inControl = page => page.waitForFunction(() => window.__puyo.match?.players[0].state === 'control', null, { timeout: 15000 });
-// 키를 한 번 누를 때마다 젤리 짝이 정말 한 칸 움직였는지 확인하면서 맨 왼쪽 줄까지 옮긴다
+// 키를 한 번 누를 때마다 뿌요 짝이 정말 한 칸 움직였는지 확인하면서 맨 왼쪽 줄까지 옮긴다
 async function toColumn(page, x) {
   for (;;) {
     const now = await page.evaluate(() => window.__puyo.match.players[0].piece?.x);
@@ -30,7 +30,7 @@ async function toColumn(page, x) {
     await page.waitForFunction(was => window.__puyo.match.players[0].piece?.x !== was, now, { timeout: 5000 });
   }
 }
-// 말풍선이 필드(위쪽 젤리가 나오는 자리)를 가리지 않는다
+// 말풍선이 필드(위쪽 뿌요가 나오는 자리)를 가리지 않는다
 async function coachClear(page) {
   const { coach, field } = await page.evaluate(() => ({
     coach: document.getElementById('coach').getBoundingClientRect().bottom,
@@ -70,7 +70,7 @@ try {
   await page.screenshot({ path: `${shots}/pc-finish.png` });
   await page.getByRole('button', { name: '🗼 1층 도전' }).click();
   await page.waitForSelector('#talk:not([hidden])');
-  assert.match(await page.textContent('#talk-name'), /꼬마 젤리/);
+  assert.match(await page.textContent('#talk-name'), /꼬마 뿌요/);
   assert.equal(await page.locator('#coach').isVisible(), false);
   await page.click('#talk'); await page.click('#talk');
   await page.waitForFunction(() => window.__puyo.game?.mode === 'tower');
@@ -83,7 +83,7 @@ try {
   await toColumn(page, 0); await page.keyboard.press('Space');
   await page.waitForFunction(() => document.getElementById('coach-title').textContent.includes('이제 진짜 대결'), null, { timeout: 15000 });
   assert.equal(await page.evaluate(() => window.__puyo.P().coins), 200);
-  // 놓치면 꼬마 젤리가 다시 해 보자고 하고 판을 되돌린다
+  // 놓치면 꼬마 뿌요가 다시 해 보자고 하고 판을 되돌린다
   await page.getByRole('button', { name: '메뉴로' }).click();
   await page.evaluate(() => window.__puyo.startPractice(1));
   await lessonIs(page, 1);

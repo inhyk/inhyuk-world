@@ -8,8 +8,8 @@ const N = W * H, VIS = W * VISIBLE, TOP = 13;
 // 층별 AI. think=처음 고민하는 프레임, interval=조작 사이 프레임
 export const AI_LEVELS = [
   null,
-  { id: 1, name: '작은 젤리', depth: 1, think: 40, interval: 12, soft: 0.07, drop: false, fire: 1, mistake: 0.45, potential: 0.2, counter: false, kill: false, danger: 9 },
-  { id: 2, name: '큰 젤리', depth: 1, think: 36, interval: 10, soft: 0.12, drop: false, fire: 2, mistake: 0.22, potential: 0.6, counter: false, kill: false, danger: 9 },
+  { id: 1, name: '작은 뿌요', depth: 1, think: 40, interval: 12, soft: 0.07, drop: false, fire: 1, mistake: 0.45, potential: 0.2, counter: false, kill: false, danger: 9 },
+  { id: 2, name: '큰 뿌요', depth: 1, think: 36, interval: 10, soft: 0.12, drop: false, fire: 2, mistake: 0.22, potential: 0.6, counter: false, kill: false, danger: 9 },
   { id: 3, name: '운석', depth: 2, think: 36, interval: 10, soft: 0.16, drop: false, fire: 4, mistake: 0.1, potential: 1, counter: true, kill: false, danger: 9 },
   { id: 4, name: '별', depth: 2, think: 30, interval: 8, soft: 0.3, drop: false, fire: 5, mistake: 0.05, potential: 1, counter: true, kill: false, danger: 9 },
   { id: 5, name: '달', depth: 3, think: 24, interval: 7, soft: 0.5, drop: false, fire: 7, mistake: 0.02, potential: 1, counter: true, kill: true, danger: 10 },

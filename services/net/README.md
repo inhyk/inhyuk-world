@@ -171,6 +171,25 @@ await account.putSave('jelly-tower', localData, 0, { importId: 'device-1234abcd'
 - 쓰기는 1분에 30번까지(429). 정지된 계정은 다른 🔑 길처럼 403.
 - 표: `saves(user_id, game, data, revision, updated_at)`, `save_imports(user_id, game, import_id, created)` (`migrations/0002_saves.sql`).
 
+## 기록, 랭킹, 관전
+
+게임의 레벨·트로피로 온라인 랭킹을 만들고, 지금 하는 대전을 다른 사람이 보게 합니다 (뿌요뿌요 타워 업그레이드 3). 코드는 `src/stats.js`(기록, 랭킹, 지금 하는 대전 목록)와 `src/index.js` 방의 관전 자리, 표는 `migrations/0004_stats.sql`(`player_stats`, `live_rooms`)입니다. **배포하기 전에** `npx wrangler d1 migrations apply net --remote` 를 먼저 합니다. 클라이언트는 `Social` 의 `putStats`, `rankings`, `matches`, `watch` 와 방의 `report`, `watchers` 입니다 (`packages/net`).
+
+### 기록과 랭킹
+
+- `PUT /stats/:game` 🔑 `{level, xp, trophies}` → `{ok}`. 게임이 올리는 값입니다 (범위를 벗어나면 400 `bad-stats`, 1분에 30번을 넘으면 429). 서버가 확인할 수 없는 값이라 레벨과 트로피는 마음먹고 속이면 속일 수 있습니다.
+- **온라인 승리**(`online_wins`)는 서버가 직접 셉니다. 랜덤 매칭이나 초대로 만든 방의 두 사람이 대전이 끝나면 `{ t: 'report', n, won }` 을 보내고(`n` 은 그 방의 몇 번째 대전), 둘이 같은 사람을 이겼다고 하면 그 사람에게 1을 더합니다. 서로 다르면 세지 않고, 한 사람만 보냈으면 방이 빌 때 셉니다. 한 번 정한 대전은 다시 보고해도 바뀌지 않습니다.
+- `GET /rankings/:game?by=trophies|level|wins` 🔑 → `{ by, list: [{ rank, id, nickname, level, xp, trophies, wins }], me: { rank, ranks: { trophies, level, wins }, level, trophies, wins, top5 } }`. 다른 `by` 는 400 `bad-board`.
+  - 50등까지. 트로피 많은 순, 레벨 높은 순(같으면 경험치), 온라인 승리 많은 순. 같은 기록이면 같은 등수입니다 (등수는 나보다 앞선 사람 수 + 1).
+  - 정지된 계정은 빠집니다. 갓 만든 계정이 상을 받지 않게 트로피 1개, 온라인 승리 1번, 레벨 2부터 랭킹에 들어갑니다.
+  - `me.ranks` 는 세 랭킹의 내 등수(그 랭킹에 들지 못하면 `null`). 하나라도 5등 안이면 `player_stats.top5_at` 에 그때를 적고 `me.top5` 가 참이 됩니다. 한 번 적으면 지우지 않아서 5등 밖으로 밀려나도 계속 참입니다 (게임이 5등 전용 스킨을 주는 근거).
+
+### 관전
+
+- `GET /matches/:game` 🔑 → `{ matches: [{ code, started, friend, players: [{ id, nickname, level }, { id, nickname, level }] }] }`. 지금 하는 대전(랜덤 매칭이나 초대로 만든 방에 두 사람이 다 들어와 있는 동안)을 최대 30개 보여 줍니다. 친구가 하는 대전이 먼저, 그다음 최근에 시작한 것부터. 내가 하는 대전, 나와 차단한 사이인 사람의 대전, 정지된 사람의 대전은 빠집니다. 방이 비면 목록에서 지우고, 방이 5분마다 소식을 적으며, 12분 넘게 소식이 없으면 뺍니다.
+- `/rooms/:game/:code?ticket=…&watch=1` 로 들어가면 **보기만 하는 자리**입니다. 로그인한 사람만(아니면 401 `login-required`), 그 방의 두 사람이 아닐 때만(`not-watchable`), 한 방에 10명까지(`watch-full`, `max`). 관전하는 사람이 보내는 메시지는 막고(`watch-only`), 두 사람이 주고받는 메시지(필드 모습, 터짐, 판 결과)는 그대로 전해 줍니다. 대전 채팅 글은 관전하는 사람에게 보내지 않습니다.
+- 방에 사람이 보고 있으면 두 사람에게 `{ t: 'watchers', n }` 으로 인원 수를 알립니다.
+
 ## 관리 페이지
 
 `https://net.seonn.workers.dev/admin` 에서 신고(서버가 모은 기록과 신고자가 보낸 기록)를 보고 계정을 정지하거나 풀고, 신고를 무시하고, 닉네임으로 사용자를 찾습니다. 정지하면 그 계정의 로그인과 아직 안 쓴 표가 모두 지워지고, `/live` 연결, 들어가 있는 방, 매칭 줄이 바로 끊기며, 로그인과 매칭, 표로 방 들어가기가 거부됩니다. 방과 매칭 줄을 찾으려고 `Lobby` 가 사람마다 하루 안에 들어간 방과 줄을 20곳까지 적어 둡니다(방, 매칭 줄에 표로 들어올 때 적음). 코드로 만든 공개 방에 표 없이 들어간 연결은 누구인지 모르므로 끊지 못합니다. 관리 동작은 `admin_actions` 표에 남습니다.
@@ -217,7 +236,7 @@ npm run check     # 배포 없이 빌드만 확인 (wrangler deploy --dry-run)
    npx wrangler d1 create net
    npx wrangler d1 migrations apply net --remote
    ```
-   나중에 `migrations/` 에 파일이 늘면 `migrations apply net --remote` 만 다시 합니다. 이미 배포한 뒤 게임 저장(`0002_saves.sql`)이나 관리자 로그인(`0003_admin_sessions.sql`)을 더할 때도 배포 전에 이것만 하면 됩니다(적용 안 된 것만 적용).
+   나중에 `migrations/` 에 파일이 늘면 `migrations apply net --remote` 만 다시 합니다. 이미 배포한 뒤 게임 저장(`0002_saves.sql`)이나 관리자 로그인(`0003_admin_sessions.sql`), 랭킹과 관전(`0004_stats.sql`)을 더할 때도 배포 전에 이것만 하면 됩니다(적용 안 된 것만 적용).
    ```bash
    npx wrangler d1 migrations apply net --remote
    ```

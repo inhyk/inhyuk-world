@@ -41,6 +41,8 @@ export const SOCIAL_MESSAGES = {
   'too-big': '저장할 내용이 너무 커.',
   'bad-save': '저장할 내용이 잘못됐어.',
   'bad-game': '게임 이름이 잘못됐어.',
+  'bad-stats': '기록이 이상해.',
+  'bad-board': '랭킹 종류가 잘못됐어.',
 };
 const message = code => SOCIAL_MESSAGES[code] ?? SOCIAL_MESSAGES.server;
 
@@ -184,6 +186,24 @@ export class Social {
   // ---- 게임 저장 (Account 와 같음) ----
   loadSave(game) { return this.account.loadSave(game); }
   putSave(game, data, baseRevision, options) { return this.account.putSave(game, data, baseRevision, options); }
+
+  // ---- 기록과 온라인 랭킹 ----
+  // 레벨, 경험치, 트로피를 올린다 (온라인 승리는 서버가 방의 결과 보고로 센다)
+  putStats(game, { level, xp, trophies }) { return this.req('PUT', `/stats/${game}`, { level, xp, trophies }); }
+  // by: 'trophies' | 'level' | 'wins' → { by, list: [{ rank, id, nickname, level, xp, trophies, wins }], me: { rank, ranks, level, trophies, wins, top5 } }
+  rankings(game, by = 'trophies') { return this.req('GET', `/rankings/${game}?by=${encodeURIComponent(by)}`); }
+
+  // ---- 관전 ----
+  // 지금 하는 대전 [{ code, started, friend, players: [{ id, nickname, level }, ...] }] (내 대전, 차단한 사이는 빠짐)
+  async matches(game) { return (await this.req('GET', `/matches/${game}`)).matches; }
+  // 그 대전을 보러 들어간다 (보기만 한다). 두 사람의 메시지는 roomHooks.message(data, 'p1' | 'p2') 로 온다.
+  async watch(game, code, roomHooks = {}, roomOptions = {}) {
+    const room = new Room(roomHooks, {
+      server: this.account.server, fetch: this.account.options.fetch, connect: this.connectFn, ...roomOptions, game, maxPlayers: 2,
+    });
+    await room.open(code, { ticket: await this.account.ticket(), watch: true });
+    return room;
+  }
 
   // ---- 신고 ----  context: { kind: 'dm' } 또는 { kind: 'room', game, room: 방 코드 }
   report({ target, context, reason, messages }) { return this.req('POST', '/reports', { target, context, reason, messages }); }

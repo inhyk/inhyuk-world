@@ -84,7 +84,7 @@ for (const kind of ['redis', 'blob']) {
     assert.equal((await call({ action: 'nope' })).status, 400);
   });
 
-  test(`[${kind}] 친구가 없을 때 보낸 편지·젤리 이모티콘·친구 신청이 쌓였다가, 받아 가면 지워진다`, async () => {
+  test(`[${kind}] 친구가 없을 때 보낸 편지·뿌요 이모티콘·친구 신청이 쌓였다가, 받아 가면 지워진다`, async () => {
     const { clock, call } = setup(kind);
     await call({ action: 'hello', ...A }); await call({ action: 'hello', ...B });
     assert.equal((await call({ action: 'send', ...A, to: B.code, kind: 'fr', name: '지우', level: 7 })).status, 200);
