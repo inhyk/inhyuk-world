@@ -104,7 +104,7 @@ const unlock = () => sound.unlock();
 for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown']) addEventListener(type, unlock, { capture: true });
 
 let screen = '', match = null, demo = null, game = null, paused = false, talking = false;
-let practice = null; // 배우기(연습하기) 중이면 { grade, index, judge, freeze }. grade: 0 초급 ~ 3 최상급
+let practice = null; // 배우기(연습하기) 중이면 { grade, index, judge, freeze, fails }. grade: 0 초급 ~ 6 찐 마지막, fails: 이 문제를 틀린 횟수
 
 // ---------- 알림 ----------
 function toast(text, gold = false) {
@@ -676,24 +676,28 @@ const lessonsNow = () => GRADES[practice?.grade ?? 0].lessons;
 const lessonNow = () => lessonsNow()[practice.index];
 // "연습 2 / 3" (초급), "중급 2 / 3"
 const stepText = () => `${practice.grade ? GRADES[practice.grade].name : '연습'} ${practice.index + 1} / ${lessonsNow().length}`;
-function setLesson(index, grade = practice?.grade ?? 0) {
-  practice = { index, grade, judge: newJudge(), freeze: false };
+function setLesson(index, grade = practice?.grade ?? 0, fails = 0) {
+  practice = { index, grade, judge: newJudge(), freeze: false, fails };
   const lessons = lessonsNow(), lesson = lessons[index];
   const next = () => { sound.sfx('click'); if (index + 1 < lessons.length) setLesson(index + 1); else finishPractice(); };
   showCoach({
     step: stepText(), title: lesson.title, mood: lesson.tip ? 'happy' : 'idle',
-    text: lessonStep(lesson) || lesson.text || (coarse ? lesson.touch : lesson.keys),
+    text: lessonStep(lesson, 0, fails) || lesson.text || (coarse ? lesson.touch : lesson.keys), // 시험은 두 번 틀리면 도움말로 바뀐다
     // 초급은 건너뛸 수 있다. 중급부터는 선물이 걸려 있어서 건너뛰지 못하고, 막히면 처음 모양으로 되돌린다.
     // 비결(tip)은 풀 것 없이 읽고 넘어간다.
     buttons: lesson.tip ? [['primary', index + 1 < lessons.length ? '알겠어! ▶' : '다 배웠어! 🎉', next]]
-      : grade ? [['ghost', '↺ 처음 모양으로', () => { sound.sfx('click'); setLesson(index); }]]
+      : grade ? [['ghost', '↺ 처음 모양으로', () => { sound.sfx('click'); setLesson(index, grade, fails + 1); }]] // 되돌리기도 틀린 횟수로 센다 (시험은 두 번이면 도움말)
         : [['ghost', '건너뛰기', next]],
   });
-  resetLessonField(match.players[0], lesson);
+  const player = match.players[0];
+  resetLessonField(player, lesson);
   if (lesson.tip) {
     // 비결을 읽는 동안에는 뿌요가 나오지 않는다 (필드는 보기 그림). 3, 2, 1 을 세는 중이었으면 건너뛴다.
     practice.freeze = true;
     if (match.phase === 'countdown') { match.phase = 'play'; match.timer = 0; }
+  } else if (match.phase === 'play' && player.state === 'ready') {
+    // 비결로 시작한 등급(찐 마지막)은 3, 2, 1 을 건너뛰어서 아직 뿌요가 나온 적이 없다. 첫 문제에서 시작시킨다.
+    player.start();
   }
 }
 // 직접 쌓는 수업: 짝을 하나 놓을 때마다 꼬마 뿌요의 안내를 바꾼다
@@ -717,7 +721,7 @@ function practiceEvent(e) {
   if (!practice || practice.freeze) return;
   const lesson = lessonNow(), lessons = lessonsNow();
   const verdict = judge(lesson, practice.judge, e);
-  if (!verdict && e.type === 'spawn') coachHint(lessonStep(lesson, practice.judge.pieces));
+  if (!verdict && e.type === 'spawn') coachHint(lessonStep(lesson, practice.judge.pieces, practice.fails));
   if (verdict === 'done') {
     practice.freeze = true;
     sound.sfx('mission'); haptic('success');
@@ -731,7 +735,7 @@ function practiceEvent(e) {
     practice.freeze = true;
     sound.sfx('bump');
     showCoach({ step: stepText(), title: '다시 해 보자!', text: lesson.retry, mood: 'sad' });
-    setTimeout(() => { if (practice && game?.mode === 'practice') setLesson(practice.index); }, 2200);
+    setTimeout(() => { if (practice && game?.mode === 'practice') setLesson(practice.index, practice.grade, practice.fails + 1); }, 2200);
   }
 }
 // 연습 중에 쌓여서 지면 그 수업을 처음부터
@@ -764,7 +768,7 @@ function finishPractice() {
   const next = GRADES[gi + 1];
   showCoach({
     step: `${grade.name} 끝!`, title: next ? `다음은 ${next.name}!` : '모두 배웠어! 👑', mood: 'happy',
-    text: next ? `${grade.name}을 모두 배웠어. 이어서 ${next.name}에 도전해 볼까?` : '초급부터 마지막까지 뿌요뿌요 배우기를 모두 끝냈어! 이제 타워와 온라인 대전에서 진짜 연쇄를 보여 줘.',
+    text: next ? `${grade.name}을 모두 배웠어. 이어서 ${next.name}에 도전해 볼까?` : '초급부터 찐 마지막까지 뿌요뿌요 배우기를 모두 끝냈어! 이제 타워와 온라인 대전에서 진짜 연쇄를 보여 줘.',
     buttons: [
       next ? ['primary', `${next.emoji} ${next.name} 배우기`, () => { sound.sfx('click'); startPractice(0, gi + 1); }]
         : ['primary', '🗼 타워로', () => { sound.sfx('click'); quitGame(); show('tower'); }],
@@ -772,7 +776,7 @@ function finishPractice() {
     ],
   });
 }
-// 배우기 목록: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막. 앞 등급을 끝내야 다음 등급이 열린다.
+// 배우기 목록: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막 → 찐 마지막. 앞 등급을 끝내야 다음 등급이 열린다.
 function renderSchool() {
   const p = P(), list = $('school-list');
   list.innerHTML = '';
@@ -1717,9 +1721,20 @@ async function deleteCloudAccount() {
   $('delete-yes').disabled = false;
   if (account !== acc) return; // 그사이 로그인이 풀렸다
   if (error?.code === 'login-required' || error?.code === 'suspended') { lostLogin(error.code); return; }
+  // 서버가 아직 이 길(/auth/delete)을 모르면(다시 배포하기 전) 브라우저가 요청을 미리 물어보는 단계에서 막혀서
+  // "연결하지 못함"으로 보인다. 다른 길(/me)이 되면 서버는 살아 있는 것이니, 인터넷 탓이 아니라고 알려 준다.
+  let notReady = error?.status === 404;
+  if (error?.code === 'network') {
+    $('delete-msg').textContent = '서버를 확인하는 중…';
+    $('delete-yes').disabled = true;
+    try { await net.me(); notReady = true; } catch (e) { notReady = !!e.code && e.code !== 'network' && e.code !== 'login-required' && e.code !== 'suspended'; }
+    $('delete-yes').disabled = false;
+    if (account !== acc) return;
+    if (!net.loggedIn) { lostLogin('login-required'); return; }
+  }
   if (error) {
     startSocial(); // 못 지웠으면 예전처럼 이어 간다
-    $('delete-msg').textContent = error.status === 404 ? '서버가 아직 준비되지 않았어. 부모님께 "게임 서버를 다시 배포해 주세요" 라고 말해 줘.' : error.message;
+    $('delete-msg').textContent = notReady ? '아직 지울 수 없어. 게임 서버를 새로 배포해야 계정 지우기가 돼. 부모님께 "게임 서버를 다시 배포해 주세요" 라고 말해 줘. (인터넷은 괜찮아!)' : error.message;
     $('delete-pass').value = '';
     sound.sfx('bump');
     return;
