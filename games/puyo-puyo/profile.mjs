@@ -12,8 +12,8 @@ export const NAME_MAX = 10, PASS_MIN = 4, PASS_MAX = 16, LEVEL_MAX = 99;
 export const TICKET_KINDS = ['skin', 'effect', 'spin', 'pet', 'boost'];
 // 시간 선물 이름 (rewards.mjs 의 TIME_REWARDS 와 같아야 한다)
 export const TIME_IDS = ['5m', '10m', '15m', '20m', '30m', '45m', '60m'];
-// 뿌요뿌요 배우기의 등급 이름 (tutorial.mjs 의 GRADES 와 같아야 한다). 초급은 tutorial 칸에 적는다. 중급, 상급, 최상급, 초초상급, 마지막, 찐 마지막.
-export const SCHOOL_IDS = ['middle', 'high', 'master', 'ultra', 'final', 'real'];
+// 뿌요뿌요 배우기의 등급 이름 (tutorial.mjs 의 GRADES 와 같아야 한다). 초급은 tutorial 칸에 적는다. 중급, 상급, 최상급, 초초상급, 마지막, 찐 마지막, 졸업, 졸업2, 졸업3.
+export const SCHOOL_IDS = ['middle', 'high', 'master', 'ultra', 'final', 'real', 'grad1', 'grad2', 'grad3'];
 // 맵을 고르는 설정 칸: 2인 플레이, AI 대전, 혼자 하기, 온라인 대전(내 표)
 export const MAP_SETTINGS = ['localMap', 'vsMap', 'soloMap', 'onlineMap'];
 export const emptyGifts = () => ({ seen: {}, day: '', dayCoins: 0, sent: 0, got: 0 });
@@ -29,7 +29,7 @@ export function newProgress() {
     tickets: { skin: 0, effect: 0, spin: 0, pet: 0, boost: 0 },
     promo: { lastGame: 0 },
     tutorial: false, // 연습하기(뿌요뿌요 배우기 초급)를 끝냈는지 (처음 끝내면 선물)
-    school: [], // 뿌요뿌요 배우기에서 끝낸 등급: 'middle'(중급), 'high'(상급), 'master'(최상급), 'ultra'(초초상급), 'final'(마지막), 'real'(찐 마지막)
+    school: [], // 뿌요뿌요 배우기에서 끝낸 등급: 'middle'(중급), 'high'(상급), 'master'(최상급), 'ultra'(초초상급), 'final'(마지막), 'real'(찐 마지막), 'grad1'~'grad3'(졸업, 졸업2, 졸업3)
     pets: emptyPets(), // 가진 펫과 데리고 다니는 펫 (pets.mjs)
     boost: { until: 0 }, // 2배 부스트가 끝나는 때 (bonus.mjs)
     friendCount: 0, // 마지막으로 본 온라인 계정 친구 수 (친구 배수)

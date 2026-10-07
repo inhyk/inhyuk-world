@@ -4,13 +4,16 @@
 // 같은 날 "초초상급, 그다음에 마지막도 만들어주고 마지막은 초급 중급 상급 최상급 초초상급을 복습하는 시간,
 // 그리고 마지막에 진짜 연쇄를 잘하는 법을 알려줘" 로 여섯 등급이 됐다.
 // 그리고 "찐 마지막까지 만들어줘, 찐 마지막은 엄청 길게 해줘" 로 일곱 번째 등급 「찐 마지막」(30가지)이 생겼다.
+// 마지막으로 "찐 마지막 다음에 졸업, 졸업2, 졸업3까지 만들어줘, 다 길게" 로 졸업 등급 셋이 더 생겨 모두 열 등급이다.
 // 앞 등급을 끝내야 다음 등급이 열린다.
 // field: parseField 모양 (위에서 아래 줄 순서, R G B Y P, O 는 방해 뿌요), pairs: 차례로 나올 뿌요 짝 (끝나면 처음부터 다시)
 // goal: pieces(몇 번 내려놓기) | pop(터뜨리기) | chain(몇 연쇄) · allClear(전소) · colors(한 번에 몇 색) · garbage(방해 뿌요 몇 개 지우기)
 //       moves: 몇 번 안에 해야 하나 (안 적으면 두 번 놓칠 때까지). 짝 [a, c] 는 처음에 a 가 아래, c 가 위로 나온다.
 // steps: 짝을 하나 놓을 때마다 바뀌는 안내 (처음부터 직접 쌓는 수업). tip: 풀 것 없이 읽고 넘어가는 비결 (필드는 보기 그림).
 // hints: 안내 없이 혼자 푸는 시험에서, 두 번 틀린 뒤부터 보여 주는 안내 (steps 와 같은 모양).
+// answer: 알려 준 대로 놓는 자리 [[줄, 돌림], ...] (졸업 등급의 문제에만 적는다. 검사와 도움말에 쓴다).
 import { parseField } from './core.mjs';
+import { FIND, FIND_HARD, MEGA, TWO, TWO_HARD } from './school-puzzles.mjs';
 
 const BEGINNER = [
   {
@@ -424,6 +427,158 @@ const REAL = [
   },
 ];
 
+// ---------- 졸업, 졸업2, 졸업3 (찐 마지막 다음, 모두 길다) ----------
+const COLOR = ['', '빨강', '초록', '파랑', '노랑', '보라'];
+const COLUMN = ['맨 왼쪽 줄', '둘째 줄', '셋째 줄', '넷째 줄', '다섯째 줄', '맨 오른쪽 줄'];
+// "넷째 줄에 세워서" / "셋째 줄과 넷째 줄에 눕혀서"
+const where = ([x, rot]) => (rot === 1 ? `${COLUMN[x]}과 ${COLUMN[x + 1]}에 눕혀서` : `${COLUMN[x]}에 세워서`);
+const tipPage = (id, title, text, field) => ({ id, title, tip: true, text, goal: { tip: true }, field });
+// 발화점 찾기: 어디에 놓을지 알려 주지 않는다. 두 번 틀리면 도움말이 나온다.
+function findPuzzle(id, no, p) {
+  const color = COLOR[p.pairs[0][0]];
+  return {
+    id, title: `발화점 찾기 ${no} · ${p.chain}연쇄`,
+    text: `${color} 짝을 어디에 놓으면 ${p.chain}연쇄가 될까? 필드를 잘 보고 직접 찾아봐!`,
+    hints: [`도움말: ${color} 짝을 ${where(p.answer[0])} 놓아 봐. 거기가 발화점이야!`],
+    goal: { chain: p.chain, moves: 1 }, field: p.field, pairs: p.pairs, answer: p.answer,
+    retry: '아깝다! 지금 나온 짝과 같은 색 뿌요가 붙어 있고, 그 옆이나 위가 비어 있는 곳을 찾아봐.',
+    done: `${p.chain}연쇄! 발화점을 직접 찾았어.`,
+  };
+}
+// 대연쇄: 놓을 자리를 알려 준다 (구경하는 시간)
+function megaPuzzle(id, no, p) {
+  const color = COLOR[p.pairs[0][0]];
+  return {
+    id, title: `초대연쇄 ${no} · ${p.chain}연쇄`,
+    text: `${color} 짝을 ${where(p.answer[0])} 내려 봐. ${p.chain}연쇄가 끝까지 이어지는지 구경해!`,
+    goal: { chain: p.chain, moves: 1 }, field: p.field, pairs: p.pairs, answer: p.answer,
+    retry: `아깝다! ${color} 짝을 ${where(p.answer[0])} 놓아 봐.`,
+    done: `${p.chain}연쇄!!! 필드가 싹 비워졌어.`,
+  };
+}
+// 두 수 퍼즐: 첫 짝으로 모자란 곳을 채우고(준비) 둘째 짝으로 발화. told 면 자리를 알려 주고, 아니면 두 번 틀린 뒤 도움말.
+function twoPuzzle(id, no, p, told) {
+  const [setup, fire] = p.pairs.map(pair => COLOR[pair[0]]);
+  const first = `${setup} 짝을 ${where(p.answer[0])}`, second = `${fire} 짝을 ${where(p.answer[1])}`;
+  return {
+    id, title: `두 수 퍼즐 ${no} · ${p.chain}연쇄`,
+    text: told ? `① ${first} 놓아서 모자란 곳을 채우고 ② ${second} 내려서 발화! ${p.chain}연쇄가 끝까지 이어져.`
+      : `짝이 두 개야. 첫 짝(${setup})으로 모자란 곳을 채우고, 둘째 짝(${fire})으로 발화해서 ${p.chain}연쇄를 만들어 봐. 자리는 직접 찾아!`,
+    ...(told ? {} : { hints: [`도움말 ① ${first} 놓아.`, `도움말 ② ${second} 내려 봐!`] }),
+    goal: { chain: p.chain, moves: 2 }, field: p.field, pairs: p.pairs, answer: p.answer,
+    retry: told ? `아깝다! 먼저 ${first} 놓고, 그다음에 ${second} 놓아 봐.` : '아깝다! 연쇄가 중간에 끊겼어. 어느 색이 3개에서 멈춰 있는지 찾아봐.',
+    done: `${p.chain}연쇄! 한 칸을 채워서 끝까지 이었어.`,
+  };
+}
+
+// 오른쪽에서 시작하는 계단, 끼워 넣기, 여섯 칸 계단을 빈 필드에서 쌓는 순서
+const RIGHT4_STEPS = [
+  '오른쪽에서 4연쇄! ① 빨강 짝을 맨 오른쪽 줄에 세워서 놓아.',
+  '② 초록 짝을 다섯째 줄에 세워서 놓아.',
+  '③ 파랑 짝을 넷째 줄에 세워서 놓아.',
+  '④ 노랑 짝을 셋째 줄에 세워서 놓아 (나온 자리 그대로).',
+  '⑤ 빨강·초록 짝을 눕혀서(빨강이 오른쪽) 빨강은 빨강 위에, 초록은 초록 위에.',
+  '⑥ 파랑·노랑 짝을 눕혀서(파랑이 오른쪽) 파랑은 파랑 위에, 노랑은 노랑 위에.',
+  '⑦ 파랑·노랑 짝을 눕혀서(파랑이 오른쪽) 파랑은 초록 줄 위에, 노랑은 파랑 줄 위에.',
+  '⑧ 발화! 빨강·초록 짝을 세운 채로(빨강이 아래) 맨 오른쪽 줄에 내려 봐.',
+];
+const RIGHT4_ANSWER = [[5, 0], [4, 0], [3, 0], [2, 0], [5, 3], [3, 3], [4, 3], [5, 0]];
+const RIGHT5_STEPS = [
+  '오른쪽에서 5연쇄! ① 빨강 짝을 맨 오른쪽 줄에 세워서 놓아.',
+  '② 초록 짝을 다섯째 줄에 세워서 놓아.',
+  '③ 파랑 짝을 넷째 줄에 세워서 놓아.',
+  '④ 노랑 짝을 셋째 줄에 세워서 놓아 (나온 자리 그대로).',
+  '⑤ 보라 짝을 둘째 줄에 세워서 놓아.',
+  '⑥ 빨강·초록 짝을 눕혀서(빨강이 오른쪽) 빨강은 빨강 위에, 초록은 초록 위에.',
+  '⑦ 파랑·노랑 짝을 눕혀서(파랑이 오른쪽) 파랑은 파랑 위에, 노랑은 노랑 위에.',
+  '⑧ 파랑·노랑 짝을 눕혀서(파랑이 오른쪽) 파랑은 초록 줄 위에, 노랑은 파랑 줄 위에.',
+  '⑨ 보라 짝을 눕혀서 하나는 보라 줄 위에, 하나는 노랑 줄 위에.',
+  '⑩ 발화! 빨강·초록 짝을 세운 채로(빨강이 아래) 맨 오른쪽 줄에 내려 봐.',
+];
+const RIGHT5_ANSWER = [[5, 0], [4, 0], [3, 0], [2, 0], [1, 0], [5, 3], [3, 3], [4, 3], [1, 1], [5, 0]];
+const SANDWICH_PAIRS = [[3, 3], [2, 2], [1, 1], [1, 2], [2, 3], [3, 3], [1, 1]];
+const SANDWICH_STEPS = [
+  '끼워 넣기를 처음부터! ① 파랑 짝을 눕혀서 맨 왼쪽 줄과 둘째 줄 바닥에 놓아.',
+  '② 초록 짝을 눕혀서 그 위에 놓아 (맨 왼쪽 줄과 둘째 줄).',
+  '③ 빨강 짝을 맨 왼쪽 줄에 세워서 놓아.',
+  '④ 빨강·초록 짝을 세운 채로(빨강이 아래) 맨 왼쪽 줄에 놓아. 빨강 3개 위에 초록!',
+  '⑤ 초록·파랑 짝을 세운 채로(초록이 아래) 맨 왼쪽 줄에 놓아.',
+  '⑥ 파랑 짝을 눕혀서 맨 왼쪽 줄과 둘째 줄에 놓아. 하나는 꼭대기에, 하나는 둘째 줄로 떨어져.',
+  '⑦ 발화! 빨강 짝을 둘째 줄에 세워서 내려 봐. 빨강 → 초록 → 파랑!',
+];
+const SANDWICH_ANSWER = [[0, 1], [0, 1], [0, 0], [0, 0], [0, 0], [0, 1], [1, 0]];
+const SCRATCH5_ANSWER = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [0, 1], [2, 1], [1, 1], [3, 1], [0, 0]];
+const SCRATCH6_PAIRS = [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [1, 1], [1, 2], [3, 4], [5, 1], [3, 4], [5, 1], [1, 2]];
+const SCRATCH6_STEPS = [
+  '필드 끝에서 끝까지 6연쇄를 쌓자! 열두 번 놓아. ① 빨강 짝을 맨 왼쪽 줄에 세워서.',
+  '② 초록 짝을 둘째 줄에 세워서.',
+  '③ 파랑 짝을 셋째 줄에 세워서 (나온 자리 그대로).',
+  '④ 노랑 짝을 넷째 줄에 세워서.',
+  '⑤ 보라 짝을 다섯째 줄에 세워서.',
+  '⑥ 빨강 짝을 맨 오른쪽 줄에 세워서. 여섯 줄에 2개씩 깔렸어!',
+  '⑦ 빨강·초록 짝을 눕혀서(빨강이 왼쪽) 맨 왼쪽 줄과 둘째 줄 위에.',
+  '⑧ 파랑·노랑 짝을 눕혀서(파랑이 왼쪽) 셋째 줄과 넷째 줄 위에.',
+  '⑨ 보라·빨강 짝을 눕혀서(보라가 왼쪽) 다섯째 줄과 맨 오른쪽 줄 위에. 여섯 줄 모두 3개씩!',
+  '⑩ 파랑·노랑 짝을 눕혀서(파랑이 왼쪽) 파랑은 초록 줄(둘째) 위에, 노랑은 파랑 줄(셋째) 위에.',
+  '⑪ 보라·빨강 짝을 눕혀서(보라가 왼쪽) 보라는 노랑 줄(넷째) 위에, 빨강은 보라 줄(다섯째) 위에.',
+  '⑫ 발화! 빨강·초록 짝을 세운 채로(빨강이 아래) 맨 왼쪽 줄에 내려 봐.',
+];
+const SCRATCH6_ANSWER = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [0, 1], [2, 1], [4, 1], [1, 1], [3, 1], [0, 0]];
+const build = (id, title, chain, pairs, steps, answer, done) => ({
+  id, title, steps, goal: { chain, moves: pairs.length }, field: [], pairs, answer,
+  retry: '아깝다! 처음부터 다시 해 보자. 안내를 하나씩 따라가면 돼.', done,
+});
+const exam = (id, title, text, chain, pairs, steps, answer, done) => ({
+  id, title, text, hints: asHints(steps), goal: { chain, moves: pairs.length }, field: [], pairs, answer,
+  retry: '아깝다! 다시 해 보자. 한 줄에 같은 색 3개씩, 다음 색 하나는 앞줄 위에!', done,
+});
+
+// 졸업 (26가지): 발화점 찾기 22판. 2연쇄부터 10연쇄까지, 어디에 놓을지는 직접 찾는다.
+const GRAD1 = [
+  tipPage('grad1-part1', '졸업 · 발화점 찾기', '졸업반에 온 걸 축하해! 졸업은 세 번 있어(졸업, 졸업2, 졸업3). 첫 번째 졸업의 숙제는 발화점 찾기야. 이제는 어디에 놓을지 내가 말해 주지 않아. 필드를 보고 직접 찾아봐! 두 번 틀리면 도와줄게.', ['R.G.B.', 'YPYPYP']),
+  ...FIND.slice(0, 8).map((p, i) => findPuzzle(`grad1-find${i + 1}`, i + 1, p)),
+  tipPage('grad1-part2', '2부 · 더 긴 연쇄의 발화점', '잘하고 있어! 이제 5, 6, 7연쇄야. 요령 하나: 지금 나온 짝과 같은 색 뿌요가 2개 붙어 있는 곳을 먼저 찾아봐. 거기에 2개를 더하면 4개가 되거든.', ['RR.GG.', 'BB.YY.']),
+  ...FIND.slice(8, 16).map((p, i) => findPuzzle(`grad1-find${i + 9}`, i + 9, p)),
+  tipPage('grad1-part3', '3부 · 고수의 눈', '마지막 여섯 판은 8, 9, 10연쇄! 필드가 높고 복잡해 보여도 놀라지 마. 찾는 방법은 똑같아. 같은 색 2개가 붙은 곳, 그 옆의 빈칸!', ['.BYPR.', 'RGBYPR', 'RGBYPR', 'RGBYPR']),
+  ...FIND.slice(16, 22).map((p, i) => findPuzzle(`grad1-find${i + 17}`, i + 17, p)),
+  tipPage('grad1-done', '첫 번째 졸업!', '발화점을 스물두 번이나 직접 찾았어! 대전에서 쌓다 만 연쇄도, 방해 뿌요 사이에 남은 연쇄도 이제 불붙일 수 있어. 다음은 직접 쌓는 졸업2야.', ['GGG...', 'RRR...']),
+];
+
+// 졸업2 (20가지): 직접 쌓기 마스터. 오른쪽 4·5연쇄, 끼워 넣기 쌓기, 두 수 퍼즐 9판, 쌓기 시험 3개, 여섯 칸 6연쇄 쌓기.
+const GRAD2 = [
+  tipPage('grad2-part1', '졸업2 · 직접 쌓기 마스터', '두 번째 졸업은 쌓기야. 먼저 오른쪽에서 4연쇄와 5연쇄, 그리고 끼워 넣기를 처음부터 쌓아. 그다음 두 수 퍼즐, 쌓기 시험, 마지막에는 필드 끝에서 끝까지 6연쇄!', ['....B.', '...BGR', '...BGR', '...BGR']),
+  build('grad2-right4', '쌓기 ① 오른쪽에서 4연쇄', 4, SCRATCH4_PAIRS, RIGHT4_STEPS, RIGHT4_ANSWER, '오른쪽에서도 4연쇄! 어느 쪽에서든 쌓을 수 있어야 진짜야.'),
+  build('grad2-right5', '쌓기 ② 오른쪽에서 5연쇄', 5, SCRATCH5_PAIRS, RIGHT5_STEPS, RIGHT5_ANSWER, '오른쪽 5연쇄 완성!'),
+  build('grad2-sandwich', '쌓기 ③ 끼워 넣기를 처음부터', 3, SANDWICH_PAIRS, SANDWICH_STEPS, SANDWICH_ANSWER, '끼워 넣기도 직접 쌓았어! 두 줄만 있으면 3연쇄가 돼.'),
+  tipPage('grad2-part2', '두 수 퍼즐이란?', '이번에는 짝이 두 개야. 첫 짝으로 모자란 한 곳을 채우고(준비), 둘째 짝으로 불을 붙여(발화). 진짜 대전에서는 늘 이렇게 한 칸씩 채워 가며 연쇄를 완성해. 아홉 판!', ['.B....', 'RG....', 'RGB...', 'RGB...']),
+  ...TWO.map((p, i) => twoPuzzle(`grad2-two${i + 1}`, i + 1, p, true)),
+  tipPage('grad2-part3', '쌓기 시험', '이제 안내 없이 쌓아 봐. 왼쪽 5연쇄, 오른쪽 4연쇄, 끼워 넣기. 나오는 짝은 아까와 같은 순서야. 두 번 틀리면 내가 도와줄게.', ['RGBYP.', 'RGBYP.']),
+  exam('grad2-exam5', '쌓기 시험 ① 혼자서 5연쇄', '안내 없이 5연쇄! 빨강, 초록, 파랑, 노랑, 보라를 한 줄에 3개씩. 다음 색 하나는 앞줄 위에 올려 두고, 마지막에 빨강으로 발화!', 5, SCRATCH5_PAIRS, SCRATCH5_STEPS, SCRATCH5_ANSWER, '혼자서 5연쇄! 대단해.'),
+  exam('grad2-exam4r', '쌓기 시험 ② 오른쪽에서 혼자 4연쇄', '안내 없이 오른쪽에서 4연쇄! 맨 오른쪽 줄부터 빨강, 초록, 파랑, 노랑 순서야.', 4, SCRATCH4_PAIRS, RIGHT4_STEPS, RIGHT4_ANSWER, '오른쪽 4연쇄도 혼자서!'),
+  exam('grad2-exam-sandwich', '쌓기 시험 ③ 혼자서 끼워 넣기', '안내 없이 끼워 넣기 3연쇄! 맨 왼쪽 줄에 아래부터 파랑, 초록, 빨강 3개, 초록 2개, 파랑 2개. 둘째 줄에는 파랑, 초록, 파랑. 마지막에 빨강 짝으로 발화!', 3, SANDWICH_PAIRS, SANDWICH_STEPS, SANDWICH_ANSWER, '끼워 넣기 시험도 합격!'),
+  build('grad2-scratch6', '쌓기 ④ 필드 끝에서 끝까지 6연쇄', 6, SCRATCH6_PAIRS, SCRATCH6_STEPS, SCRATCH6_ANSWER, '빈 필드에서 6연쇄!! 열두 번을 하나도 안 틀리고 놓았어.'),
+  tipPage('grad2-done', '두 번째 졸업!', '왼쪽에서도 오른쪽에서도, 계단도 끼워 넣기도 쌓을 수 있게 됐어. 이제 마지막 졸업3만 남았어. 지금까지 본 것 중에 가장 긴 연쇄가 기다리고 있어!', ['.BYPR.', 'RGBYPR', 'RGBYPR', 'RGBYPR']),
+];
+
+// 졸업3 (25가지): 초대연쇄 11·12·13연쇄, 가장 어려운 발화점 찾기 6판, 안내 없는 두 수 퍼즐 4판, 최종 시험 2개, 졸업 비결 5가지와 졸업장.
+const GRAD3 = [
+  tipPage('grad3-part1', '졸업3 · 마지막 졸업', '여기가 진짜 끝이야! 먼저 초대연쇄 세 판(11, 12, 13연쇄)을 구경하고, 가장 어려운 발화점 찾기, 혼자 푸는 두 수 퍼즐, 최종 시험을 지나면 졸업장을 줄게.', ['R.G.B.', 'YPYPYP']),
+  ...MEGA.map((p, i) => megaPuzzle(`grad3-mega${i + 1}`, i + 1, p)),
+  tipPage('grad3-part2', '발화점 찾기 · 최고 난이도', '이번 여섯 판은 9연쇄부터 12연쇄까지야. 필드가 꽉 차 보여도 발화점은 있어. 지금 나온 짝의 색을 먼저 보고, 그 색이 2개 붙은 곳을 찾아!', ['RR.GG.', 'BB.YY.']),
+  ...FIND_HARD.map((p, i) => findPuzzle(`grad3-find${i + 1}`, i + 1, p)),
+  tipPage('grad3-part3', '두 수 퍼즐 · 혼자서', '이번 두 수 퍼즐은 자리를 알려 주지 않아. 첫 짝은 연쇄가 끊기는 곳(3개에서 멈춘 색)을 채우는 데 쓰고, 둘째 짝으로 발화해. 네 판!', ['.B....', 'RG....', 'RGB...', 'RGB...']),
+  ...TWO_HARD.map((p, i) => twoPuzzle(`grad3-two${i + 1}`, i + 1, p, false)),
+  tipPage('grad3-part4', '최종 시험', '마지막 시험 두 개야. 안내 없이 오른쪽에서 5연쇄, 그리고 필드 끝에서 끝까지 6연쇄! 두 번 틀리면 도와줄 테니까 겁내지 마.', ['RGBYPR', 'RGBYPR']),
+  exam('grad3-exam5r', '최종 시험 ① 오른쪽에서 혼자 5연쇄', '안내 없이 오른쪽에서 5연쇄! 맨 오른쪽 줄부터 빨강, 초록, 파랑, 노랑, 보라 순서로 3개씩, 다음 색 하나는 앞줄 위에.', 5, SCRATCH5_PAIRS, RIGHT5_STEPS, RIGHT5_ANSWER, '오른쪽 5연쇄, 합격!'),
+  exam('grad3-exam6', '최종 시험 ② 혼자서 6연쇄', '진짜 마지막 시험! 안내 없이 6연쇄. 여섯 줄에 빨강, 초록, 파랑, 노랑, 보라, 빨강을 3개씩 쌓고, 다음 색 하나씩을 앞줄 위에 올린 다음 맨 왼쪽에서 발화!', 6, SCRATCH6_PAIRS, SCRATCH6_STEPS, SCRATCH6_ANSWER, '혼자서 6연쇄!!! 최종 시험 합격이야!'),
+  tipPage('grad3-tip1', '졸업 비결 ① 터진 뒤를 미리 그려 보기', '놓기 전에 머릿속으로 그려 봐. 이 색이 터지면 위의 뿌요가 어디로 떨어질까? 떨어진 자리에 같은 색이 3개 기다리고 있으면 연쇄가 이어져.', ['.B....', 'RGB...', 'RGB...', 'RGB...']),
+  tipPage('grad3-tip2', '졸업 비결 ② 실수한 뿌요도 재료로', '잘못 놓았다고 포기하지 마. 그 뿌요 옆에 같은 색을 모아서 새 연쇄의 한 칸으로 쓰면 돼. 고수는 실수를 다음 연쇄로 바꿔.', ['R..B..', 'R.GB..', 'RGGB..']),
+  tipPage('grad3-tip3', '졸업 비결 ③ 작은 연쇄를 빨리 쏘기', '큰 연쇄만 답은 아니야. 상대가 높이 쌓아서 위험해 보이면 2연쇄, 3연쇄를 빨리 보내는 게 더 무서워. 상대 필드의 ✕ 줄을 봐!', ['O.O.O.', 'RRRGGG']),
+  tipPage('grad3-tip4', '졸업 비결 ④ 방해 뿌요 밑의 연쇄 살리기', '방해 뿌요가 연쇄 위에 덮여도 끝난 게 아니야. 옆에서 아무 색이나 터뜨리면 방해 뿌요가 같이 사라져서 밑에 깔린 연쇄가 다시 살아나.', ['OOO...', 'RRR.O.']),
+  tipPage('grad3-tip5', '졸업 비결 ⑤ 즐겁게, 예의 바르게', '온라인에서는 시작할 때 "안녕!", 끝나면 "잘했어!" 하고 인사해 줘. 져도 괜찮아. 한 판 질 때마다 다음 판의 연쇄가 한 칸씩 길어지니까.', ['RGBYPR', 'GBYPRG']),
+  tipPage('grad3-diploma', '🎓 졸업장', '졸업장. 이 사람은 초급부터 졸업3까지 뿌요뿌요 배우기 열 단계를 모두 마쳤습니다. 발화점을 찾고, 계단과 끼워 넣기를 쌓고, 13연쇄를 터뜨렸습니다. 이제 뿌요뿌요 박사입니다. 축하해!', ['R.G.B.', 'YPYPYP']),
+];
+
 // 등급. 끝내면 처음 한 번만 선물을 준다.
 export const GRADES = [
   { id: 'beginner', name: '초급', emoji: '🐣', desc: '옮기기 · 4개 터뜨리기 · 2연쇄', lessons: BEGINNER, reward: { coins: 100, xp: 50 } },
@@ -433,6 +588,9 @@ export const GRADES = [
   { id: 'ultra', name: '초초상급', emoji: '⚡', desc: '끼워 넣기 3연쇄 · 직접 쌓아서 5연쇄 · 여섯 칸 6연쇄', lessons: ULTRA, reward: { coins: 1500, xp: 600, tickets: { pet: 2, boost: 1 } } },
   { id: 'final', name: '마지막', emoji: '🏆', desc: '초급~초초상급 복습 · 빈 필드에서 직접 쌓기 · 진짜 연쇄를 잘하는 비결 4가지', lessons: FINAL, reward: { coins: 3000, xp: 1000, tickets: { pet: 3, boost: 2, skin: 1, effect: 1 } } },
   { id: 'real', name: '찐 마지막', emoji: '💎', desc: '총복습 10문제 · 직접 쌓기 3·4·5연쇄 · 대연쇄 7~10연쇄 · 졸업 시험 · 찐 비결 7가지', lessons: REAL, reward: { coins: 10000, xp: 3000, tickets: { pet: 5, boost: 3, skin: 2, effect: 2 } } },
+  { id: 'grad1', name: '졸업', emoji: '🎓', desc: '발화점 찾기 22판 (2연쇄부터 10연쇄까지, 자리는 직접 찾기)', lessons: GRAD1, reward: { coins: 15000, xp: 4000, tickets: { pet: 6, boost: 3, skin: 2, effect: 2 } } },
+  { id: 'grad2', name: '졸업2', emoji: '🏅', desc: '오른쪽 4·5연쇄 쌓기 · 끼워 넣기 쌓기 · 두 수 퍼즐 9판 · 쌓기 시험 · 6연쇄 쌓기', lessons: GRAD2, reward: { coins: 20000, xp: 5000, tickets: { pet: 8, boost: 4, skin: 3, effect: 3 } } },
+  { id: 'grad3', name: '졸업3', emoji: '🌟', desc: '초대연쇄 11·12·13연쇄 · 어려운 발화점 찾기 · 혼자 푸는 두 수 퍼즐 · 최종 시험 · 졸업장', lessons: GRAD3, reward: { coins: 30000, xp: 8000, tickets: { pet: 10, boost: 5, skin: 3, effect: 3 } } },
 ];
 // 예전 이름: 연습하기(초급) 세 가지
 export const LESSONS = BEGINNER;

@@ -104,7 +104,7 @@ const unlock = () => sound.unlock();
 for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown']) addEventListener(type, unlock, { capture: true });
 
 let screen = '', match = null, demo = null, game = null, paused = false, talking = false;
-let practice = null; // 배우기(연습하기) 중이면 { grade, index, judge, freeze, fails }. grade: 0 초급 ~ 6 찐 마지막, fails: 이 문제를 틀린 횟수
+let practice = null; // 배우기(연습하기) 중이면 { grade, index, judge, freeze, fails }. grade: 0 초급 ~ 9 졸업3, fails: 이 문제를 틀린 횟수
 
 // ---------- 알림 ----------
 function toast(text, gold = false) {
@@ -768,7 +768,7 @@ function finishPractice() {
   const next = GRADES[gi + 1];
   showCoach({
     step: `${grade.name} 끝!`, title: next ? `다음은 ${next.name}!` : '모두 배웠어! 👑', mood: 'happy',
-    text: next ? `${grade.name}을 모두 배웠어. 이어서 ${next.name}에 도전해 볼까?` : '초급부터 찐 마지막까지 뿌요뿌요 배우기를 모두 끝냈어! 이제 타워와 온라인 대전에서 진짜 연쇄를 보여 줘.',
+    text: next ? `${grade.name}을 모두 배웠어. 이어서 ${next.name}에 도전해 볼까?` : '초급부터 졸업3까지 뿌요뿌요 배우기 열 단계를 모두 끝냈어! 졸업 축하해! 이제 타워와 온라인 대전에서 진짜 연쇄를 보여 줘.',
     buttons: [
       next ? ['primary', `${next.emoji} ${next.name} 배우기`, () => { sound.sfx('click'); startPractice(0, gi + 1); }]
         : ['primary', '🗼 타워로', () => { sound.sfx('click'); quitGame(); show('tower'); }],
@@ -776,7 +776,7 @@ function finishPractice() {
     ],
   });
 }
-// 배우기 목록: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막 → 찐 마지막. 앞 등급을 끝내야 다음 등급이 열린다.
+// 배우기 목록: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막 → 찐 마지막 → 졸업 → 졸업2 → 졸업3. 앞 등급을 끝내야 다음 등급이 열린다.
 function renderSchool() {
   const p = P(), list = $('school-list');
   list.innerHTML = '';

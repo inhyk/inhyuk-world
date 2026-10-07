@@ -116,7 +116,7 @@ try {
   await hideToasts(g);
   for (const to of ['pets', 'boost', 'school', 'solo']) assert.equal(await g.locator(`#scr-menu [data-go="${to}"]`).count(), 1, `메뉴에 ${to} 단추`);
   assert.equal(await g.locator('#scr-menu [data-go="practice"]').count(), 0); // 연습하기는 배우기(초급)로 들어갔다
-  assert.equal(await g.textContent('#scr-menu [data-go="school"] small'), '초급부터 찐 마지막까지 7단계');
+  assert.equal(await g.textContent('#scr-menu [data-go="school"] small'), '초급부터 졸업3까지 10단계');
   assert.equal(await g.locator('#practice-badge').isVisible(), true);
   assert.equal(await g.locator('#menu-bonus').isVisible(), false); // 아직 배수가 없다
   await settle(g); await g.screenshot({ path: `${shots}/menu.png` });
@@ -254,7 +254,7 @@ try {
   // ---------- 5. 뿌요뿌요 배우기: 초급 → 중급 → 상급 → 최상급 ----------
   await g.click('#scr-menu [data-go="school"]'); await screenIs(g, 'school');
   assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => [r.querySelector('h3').textContent, r.classList.contains('open'), r.querySelector('button').disabled])),
-    [['초급', true, false], ['중급', false, true], ['상급', false, true], ['최상급', false, true], ['초초상급', false, true], ['마지막', false, true], ['찐 마지막', false, true]]);
+    [['초급', true, false], ['중급', false, true], ['상급', false, true], ['최상급', false, true], ['초초상급', false, true], ['마지막', false, true], ['찐 마지막', false, true], ['졸업', false, true], ['졸업2', false, true], ['졸업3', false, true]]);
   await settle(g); await g.screenshot({ path: `${shots}/school.png` });
   // 초급(예전 연습하기)은 건너뛸 수 있다
   await g.click('#school-list .grade[data-grade="beginner"] button');
@@ -265,7 +265,7 @@ try {
   await g.click('#coach-buttons button.ghost'); await screenIs(g, 'menu');
   assert.equal(await g.locator('#practice-badge').isVisible(), false);
   await go(g, 'school');
-  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'open', 'locked', 'locked', 'locked', 'locked', 'locked']);
+  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'open', 'locked', 'locked', 'locked', 'locked', 'locked', 'locked', 'locked', 'locked']);
   // 중급 1: 뒤집어 놓으면 "다시 해 보자", 알려 준 대로 놓으면 3연쇄
   const ticketsBefore = (await read(g)).tickets;
   await g.click('#school-list .grade[data-grade="middle"] button');
@@ -284,7 +284,7 @@ try {
     // 마지막: 복습 다섯(오른쪽으로 뒤집은 문제) + 빈 필드에서 여섯 번 놓아 직접 쌓기. 그 뒤의 비결 4가지는 아래에서 따로 본다
     [5, [[[5, 0]], [[5, 0]], [[4, 0], [5, 0]], [[5, 0]], [[4, 0]], [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [0, 0]]]],
   ];
-  const nextTitle = ['', '다음은 상급!', '다음은 최상급!', '다음은 초초상급!', '다음은 마지막!', '다음은 찐 마지막!', '모두 배웠어!'];
+  const nextTitle = ['', '다음은 상급!', '다음은 최상급!', '다음은 초초상급!', '다음은 마지막!', '다음은 찐 마지막!', '다음은 졸업!'];
   for (const [grade, lessons] of answers) {
     for (const [index, moves] of lessons.entries()) {
       await lessonIs(g, grade, index);
@@ -369,7 +369,7 @@ try {
     if (index >= 16 && index <= 19) assert.equal(await g.evaluate(() => window.__puyo.match.players[0].cells.some(v => v > 0)), false, `${title}: 전소`);
   }
   await coachTitle(g, nextTitle[6]);
-  assert.match(await g.textContent('#coach-text'), /초급부터 찐 마지막까지 뿌요뿌요 배우기를 모두 끝냈어/);
+  assert.match(await g.textContent('#coach-text'), /찐 마지막을 모두 배웠어\. 이어서 졸업에 도전해 볼까/); // 졸업, 졸업2, 졸업3 은 graduation-browser-check.mjs 가 끝까지 푼다
   await settle(g); await g.screenshot({ path: `${shots}/real-done.png` });
   s = await read(g);
   assert.deepEqual(s.school, ['middle', 'high', 'master', 'ultra', 'final', 'real']);
@@ -378,7 +378,7 @@ try {
   assert.equal(s.tickets.pet, ticketsBefore.pet + 12); assert.equal(s.tickets.boost, ticketsBefore.boost + 8);
   assert.equal(s.tickets.skin, ticketsBefore.skin + 3); assert.equal(s.tickets.effect, ticketsBefore.effect + 3);
   await g.click('#coach-buttons button.ghost'); await screenIs(g, 'school'); // 배우기 목록으로
-  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'done', 'done', 'done', 'done', 'done', 'done']);
+  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'done', 'done', 'done', 'done', 'done', 'done', 'open', 'locked', 'locked']);
   // 다시 배워도 선물은 한 번만
   await g.click('#school-list .grade[data-grade="middle"] button');
   for (const [index, moves] of answers[0][1].entries()) { await lessonIs(g, 1, index); for (const [x, rot] of moves) await place(g, x, rot); }
