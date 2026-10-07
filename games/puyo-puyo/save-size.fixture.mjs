@@ -1,5 +1,6 @@
 // 가장 큰 뿌요뿌요 타워 기록 (클라우드 저장 크기 확인용). 실제로 될 수 있는 값을 모두 끝까지 채운다.
-import { newProgress, sanitize } from './profile.mjs';
+import { newProgress, sanitize, TIME_IDS, SCHOOL_IDS, GIFT_SEEN_MAX } from './profile.mjs';
+import { PET_IDS } from './pets.mjs';
 import { SKINS, EFFECTS } from './shop.mjs';
 import { MISSIONS, dailyFor } from './missions.mjs';
 import { CHAT_MAX, CHAT_KEEP, FRIEND_MAX, REQUEST_MAX, FRIEND_ALPHABET, makeMailKey } from './chat.mjs';
@@ -29,11 +30,14 @@ export function maxProgress({ social = true } = {}) {
   p.owned = { skin: SKINS.map(s => s.id), effect: EFFECTS.map(e => e.id) };
   p.equip = { skin: SKINS.at(-1).id, effect: EFFECTS.at(-1).id };
   p.tower = { best: 6, cleared: true, comet: true, nova: true, losses: Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i + 1, BIG])), endings: BIG, cometEndings: BIG };
-  p.tickets = { skin: 1e6, effect: 1e6, spin: 1e6 };
+  p.tickets = { skin: 1e6, effect: 1e6, spin: 1e6, pet: 1e6, boost: 1e6 };
+  p.pets = { owned: Object.fromEntries(PET_IDS.map(id => [id, 1e6])), equip: PET_IDS.at(-1), draws: BIG };
+  p.boost = { until: 1e14 }; p.friendCount = 1000; p.school = [...SCHOOL_IDS];
+  p.gifts = { seen: Object.fromEntries(Array.from({ length: GIFT_SEEN_MAX }, (_, i) => [String(999999999000 + i), BIG])), day: '2026-10-05', dayCoins: BIG, sent: BIG, got: BIG };
   p.promo = { lastGame: BIG };
   p.missions = Object.fromEntries(MISSIONS.map(m => [m.id, { v: BIG, claimed: true }]));
   p.daily = { date: '2026-10-05', list: dailyFor('2026-10-05').map(d => ({ id: d.id, v: BIG, claimed: true })) };
-  p.rewards = { dailyDate: '2026-10-05', dailyStreak: 1e6, spinDate: '2026-10-05', spinIndex: 5, date: '2026-10-05', playSeconds: 86400, claimedTime: ['5m', '15m', '30m'] };
+  p.rewards = { dailyDate: '2026-10-05', dailyStreak: 1e6, spinDate: '2026-10-05', spinIndex: 5, date: '2026-10-05', playSeconds: 86400, claimedTime: [...TIME_IDS] };
   p.stats = Object.fromEntries(Object.keys(p.stats).map(k => [k, BIG]));
   p.settings = { ...p.settings, localMap: 'nebula-garden-long-name' };
   if (social) p.social = maxSocial();

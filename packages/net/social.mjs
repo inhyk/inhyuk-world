@@ -24,6 +24,7 @@ export const SOCIAL_MESSAGES = {
   'wrong-login': '닉네임이나 비밀번호가 달라.',
   'bad-login': '닉네임과 비밀번호를 적어 줘.',
   'login-required': '다시 로그인해 줘.',
+  'wrong-password': '비밀번호가 달라. 다시 적어 줘.',
   suspended: '이 계정은 정지됐어.',
   rate: '너무 빨라! 조금 쉬었다가 해 줘.',
   'not-found': '찾을 수 없어.',
@@ -115,6 +116,12 @@ export class Account {
   }
   async logout() {
     try { if (this.token) await this.request('POST', '/auth/logout'); } finally { this.save('', null); }
+  }
+  // 내 계정을 서버에서 지운다 (비밀번호를 한 번 더 확인). 친구, 대화, 모든 게임의 저장까지 지워지고 되돌릴 수 없다.
+  // 비밀번호가 틀리면 NetError 'wrong-password', 서버가 아직 이 기능을 모르면 status 404.
+  async deleteAccount(password) {
+    await this.request('POST', '/auth/delete', { password });
+    this.save('', null);
   }
   async me() {
     const data = await this.request('GET', '/me');

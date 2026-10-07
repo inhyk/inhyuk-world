@@ -1,7 +1,7 @@
 // 클라우드 세이브 adapter (cloud.mjs) 와 기기 계정 옮기기 (migrate.mjs) 를 가짜 서버로 확인한다.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CloudSave, readCache, saveSummary, GAME, cloudPayload } from './cloud.mjs';
+import { CloudSave, readCache, saveSummary, GAME, cloudPayload, sameSave } from './cloud.mjs';
 import { SAVE_MAX_BYTES } from '../../services/net/src/saves.js';
 import { maxProgress, bytes } from './save-size.fixture.mjs';
 import { migrateLocal, markMigrated, migrationMarker, importIdFor, checkLocalPassword } from './migrate.mjs';
@@ -423,7 +423,7 @@ test('가장 큰 기록: 친구 기록까지 넣으면 서버 한도를 넘고, 
   const full = maxProgress();
   assert.ok(bytes(full) > SAVE_MAX_BYTES * 50, `full ${bytes(full)}`);
   const payload = cloudPayload(full);
-  assert.ok(bytes(payload) < SAVE_MAX_BYTES / 3, `payload ${bytes(payload)}`);
+  assert.ok(bytes(payload) < SAVE_MAX_BYTES / 2, `payload ${bytes(payload)}`); // 업그레이드 4의 펫·선물 기록까지 채운 크기
   assert.equal(payload.social.key, '');
   assert.deepEqual(payload.social.friends, []);
   assert.equal(full.social.friends.length, 30); // 원본은 건드리지 않는다
@@ -527,4 +527,43 @@ test('unavailable local storage is a persistence failure through the real adapte
   assert.equal(unavailable.removeItem('key'), false);
   assert.equal(writeCache(null, 1, { data: { coins: 50 }, dirty: true }), false);
   assert.equal(writeCache(unavailable, 1, { data: { coins: 50 }, dirty: true }), false);
+});
+
+test('창을 닫으며 올린 저장이 서버에는 갔는데 답을 못 받았으면, 다음에 켤 때 묻지 않고 이어 간다 (두 기록이 같음)', async () => {
+  const server = fakeServer();
+  const storage = memoryStorage();
+  const progress = cloudPayload({ ...newProgress(), level: 4, coins: 777 });
+  // 서버에는 3번으로 올라갔는데, 기기는 2번에서 "아직 못 올림(dirty)" 으로 남았다
+  server.save = { data: structuredClone(progress), revision: 3, updated: 5000 };
+  writeCache(storage, 7, { data: structuredClone(progress), revision: 2, dirty: true, updated: '2026-10-07T11:00:00.000Z' });
+  const { cloud, conflicts, states, applied } = make(server, { storage });
+  const data = await cloud.start();
+  assert.equal(conflicts.length, 0); // "어느 기록으로 할까?" 를 묻지 않는다
+  assert.equal(states.includes('conflict'), false); assert.equal(cloud.state, 'synced');
+  assert.equal(data.coins, 777); assert.equal(cloud.revision, 3); assert.equal(cloud.dirty, false);
+  assert.equal(applied.length, 1);
+  assert.deepEqual(server.calls.filter(c => c[0] === 'put'), []); // 다시 올릴 것도 없다
+  assert.equal(readCache(storage, 7).dirty, false);
+  // 올리다가 409 가 와도 서버 기록이 같으면 묻지 않는다
+  cloud.revision = 1; cloud.dirty = true;
+  await cloud.flush();
+  assert.equal(conflicts.length, 0); assert.equal(cloud.revision, 3); assert.equal(cloud.state, 'synced');
+});
+
+test('두 기록이 조금이라도 다르면 예전처럼 고르게 한다', async () => {
+  const server = fakeServer();
+  const storage = memoryStorage();
+  server.save = { data: cloudPayload({ ...newProgress(), coins: 778 }), revision: 3, updated: 5000 };
+  writeCache(storage, 7, { data: cloudPayload({ ...newProgress(), coins: 777 }), revision: 2, dirty: true, updated: '2026-10-07T11:00:00.000Z' });
+  const { cloud, conflicts } = make(server, { storage, choose: 'server' });
+  assert.equal((await cloud.start()).coins, 778);
+  assert.equal(conflicts.length, 1);
+  // 같은지 볼 때: 칸 순서가 달라도, 옛 버전이 올려서 새 칸이 없어도 같다고 본다
+  const a = cloudPayload(newProgress()), b = Object.fromEntries(Object.entries(a).reverse());
+  assert.equal(sameSave(a, b), true);
+  const { pets, boost, gifts, school, friendCount, ...old } = a;
+  assert.equal(sameSave(a, old), true);
+  assert.equal(sameSave(a, { ...a, trophies: 1 }), false);
+  assert.equal(sameSave(a, null), false);
+  assert.ok(pets && boost && gifts && school && friendCount === 0);
 });

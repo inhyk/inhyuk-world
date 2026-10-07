@@ -1,5 +1,5 @@
 import './style.css';
-import { MAPS, getMap } from './maps.mjs';
+import { MAPS, getMap, mapIndex, mapTitle, mapRules } from './maps.mjs';
 import { consumePromo } from './promo.mjs';
 import { Match, FIRST_TO } from './match.mjs';
 import { Renderer } from './render.mjs';
@@ -26,11 +26,15 @@ import { createPeerOnline } from './online-peer.mjs';
 import { Account, Social } from '../../packages/net/index.mjs';
 import { serverUrl, scopedStorage, NET_GAME } from './net.mjs';
 import { createWatch } from './watch.mjs';
-import { CloudSave, CACHE_KEY, cloudPayload } from './cloud.mjs';
+import { CloudSave, CACHE_KEY, cloudPayload, writeCache } from './cloud.mjs';
 import { migrateLocal, checkLocalPassword, markMigrated, migrationMarker, importIdFor, MIGRATING_KEY } from './migrate.mjs';
 import { createSocialUI } from './social-ui.mjs';
 import { playEnding } from './ending.mjs';
-import { LESSONS, lessonCells, lessonSeq, newJudge, judge } from './tutorial.mjs';
+import { GRADES, gradeDone, gradeOpen, finishGrade, lessonCells, lessonSeq, newJudge, judge } from './tutorial.mjs';
+import { PETS, PET_PRICE, drawPet, drawWith, equipPet, equippedPet, ownedCount, petName, multText, chanceText, chanceTotal } from './pets.mjs';
+import { drawPet as paintPet, drawEgg } from './pet-art.mjs';
+import { BOOST_PRICE, boostLeft, spendBoost, buyBoost, matchBonus, applyBonus, clockText } from './bonus.mjs';
+import { receiveGift, paySend, refundSend, giftText } from './gifts.mjs';
 import {
   QUICK, STICKERS, EMOJIS, CHAT_MAX, FRIEND_MAX, REQUEST_MAX, cleanChat, personalInfo, rateLimiter, makeFriendCode, normaliseFriendCode,
   validFriendCode, validMailKey, makeMailKey, validSticker, bigEmoji, graphemes, cleanName, addFriend, removeFriend, pushChat,
@@ -58,6 +62,7 @@ const net = new Account({ server: NET_SERVER, storage: netStore });
 const marker = migrationMarker(netStore);
 let cloud = null, hub = null, cloudWarned = 0; // 온라인 계정으로 들어갔을 때: 클라우드 세이브, 친구와 알림(@inhyuk/net Social)
 let statsSent = '', statsTimer = null, statsJob = null; // 온라인 랭킹에 마지막으로 올린 기록, 올리는 중인 일
+let cloudLoaded = false; // 서버 저장을 다 읽었나. 읽기 전에는 친구 선물을 기록에 넣지 않는다 (읽어 온 기록과 어긋나지 않게)
 let account = net.loggedIn ? null : currentAccount(store); // 이 기기 계정, 또는 온라인 계정({ cloud: true, uid })
 let guest = null;
 let device = { sound: true, music: true, haptics: true };
@@ -99,7 +104,7 @@ const unlock = () => sound.unlock();
 for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown']) addEventListener(type, unlock, { capture: true });
 
 let screen = '', match = null, demo = null, game = null, paused = false, talking = false;
-let practice = null; // 연습하기 중이면 { index, judge, freeze }
+let practice = null; // 배우기(연습하기) 중이면 { grade, index, judge, freeze }. grade: 0 초급 ~ 3 최상급
 
 // ---------- 알림 ----------
 function toast(text, gold = false) {
@@ -111,7 +116,7 @@ function toast(text, gold = false) {
 }
 
 // ---------- 화면 ----------
-const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'online', 'watch', 'ranking', 'friends', 'dm', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards'];
+const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'solo', 'online', 'watch', 'ranking', 'friends', 'dm', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards', 'pets', 'boost', 'school'];
 function show(name) {
   if ((chatWith?.kind === 'friend' || chatWith?.kind === 'legacy') && name !== 'friends') closeChat(); // 친구 화면을 떠나면 친구 채팅 창도 닫는다
   screen = name;
@@ -133,6 +138,10 @@ function renderScreen(name) {
   if (name === 'tower') renderTower();
   if (name === 'vs') renderVs();
   if (name === 'local') renderLocal();
+  if (name === 'solo') renderSolo();
+  if (name === 'pets') renderPets();
+  if (name === 'boost') renderBoost();
+  if (name === 'school') renderSchool();
   if (name === 'missions') renderMissions();
   if (name === 'shop') renderShop();
   if (name === 'profile') renderProfile();
@@ -144,13 +153,13 @@ function renderScreen(name) {
   if (name === 'watch') renderWatchList();
   if (name === 'ranking') renderRanking();
   ui.render(name); // 온라인 계정: 온라인, 친구, 1:1 대화
+  if (name === 'online') paintVote();
   watchFriends(name === 'friends' && legacyOn());
 }
 
 document.querySelectorAll('[data-go]').forEach(btn => btn.addEventListener('click', () => {
   sound.sfx('click');
   const to = btn.dataset.go;
-  if (to === 'solo') return startSolo();
   if (to === 'practice') return startPractice();
   if (to === 'online' && roomNet().active && screen === 'online') return;
   show(to);
@@ -293,6 +302,7 @@ async function runMigration(params) {
     // 못 적어도 기록은 서버에 있다. 기기 계정이 다음에 다시 보이면 옮기기를 다시 하면 된다 (importId 로 두 번 쓰지 않음).
     persistStore();
     migrating = null; guest = null;
+    cloudLoaded = true;
     startSocial();
     toast(`☁️ ${result.user.nickname} 온라인 계정으로 옮겼어! 이제 다른 기기에서도 이어 할 수 있어.`, true);
     save();
@@ -327,6 +337,7 @@ $('migrate-back').onclick = async () => {
 // ---------- 온라인 계정 세션 ----------
 function openCloud(user) {
   stopCloud();
+  cloudLoaded = false;
   const acc = { name: user.nickname, cloud: true, uid: user.id, progress: newProgress() };
   cloud = new CloudSave({
     client: net, uid: user.id, storage: netStore, initial: newProgress,
@@ -361,7 +372,8 @@ async function enterCloud(user, { wait = true } = {}) {
   const acc = openCloud(user);
   account = acc; guest = null;
   if (store.current) { logout(store); persistStore(); }
-  const loading = cloud.start().then(data => { if (data && !cloud?.dirty) acc.progress = sanitize(data); }).catch(() => {});
+  const loading = cloud.start().then(data => { if (data && !cloud?.dirty) acc.progress = sanitize(data); }).catch(() => {})
+    .then(() => { if (account === acc) { cloudLoaded = true; if (!wait) ui.refreshCounts(); } }); // 다 읽은 뒤에 그동안 온 선물을 받는다
   if (wait) await loading; else loading.then(() => { if (account === acc && screen) renderScreen(screen); });
   startSocial();
 }
@@ -395,6 +407,7 @@ async function resumeMigration(local) {
     markMigrated(store, local.id, net.user.nickname); persistStore();
     marker.clear();
     account = acc; guest = null;
+    cloudLoaded = true;
     startSocial();
     toast(`☁️ ${net.user.nickname} 온라인 계정으로 옮겼어!`, true);
     afterLogin();
@@ -441,8 +454,35 @@ function renderMenu() {
   const gifts = Number(!rewards.dailyClaimed) + Number(!rewards.spinClaimed) + rewards.time.filter(r => r.ready && !r.claimed).length;
   $('reward-badge').hidden = !gifts;
   $('reward-badge').textContent = gifts;
-  $('practice-badge').hidden = !!p.tutorial; // 연습하기를 끝내기 전까지 NEW
+  $('practice-badge').hidden = !!p.tutorial; // 배우기 초급(연습하기)을 끝내기 전까지 NEW
+  // 펫, 2배 부스트, 지금 내 배수
+  const pet = equippedPet(p), left = boostLeft(p);
+  $('menu-pet-sub').textContent = pet ? `${petName(pet)}와 함께 · 경험치 ${multText(pet.mult)}` : '알에서 펫 뽑기 · 경험치 배수';
+  $('pet-badge').hidden = !(p.tickets.pet > 0);
+  $('pet-badge').textContent = p.tickets.pet;
+  $('menu-boost-sub').textContent = left > 0 ? `켜짐! ${clockText(left)} 남음` : '경험치 · 코인 2배';
+  $('boost-badge').hidden = !(p.tickets.boost > 0);
+  $('boost-badge').textContent = p.tickets.boost;
+  const bonus = bonusText();
+  $('menu-bonus').hidden = !bonus;
+  $('menu-bonus').textContent = `✨ 지금 내 배수: ${bonus}`;
   updateSocialBadges();
+}
+$('menu-bonus').onclick = () => { sound.sfx('click'); show('boost'); };
+
+// ---------- 판 보상 배수: 펫, 2배 부스트, 친구 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 1, 3, 6번) ----------
+// 친구 수: 온라인 계정은 서버의 닉네임 친구(마지막으로 본 수를 기록에 적어 둔다), 이 기기 계정은 친구 코드 친구. 손님은 0명.
+function friendTotal() {
+  if (account?.cloud) return P().friendCount || 0;
+  return account ? social().friends.length : 0;
+}
+const currentBonus = () => matchBonus(P(), { friends: friendTotal() });
+function bonusText(b = currentBonus()) {
+  const parts = [];
+  if (b.pet) parts.push(`🐾 ${petName(b.pet)} 경험치 ×${b.petMult}`);
+  if (b.boost > 1) parts.push(`⚡ 부스트 ×${b.boost}`);
+  if (b.friends > 0) parts.push(`👫 친구 ${b.friends}명 ×${b.friend}`);
+  return parts.join(' · ');
 }
 $('profile-chip').onclick = () => { sound.sfx('click'); show('profile'); };
 
@@ -506,6 +546,7 @@ function renderVs() {
     b.onclick = () => { vsLevel = lv; sound.sfx('click'); renderVs(); };
     grid.append(b);
   }
+  paintMaps('vs-maps', 'vs-map-tip', 'vsMap', renderVs);
 }
 function segValue(id) { return Number($(id).querySelector('.on')?.dataset.v || 1); }
 // 몇 판 먼저 이기면 승리? 단추: 1·2·3·5·10·25·30·40·50판 (처음에는 2판)
@@ -579,22 +620,29 @@ function startTower(floor) {
   };
   talk(info, info.intro, () => { startGame(cfg); if (help) toast(`도움 ${help}단계: ${info.boss}의 손이 조금 느려져!`); });
 }
-function startVs(level, firstTo) {
-  const info = FLOORS[level - 1];
+// 맵 규칙 (maps.mjs). 뿌요 정원은 기본 규칙이라 예전 화면 그대로 두고, 다른 맵은 그 맵의 배경과 이름을 보여 준다.
+const mapRulesOf = arena => ({ map: arena.id, colors: arena.colors, minGroup: arena.minGroup, gravityScale: arena.gravityScale, target: arena.target });
+const plainMap = arena => arena.id === 'garden';
+function startVs(level, firstTo, mapId = P().settings.vsMap) {
+  const info = FLOORS[level - 1], arena = getMap(mapId);
   startGame({
-    mode: 'vs', level, title: `AI 대전 · ${info.boss}`, theme: info.theme, music: level >= 6 ? 'boss' : 'battle', firstTo,
+    mode: 'vs', level, title: `AI 대전 · ${info.boss}${plainMap(arena) ? '' : ` · ${mapTitle(arena)}`}`, theme: plainMap(arena) ? info.theme : arena.theme, music: level >= 6 ? 'boss' : 'battle', firstTo,
+    ...mapRulesOf(arena),
     specs: [{ kind: 'human' }, { kind: 'ai', level }],
     views: [myView(), { name: info.boss, level: 0, skin: 'classic', effect: 'sparkle', char: info.char, color: '#ffb3c8' }],
   });
 }
-function renderLocal() {
-  const current = getMap(P().settings.localMap);
-  $('local-maps').innerHTML = MAPS.map(map => `<button class="map-card${map.id === current.id ? ' selected' : ''}" data-map="${map.id}" style="--map-color:${map.tint}" aria-pressed="${map.id === current.id}"><span>${map.emoji}</span><b>${map.name}</b><small>${map.desc}</small></button>`).join('');
-  $('local-map-tip').textContent = `${current.emoji} ${current.tip}`;
-  $('local-maps').querySelectorAll('button').forEach(button => { button.onclick = () => {
-    P().settings.localMap = button.dataset.map; save(); sound.sfx('click'); renderLocal();
+// 맵 고르기: 2인 플레이, AI 대전, 혼자 하기가 같은 여섯 맵을 쓴다 (기획서 4번). key: 고른 맵을 적어 두는 설정 칸
+function paintMaps(gridId, tipId, key, again) {
+  const current = getMap(P().settings[key]);
+  $(gridId).innerHTML = MAPS.map(map => `<button class="map-card${map.id === current.id ? ' selected' : ''}" data-map="${map.id}" style="--map-color:${map.tint}" aria-pressed="${map.id === current.id}"><span>${map.emoji}</span><b>${map.name}</b><small>${map.desc}</small></button>`).join('');
+  $(tipId).textContent = `${current.emoji} ${current.tip}`;
+  $(gridId).querySelectorAll('button').forEach(button => { button.onclick = () => {
+    P().settings[key] = button.dataset.map; save(); sound.sfx('click'); again();
   }; });
 }
+function renderLocal() { paintMaps('local-maps', 'local-map-tip', 'localMap', renderLocal); }
+function renderSolo() { paintMaps('solo-maps', 'solo-map-tip', 'soloMap', renderSolo); }
 function startLocal(firstTo, mapId = P().settings.localMap) {
   const arena = getMap(mapId);
   const name2 = ($('local-name').value || '2P').slice(0, 10);
@@ -605,28 +653,39 @@ function startLocal(firstTo, mapId = P().settings.localMap) {
     views: [myView({ char: null }), { name: name2, skin: 'classic', effect: 'sparkle', char: null, color: '#9fe3ff' }],
   });
 }
-function startSolo() {
+function startSolo(mapId = P().settings.soloMap) {
+  const arena = getMap(mapId);
   startGame({
-    mode: 'solo', title: '혼자 하기 · 끝없이', theme: 'meadow', music: 'menu', firstTo: 1,
+    mode: 'solo', title: plainMap(arena) ? '혼자 하기 · 끝없이' : `혼자 하기 · ${mapTitle(arena)}`, theme: plainMap(arena) ? 'meadow' : arena.theme, music: 'menu', firstTo: 1,
+    ...mapRulesOf(arena),
     specs: [{ kind: 'human' }], views: [myView()],
   });
 }
+$('solo-start').onclick = () => { sound.sfx('click'); startSolo(); };
 
-// ---------- 연습하기 (처음 하는 사람) ----------
-function startPractice(index = 0) {
+// ---------- 뿌요뿌요 배우기 (초급 = 처음 하는 사람의 연습하기, 그리고 중급 → 상급 → 최상급) ----------
+function startPractice(index = 0, grade = 0) {
+  if (!GRADES[grade]?.lessons[index]) { grade = 0; index = 0; }
   startGame({
-    mode: 'practice', title: '🐣 연습하기', theme: 'meadow', music: 'menu', firstTo: 1, gravityScale: 0.6,
+    mode: 'practice', title: grade ? `🎓 ${GRADES[grade].name} 배우기` : '🐣 연습하기', theme: 'meadow', music: 'menu', firstTo: 1, gravityScale: 0.6,
     specs: [{ kind: 'human' }], views: [myView()],
   });
-  setLesson(index);
+  setLesson(index, grade);
 }
-function setLesson(index) {
-  practice = { index, judge: newJudge(), freeze: false };
-  const lesson = LESSONS[index];
+const lessonsNow = () => GRADES[practice?.grade ?? 0].lessons;
+const lessonNow = () => lessonsNow()[practice.index];
+// "연습 2 / 3" (초급), "중급 2 / 3"
+const stepText = () => `${practice.grade ? GRADES[practice.grade].name : '연습'} ${practice.index + 1} / ${lessonsNow().length}`;
+function setLesson(index, grade = practice?.grade ?? 0) {
+  practice = { index, grade, judge: newJudge(), freeze: false };
+  const lessons = lessonsNow(), lesson = lessons[index];
   showCoach({
-    step: `연습 ${index + 1} / ${LESSONS.length}`, title: lesson.title, mood: 'idle',
+    step: stepText(), title: lesson.title, mood: 'idle',
     text: lesson.text || (coarse ? lesson.touch : lesson.keys),
-    buttons: [['ghost', '건너뛰기', () => { sound.sfx('click'); if (index + 1 < LESSONS.length) setLesson(index + 1); else finishPractice(); }]],
+    // 초급은 건너뛸 수 있다. 중급부터는 선물이 걸려 있어서 건너뛰지 못하고, 막히면 처음 모양으로 되돌린다.
+    buttons: grade
+      ? [['ghost', '↺ 처음 모양으로', () => { sound.sfx('click'); setLesson(index); }]]
+      : [['ghost', '건너뛰기', () => { sound.sfx('click'); if (index + 1 < lessons.length) setLesson(index + 1); else finishPractice(); }]],
   });
   resetLessonField(match.players[0], lesson);
 }
@@ -642,48 +701,81 @@ function resetLessonField(p, lesson) {
 }
 function practiceEvent(e) {
   if (!practice || practice.freeze) return;
-  const lesson = LESSONS[practice.index];
+  const lesson = lessonNow(), lessons = lessonsNow();
   const verdict = judge(lesson, practice.judge, e);
   if (verdict === 'done') {
     practice.freeze = true;
     sound.sfx('mission'); haptic('success');
-    showCoach({ step: `연습 ${practice.index + 1} / ${LESSONS.length}`, title: '잘했어! ✨', text: lesson.done, mood: 'happy' });
+    showCoach({ step: stepText(), title: '잘했어! ✨', text: lesson.done, mood: 'happy' });
     const next = practice.index + 1;
     setTimeout(() => {
       if (!practice || game?.mode !== 'practice') return;
-      if (next < LESSONS.length) setLesson(next); else finishPractice();
+      if (next < lessons.length) setLesson(next); else finishPractice();
     }, 2400);
   } else if (verdict === 'retry') {
     practice.freeze = true;
     sound.sfx('bump');
-    showCoach({ step: `연습 ${practice.index + 1} / ${LESSONS.length}`, title: '다시 해 보자!', text: lesson.retry, mood: 'sad' });
+    showCoach({ step: stepText(), title: '다시 해 보자!', text: lesson.retry, mood: 'sad' });
     setTimeout(() => { if (practice && game?.mode === 'practice') setLesson(practice.index); }, 2200);
   }
 }
 // 연습 중에 쌓여서 지면 그 수업을 처음부터
 function practiceFail() {
-  const index = practice?.index ?? 0;
-  setTimeout(() => { if (game?.mode === 'practice') startPractice(index); }, 900);
+  const index = practice?.index ?? 0, grade = practice?.grade ?? 0;
+  setTimeout(() => { if (game?.mode === 'practice') startPractice(index, grade); }, 900);
 }
 function finishPractice() {
   if (!practice) return;
   practice.freeze = true;
-  const p = P(), first = !p.tutorial;
-  p.tutorial = true;
-  if (first) {
-    const r = grantReward(p, { coins: 100, xp: 50 });
+  const p = P(), gi = practice.grade, grade = GRADES[gi];
+  if (finishGrade(p, gi)) { // 처음 끝낸 등급이면 선물
+    const r = grantReward(p, grade.reward);
     for (const level of r.lv.levels) trackEvent({ type: 'level', level });
-    toast(`🎁 연습 완료 선물 ${rewardText(r)}`, true);
+    toast(gi ? `🎁 ${grade.name} 완료 선물 ${rewardText(r)}` : `🎁 연습 완료 선물 ${rewardText(r)}`, true);
   }
   save();
   sound.sfx('level'); haptic('success');
+  if (!gi) {
+    showCoach({
+      step: '연습 끝!', title: '이제 진짜 대결!', mood: 'happy',
+      text: '큰 연쇄를 만들수록 상대에게 방해 뿌요가 많이 날아가. 1층 꼬마 뿌요에게 도전해 볼까?',
+      buttons: [
+        ['primary', '🗼 1층 도전', () => { sound.sfx('click'); quitGame(); startTower(1); }],
+        ['ghost', '메뉴로', () => { sound.sfx('click'); quitGame(); }],
+      ],
+    });
+    return;
+  }
+  const next = GRADES[gi + 1];
   showCoach({
-    step: '연습 끝!', title: '이제 진짜 대결!', mood: 'happy',
-    text: '큰 연쇄를 만들수록 상대에게 방해 뿌요가 많이 날아가. 1층 꼬마 뿌요에게 도전해 볼까?',
+    step: `${grade.name} 끝!`, title: next ? `다음은 ${next.name}!` : '모두 배웠어! 👑', mood: 'happy',
+    text: next ? `${grade.name}을 모두 배웠어. 이어서 ${next.name}에 도전해 볼까?` : '초급부터 최상급까지 모두 끝냈어! 이제 타워와 온라인 대전에서 실력을 보여 줘.',
     buttons: [
-      ['primary', '🗼 1층 도전', () => { sound.sfx('click'); quitGame(); startTower(1); }],
-      ['ghost', '메뉴로', () => { sound.sfx('click'); quitGame(); }],
+      next ? ['primary', `${next.emoji} ${next.name} 배우기`, () => { sound.sfx('click'); startPractice(0, gi + 1); }]
+        : ['primary', '🗼 타워로', () => { sound.sfx('click'); quitGame(); show('tower'); }],
+      ['ghost', '배우기 목록', () => { sound.sfx('click'); quitGame(); }],
     ],
+  });
+}
+// 배우기 목록: 초급 → 중급 → 상급 → 최상급. 앞 등급을 끝내야 다음 등급이 열린다.
+function renderSchool() {
+  const p = P(), list = $('school-list');
+  list.innerHTML = '';
+  GRADES.forEach((grade, i) => {
+    const done = gradeDone(p, i), open = gradeOpen(p, i);
+    const li = document.createElement('li');
+    li.className = `grade ${done ? 'done' : open ? 'open' : 'locked'}`;
+    li.dataset.grade = grade.id;
+    const state = done ? '✔ 다 배웠어' : open ? '▶ 배울 수 있어' : `🔒 ${GRADES[i - 1].name}을 끝내면 열려`;
+    li.innerHTML = `<div class="em">${grade.emoji}</div><div><h3>${grade.name}</h3><p>${esc(grade.desc)}</p><p class="state">${state}</p><p>${done ? '선물 받음' : '끝내면 선물'}: ${esc(rewardText(rewardPreview(grade.reward)))}</p></div>`;
+    const b = document.createElement('button');
+    if (open) {
+      b.className = done ? 'ghost' : 'primary';
+      b.textContent = done ? '다시 배우기' : '배우기!';
+      b.onclick = () => { sound.sfx('click'); startPractice(0, i); };
+    } else { b.textContent = '🔒'; b.disabled = true; b.setAttribute('aria-label', `${grade.name} 잠김`); }
+    li.append(b);
+    list.append(li);
   });
 }
 function endPractice() {
@@ -791,6 +883,8 @@ function handleBack() {
   if (!$('cloud-conflict').hidden) return true;
   if (!$('ask').hidden) { $('ask-cancel').click(); return true; }
   if (!$('invite-pop').hidden) { $('invite-no').click(); return true; }
+  if (!$('pet-pop').hidden) { $('pet-pop-ok').click(); return true; }
+  if (!$('gift-pop').hidden) { $('gift-close').click(); return true; }
   if (talking) { closeTalk(); return true; }
   if (!$('result').hidden) { [...$('result-buttons').querySelectorAll('button')].pop()?.click(); return true; }
   if (match) {
@@ -818,9 +912,10 @@ function quitGame() {
   if (game?.mode === 'watch') watcher.stop();
   paintWatchers(0);
   if (chatWith?.kind === 'room') closeChat();
+  const school = game?.mode === 'practice' && (practice?.grade ?? 0) > 0; // 중급부터는 배우기 목록으로 돌아간다
   endPractice();
   match = null;
-  const back = game?.mode === 'tower' ? 'tower' : game?.mode === 'online' ? 'online' : game?.mode === 'watch' ? 'watch' : 'menu';
+  const back = game?.mode === 'tower' ? 'tower' : game?.mode === 'online' ? 'online' : game?.mode === 'watch' ? 'watch' : school ? 'school' : 'menu';
   game = null;
   $('result').hidden = true;
   startDemo();
@@ -832,10 +927,10 @@ function retry() {
   $('result').hidden = true;
   match = null;
   if (g.mode === 'tower') startTower(g.floor);
-  else if (g.mode === 'vs') startVs(g.level, g.firstTo);
+  else if (g.mode === 'vs') startVs(g.level, g.firstTo, g.map);
   else if (g.mode === 'local') startLocal(g.firstTo, g.map);
-  else if (g.mode === 'solo') startSolo();
-  else if (g.mode === 'practice') startPractice(practice?.index ?? 0);
+  else if (g.mode === 'solo') startSolo(g.map);
+  else if (g.mode === 'practice') startPractice(practice?.index ?? 0, practice?.grade ?? 0);
   else if (g.mode === 'online') roomNet().rematch();
 }
 
@@ -993,8 +1088,11 @@ function finishMatch() {
   // 온라인 승리는 서버가 두 사람의 결과 보고로 센다 (온라인 계정 대전만)
   if (g.mode === 'online' && !g.viaPeer) online.report(win);
   xp += totals.maxChain * 5;
+  // 펫(경험치), 2배 부스트와 친구 수(경험치와 코인) 배수를 곱한다. 생일·공휴일 배수는 grantReward 가 그 뒤에 곱한다.
+  const bonus = currentBonus();
+  ({ coins, xp } = applyBonus({ coins, xp }, bonus));
   if (g.mode !== 'solo') trackEvent({ type: 'match', mode: g.mode, map: g.map, win });
-  else trackEvent({ type: 'match', mode: 'solo', win: false });
+  else trackEvent({ type: 'match', mode: 'solo', map: g.map, win: false });
   const s = p.stats;
   s.games++;
   if (g.mode !== 'solo' && g.mode !== 'local') { if (win) s.wins++; else s.losses++; }
@@ -1014,7 +1112,7 @@ function finishMatch() {
   save();
   cloud?.flush().catch(() => {}); // 판이 끝나면 바로 올린다
   syncStats(true);
-  const show = () => showResult({ title, sub, win: g.mode === 'solo' || g.mode === 'local' ? true : win, totals, coins, xp, lv, before, buttons, mode: g.mode, score: m.players[0].score, trophy });
+  const show = () => showResult({ title, sub, win: g.mode === 'solo' || g.mode === 'local' ? true : win, totals, coins, xp, lv, before, buttons, mode: g.mode, score: m.players[0].score, trophy, bonus: bonusText(bonus) });
   if (g.mode === 'tower') {
     const info = FLOORS[g.floor - 1];
     setTimeout(() => talk(info, win ? info.win : info.lose, () => (ending ? runEnding(show, ending) : show())), 900);
@@ -1043,6 +1141,8 @@ function showResult(r) {
   if (r.lv.levels.length) { sound.sfx('level'); haptic('success'); } else sound.sfx('coin');
   const view = missionView(p);
   const ready = [...view.daily, ...view.list].filter(x => x.done && !x.claimed);
+  $('result-bonus').hidden = !r.bonus;
+  $('result-bonus').textContent = r.bonus ? `✨ 배수 적용: ${r.bonus}` : '';
   $('result-trophy').hidden = !r.trophy;
   if (r.trophy) $('result-trophy').textContent = `🏆 트로피 +1 (모두 ${fmt(p.trophies)}개)`;
   $('result-missions').innerHTML = ready.length ? `<div>🎯 받을 수 있는 챌린지 보상이 ${ready.length}개 있어! 메뉴 → 챌린지</div>` : '';
@@ -1182,14 +1282,15 @@ function eventText(bonus = calendarBonus()) {
   if (bonus.holidays.length) lines.push(`🎉 ${bonus.holidays.join(' · ')} 경험치 ×2`);
   return lines.length ? lines.join(' · ') : '🎂 매년 5월 12일 코인 ×10 · 🎉 한국 공휴일 경험치 ×2';
 }
-const ticketNames = { skin: '🎨 스킨 교환권', effect: '✨ 효과 교환권', spin: '🎟️ 추가 스핀' };
+const ticketNames = { skin: '🎨 스킨 교환권', effect: '✨ 효과 교환권', spin: '🎟️ 추가 스핀', pet: '🥚 펫 뽑기권', boost: '⚡ 2배 부스트' };
 function ticketText(tickets) {
-  return Object.entries(ticketNames).filter(([key]) => tickets?.[key] > 0).map(([key, title]) => `${title} ${fmt(tickets[key])}장`).join(' · ');
+  return Object.entries(ticketNames).filter(([key]) => tickets?.[key] > 0).map(([key, title]) => `${title} ${fmt(tickets[key])}${key === 'boost' ? '개' : '장'}`).join(' · ');
 }
 function rewardText(r) {
   return [r.coins ? `🪙 ${fmt(r.coins)}` : '', r.xp ? `경험치 ${fmt(r.xp)}` : '', ticketText(r.tickets)].filter(Boolean).join(' · ');
 }
 function inventoryText() { return ticketText(P().tickets) || '아직 교환권이 없어. 출석·스핀·시간 선물에서 받아 봐!'; }
+const shopInventoryText = () => ticketText({ skin: P().tickets.skin, effect: P().tickets.effect }) || '아직 교환권이 없어. 출석·스핀·시간 선물에서 받아 봐!';
 function received(result, kind) {
   if (!result) return;
   if (kind) trackEvent({ type: 'gift', kind });
@@ -1272,6 +1373,136 @@ setInterval(() => {
 addEventListener('pagehide', save);
 document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
 
+// ---------- 펫 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 1번 그림) ----------
+// 그림대로: 왼쪽 위 "뒤로", 가운데 "알", 그 아래 "펫 뽑기 1000원", 펫 다섯 칸에는 적힌 글 그대로
+// (강아지 1.5배 / 70%, 고양이 50% / 3.0배, 키캡 5.0배 / 10%, 큰 키캡 10.0배 / 1%, ??? 100.0배 / 0.1%).
+const EGG_MS = 1700;
+let petAnim = null, petTimer = null; // petAnim: 알이 깨지는 중 { t0, result }
+const calm = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function renderPets() {
+  const p = P();
+  const tickets = p.tickets.pet || 0;
+  $('pet-draw').textContent = tickets > 0 ? `🥚 펫 뽑기권으로 뽑기 (${fmt(tickets)}장)` : `펫 뽑기 ${PET_PRICE}원`;
+  $('pet-draw').disabled = !!petAnim;
+  $('pet-draw-note').textContent = petAnim ? '두근두근… 알이 깨지고 있어!' : drawWith(p) ? '' : `코인이 ${fmt(PET_PRICE - p.coins)}개 모자라. 대전이나 🎁 보상 받기에서 모아 봐!`;
+  const now = equippedPet(p);
+  $('pet-cards').innerHTML = PETS.map((pet, i) => {
+    const count = ownedCount(p, pet.id), on = now?.id === pet.id, name = petName(pet, count > 0);
+    // 기획서 그림의 두 줄: 고양이만 "고양이 50%" 아래에 "3.0배" 라고 적혀 있다
+    const [l1, l2] = pet.id === 'cat' ? [`${name} ${chanceText(pet.chance)}`, multText(pet.mult)] : [`${name} ${multText(pet.mult)}`, chanceText(pet.chance)];
+    return `<div class="pet-card${i === PETS.length - 1 ? ' wide' : ''}${on ? ' equipped' : ''}" data-pet="${pet.id}">
+      <canvas width="140" height="140" data-pet="${pet.id}" data-owned="${count > 0 ? 1 : 0}" role="img" aria-label="${esc(name)}"></canvas>
+      <span class="l1">${esc(l1)}</span><span class="l2">${esc(l2)}</span>
+      <div class="own"><span>${count > 0 ? `가진 수 ${fmt(count)}` : '아직 없어'}</span>${count > 0 ? `<button ${on ? 'disabled' : 'class="ghost"'} data-equip="${pet.id}">${on ? '✔ 함께하는 중' : '데리고 다니기'}</button>` : ''}</div>
+    </div>`;
+  }).join('');
+  $('pet-cards').querySelectorAll('[data-equip]').forEach(button => { button.onclick = () => {
+    if (!equipPet(P(), button.dataset.equip)) return;
+    save(); sound.sfx('click');
+    toast(`🐾 ${petName(equippedPet(P()))}와 함께 다녀! 경험치 ${multText(equippedPet(P()).mult)}`);
+    renderPets();
+  }; });
+  $('pet-odds').textContent = `% 숫자를 모두 더하면 ${chanceTotal()}이라서, 적힌 숫자의 비율로 뽑아 (강아지는 ${chanceTotal()}번 가운데 70번꼴).`;
+  $('pet-now').textContent = now ? `🐾 지금 ${petName(now)}와 함께! 판에서 받는 경험치 ${multText(now.mult)}` : '아직 펫이 없어. 알을 깨서 첫 펫을 만나 봐!';
+  refreshCoins();
+  clearInterval(petTimer);
+  const t0 = performance.now();
+  const paint = () => {
+    if (screen !== 'pets') { clearInterval(petTimer); return; }
+    const t = (performance.now() - t0) / 1000;
+    const egg = $('pet-egg'), ctx = egg.getContext('2d');
+    const a = petAnim ? Math.min(1, (performance.now() - petAnim.t0) / EGG_MS) : 0;
+    ctx.clearRect(0, 0, egg.width, egg.height);
+    drawEgg(ctx, egg.width / 2, egg.height / 2 + 6, 270, t, { shake: petAnim ? 1 : 0, crack: petAnim ? a * 1.5 : 0, open: a > 0.82 ? (a - 0.82) / 0.18 : 0 });
+    $('egg-label').hidden = a > 0.82;
+    for (const cv of $('pet-cards').querySelectorAll('canvas')) {
+      const c = cv.getContext('2d');
+      c.clearRect(0, 0, cv.width, cv.height);
+      paintPet(c, cv.dataset.pet, 70, 74, 124, t, cv.dataset.owned === '1');
+    }
+  };
+  paint();
+  petTimer = setInterval(paint, 40);
+}
+function showPet(result) {
+  const { pet, isNew, count, equipped } = result;
+  const name = petName(pet);
+  sound.sfx(pet.mult >= 5 ? 'level' : 'coin'); haptic('success');
+  if (screen !== 'pets') { toast(`🥚 ${name}이(가) 나왔어! 경험치 ${multText(pet.mult)}`, true); return; }
+  $('pet-pop').hidden = false;
+  $('pet-pop-title').textContent = `${isNew ? '🎉 새 펫! ' : ''}${name}`;
+  $('pet-pop-text').textContent = `경험치 ${multText(pet.mult)}. ${equipped ? '이제부터 함께 다녀!' : `지금 펫이 더 좋아서 그대로 데리고 다녀 (가진 수 ${fmt(count)}).`}`;
+  $('pet-pop-again').disabled = !drawWith(P());
+  const cv = $('pet-pop-art'), ctx = cv.getContext('2d'), t0 = performance.now();
+  const timer = setInterval(() => {
+    if ($('pet-pop').hidden) { clearInterval(timer); return; }
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    paintPet(ctx, pet.id, 120, 126, 210, (performance.now() - t0) / 1000, true);
+  }, 40);
+}
+$('pet-draw').onclick = () => {
+  if (petAnim) return;
+  const owner = me();
+  // 먼저 뽑아서 저장한다. 알이 깨지는 동안 새로고침해도 뽑은 펫이 사라지지 않는다.
+  const result = drawPet(P());
+  if (!result) { sound.sfx('bump'); toast(`펫을 뽑으려면 코인 ${fmt(PET_PRICE)}개가 필요해.`); renderPets(); return; }
+  save();
+  sound.sfx('click'); haptic('light');
+  petAnim = { t0: performance.now(), result };
+  $('pet-draw').disabled = true;
+  $('pet-draw-note').textContent = '두근두근… 알이 깨지고 있어!';
+  refreshCoins();
+  setTimeout(() => {
+    petAnim = null;
+    if (owner !== me()) return; // 그사이 다른 계정으로 바뀜
+    if (screen === 'pets') renderPets();
+    showPet(result);
+  }, calm() ? 150 : EGG_MS);
+};
+$('pet-pop-ok').onclick = () => { sound.sfx('click'); $('pet-pop').hidden = true; };
+$('pet-pop-again').onclick = () => { $('pet-pop').hidden = true; $('pet-draw').click(); };
+
+// ---------- 2배 부스트와 지금 내 배수 (기획서 3번, 6번) ----------
+let boostTimer = null;
+function boostStateText(left) { return left > 0 ? `⚡ 2배 부스트 켜짐! ${clockText(left)} 남음` : '부스트가 꺼져 있어'; }
+function renderBoost() {
+  const p = P(), left = boostLeft(p), have = p.tickets.boost || 0, b = currentBonus();
+  $('scr-boost').querySelector('.boost-card').classList.toggle('on', left > 0);
+  $('boost-state').textContent = boostStateText(left);
+  $('boost-have').textContent = `가진 부스트: ${fmt(have)}개`;
+  $('boost-use').disabled = !have;
+  $('boost-use').textContent = left > 0 ? '⚡ 15분 더 쓰기' : '⚡ 부스트 쓰기 (15분)';
+  $('boost-buy').disabled = p.coins < BOOST_PRICE;
+  $('boost-buy').innerHTML = `<span class="price">🪙 ${fmt(BOOST_PRICE)}</span>으로 사기`;
+  const count = friendTotal();
+  $('bonus-rows').innerHTML = [
+    ['🐾 펫', `×${b.petMult}`, b.pet ? `${petName(b.pet)} · 경험치만` : '펫이 없어'],
+    ['⚡ 부스트', `×${b.boost}`, left > 0 ? '경험치 · 코인' : '꺼져 있어'],
+    ['👫 친구', `×${b.friend}`, account ? `${fmt(count)}명 · 경험치 · 코인` : '계정이 있어야 해'],
+  ].map(([k, v, note]) => `<div><small>${k}</small><b>${v}</b><small>${esc(note)}</small></div>`).join('');
+  $('bonus-total').textContent = `지금 판을 끝내면 경험치 ×${b.xp} · 코인 ×${b.coins}`;
+  refreshCoins();
+  clearInterval(boostTimer);
+  boostTimer = setInterval(() => {
+    if (screen !== 'boost') { clearInterval(boostTimer); return; }
+    const now = boostLeft(P());
+    if (left > 0 && now <= 0) { renderBoost(); return; } // 방금 끝남
+    $('boost-state').textContent = boostStateText(now);
+  }, 500);
+}
+$('boost-use').onclick = () => {
+  if (!spendBoost(P())) return;
+  save(); sound.sfx('level'); haptic('success');
+  toast('⚡ 2배 부스트 시작! 15분 동안 경험치와 코인이 2배!', true);
+  renderScreen('boost');
+};
+$('boost-buy').onclick = () => {
+  if (!buyBoost(P())) { sound.sfx('bump'); return; }
+  save(); sound.sfx('coin');
+  toast('⚡ 2배 부스트를 샀어!');
+  renderScreen('boost');
+};
+
 // ---------- 챌린지 ----------
 let missionFilter = 'all';
 $('mission-filter').onchange = e => { missionFilter = e.target.value; renderMissions(); };
@@ -1329,7 +1560,7 @@ $('shop-tabs').addEventListener('click', e => {
 });
 function renderShop() {
   const p = P();
-  $('shop-inventory').textContent = inventoryText();
+  $('shop-inventory').textContent = shopInventoryText();
   const grid = $('shop-grid');
   grid.innerHTML = '';
   const items = shopTab === 'skin' ? SKINS : EFFECTS;
@@ -1421,12 +1652,12 @@ function renderProfile() {
   $('set-shake').checked = p.settings.shake !== false;
   $('set-haptic').checked = device.haptics !== false;
   $('set-chat').checked = chatOn();
-  $('delete-zone').hidden = !account || !!account.cloud;
+  $('delete-zone').hidden = !account; // 이 기기 계정도, 온라인 계정도 지울 수 있다
   $('delete-confirm').hidden = true;
   $('export-copy').disabled = !account;
   // 온라인 계정은 기록 코드 대신 자동 저장 (서버 계정 지우기는 아직 없음)
   for (const id of ['export-title', 'export-fine', 'export-copy']) $(id).hidden = !!account?.cloud;
-  $('cloud-note').hidden = $('cloud-delete-note').hidden = !account?.cloud;
+  $('cloud-note').hidden = !account?.cloud;
   if (account?.cloud) ui.cloudStatus(cloud?.state, !!cloud?.localFailed);
   $('logout').textContent = account ? '🚪 로그아웃' : '🔑 로그인하러 가기';
   $('export-code').hidden = true;
@@ -1438,10 +1669,66 @@ $('set-shake').onchange = e => { P().settings.shake = e.target.checked; save(); 
 $('set-haptic').onchange = e => { device.haptics = e.target.checked; save(); haptic('medium'); };
 $('set-chat').onchange = e => { P().settings.chat = e.target.checked; save(); if (!e.target.checked) closeChat(); };
 // 계정 지우기: 이 기기에 저장된 그 계정의 모든 기록을 없앤다 (앱스토어 규칙: 앱 안에서 계정을 지울 수 있어야 함)
-$('delete-account').onclick = () => { if (!account) return; sound.sfx('click'); $('delete-name').textContent = account.name; $('delete-confirm').hidden = false; };
-$('delete-cancel').onclick = () => { sound.sfx('click'); $('delete-confirm').hidden = true; };
+// 온라인 계정은 서버에서 지운다 (POST /auth/delete, 비밀번호를 한 번 더 확인). 친구, 대화, 모든 게임의 저장까지 사라진다.
+$('delete-account').onclick = () => {
+  if (!account) return;
+  sound.sfx('click');
+  $('delete-name').textContent = account.name;
+  $('delete-what').textContent = account.cloud
+    ? '레벨·코인·스킨·타워 기록과 친구, 대화가 서버에서 모두 사라지고 되돌릴 수 없어. seonn 의 다른 게임에서 쓰는 같은 계정도 함께 지워져.'
+    : '레벨·코인·스킨·타워 기록이 이 기기에서 모두 사라지고 되돌릴 수 없어.';
+  $('delete-pass').hidden = !account.cloud;
+  $('delete-pass').value = '';
+  $('delete-msg').textContent = '';
+  $('delete-confirm').hidden = false;
+  if (account.cloud) $('delete-pass').focus();
+};
+$('delete-cancel').onclick = () => { sound.sfx('click'); $('delete-confirm').hidden = true; $('delete-pass').value = ''; };
+let deleting = false;
+async function deleteCloudAccount() {
+  const acc = account, password = $('delete-pass').value;
+  if (!acc?.cloud || deleting) return;
+  if (!password) { $('delete-msg').textContent = '비밀번호를 적어 줘.'; sound.sfx('bump'); return; }
+  deleting = true;
+  $('delete-yes').disabled = true;
+  $('delete-msg').textContent = '지우는 중…';
+  // 지우는 동안에는 이 기기의 알림과 자동 저장을 멈춘다 (서버가 "지워졌어" 하고 끊는 것을 로그인 풀림으로 보지 않게)
+  online.leave();
+  stopSocial();
+  cloud?.clearTimers();
+  let error = null;
+  try { await net.deleteAccount(password); } catch (e) { error = e; }
+  deleting = false;
+  $('delete-yes').disabled = false;
+  if (account !== acc) return; // 그사이 로그인이 풀렸다
+  if (error?.code === 'login-required' || error?.code === 'suspended') { lostLogin(error.code); return; }
+  if (error) {
+    startSocial(); // 못 지웠으면 예전처럼 이어 간다
+    $('delete-msg').textContent = error.status === 404 ? '서버가 아직 준비되지 않았어. 부모님께 "게임 서버를 다시 배포해 주세요" 라고 말해 줘.' : error.message;
+    $('delete-pass').value = '';
+    sound.sfx('bump');
+    return;
+  }
+  // 서버에서 지워졌다. 이 기기에 남은 것도 지운다: 저장해 둔 기록, 옮기기 전의 기기 계정(숨겨 둔 것)
+  stopCloud();
+  writeCache(netStore, acc.uid, null);
+  for (const old of store.accounts.filter(a => sameNick(a.migratedTo, acc.name))) {
+    const s = old.progress?.social; // 예전 친구 코드의 우체통에 남은 편지와 열쇠도 지운다
+    if (validFriendCode(s?.code) && validMailKey(s?.key)) mail.forget(s.code, s.key);
+    removeAccount(store, old.id);
+  }
+  persistStore();
+  creator.lock();
+  account = null; guest = null;
+  $('delete-confirm').hidden = true;
+  $('delete-pass').value = '';
+  toast(`🗑️ ${acc.name} 계정을 지웠어.`);
+  show('login');
+}
+$('delete-pass').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('delete-yes').click(); } };
 $('delete-yes').onclick = () => {
   if (!account) return;
+  if (account.cloud) { deleteCloudAccount(); return; }
   // 친구 우체통에 맡겨 둔 편지와 열쇠도 지운다
   if (validFriendCode(social().code) && validMailKey(social().key)) mail.forget(social().code, social().key);
   friendNet.stop(); resetSocialSession();
@@ -1496,17 +1783,21 @@ const online = createOnline({
   toast, sound,
   social: () => hub,
   me: () => ({ level: P().level, skin: P().equip.skin, effect: P().equip.effect }), // 이름은 보내지 않는다 (상대는 서버가 준 닉네임을 씀)
-  start: ({ seed, firstTo, opponent, peer, role, makeRemote }) => {
+  vote: () => mapIndex(P().settings.onlineMap),
+  start: ({ seed, firstTo, opponent, peer, role, makeRemote, map, tie }) => {
+    const arena = getMap(map);
     startGame({
-      mode: 'online', online: role, seed, firstTo, title: `온라인 · ${opponent.nickname}`, theme: 'starry', music: 'battle',
+      mode: 'online', online: role, seed, firstTo, title: `온라인 · ${opponent.nickname}${plainMap(arena) ? '' : ` · ${mapTitle(arena)}`}`, theme: plainMap(arena) ? 'starry' : arena.theme, music: 'battle',
+      ...mapRulesOf(arena),
       specs: [{ kind: 'human' }, { kind: 'remote' }], makeRemote,
       views: [myView({ char: null }), { name: opponent.nickname, level: peer.level, skin: peer.skin || 'classic', effect: peer.effect || 'sparkle', char: null, color: '#9fe3ff' }],
     });
+    voteToast(arena, tie);
   },
   match: () => match,
   isFinished: () => !!game?.finished,
   quit: () => { if (match && game?.mode === 'online') { match = null; game = null; $('result').hidden = true; startDemo(); show('online'); } },
-  render: () => { if (!online.active && chatWith?.kind === 'room') closeChat(); ui.onlineChanged(); },
+  render: () => { if (!online.active && chatWith?.kind === 'room') closeChat(); ui.onlineChanged(); paintVote(); },
   // 대전 채팅: 내가 보낸 줄은 sendChat 이 이미 적었다
   chatLine: entry => { if (entry.who === 'them') roomChat({ name: online.peerName(), text: entry.text, sticker: entry.sticker }); },
   chatReset: () => roomJoined(),
@@ -1516,12 +1807,17 @@ const online = createOnline({
 const peerOnline = createPeerOnline({
   $, toast, sound, esc,
   me: () => ({ name: me()?.name || '손님', level: P().level, skin: P().equip.skin, effect: P().equip.effect }),
-  start: ({ seed, firstTo, peer, role, makeRemote }) => {
+  vote: () => mapIndex(P().settings.onlineMap),
+  lobbyChanged: () => paintVote(),
+  start: ({ seed, firstTo, peer, role, makeRemote, map, tie }) => {
+    const arena = getMap(map);
     startGame({
-      mode: 'online', online: role, viaPeer: true, seed, firstTo, title: `온라인 · ${peer.name}`, theme: 'starry', music: 'battle',
+      mode: 'online', online: role, viaPeer: true, seed, firstTo, title: `온라인 · ${peer.name}${plainMap(arena) ? '' : ` · ${mapTitle(arena)}`}`, theme: plainMap(arena) ? 'starry' : arena.theme, music: 'battle',
+      ...mapRulesOf(arena),
       specs: [{ kind: 'human' }, { kind: 'remote' }], makeRemote,
       views: [myView({ char: null }), { name: peer.name, level: peer.level, skin: peer.skin || 'classic', effect: peer.effect || 'sparkle', char: null, color: '#9fe3ff' }],
     });
+    voteToast(arena, tie);
   },
   match: () => match,
   finished: () => finishMatch(),
@@ -1533,6 +1829,26 @@ const peerOnline = createPeerOnline({
 });
 // 지금 계정이 쓰는 대전 방: 온라인 계정은 net 서버(online.mjs), 그 밖에는 방 코드(online-peer.mjs)
 const roomNet = () => (account?.cloud ? online : peerOnline);
+// 온라인 맵 투표 (기획서 4번): 로비에서 두 사람이 맵에 표를 던진다. 같은 맵이면 그 맵, 다르면 방장이 시작할 때 둘 중에서 뽑는다.
+function paintVote() {
+  if (screen !== 'online' || $('online-lobby').hidden) return;
+  const state = roomNet().state();
+  const mine = state.vote ?? mapIndex(P().settings.onlineMap), theirs = state.peerVote ?? null;
+  $('online-maps').innerHTML = MAPS.map((map, i) => `<button class="map-card${i === mine ? ' selected' : ''}" data-map="${map.id}" style="--map-color:${map.tint}" aria-pressed="${i === mine}"><span>${map.emoji}</span><b>${map.name}</b><small>${map.desc}</small><i class="vote-tags">${i === mine ? '<i class="vote-tag me">나</i>' : ''}${i === theirs ? '<i class="vote-tag you">상대</i>' : ''}</i></button>`).join('');
+  $('online-maps').querySelectorAll('button').forEach((button, i) => { button.onclick = () => {
+    sound.sfx('click');
+    P().settings.onlineMap = MAPS[i].id; save();
+    roomNet().setVote(i);
+    paintVote();
+  }; });
+  const a = MAPS[mine], b = theirs === null ? null : MAPS[theirs];
+  $('online-vote-text').textContent = !b ? `내 표: ${mapTitle(a)} · 상대 표를 기다리는 중… (상대 표가 없으면 뿌요 정원에서 해)`
+    : a === b ? `둘 다 ${mapTitle(a)}! 이 맵에서 대결해.`
+      : `내 표: ${mapTitle(a)} · 상대 표: ${mapTitle(b)} → 표가 같아서 시작할 때 둘 중 하나를 뽑아!`;
+}
+function voteToast(arena, tie) {
+  toast(tie ? `🎲 표가 갈려서 뽑기로 정했어: ${mapTitle(arena)} (${mapRules(arena)})` : `🗺️ ${mapTitle(arena)}에서 대결! (${mapRules(arena)})`);
+}
 function roomJoined() { roomLog.length = 0; roomMuted = false; roomUnread = 0; updateRoomDots(); }
 const ui = createSocialUI({
   $, toast, sound, online,
@@ -1543,7 +1859,38 @@ const ui = createSocialUI({
   chatOn: () => chatOn(),
   stickerImg: i => stickerURL(i),
   watch: entry => watchMatch(entry),
+  // 친구 수가 바뀌면 적어 둔다 (친구 배수). 서버에서 받아 온 수만 쓴다.
+  friendsChanged: n => {
+    if (!account?.cloud || P().friendCount === n) return;
+    P().friendCount = n; save();
+    if (screen === 'menu') renderMenu();
+    if (screen === 'boost') renderBoost();
+  },
+  // 친구 선물 (기획서 7번): 보내기 전에 값을 치르고, 받은 선물은 메시지 번호로 한 번만 기록에 넣는다
+  gifts: {
+    pay: gift => { if (!account?.cloud || !paySend(P(), gift)) return false; save(); refreshCoins(); return true; },
+    refund: gift => { refundSend(P(), gift); save(); refreshCoins(); },
+    sent: (gift, nickname) => { sound.sfx('coin'); toast(`🎁 ${nickname}에게 ${giftText(gift)}을(를) 선물했어!`, true); cloud?.flush().catch(() => {}); },
+    receive(gift, { from, nickname, id }) {
+      if (!account?.cloud || !cloudLoaded) return null;
+      const r = receiveGift(P(), gift, { from, id });
+      if (!r) return null;
+      save();
+      cloud?.flush().catch(() => {}); // 받은 것을 바로 올린다
+      sound.sfx('coin'); haptic('success');
+      toast(r.item ? `🎁 ${nickname}이(가) ${giftText(gift)}을(를) 선물했어! 상점에서 낄 수 있어.`
+        : r.converted ? `🎁 ${nickname}이(가) ${giftText(gift)}을(를) 선물했어! 이미 가지고 있어서 🪙 ${fmt(r.coins)}로 받았어.`
+          : `🎁 ${nickname}이(가) 🪙 ${fmt(r.coins)}을(를) 선물했어!`, true);
+      if (r.capped) toast('오늘 선물로 받을 수 있는 코인을 다 받았어. 넘는 만큼은 받지 못했어.');
+      if (r.item) trackEvent({ type: 'collection', skin: P().owned.skin.length, effect: P().owned.effect.length });
+      refreshCoins();
+      if (screen === 'menu') renderMenu();
+      return r;
+    },
+  },
 });
+// 화면에 보이는 코인 수를 다시 적는다
+function refreshCoins() { document.querySelectorAll('.coin-count').forEach(el => { el.textContent = fmt(P().coins); }); }
 // 시작 단추: 온라인 계정 방이면 net 서버 대전, 아니면 방 코드 대전
 $('online-start').onclick = () => { sound.sfx('click'); roomNet().start(); };
 addEventListener('pagehide', () => { online.leave(); cloud?.flush().catch(() => {}); });
@@ -2371,7 +2718,9 @@ window.render_game_to_text = () => JSON.stringify({
   screen, paused, talking,
   account: me()?.name || null, level: P().level, coins: P().coins, tower: P().tower,
   rewards: P().rewards, creatorUnlocked: creator.unlocked, ending: $('ending').hidden ? null : $('ending').dataset.kind,
-  mode: game?.mode || null,
+  mode: game?.mode || null, map: game?.map || null,
+  pets: P().pets, tickets: P().tickets, boostLeft: Math.ceil(boostLeft(P()) / 1000), friends: friendTotal(), bonus: { xp: currentBonus().xp, coins: currentBonus().coins },
+  school: P().school, tutorial: P().tutorial, lesson: practice ? { grade: practice.grade, index: practice.index, freeze: practice.freeze } : null,
   net: account?.cloud ? { nickname: net.user?.nickname, cloud: cloud?.state ?? null, live: hub?.status ?? null } : null,
   online: online.state(),
   match: match ? {

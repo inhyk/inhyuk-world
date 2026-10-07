@@ -89,7 +89,8 @@ try {
   // 실제 게임 화면에서 시간 증가, 일시정지·메뉴에서는 증가하지 않는다.
   await page.click('#scr-rewards [data-go="menu"]');
   await page.click('[data-go="solo"]');
-  await page.waitForFunction(() => window.__puyo.match.phase === 'play');
+  await page.click('#solo-start'); // 맵을 고르는 화면에서 시작
+  await page.waitForFunction(() => window.__puyo.match?.phase === 'play');
   await page.evaluate(() => window.__puyo.recordPlayTime(301));
   assert.ok((await read(page)).rewards.playSeconds >= 300);
   await page.click('#hud-pause');

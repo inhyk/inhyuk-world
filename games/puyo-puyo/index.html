@@ -117,15 +117,18 @@
         <h1>뿌요뿌요<small>타워</small></h1></div>
     </div>
     <div id="menu-event" class="event-banner" role="status"></div>
+    <button id="menu-bonus" class="bonus-chip" hidden></button>
     <div class="menu-grid">
       <button class="menu-btn tower" data-go="tower"><span class="ico">🗼</span><b>타워 도전</b><small id="menu-tower-sub">1층부터 올라가자!</small></button>
-      <button class="menu-btn practice" data-go="practice"><span class="ico">🐣</span><b>연습하기</b><small>처음이라면 여기부터!</small><i class="badge new" id="practice-badge" hidden>NEW</i></button>
+      <button class="menu-btn practice" data-go="school"><span class="ico">🎓</span><b>뿌요뿌요 배우기</b><small>초급 → 중급 → 상급 → 최상급</small><i class="badge new" id="practice-badge" hidden>NEW</i></button>
       <button class="menu-btn" data-go="vs"><span class="ico">🤖</span><b>AI 대전</b><small>원하는 AI랑 한 판</small></button>
       <button class="menu-btn" data-go="local"><span class="ico">👥</span><b>2인 플레이</b><small>한 키보드로 둘이서</small></button>
       <button class="menu-btn" data-go="online"><span class="ico">🌐</span><b>온라인 대전</b><small>게임 찾기 · 친구와</small><i class="badge" id="online-badge" hidden></i></button>
       <button class="menu-btn friends" data-go="friends"><span class="ico">👫</span><b>친구</b><small>친구 맺고 채팅</small><i class="badge" id="friend-badge" hidden></i></button>
       <button class="menu-btn ranking" data-go="ranking"><span class="ico">🏆</span><b>온라인 랭킹</b><small>트로피 · 레벨 · 온라인 승리</small></button>
       <button class="menu-btn" data-go="solo"><span class="ico">♾️</span><b>혼자 하기</b><small>점점 빨라지는 연습</small></button>
+      <button class="menu-btn pets" data-go="pets"><span class="ico">🥚</span><b>펫</b><small id="menu-pet-sub">알에서 펫 뽑기 · 경험치 배수</small><i class="badge" id="pet-badge" hidden></i></button>
+      <button class="menu-btn boost" data-go="boost"><span class="ico">⚡</span><b>2배 부스트</b><small id="menu-boost-sub">경험치 · 코인 2배</small><i class="badge" id="boost-badge" hidden></i></button>
       <button class="menu-btn" data-go="missions"><span class="ico">🎯</span><b>챌린지</b><small>미션 깨고 보상 받기</small><i class="badge" id="mission-badge" hidden></i></button>
       <button class="menu-btn" data-go="shop"><span class="ico">🛍️</span><b>상점</b><small>스킨 · 터짐 효과</small></button>
       <button class="menu-btn gifts" data-go="rewards"><span class="ico">🎁</span><b>보상 받기</b><small>무료 스핀 · 출석 · 플레이 시간</small><i class="badge" id="reward-badge" hidden></i></button>
@@ -146,6 +149,8 @@
   <section id="scr-vs" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🤖 AI 대전</h2></div>
     <div id="vs-levels" class="level-grid"></div>
+    <h3>어디에서 대결할까?</h3><div id="vs-maps" class="map-grid compact" aria-label="AI 대전 맵 선택"></div>
+    <p id="vs-map-tip" class="event-banner" aria-live="polite"></p>
     <div class="setting"><span>몇 판 먼저 이기면 승리?</span><div class="seg first-to" id="vs-first"></div></div>
     <button id="vs-start" class="primary big">시작!</button>
   </section>
@@ -163,6 +168,15 @@
     <div class="setting"><span>몇 판 먼저 이기면 승리?</span><div class="seg first-to" id="local-first"></div></div>
     <p class="fine">태블릿·휴대폰을 가로로 놓으면 양쪽에 버튼이 하나씩 생겨.</p>
     <button id="local-start" class="primary big">시작!</button>
+  </section>
+
+  <!-- 혼자 하기: 2인 플레이와 같은 맵을 고른다 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 4번) -->
+  <section id="scr-solo" class="screen" hidden>
+    <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>♾️ 혼자 하기</h2></div>
+    <p class="lead">끝없이 쌓는 연습! 시간이 갈수록 점점 빨라져. 맵을 고르면 그 맵의 규칙으로 해.</p>
+    <h3>어디에서 할까?</h3><div id="solo-maps" class="map-grid" aria-label="혼자 하기 맵 선택"></div>
+    <p id="solo-map-tip" class="event-banner" aria-live="polite"></p>
+    <button id="solo-start" class="primary big">시작!</button>
   </section>
 
   <!-- 온라인: 온라인 계정은 게임 찾기(랜덤 매칭)와 친구 초대, 이 기기 계정과 손님은 방 코드(PeerJS) -->
@@ -191,6 +205,12 @@
     </div>
     <div id="online-lobby" class="lobby" hidden>
       <div class="vsline"><span id="lobby-me"></span><b>VS</b><span id="lobby-you"></span></div>
+      <div id="online-vote" class="vote-box">
+        <h3>🗳️ 맵 투표</h3>
+        <p class="fine">하고 싶은 맵에 표를 던져 줘. 둘이 같은 맵을 고르면 그 맵! 서로 다르면 둘 중 하나를 뽑기로 정해.</p>
+        <div id="online-maps" class="map-grid compact" aria-label="온라인 대전 맵 투표"></div>
+        <p id="online-vote-text" class="event-banner" aria-live="polite"></p>
+      </div>
       <div class="setting" id="online-first-row"><span>몇 판 먼저 이기면 승리?</span><div class="seg first-to" id="online-first"></div></div>
       <button id="online-start" class="primary big">시작!</button>
       <p id="online-wait" class="fine" hidden>방장이 시작하기를 기다리는 중…</p>
@@ -242,6 +262,7 @@
       <h3 id="req-out-title" class="mgroup" hidden>📤 보낸 친구 요청</h3><div id="req-out" class="friend-list"></div>
       <h3 class="mgroup">⭐ 내 친구</h3><div id="net-friend-list" class="friend-list"></div>
       <p class="fine">친구는 서로 수락해야 맺어져. 초록 점은 지금 접속 중이라는 뜻이야. 이름, 학교, 전화번호 같은 개인정보는 절대 말하지 마!</p>
+      <p class="fine">🎁 선물 단추로 친구에게 코인, 스킨, 터짐 효과를 선물할 수 있어. 👫 친구가 많을수록 판에서 받는 경험치와 코인이 배수로 올라가 (1명마다 +0.1배)!</p>
       <button id="go-legacy" class="ghost" hidden>📒 기존 친구(친구 코드) 기록 보기</button>
     </div>
     <!-- 온라인 계정으로 옮기기 전의 친구 코드 친구 (이 기기에만 있는 기록) -->
@@ -275,6 +296,7 @@
       <div id="friend-list" class="friend-list"></div>
       <p class="fine safety">🔒 전화번호·주소·학교 이름 같은 개인정보는 친구에게도 보내지 마! 친구가 게임을 켜 두었으면 두 기기 사이로 바로 가고, 꺼 두었으면 친구 우체통에 맡겼다가 친구가 받아 가면 지워져(안 받아 가도 7일 뒤). 이 기기에는 친구마다 최근 50개만 남아.</p>
       <p class="fine">온라인 계정으로 옮기면 닉네임으로 친구를 찾고, 게임 찾기도 할 수 있어. 친구 코드 친구는 옮긴 뒤에 기록으로만 남아.</p>
+      <p class="fine">👫 친구가 많을수록 판에서 받는 경험치와 코인이 배수로 올라가 (1명마다 +0.1배). 🎁 선물하기는 온라인 계정 친구끼리 할 수 있어.</p>
     </div>
   </section>
 
@@ -288,8 +310,49 @@
       <small>뿌요 이모티콘 (누르면 바로 보내져)</small><div id="dm-stickers" class="chat-stickers"></div>
       <small>이모지 (누르면 글에 들어가)</small><div id="dm-emojis" class="chat-emojis"></div>
     </div>
-    <div class="row center"><button id="dm-block" class="ghost danger">🚫 차단</button><button id="dm-report" class="ghost danger">🚨 신고</button></div>
+    <div class="row center"><button id="dm-gift" class="ghost gift-btn">🎁 선물하기</button><button id="dm-block" class="ghost danger">🚫 차단</button><button id="dm-report" class="ghost danger">🚨 신고</button></div>
     <p class="fine">욕설, 전화번호, 링크는 자동으로 가려져. 기분 나쁜 말을 들으면 차단하거나 신고해 줘.</p>
+  </section>
+
+  <!-- 펫 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 1번 그림: 왼쪽 위 "뒤로", 가운데 "알", "펫 뽑기 1000원", 펫 다섯 칸) -->
+  <section id="scr-pets" class="screen" hidden>
+    <div class="pet-board">
+      <div class="head pet-head"><button class="ghost back pet-back" data-go="menu">뒤로</button><span class="coins">🪙 <b class="coin-count">0</b></span></div>
+      <div class="egg-wrap"><canvas id="pet-egg" width="300" height="320" role="img" aria-label="알"></canvas><span class="egg-label" id="egg-label">알</span></div>
+      <button id="pet-draw" class="primary big pet-draw">펫 뽑기 1000원</button>
+      <p id="pet-draw-note" class="fine center-text" role="status" aria-live="polite"></p>
+      <div id="pet-cards" class="pet-cards"></div>
+      <p id="pet-odds" class="fine center-text"></p>
+    </div>
+    <p id="pet-now" class="event-banner" aria-live="polite"></p>
+    <p class="fine center-text">펫 뽑기는 게임 코인 1000개로 해 (진짜 돈은 쓰지 않아). 🥚 펫 뽑기권은 🎁 보상 받기의 시간 선물과 뿌요뿌요 배우기에서 받을 수 있어.</p>
+  </section>
+
+  <!-- 2배 부스트와 지금 내 배수 (기획서 3번, 6번) -->
+  <section id="scr-boost" class="screen" hidden>
+    <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>⚡ 2배 부스트</h2><span class="coins">🪙 <b class="coin-count">0</b></span></div>
+    <div class="card boost-card">
+      <div class="boost-icon" aria-hidden="true">⚡</div>
+      <h3 id="boost-state" aria-live="polite"></h3>
+      <p class="lead">부스트를 쓰면 15분 동안 판에서 받는 <b>경험치와 코인이 2배</b>! 쓰는 중에 또 쓰면 15분이 더 붙어.</p>
+      <p id="boost-have" class="event-banner"></p>
+      <div class="row"><button id="boost-use" class="primary big">⚡ 부스트 쓰기</button><button id="boost-buy" class="ghost big">🪙 500으로 사기</button></div>
+      <p class="fine">부스트는 🎁 보상 받기의 시간 선물(10분 · 45분)과 🎓 뿌요뿌요 배우기에서도 받을 수 있어.</p>
+    </div>
+    <div class="card bonus-card">
+      <h3>✨ 지금 내 배수</h3>
+      <div id="bonus-rows" class="bonus-rows"></div>
+      <p id="bonus-total" class="event-banner"></p>
+      <p class="fine">판이 끝날 때 받는 경험치와 코인에 곱해져. 🐾 펫은 경험치만, ⚡ 부스트와 👫 친구는 경험치와 코인 둘 다! 친구는 1명마다 +0.1배 (20명이면 3.0배까지).</p>
+      <div class="row"><button class="ghost" data-go="pets">🥚 펫 뽑으러 가기</button><button class="ghost" data-go="friends">👫 친구 사귀러 가기</button></div>
+    </div>
+  </section>
+
+  <!-- 뿌요뿌요 배우기 (기획서 5번: 초급 → 중급 → 상급 → 최상급 순) -->
+  <section id="scr-school" class="screen" hidden>
+    <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🎓 뿌요뿌요 배우기</h2></div>
+    <p class="lead">꼬마 뿌요랑 직접 해 보면서 배워. <b>초급 → 중급 → 상급 → 최상급</b> 순서로, 앞 등급을 끝내면 다음 등급이 열려!</p>
+    <ol id="school-list" class="school-list"></ol>
   </section>
 
   <!-- 제작자 모드 -->
@@ -311,6 +374,7 @@
         <button data-creator="level"><span>🌟</span><b>레벨 50으로</b><small>50보다 높은 레벨은 유지해</small></button>
         <button data-creator="missions"><span>🎯</span><b>모든 챌린지 깨기</b><small>오늘의 미션도 완료 · 보상은 챌린지에서!</small></button>
         <button data-creator="skins"><span>🎨</span><b>모든 스킨 해제</b><small>터짐 효과까지 모두 · 상점에서 장착!</small></button>
+        <button data-creator="legend"><span>🌈</span><b>전설의 뿌요 바로 쓰기</b><small>99레벨 스킨을 지금 받아서 바로 끼기</small></button>
       </div>
       <p id="creator-result" class="lead" role="status"></p>
       <form id="reset-form" class="card reset-card">
@@ -332,7 +396,7 @@
   <section id="scr-rewards" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🎁 보상 받기</h2><span class="coins">🪙 <b class="coin-count">0</b></span></div>
     <div id="reward-event" class="event-banner"></div>
-    <div class="gift-wallet"><b>내 선물 주머니</b><p id="reward-inventory"></p><button class="ghost" data-go="shop">교환권 쓰러 상점 가기 →</button><small>교환권으로 보스 보상을 제외한 판매 상품을 레벨·코인 없이 골라 받을 수 있어.</small></div>
+    <div class="gift-wallet"><b>내 선물 주머니</b><p id="reward-inventory"></p><button class="ghost" data-go="shop">교환권 쓰러 상점 가기 →</button><small>교환권으로 보스 보상을 제외한 판매 상품을 레벨·코인 없이 골라 받을 수 있어. 🥚 펫 뽑기권은 펫 화면에서, ⚡ 2배 부스트는 2배 부스트 화면에서 써.</small><div class="row center"><button class="ghost" data-go="pets">🥚 펫 뽑으러 가기</button><button class="ghost" data-go="boost">⚡ 부스트 쓰러 가기</button></div></div>
     <p class="fine">한국 시간 밤 12시에 새 하루 시작! 계정에 보상이 저장돼. 손님 기록은 창을 닫으면 사라져.</p>
     <div class="reward-panels">
       <article class="card spin-card">
@@ -350,7 +414,7 @@
     </div>
     <article class="card time-card">
       <h3>⏱️ 플레이 시간 선물</h3><p id="play-time" class="lead"></p>
-      <p class="fine">직접 게임하는 시간만 쌓여. 메뉴·일시정지·다른 탭을 보는 시간은 쉬는 시간이야!</p>
+      <p class="fine">직접 게임하는 시간만 쌓여. 메뉴·일시정지·다른 탭을 보는 시간은 쉬는 시간이야! 20분과 60분 선물에는 🥚 펫 뽑기권이 들어 있어.</p>
       <div id="time-rewards" class="time-rewards"></div>
     </article>
   </section>
@@ -390,12 +454,14 @@
     <h3 id="export-title">다른 기기로 옮기기</h3>
     <p class="fine" id="export-fine">이 코드를 복사해서 다른 기기의 “기록 코드로 가져오기”에 붙여 넣으면 레벨·코인·타워 기록이 그대로 옮겨져. 비밀번호는 똑같아.</p>
     <div class="row"><button id="export-copy" class="ghost">📋 기록 코드 복사</button><button id="logout" class="ghost">🚪 로그아웃</button></div>
-    <p id="cloud-delete-note" class="fine" hidden>온라인 계정을 지우는 기능은 아직 없어. 지우고 싶으면 부모님께 말해 줘.</p>
     <textarea id="export-code" rows="3" readonly hidden></textarea>
     <div id="delete-zone" class="delete-zone">
       <button id="delete-account" class="ghost danger">🗑️ 계정 지우기</button>
       <div id="delete-confirm" class="card delete-confirm" role="alertdialog" aria-labelledby="delete-question" hidden>
-        <p id="delete-question"><b id="delete-name"></b> 계정을 지울까? 레벨·코인·스킨·타워 기록이 이 기기에서 모두 사라지고 되돌릴 수 없어.</p>
+        <p id="delete-question"><b id="delete-name"></b> 계정을 지울까? <span id="delete-what">레벨·코인·스킨·타워 기록이 이 기기에서 모두 사라지고 되돌릴 수 없어.</span></p>
+        <!-- 온라인 계정은 서버에서 지운다: 비밀번호를 한 번 더 확인 -->
+        <input id="delete-pass" type="password" placeholder="비밀번호를 한 번 더 적어 줘" maxlength="16" autocomplete="current-password" aria-label="계정을 지우려면 비밀번호" hidden>
+        <p id="delete-msg" class="msg" role="alert"></p>
         <div class="row"><button id="delete-cancel" class="ghost">그만두기</button><button id="delete-yes" class="danger-fill">지우기</button></div>
       </div>
     </div>
@@ -405,12 +471,15 @@
   <section id="scr-help" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>❓ 하는 방법</h2></div>
     <button class="primary big help-practice" data-go="practice">🐣 꼬마 뿌요랑 직접 해 보면서 배우기</button>
+    <button class="ghost big help-practice" data-go="school">🎓 초급 → 중급 → 상급 → 최상급 모두 보기</button>
     <div class="help">
-      <div class="tip"><b>1. 같은 색 4개를 붙이면 퐁!</b><p>떨어지는 뿌요 두 개를 돌리고 옮겨서 같은 색을 위아래·옆으로 4개 이상 이어 붙이면 터져. 2인용 쫀득 연구소에서는 6개 이상이 필요해!</p></div>
+      <div class="tip"><b>1. 같은 색 4개를 붙이면 퐁!</b><p>떨어지는 뿌요 두 개를 돌리고 옮겨서 같은 색을 위아래·옆으로 4개 이상 이어 붙이면 터져. 쫀득 연구소 맵에서는 6개 이상이 필요해!</p></div>
       <div class="tip"><b>2. 연쇄를 만들자</b><p>터진 자리로 위의 뿌요가 떨어져서 또 4개가 이어지면 <b>연쇄</b>! 연쇄가 길수록 점수가 쑥쑥 커져.</p></div>
       <div class="tip"><b>3. 방해 뿌요 보내기 · 상쇄</b><p>점수 70점마다 상대에게 방해 뿌요가 1개씩 날아가. 나한테 오는 방해 뿌요는 내가 연쇄를 터뜨리면 <b>상쇄</b>해서 막을 수 있어.</p><div id="help-icons" class="icons"></div></div>
       <div class="tip"><b>4. X에 쌓이면 끝</b><p>왼쪽에서 세 번째 줄 맨 위 <b style="color:#ff6f86">X</b> 칸까지 뿌요가 쌓이면 져. 가운데는 비워 두자!</p></div>
       <div class="tip"><b>5. 전소</b><p>필드를 모두 지우면 <b>전소</b>! 다음 연쇄에 방해 뿌요 30개가 더 날아가.</p></div>
+      <div class="tip"><b>맵 고르기</b><p>2인 플레이, AI 대전, 혼자 하기에서 여섯 맵 가운데 하나를 골라. 맵마다 색 수·낙하 속도·터지는 개수가 달라. 온라인 대전에서는 둘이 <b>맵 투표</b>를 해!</p></div>
+      <div class="tip"><b>펫 · 부스트 · 친구</b><p>🥚 펫을 데리고 다니면 경험치가 몇 배, ⚡ 2배 부스트를 쓰면 15분 동안 경험치와 코인이 2배, 👫 친구가 많을수록 경험치와 코인이 배수로 올라가!</p></div>
       <div class="tip"><b>6. 96초가 지나면</b><p><b>마진 타임</b>이 시작돼서 같은 연쇄로도 방해 뿌요가 점점 더 많이 나가.</p></div>
       <div class="tip keys"><b>키보드</b><p><kbd>←</kbd><kbd>→</kbd> 옮기기 · <kbd>↓</kbd> 빨리 내리기 · <kbd>↑</kbd>/<kbd>X</kbd> 오른쪽 돌리기 · <kbd>Z</kbd> 왼쪽 돌리기 · <kbd>Space</kbd> 바로 떨어뜨리기 · <kbd>Esc</kbd> 일시정지</p><p>좁은 틈에서 돌리기를 두 번 누르면 위아래가 확 뒤집혀 (퀵턴).</p></div>
       <div class="tip keys"><b>휴대폰</b><p>아래 버튼을 쓰거나, 필드를 좌우로 쓸어서 옮기고, 톡 치면 돌리고, 아래로 휙 내리면 바로 떨어져.</p></div>
@@ -470,6 +539,7 @@
       <div class="xpline"><span>경험치 <b id="result-xp">+0</b></span><div class="xpbar big"><i id="result-xpbar"></i></div><small id="result-level"></small></div>
       <div class="coinline">🪙 <b id="result-coins">+0</b></div>
     </div>
+    <div id="result-bonus" class="bonus-line" hidden></div>
     <div id="result-trophy" class="trophy-line" hidden></div>
     <div id="result-missions" class="done-list"></div>
     <div class="row center" id="result-buttons"></div>
@@ -493,6 +563,27 @@
 <div id="invite-pop" class="card invite-pop" role="alertdialog" aria-labelledby="invite-text" hidden>
   <b id="invite-text"></b><small id="invite-left"></small>
   <div class="row"><button id="invite-no" class="ghost">거절</button><button id="invite-yes" class="primary">수락!</button></div>
+</div>
+
+<!-- 친구에게 선물하기 (기획서 7번): 코인, 스킨, 터짐 효과 -->
+<div id="gift-pop" class="overlay" hidden>
+  <div class="card gift-card" role="dialog" aria-labelledby="gift-title">
+    <div class="gift-head"><h2 id="gift-title">🎁 선물하기</h2><button id="gift-close" class="ghost round-sm" aria-label="선물 창 닫기">✕</button></div>
+    <p class="lead">내 코인 🪙 <b id="gift-coins">0</b> · 내 코인으로 사서 친구에게 주는 거야. 내 스킨은 그대로 남아!</p>
+    <div class="seg tabs" id="gift-tabs"><button data-v="coins" class="on">🪙 코인</button><button data-v="skin">🟢 스킨</button><button data-v="effect">✨ 터짐 효과</button></div>
+    <div id="gift-list" class="gift-list"></div>
+    <p id="gift-note" class="fine" role="status" aria-live="polite"></p>
+  </div>
+</div>
+
+<!-- 알에서 나온 펫 -->
+<div id="pet-pop" class="overlay" hidden>
+  <div class="card small stack pet-result" role="alertdialog" aria-labelledby="pet-pop-title">
+    <canvas id="pet-pop-art" width="240" height="240" aria-hidden="true"></canvas>
+    <h2 id="pet-pop-title"></h2>
+    <p id="pet-pop-text" class="lead"></p>
+    <div class="row"><button id="pet-pop-again" class="ghost">한 번 더 뽑기</button><button id="pet-pop-ok" class="primary">좋아!</button></div>
+  </div>
 </div>
 
 <!-- 차단, 신고 확인 -->
