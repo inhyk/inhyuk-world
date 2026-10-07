@@ -4,6 +4,7 @@
 // 4. AI 대전·혼자 하기에서 2인 플레이의 맵 고르기, 온라인 대전의 맵 투표(같은 맵 / 다르면 뽑기)
 // 5. 뿌요뿌요 배우기: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막 순서로 열리고, 문제를 실제로 풀기
 //    (마지막: 다섯 등급 복습 → 빈 필드에서 직접 쌓기 → 진짜 연쇄를 잘하는 비결 4가지)
+//    (찐 마지막 30가지: 총복습 10 → 직접 쌓기 3·4·5연쇄 → 대연쇄 7~10연쇄 → 졸업 시험(두 번 되돌리면 도움말) → 찐 비결 7가지)
 // 6. 친구가 생기면 경험치·코인 배수   7. 친구에게 코인·스킨·터짐 효과 선물 (접속 중, 꺼 둔 동안, 한 번만 받기)
 // 그리고 같은 날 인혁이가 말한 것: 제작자 모드 「전설의 뿌요 바로 쓰기」, 온라인 계정의 「계정 지우기」 단추
 //
@@ -115,7 +116,7 @@ try {
   await hideToasts(g);
   for (const to of ['pets', 'boost', 'school', 'solo']) assert.equal(await g.locator(`#scr-menu [data-go="${to}"]`).count(), 1, `메뉴에 ${to} 단추`);
   assert.equal(await g.locator('#scr-menu [data-go="practice"]').count(), 0); // 연습하기는 배우기(초급)로 들어갔다
-  assert.equal(await g.textContent('#scr-menu [data-go="school"] small'), '초급부터 마지막까지 6단계');
+  assert.equal(await g.textContent('#scr-menu [data-go="school"] small'), '초급부터 찐 마지막까지 7단계');
   assert.equal(await g.locator('#practice-badge').isVisible(), true);
   assert.equal(await g.locator('#menu-bonus').isVisible(), false); // 아직 배수가 없다
   await settle(g); await g.screenshot({ path: `${shots}/menu.png` });
@@ -253,7 +254,7 @@ try {
   // ---------- 5. 뿌요뿌요 배우기: 초급 → 중급 → 상급 → 최상급 ----------
   await g.click('#scr-menu [data-go="school"]'); await screenIs(g, 'school');
   assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => [r.querySelector('h3').textContent, r.classList.contains('open'), r.querySelector('button').disabled])),
-    [['초급', true, false], ['중급', false, true], ['상급', false, true], ['최상급', false, true], ['초초상급', false, true], ['마지막', false, true]]);
+    [['초급', true, false], ['중급', false, true], ['상급', false, true], ['최상급', false, true], ['초초상급', false, true], ['마지막', false, true], ['찐 마지막', false, true]]);
   await settle(g); await g.screenshot({ path: `${shots}/school.png` });
   // 초급(예전 연습하기)은 건너뛸 수 있다
   await g.click('#school-list .grade[data-grade="beginner"] button');
@@ -264,7 +265,7 @@ try {
   await g.click('#coach-buttons button.ghost'); await screenIs(g, 'menu');
   assert.equal(await g.locator('#practice-badge').isVisible(), false);
   await go(g, 'school');
-  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'open', 'locked', 'locked', 'locked', 'locked']);
+  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'open', 'locked', 'locked', 'locked', 'locked', 'locked']);
   // 중급 1: 뒤집어 놓으면 "다시 해 보자", 알려 준 대로 놓으면 3연쇄
   const ticketsBefore = (await read(g)).tickets;
   await g.click('#school-list .grade[data-grade="middle"] button');
@@ -283,7 +284,7 @@ try {
     // 마지막: 복습 다섯(오른쪽으로 뒤집은 문제) + 빈 필드에서 여섯 번 놓아 직접 쌓기. 그 뒤의 비결 4가지는 아래에서 따로 본다
     [5, [[[5, 0]], [[5, 0]], [[4, 0], [5, 0]], [[5, 0]], [[4, 0]], [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [0, 0]]]],
   ];
-  const nextTitle = ['', '다음은 상급!', '다음은 최상급!', '다음은 초초상급!', '다음은 마지막!', '모두 배웠어!'];
+  const nextTitle = ['', '다음은 상급!', '다음은 최상급!', '다음은 초초상급!', '다음은 마지막!', '다음은 찐 마지막!', '모두 배웠어!'];
   for (const [grade, lessons] of answers) {
     for (const [index, moves] of lessons.entries()) {
       await lessonIs(g, grade, index);
@@ -315,15 +316,69 @@ try {
     await g.click('#coach-buttons button');
   }
   await coachTitle(g, nextTitle[5]);
-  assert.match(await g.textContent('#coach-text'), /초급부터 마지막까지 뿌요뿌요 배우기를 모두 끝냈어/);
+  assert.match(await g.textContent('#coach-text'), /마지막을 모두 배웠어\. 이어서 찐 마지막에 도전해 볼까/);
   await settle(g); await g.screenshot({ path: `${shots}/lesson-final-done.png` });
+  await g.click('#coach-buttons button.primary'); // 💎 찐 마지막 배우기
+
+  // ---------- 찐 마지막 (엄청 길게: 30가지) ----------
+  const s3 = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [0, 0]];
+  const s4 = [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [2, 1], [1, 1], [0, 0]];
+  const s5 = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [0, 1], [2, 1], [1, 1], [3, 1], [0, 0]];
+  const realPlan = [
+    'tip', [[2, 0]], [[0, 0]], [[2, 3]], [[3, 0]], [[5, 0]], [[2, 0]], [[4, 0], [5, 0]], [[4, 0], [5, 0]], [[5, 0]], [[1, 0]], // 1부 총복습 10
+    'tip', [[5, 0], [4, 0], [3, 0], [5, 3], [3, 1], [5, 0]], s4, s5, // 2부 직접 쌓기 3·4·5연쇄
+    'tip', [[3, 0]], [[4, 0]], [[4, 0]], [[3, 0]], // 3부 대연쇄 7·8·9·10연쇄
+    'tip', s3, s4, // 4부 졸업 시험
+    'tip', 'tip', 'tip', 'tip', 'tip', 'tip', 'tip', // 5부 찐 비결 7가지
+  ];
+  assert.equal(realPlan.length, 30);
+  const LONG = { timeout: 90000 };
+  for (const [index, plan] of realPlan.entries()) {
+    if (plan === 'tip') {
+      await g.waitForFunction(i => { const p = window.__puyo.practice; return p?.grade === 6 && p.index === i && p.freeze && !document.getElementById('coach').hidden; }, index, T);
+      assert.equal(await g.textContent('#coach-step'), `찐 마지막 ${index + 1} / 30`);
+      assert.equal(await g.textContent('#coach-buttons button'), index < 29 ? '알겠어! ▶' : '다 배웠어! 🎉');
+      if (index === 0) { assert.equal(await g.textContent('#coach-title'), '1부 · 총복습 시작!'); await settle(g); await g.screenshot({ path: `${shots}/real-start.png` }); }
+      if (index === 29) assert.equal(await g.textContent('#coach-title'), '찐 비결 ⑦ 매일 조금씩');
+      await g.click('#coach-buttons button');
+      continue;
+    }
+    await lessonIs(g, 6, index);
+    const title = await g.textContent('#coach-title');
+    if (index === 21) {
+      // 졸업 시험 ①: 처음에는 안내가 없다. 두 번 되돌리면 꼬마 뿌요가 도움말을 준다
+      assert.equal(title, '졸업 시험 ① 혼자서 3연쇄');
+      assert.ok(!/①/.test(await g.textContent('#coach-text')));
+      await g.click('#coach-buttons button'); await lessonIs(g, 6, index);
+      assert.ok(!/①/.test(await g.textContent('#coach-text')));
+      await g.click('#coach-buttons button'); await lessonIs(g, 6, index);
+      assert.match(await g.textContent('#coach-text'), /^조금 어렵지\? 이번에는 같이 하자! ①/);
+      await settle(g); await g.screenshot({ path: `${shots}/real-exam-help.png` });
+    }
+    if (index === 22) { assert.equal(title, '졸업 시험 ② 혼자서 4연쇄'); assert.ok(!/①/.test(await g.textContent('#coach-text'))); } // 도움 없이 혼자서
+    if (index === 19) { assert.equal(title, '대연쇄 ④ 10연쇄'); await settle(g); await g.screenshot({ path: `${shots}/real-mega10.png` }); }
+    for (const [n, [x, rot]] of plan.entries()) {
+      if (index === 14) await g.waitForFunction(mark => document.getElementById('coach-text').textContent.includes(mark), '①②③④⑤⑥⑦⑧⑨⑩'[n], T); // 5연쇄 직접 쌓기: 안내가 ① → ⑩
+      if (index === 14 && n === 9) { await settle(g); await g.screenshot({ path: `${shots}/real-scratch5.png` }); }
+      await place(g, x, rot);
+    }
+    await g.waitForFunction(() => document.getElementById('coach-title').textContent.includes('잘했어!'), null, LONG);
+    // 대연쇄는 정말 그만큼 이어지고 전소로 끝난다
+    const chain = { 16: 7, 17: 8, 18: 9, 19: 10, 14: 5, 13: 4 }[index];
+    if (chain) assert.equal(await g.evaluate(() => window.__puyo.match.players[0].lastChain), chain, title);
+    if (index >= 16 && index <= 19) assert.equal(await g.evaluate(() => window.__puyo.match.players[0].cells.some(v => v > 0)), false, `${title}: 전소`);
+  }
+  await coachTitle(g, nextTitle[6]);
+  assert.match(await g.textContent('#coach-text'), /초급부터 찐 마지막까지 뿌요뿌요 배우기를 모두 끝냈어/);
+  await settle(g); await g.screenshot({ path: `${shots}/real-done.png` });
   s = await read(g);
-  assert.deepEqual(s.school, ['middle', 'high', 'master', 'ultra', 'final']);
+  assert.deepEqual(s.school, ['middle', 'high', 'master', 'ultra', 'final', 'real']);
   // 등급 선물: 중급 부스트 1, 상급 펫 뽑기권 1, 최상급 펫 뽑기권 1 + 부스트 1, 초초상급 펫 뽑기권 2 + 부스트 1, 마지막 펫 뽑기권 3 + 부스트 2 + 스킨·효과 교환권
-  assert.equal(s.tickets.pet, ticketsBefore.pet + 7); assert.equal(s.tickets.boost, ticketsBefore.boost + 5);
-  assert.equal(s.tickets.skin, ticketsBefore.skin + 1); assert.equal(s.tickets.effect, ticketsBefore.effect + 1);
+  // 찐 마지막: 펫 뽑기권 5 + 부스트 3 + 스킨·효과 교환권 2장씩
+  assert.equal(s.tickets.pet, ticketsBefore.pet + 12); assert.equal(s.tickets.boost, ticketsBefore.boost + 8);
+  assert.equal(s.tickets.skin, ticketsBefore.skin + 3); assert.equal(s.tickets.effect, ticketsBefore.effect + 3);
   await g.click('#coach-buttons button.ghost'); await screenIs(g, 'school'); // 배우기 목록으로
-  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'done', 'done', 'done', 'done', 'done']);
+  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'done', 'done', 'done', 'done', 'done', 'done']);
   // 다시 배워도 선물은 한 번만
   await g.click('#school-list .grade[data-grade="middle"] button');
   for (const [index, moves] of answers[0][1].entries()) { await lessonIs(g, 1, index); for (const [x, rot] of moves) await place(g, x, rot); }
@@ -532,10 +587,19 @@ try {
   forgive(mark, /status of 403/);
   assert.deepEqual([(await read(a)).screen, (await read(a)).account], ['profile', nickA]);
   // 서버가 아직 이 기능을 모를 때(배포 전의 서버)는 안내만 하고 계정은 그대로
-  await a.route('**/auth/delete', route => route.fulfill({ status: 404, body: 'not found' }));
+  // (진짜 배포 전 서버는 브라우저가 미리 물어보는 요청에서 막혀서, 게임에는 "연결하지 못함"으로 보인다. 그래도 인터넷 탓이라고 하지 않는다)
+  mark = errors.length;
+  await a.route('**/auth/delete', route => route.abort());
   await a.fill('#delete-pass', 'abcd1'); await a.click('#delete-yes');
-  await a.waitForFunction(() => /서버가 아직 준비되지 않았어/.test(document.getElementById('delete-msg').textContent), null, T);
+  await a.waitForFunction(() => /아직 지울 수 없어\. 게임 서버를 새로 배포해야 계정 지우기가 돼/.test(document.getElementById('delete-msg').textContent), null, T);
+  assert.ok(!/인터넷을 확인/.test(await a.textContent('#delete-msg')));
+  // 인터넷이 정말 안 될 때만 인터넷을 확인하라고 한다
+  await a.route('**/me', route => route.abort());
+  await a.fill('#delete-pass', 'abcd1'); await a.click('#delete-yes');
+  await a.waitForFunction(() => /서버에 연결하지 못했어\. 인터넷을 확인해 줘/.test(document.getElementById('delete-msg').textContent), null, T);
+  await a.unroute('**/me');
   await a.unroute('**/auth/delete');
+  forgive(mark, /Failed to load resource|ERR_FAILED/);
   assert.equal((await read(a)).account, nickA);
   await a.click('#delete-cancel');
   assert.equal(await a.locator('#delete-confirm').isHidden(), true);
@@ -558,7 +622,7 @@ try {
   assert.deepEqual((await read(b2)).bonus, { xp: 1, coins: 1 });
 
   assert.deepEqual(errors, []);
-  console.log(`PASS: 펫(그림대로 뒤로·알·펫 뽑기 1000원·다섯 칸, 뽑기, ???, 뽑기권) → 시간 선물 7개 → 2배 부스트(사기·쓰기·이어 쓰기) → AI 대전 쫀득 연구소와 결과 배수 → 혼자 하기 맵 → 배우기 초급~마지막(초초상급, 다섯 등급 복습, 빈 필드에서 직접 쌓기, 비결 4가지) → 친구 배수 ×1.1 → 선물(코인·스킨·터짐 효과, 접속 중·꺼 둔 동안, 한 번만, 직접 쓴 글은 막음) → 온라인 맵 투표(다르면 뽑기, 같으면 그 맵) → 제작자 모드 전설의 뿌요 바로 쓰기 → 온라인 계정 지우기(틀린 비밀번호, 배포 전 서버 안내, 지운 뒤 로그인 안 됨, 친구 목록에서 사라짐) — 오류 없음 (net ${NET}, 사진 ${shots})`);
+  console.log(`PASS: 펫(그림대로 뒤로·알·펫 뽑기 1000원·다섯 칸, 뽑기, ???, 뽑기권) → 시간 선물 7개 → 2배 부스트(사기·쓰기·이어 쓰기) → AI 대전 쫀득 연구소와 결과 배수 → 혼자 하기 맵 → 배우기 초급~찐 마지막(초초상급, 마지막의 복습과 비결, 찐 마지막 30가지: 총복습·직접 쌓기 5연쇄·대연쇄 10연쇄·졸업 시험·찐 비결) → 친구 배수 ×1.1 → 선물(코인·스킨·터짐 효과, 접속 중·꺼 둔 동안, 한 번만, 직접 쓴 글은 막음) → 온라인 맵 투표(다르면 뽑기, 같으면 그 맵) → 제작자 모드 전설의 뿌요 바로 쓰기 → 온라인 계정 지우기(틀린 비밀번호, 배포 전 서버는 인터넷 탓이 아니라고 안내, 지운 뒤 로그인 안 됨, 친구 목록에서 사라짐) — 오류 없음 (net ${NET}, 사진 ${shots})`);
 } finally {
   await browser.close();
   stopServer();
