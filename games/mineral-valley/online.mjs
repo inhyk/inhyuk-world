@@ -1,8 +1,10 @@
 // 인터넷으로 친구와 같은 계곡을 탐험한다.
 // 방장(host)이 계곡 전체를 계산하고, 손님(guest)은 조작을 보내고 주변 풍경만 받아 그린다.
-import { ValleyRoom,normaliseCode,safeMove } from './room.mjs';
+import { ValleyRoom,normaliseCode,safeMove,serverUrl } from './room.mjs';
 import { ORES } from './core.mjs';
-const SEND=.08;                 // 초당 12번 남짓 주고받는다
+const SEND=.08;                 // 초당 12번 남짓 주고받는다 (서버는 1초에 30개까지)
+const ADD_MAX=150,DROP_MAX=500; // 한 장면에 담는 광물 수 (메시지 하나는 16KB 까지)
+const ACT_MAX=8,QUEUE_MAX=24;   // 손님 행동은 조작 메시지에 묶어 보낸다
 const VIEW=340;                 // 손님에게 보내 주는 광물 반경
 const SNAP=6;                   // 예측 위치가 이만큼 어긋나면 바로 맞춘다
 const num=v=>Number.isFinite(v)?v:0;
@@ -10,9 +12,8 @@ const round=v=>Math.round(v*10)/10;
 export function setupOnline(ctx){
  const $=id=>document.getElementById(id);
  const {state,me,partner,ores,monsters,world}=ctx;
- let sendClock=0,sent=new Set(),guestOres=new Map(),backup=null,partnerMove={mx:0,mz:0,yaw:0},lastMove=0;
- const options=import.meta.env.DEV&&new URLSearchParams(location.search).has('localPeer')?{host:location.hostname,port:9002,path:'/mineral-valley',secure:false}:{};
- const room=new ValleyRoom({status,join,depart,message:receive},options);
+ let lastSend=0,sent=new Set(),guestOres=new Map(),backup=null,partnerMove={mx:0,mz:0,yaw:0},lastMove=0,actions=[];
+ const room=new ValleyRoom({status,join,depart,message:receive},{server:serverUrl(location.search,import.meta.env)});
 
  function status(state_,message=''){
   const label={offline:'각자 기기에서 같은 방 코드로 들어오세요.',connecting:'방에 연결하는 중…',waiting:`방 코드 ${room.code} · 친구를 기다리고 있어요 (1/2)`,connected:`방 코드 ${room.code} · 함께 탐험 중 (2/2)`,error:'연결을 확인하고 다시 시도해 주세요.'}[state_];
@@ -37,6 +38,7 @@ export function setupOnline(ctx){
   ctx.setPartnered(true);
  }
  function depart(){
+  actions=[];
   if(room.guest||backup){restoreOwn();}
   ctx.dropAll(partner);
   partner.nearest=null;
@@ -62,9 +64,9 @@ export function setupOnline(ctx){
   for(const o of ores){
    if(Math.hypot(o.x-partner.x,o.z-partner.z)>VIEW||partner.carried.includes(o))continue;
    alive.add(o.uid);
-   if(!sent.has(o.uid)){sent.add(o.uid);add.push([o.uid,o.id,o.weight,o.giant?1:0,round(o.x),round(o.z),round(o.turn)]);}
+   if(!sent.has(o.uid)&&add.length<ADD_MAX){sent.add(o.uid);add.push([o.uid,o.id,o.weight,o.giant?1:0,round(o.x),round(o.z),round(o.turn)]);}
   }
-  for(const uid of sent)if(!alive.has(uid)){sent.delete(uid);drop.push(uid);}
+  for(const uid of sent)if(!alive.has(uid)&&drop.length<DROP_MAX){sent.delete(uid);drop.push(uid);}
   return {
    type:'f',t:state.playSeconds,
    m:String(state.money),up:[state.strength,state.speed,state.cargo],found:state.found,
@@ -124,8 +126,9 @@ export function setupOnline(ctx){
 
  function receive(message){
   if(room.host){
-   if(message.type==='i'){partnerMove=safeMove(message);lastMove=Date.now();}
-   else if(message.type==='a')perform(message.kind,message.value);
+   if(message.type!=='i')return;
+   partnerMove=safeMove(message);lastMove=Date.now();
+   if(Array.isArray(message.a))for(const row of message.a.slice(0,ACT_MAX))if(Array.isArray(row))perform(row[0],row[1]);
   }else if(room.guest){
    if(message.type==='f')apply(message);
    else if(message.type==='n'&&typeof message.text==='string')ctx.toast(message.text.slice(0,180));
@@ -150,11 +153,12 @@ export function setupOnline(ctx){
    const fresh=Date.now()-lastMove<1500;
    ctx.applyMove(partner,fresh?partnerMove:{mx:0,mz:0},dt);
   }
-  sendClock+=dt;
-  if(sendClock<SEND)return;
-  sendClock=0;
+  // 화면이 느려도(프레임 dt 는 0.05초까지 자른다) 실제 시간으로 SEND 마다 한 번 보낸다
+  const now=performance.now();
+  if(now-lastSend<SEND*1000)return;
+  lastSend=now;
   if(room.host)room.send(snapshot());
-  else{const axis=ctx.moveAxis();room.send({type:'i',mx:axis.x,mz:axis.z,yaw:ctx.yaw()});}
+  else{const axis=ctx.moveAxis(),a=actions.splice(0,ACT_MAX);room.send({type:'i',mx:axis.x,mz:axis.z,yaw:ctx.yaw(),...(a.length?{a}:{})});}
  }
 
  function openPanel(){ctx.clearInput();$('room-panel').hidden=false;$('room-code-input').focus();}
@@ -177,7 +181,9 @@ export function setupOnline(ctx){
   get guest(){return room.guest&&room.ready;},
   get partnered(){return room.ready;},
   get blocked(){return !$('room-panel').hidden;},
-  act(kind,value){if(room.guest&&room.ready){room.send({type:'a',kind,value});return true;}return false;},
+  // 손님의 행동(줍기, 판매 등)은 다음 조작 메시지에 실려 간다. 버리지 않고 차례대로 보낸다.
+  act(kind,value){if(room.guest&&room.ready){const last=actions.at(-1);if(kind==='swing'&&last?.[0]==='swing')return true; // 휘두르기는 몰아 눌러도 한 번
+   if(actions.length<QUEUE_MAX)actions.push(value===undefined?[kind]:[kind,value]);return true;}return false;},
   state:()=>({role:room.role,code:room.code,status:room.status,count:room.active?(room.ready?2:1):0}),
   leave:()=>room.leave(),
  };
