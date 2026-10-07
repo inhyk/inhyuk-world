@@ -3,7 +3,11 @@
 // 게임이 보낸 JSON을 그대로 다른 사람에게 전해 준다. 단, 채팅 글(data.chat)만은 거르개를 거쳐 보내고
 // 신고에 쓰려고 마지막 50줄을 잠깐 기억한다. 랜덤 매칭, 초대로 만든 방(members)은 data 안의 모든 글자열을 거른다.
 // 게임 데이터는 저장하거나 로그로 남기지 않는다.
-// 계정, 친구, 1:1 대화, 차단, 신고는 social.js, 게임 저장은 saves.js, 접속 상태와 초대는 lobby.js, 랜덤 매칭은 match.js, 관리 페이지는 admin.js.
+// 관전: 관계자 방에는 로그인한 사람이 ?watch=1 로 보기만 하러 들어올 수 있다(자리, 방장, 인원 수와 상관없음).
+// 관전하는 사람은 아무것도 보낼 수 없고, 채팅 글(data.chat)은 받지 않는다. 두 사람 중 누구와든 차단한 사이면 못 들어온다.
+// 결과 보고: 관계자 방의 두 사람은 대전이 끝나면 { t:'report', n, won } 을 보낸다. 둘이 같으면(한 사람만 보냈으면 방이 빌 때) 온라인 승리 1개.
+// 계정, 친구, 1:1 대화, 차단, 신고는 social.js, 게임 저장은 saves.js, 랭킹과 관전 목록은 stats.js,
+// 접속 상태와 초대는 lobby.js, 랜덤 매칭은 match.js, 관리 페이지는 admin.js.
 import { DurableObject } from 'cloudflare:workers';
 import { allowedOrigin, cors, json, HttpError, internalRequest, readJson, clientIp } from './http.js';
 import { CODE_RE, GAME_RE, DEFAULT_PLAYERS, clampPlayers, createRoom, roomStub, MAX_MESSAGE_BYTES, PING, PONG, CHAT_LINES } from './rooms.js';
@@ -11,6 +15,7 @@ import { filterText, maskText, maskSplitPhone } from './filter.js';
 import * as auth from './auth.js';
 import * as social from './social.js';
 import * as saves from './saves.js';
+import * as stats from './stats.js';
 import { handleAdmin } from './admin.js';
 
 // 이 파일은 Worker 의 시작점이라 default 와 Durable Object 클래스만 내보낸다.
@@ -38,6 +43,12 @@ const SPLIT_LINES = 2, SPLIT_MS = 30 * 1000;
 const DATA_DEPTH = 8;
 // 방 만들기: IP 하나에서 1분에 60번까지
 const ROOMS_PER_MINUTE = 60;
+// 한 방을 같이 보는 사람은 10명까지
+const WATCH_MAX = 10;
+// 관전 목록에 "아직 하는 중"이라고 5분마다 적는다 (목록은 12분 소식이 없으면 뺀다)
+const LIVE_TOUCH_MS = 5 * 60 * 1000;
+// 관전하러 들어온 사람에게 먼저 보내 줄 메시지(send 의 keep: true): 보낸 사람과 종류(data.t)마다 마지막 것, 8개, 4KB까지
+const KEEP_MAX = 8, KEEP_BYTES = 4096;
 
 const ROUTES = [
   ['POST', 'auth/signup', (r, e) => auth.signup(r, e)],
@@ -67,6 +78,9 @@ const ROUTES = [
   ['POST', 'reports', social.report],
   ['GET', 'saves/:game', saves.load],
   ['PUT', 'saves/:game', saves.store],
+  ['PUT', 'stats/:game', stats.putStats],
+  ['GET', 'rankings/:game', stats.rankings],
+  ['GET', 'matches/:game', stats.matches],
 ];
 
 function route(method, parts) {
@@ -132,6 +146,7 @@ async function rooms(request, env, parts, url, headers) {
   }
 
   // GET /rooms/:game/:code (WebSocket) → 그 방에 들어간다. ?ticket= 이 있으면 누가 들어왔는지 방이 안다.
+  // ?watch=1 은 보기만 하러 들어간다 (관전). 로그인한 사람만.
   const code = parts[2];
   if (!CODE_RE.test(code)) return json({ error: 'bad-code' }, 400, headers);
   if (!isWebSocket(request)) return json({ error: 'websocket-only' }, 426, headers);
@@ -140,7 +155,9 @@ async function rooms(request, env, parts, url, headers) {
     user = await auth.useTicket(env, url.searchParams.get('ticket'));
     if (!user) return json({ error: 'bad-ticket' }, 401, headers);
   }
-  return roomStub(env, game, code).fetch(internalRequest(request, { 'X-Net-User': user?.id }));
+  const watch = url.searchParams.get('watch') === '1';
+  if (watch && !user) return json({ error: 'login-required' }, 401, headers);
+  return roomStub(env, game, code).fetch(internalRequest(request, { 'X-Net-User': user?.id, 'X-Net-Watch': watch ? '1' : undefined }));
 }
 
 // GET /live?ticket=  (접속 상태와 알림),  GET /match/:game?ticket=  (랜덤 매칭 줄)
@@ -177,8 +194,9 @@ export class Room extends DurableObject {
   async fetch(request) {
     const [client, server] = Object.values(new WebSocketPair());
     const room = await this.ctx.storage.get('room');
-    const peers = this.peers();
     const uid = Number(request.headers.get('X-Net-User')) || null;
+    if (request.headers.get('X-Net-Watch') === '1') return this.watch(room, uid, server, client);
+    const peers = this.peers();
     // 한 사람(사용자 번호)은 자리 하나. 같은 사람이 또 들어오면 새 자리를 주지 않고 예전 연결을 바꿔 낀다.
     const seat = uid ? peers.find(p => p.uid === uid) : null;
     const refusal = !room ? 'not-found' : room.members && !room.members.includes(uid) ? 'not-member' : !seat && peers.length >= room.max ? 'full' : '';
@@ -216,11 +234,66 @@ export class Room extends DurableObject {
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment({ id, joined: Date.now(), uid, member });
     server.send(JSON.stringify({ t: 'welcome', id, host: room.host, max: room.max, peers: peers.map(p => p.id) }));
-    this.broadcast({ t: 'join', id }, server);
+    for (const p of peers) safeSend(p.ws, JSON.stringify({ t: 'join', id }));
+    // 관전하는 사람에게는 누가 들어왔는지(사용자 번호)도 알린다
+    for (const w of this.watchers()) safeSend(w.ws, JSON.stringify({ t: 'join', id, user: uid }));
+    if (this.watchers().length) safeSend(server, JSON.stringify({ t: 'watchers', n: this.watchers().length }));
     await this.ctx.storage.setAlarm(Date.now() + SWEEP_MS);
     // 정지할 때 이 방의 연결도 끊을 수 있게 로비에 적어 둔다.
     if (uid && room.name) await social.track(this.env, uid, 'room', room.name);
+    // 관계자 방에 두 사람이 다 들어왔으면 관전 목록에 올린다.
+    if (room.members?.length === 2 && !room.listed && peers.length + 1 >= 2) await this.list(room);
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // 관전 목록에 올린다 (방이 비면 clear 에서 내린다)
+  async list(room) {
+    const [game, code] = room.name.split(':');
+    if (!game || !code) return;
+    room.listed = room.touched = Date.now();
+    await this.ctx.storage.put('room', room);
+    try { await stats.liveRoomStart(this.env, game, code, room.members[0], room.members[1]); } catch (error) { console.error('live list failed', error?.message); }
+  }
+
+  // 보기만 하러 들어온 사람 (관계자 방만, 두 사람이 아닌 로그인한 사람, 둘 중 누구와도 차단한 사이가 아닐 때)
+  async watch(room, uid, server, client) {
+    let refusal = !room ? 'not-found' : !room.members || !uid || room.members.includes(uid) ? 'not-watchable'
+      : this.watchers().length >= WATCH_MAX ? 'watch-full' : '';
+    if (!refusal) {
+      // 차단한 사이면 방이 없는 것처럼 (차단 사실을 알리지 않는다)
+      for (const member of room.members) if (await social.blockedEither(this.env, uid, member)) { refusal = 'not-found'; break; }
+    }
+    if (refusal) {
+      server.accept();
+      server.send(JSON.stringify({ t: 'error', code: refusal, max: WATCH_MAX }));
+      server.close(refusal === 'not-found' ? 4404 : 4403, refusal);
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    room.watchSeq = (room.watchSeq ?? 0) + 1;
+    const id = `w${room.watchSeq}`;
+    await this.ctx.storage.put('room', room);
+    const players = this.peers();
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment({ id, joined: Date.now(), uid, watcher: true });
+    // users: 자리마다 누구인지 (관전 목록의 닉네임과 맞춰 보려고). 두 사람의 이름은 서버가 준 닉네임만 쓴다.
+    const users = Object.fromEntries(players.map(p => [p.id, p.uid]));
+    server.send(JSON.stringify({ t: 'welcome', id, watch: true, host: room.host, max: room.max, peers: players.map(p => p.id), users }));
+    // 두 사람이 남겨 둔 메시지(처음 인사 같은 것)를 먼저 보내 준다.
+    const keep = (await this.ctx.storage.get('keep')) ?? {};
+    for (const [key, data] of Object.entries(keep)) {
+      const from = key.slice(0, key.indexOf(':'));
+      if (players.some(p => p.id === from)) server.send(JSON.stringify({ t: 'msg', from, data }));
+    }
+    this.tellWatchers();
+    await this.ctx.storage.setAlarm(Date.now() + SWEEP_MS);
+    if (room.name) await social.track(this.env, uid, 'room', room.name);
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // 두 사람에게 지금 몇 명이 보고 있는지 알린다
+  tellWatchers() {
+    const text = JSON.stringify({ t: 'watchers', n: this.watchers().length });
+    for (const p of this.peers()) safeSend(p.ws, text);
   }
 
   async webSocketMessage(ws, message) {
@@ -237,10 +310,13 @@ export class Room extends DurableObject {
     if (!msg || typeof msg !== 'object') return this.warn(ws, 'bad');
     if (msg.t === 'ping') return ws.send(PONG);
     if (msg.t === 'bye') { this.close(ws, 1000, 'bye'); return this.departed(ws); }
+    if (me.watcher) return this.warn(ws, 'watch-only'); // 관전하는 사람은 보기만 한다
+    if (msg.t === 'report') return this.report(ws, me, msg);
     if (msg.t !== 'send' || msg.data === undefined) return this.warn(ws, 'bad');
     let data = msg.data;
+    const isChat = !!data && typeof data === 'object' && !Array.isArray(data) && 'chat' in data;
     // 채팅 약속: 사람이 쓴 글은 data.chat (문자열) 에 넣는다. 서버가 걸러서 보낸다.
-    if (data && typeof data === 'object' && !Array.isArray(data) && 'chat' in data) {
+    if (isChat) {
       if (typeof data.chat !== 'string') return this.warn(ws, 'bad');
       if (!this.allowChat(ws)) return;
       let { text } = filterText(data.chat);
@@ -260,6 +336,52 @@ export class Room extends DurableObject {
       return;
     }
     for (const p of this.peers()) if (p.ws !== ws) safeSend(p.ws, out);
+    // 관전하는 사람에게도 보낸다. 채팅 글은 두 사람 사이의 이야기라 보내지 않는다.
+    if (isChat) return;
+    for (const w of this.watchers()) safeSend(w.ws, out);
+    if (msg.keep === true && data && typeof data === 'object' && !Array.isArray(data) && typeof data.t === 'string' && data.t.length <= 16) {
+      await this.keep(me.id, data, out.length);
+    }
+  }
+
+  // 관전하러 들어온 사람에게 먼저 보내 줄 메시지를 기억한다 (보낸 사람과 종류마다 마지막 것)
+  async keep(from, data, size) {
+    if (size > KEEP_BYTES) return;
+    const keep = (await this.ctx.storage.get('keep')) ?? {};
+    const key = `${from}:${data.t}`;
+    if (!(key in keep) && Object.keys(keep).length >= KEEP_MAX) return;
+    keep[key] = data;
+    await this.ctx.storage.put('keep', keep);
+  }
+
+  // 대전 결과 보고 { t:'report', n: 이 방에서 몇 번째 대전, won: 내가 이겼나 }. 관계자 방의 두 사람만.
+  // 둘이 같은 사람을 이겼다고 하면 그 사람의 온라인 승리 1개. 서로 다르면 세지 않는다. 한 번 정한 대전은 다시 보고해도 안 바뀐다.
+  async report(ws, me, msg) {
+    const room = await this.ctx.storage.get('room');
+    const n = Number(msg.n);
+    if (!room?.members || !me.uid || !room.members.includes(me.uid) || !Number.isSafeInteger(n) || n < 1 || n > 100000 || typeof msg.won !== 'boolean') {
+      return this.warn(ws, 'bad');
+    }
+    const other = room.members.find(u => u !== me.uid);
+    if (!other) return;
+    const results = (await this.ctx.storage.get('results')) ?? {};
+    const r = results[n] ??= { claims: {} };
+    if (r.done || String(me.uid) in r.claims) return;
+    r.claims[me.uid] = msg.won ? me.uid : other;
+    const claims = Object.values(r.claims);
+    if (claims.length >= 2) {
+      r.done = true;
+      if (claims[0] === claims[1]) await this.win(room, claims[0]);
+    }
+    // 한 방에서 대전을 아주 많이 해도 저장이 커지지 않게 오래된 결과는 버린다 (끝난 것만)
+    for (const [key, value] of Object.entries(results)) if (value.done && Number(key) < n - 20) delete results[key];
+    await this.ctx.storage.put('results', results);
+  }
+
+  async win(room, uid) {
+    const game = room.name?.split(':')[0];
+    if (!game) return;
+    try { await stats.recordWin(this.env, game, uid); } catch (error) { console.error('record win failed', error?.message); }
   }
 
   async webSocketClose(ws, code) {
@@ -282,35 +404,57 @@ export class Room extends DurableObject {
     }
     const now = Date.now();
     let peers = this.peers();
-    for (const p of peers) {
+    for (const p of [...peers, ...this.watchers()]) {
       if (now - this.lastHeard(p.ws) > STALE_MS) {
         this.close(p.ws, 4408, 'timeout');
         await this.departed(p.ws);
       }
     }
     peers = this.peers();
-    if (peers.length) { await this.ctx.storage.setAlarm(now + SWEEP_MS); return; }
     const latest = await this.ctx.storage.get('room');
+    if (peers.length) {
+      // 관전 목록에 "아직 하는 중"이라고 가끔 적는다
+      if (latest?.listed && now - (latest.touched ?? 0) > LIVE_TOUCH_MS) {
+        latest.touched = now;
+        await this.ctx.storage.put('room', latest);
+        const [game, code] = latest.name.split(':');
+        try { await stats.liveRoomTouch(this.env, game, code); } catch (error) { console.error('live touch failed', error?.message); }
+      }
+      await this.ctx.storage.setAlarm(now + SWEEP_MS);
+      return;
+    }
     if (!latest) return;
     // 아무도 없는 방: 만든 지 2분이 지났으면 지우고, 아니면 그때 다시 본다.
     if (latest.host || now >= latest.reservedAt + RESERVE_MS) await this.clear();
     else await this.ctx.storage.setAlarm(latest.reservedAt + RESERVE_MS);
   }
 
-  // 지금 방에 있는 사람들 (들어온 순서대로)
+  // 지금 방에 있는 사람들 (들어온 순서대로, 관전하는 사람은 빼고)
   peers() {
     const list = [];
     for (const ws of this.ctx.getWebSockets()) {
       if (ws.readyState !== WebSocket.OPEN) continue;
       const a = ws.deserializeAttachment();
-      if (a?.id && !a.gone) list.push({ ws, id: a.id, joined: a.joined, uid: a.uid ?? null });
+      if (a?.id && !a.gone && !a.watcher) list.push({ ws, id: a.id, joined: a.joined, uid: a.uid ?? null });
     }
     return list.sort((a, b) => a.joined - b.joined || Number(a.id.slice(1)) - Number(b.id.slice(1)));
   }
 
+  // 보기만 하는 사람들
+  watchers() {
+    const list = [];
+    for (const ws of this.ctx.getWebSockets()) {
+      if (ws.readyState !== WebSocket.OPEN) continue;
+      const a = ws.deserializeAttachment();
+      if (a?.watcher && !a.gone) list.push({ ws, id: a.id, uid: a.uid ?? null });
+    }
+    return list;
+  }
+
+  // 들어옴, 나감, 방장 바뀜 같은 소식은 관전하는 사람도 받는다
   broadcast(message, except) {
     const text = JSON.stringify(message);
-    for (const p of this.peers()) if (p.ws !== except) safeSend(p.ws, text);
+    for (const p of [...this.peers(), ...this.watchers()]) if (p.ws !== except) safeSend(p.ws, text);
   }
 
   async departed(ws) {
@@ -318,6 +462,7 @@ export class Room extends DurableObject {
     if (!me?.id || me.gone) return;
     try { ws.serializeAttachment({ ...me, gone: true }); } catch { /* 이미 닫힘 */ }
     this.buckets.delete(ws);
+    if (me.watcher) { this.tellWatchers(); return; }
     const room = await this.ctx.storage.get('room');
     if (!room) return;
     const rest = this.peers().filter(p => p.ws !== ws);
@@ -333,6 +478,25 @@ export class Room extends DurableObject {
 
   async clear() {
     this.buckets.clear();
+    const room = await this.ctx.storage.get('room');
+    if (room?.members) {
+      // 한 사람만 결과를 보내고 방이 비었으면 그 보고대로 센다 (상대가 보고하기 전에 나간 경우)
+      const results = (await this.ctx.storage.get('results')) ?? {};
+      for (const r of Object.values(results)) {
+        const claims = Object.values(r.claims ?? {});
+        if (!r.done && claims.length === 1) await this.win(room, claims[0]);
+      }
+    }
+    if (room?.listed) {
+      const [game, code] = room.name.split(':');
+      try { await stats.liveRoomEnd(this.env, game, code); } catch (error) { console.error('live end failed', error?.message); }
+    }
+    // 두 사람이 다 나갔으니 관전도 끝
+    for (const w of this.watchers()) {
+      try { w.ws.serializeAttachment({ ...w.ws.deserializeAttachment(), gone: true }); } catch { /* 이미 닫힘 */ }
+      safeSend(w.ws, JSON.stringify({ t: 'error', code: 'ended' }));
+      this.close(w.ws, 4410, 'ended');
+    }
     const chat = await this.ctx.storage.get('chat');
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();

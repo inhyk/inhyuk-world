@@ -7,7 +7,7 @@ import { Sound } from './audio.mjs';
 import { Controls } from './input.mjs';
 import { AI_LEVELS, createBrain } from './ai.mjs';
 import { FLOORS, TOP_FLOOR, floorState, currentFloor, helpLevel, floorReward, clearFloor, loseFloor } from './tower.mjs';
-import { SKINS, EFFECTS, canBuy, buy, equip, grant, canRedeem, redeem } from './shop.mjs';
+import { SKINS, EFFECTS, RANK_SKIN, findItem, canBuy, buy, equip, grant, canRedeem, redeem } from './shop.mjs';
 import { GROUPS, track, claim, missionView, unclaimedCount } from './missions.mjs';
 import {
   STORE_KEY, loadStore, saveStore, createAccount, login, logout, currentAccount, removeAccount, exportCode, importCode,
@@ -24,7 +24,8 @@ import { GARBAGE_ICONS } from './core.mjs';
 import { createOnline } from './online.mjs';
 import { createPeerOnline } from './online-peer.mjs';
 import { Account, Social } from '../../packages/net/index.mjs';
-import { serverUrl, scopedStorage } from './net.mjs';
+import { serverUrl, scopedStorage, NET_GAME } from './net.mjs';
+import { createWatch } from './watch.mjs';
 import { CloudSave, CACHE_KEY, cloudPayload } from './cloud.mjs';
 import { migrateLocal, checkLocalPassword, markMigrated, migrationMarker, importIdFor, MIGRATING_KEY } from './migrate.mjs';
 import { createSocialUI } from './social-ui.mjs';
@@ -56,6 +57,7 @@ const store = loadStore(storage);
 const net = new Account({ server: NET_SERVER, storage: netStore });
 const marker = migrationMarker(netStore);
 let cloud = null, hub = null, cloudWarned = 0; // 온라인 계정으로 들어갔을 때: 클라우드 세이브, 친구와 알림(@inhyuk/net Social)
+let statsSent = '', statsTimer = null, statsJob = null; // 온라인 랭킹에 마지막으로 올린 기록, 올리는 중인 일
 let account = net.loggedIn ? null : currentAccount(store); // 이 기기 계정, 또는 온라인 계정({ cloud: true, uid })
 let guest = null;
 let device = { sound: true, music: true, haptics: true };
@@ -72,7 +74,7 @@ function persistStore() {
   return ok;
 }
 function save() {
-  if (account?.cloud) cloud?.change(cloudPayload(account.progress)); // 3초 조용하면 서버에 올린다 (친구 코드 기록은 빼고)
+  if (account?.cloud) { cloud?.change(cloudPayload(account.progress)); syncStats(); } // 3초 조용하면 서버에 올린다 (친구 코드 기록은 빼고)
   else if (account) { account.last = Date.now(); persistStore(); }
   try { storage?.setItem(DEVICE_KEY, JSON.stringify(device)); } catch { /* 저장 안 됨 */ }
   mirrorSave(DEVICE_KEY, storage?.getItem(DEVICE_KEY));
@@ -109,7 +111,7 @@ function toast(text, gold = false) {
 }
 
 // ---------- 화면 ----------
-const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'online', 'friends', 'dm', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards'];
+const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'online', 'watch', 'ranking', 'friends', 'dm', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards'];
 function show(name) {
   if ((chatWith?.kind === 'friend' || chatWith?.kind === 'legacy') && name !== 'friends') closeChat(); // 친구 화면을 떠나면 친구 채팅 창도 닫는다
   screen = name;
@@ -139,6 +141,8 @@ function renderScreen(name) {
   if (name === 'rewards') renderRewards();
   if (name === 'online' && !account?.cloud) peerOnline.refresh(); // 방 코드 대전 (이 기기 계정, 손님)
   if (name === 'friends') renderFriendsScreen();
+  if (name === 'watch') renderWatchList();
+  if (name === 'ranking') renderRanking();
   ui.render(name); // 온라인 계정: 온라인, 친구, 1:1 대화
   watchFriends(name === 'friends' && legacyOn());
 }
@@ -366,6 +370,8 @@ function startSocial() {
   hub = new Social(net, ui.socialHooks);
   hub.live().catch(() => {});
   ui.refreshCounts();
+  statsSent = '';
+  syncStats(true);
 }
 function stopSocial() { hub?.close(); hub = null; ui.reset(); }
 // 로그인이 풀렸거나(다른 곳에서 로그아웃, 정지) 서버가 내보냈을 때
@@ -526,9 +532,9 @@ function safeArea() {
 }
 function computeInsets() {
   const sa = safeArea();
-  // 위쪽 버튼 줄(#hud) 바로 아래부터. 연습하기에서는 꼬마 젤리 말풍선 자리도 비운다.
+  // 위쪽 버튼 줄(#hud) 바로 아래부터. 연습하기에서는 꼬마 뿌요 말풍선 자리도 비운다.
   const top = Math.max(8, sa.top) + 46 + (practice ? $('coach').offsetHeight + 8 : 0);
-  if (!coarse) return { top, bottom: 8 + sa.bottom, left: 8 + sa.left, right: 8 + sa.right };
+  if (!coarse || game?.mode === 'watch') return { top, bottom: 8 + sa.bottom, left: 8 + sa.left, right: 8 + sa.right };
   const portrait = innerHeight > innerWidth;
   if (portrait) return { top, bottom: 94 + Math.max(10, sa.bottom), left: 4 + sa.left, right: 4 + sa.right };
   return { top: Math.max(8, sa.top) + 38, bottom: 6 + sa.bottom, left: 205 + sa.left, right: 205 + sa.right };
@@ -549,6 +555,7 @@ function startGame(cfg) {
   hideScreens();
   $('hud').hidden = false;
   $('hud-chat').hidden = cfg.mode !== 'online' || !chatOn();
+  paintWatchers(cfg.mode === 'online' && !cfg.viaPeer ? online.watchers : 0);
   if (chatWith?.kind === 'room') $('chat').classList.add('compact');
   $('hud-title').textContent = cfg.title || '';
   $('touch').hidden = !coarse;
@@ -672,7 +679,7 @@ function finishPractice() {
   sound.sfx('level'); haptic('success');
   showCoach({
     step: '연습 끝!', title: '이제 진짜 대결!', mood: 'happy',
-    text: '큰 연쇄를 만들수록 상대에게 방해 젤리가 많이 날아가. 1층 꼬마 젤리에게 도전해 볼까?',
+    text: '큰 연쇄를 만들수록 상대에게 방해 뿌요가 많이 날아가. 1층 꼬마 뿌요에게 도전해 볼까?',
     buttons: [
       ['primary', '🗼 1층 도전', () => { sound.sfx('click'); quitGame(); startTower(1); }],
       ['ghost', '메뉴로', () => { sound.sfx('click'); quitGame(); }],
@@ -705,7 +712,7 @@ function showCoach({ step, title, text, mood = 'idle', buttons = [] }) {
     drawCharacter(ctx, 'poyo', 60, 64, 112, mood, (performance.now() - t0) / 1000);
   }, 50);
   if (match) renderer.setInsets(computeInsets());
-  // 챌린지 알림 같은 쪽지는 말풍선 아래에 뜨게 해서 꼬마 젤리 말을 가리지 않는다
+  // 챌린지 알림 같은 쪽지는 말풍선 아래에 뜨게 해서 꼬마 뿌요 말을 가리지 않는다
   $('toasts').style.top = `${Math.round($('coach').getBoundingClientRect().bottom + 8)}px`;
 }
 
@@ -745,12 +752,13 @@ $('talk').addEventListener('click', () => { sound.sfx('click'); closeTalk(); });
 
 // ---------- 일시정지 ----------
 function pause(on) {
-  if (!match || game?.mode === 'online') return;
+  if (!match || game?.mode === 'online' || game?.mode === 'watch') return;
   paused = on;
   $('pause').hidden = !on;
   controls.reset();
 }
 $('hud-pause').onclick = () => {
+  if (game?.mode === 'watch') { quitGame(); return; } // 관전 그만 보기
   if (game?.mode === 'online') { if (confirm('온라인 대전을 그만할까? 방에서 나가게 돼.')) quitGame(); return; }
   pause(true);
 };
@@ -764,7 +772,7 @@ function updateHudButtons() {
 $('hud-sound').onclick = () => { device.sound = !device.sound; sound.setSfx(device.sound); updateHudButtons(); save(); };
 $('hud-music').onclick = () => { device.music = !device.music; sound.setMusic(device.music); updateHudButtons(); save(); };
 updateHudButtons();
-document.addEventListener('visibilitychange', () => { if (document.hidden && match && !paused && game?.mode !== 'online' && match.phase !== 'over') pause(true); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && match && !paused && game?.mode !== 'online' && game?.mode !== 'watch' && match.phase !== 'over') pause(true); });
 
 controls.onKey = e => {
   if ($('seonn-promo').open) return true;
@@ -786,7 +794,7 @@ function handleBack() {
   if (talking) { closeTalk(); return true; }
   if (!$('result').hidden) { [...$('result-buttons').querySelectorAll('button')].pop()?.click(); return true; }
   if (match) {
-    if (game?.mode === 'online') $('hud-pause').click();
+    if (game?.mode === 'online' || game?.mode === 'watch') $('hud-pause').click();
     else pause(!paused);
     return true;
   }
@@ -807,10 +815,12 @@ onBackButton(handleBack);
 
 function quitGame() {
   if (game?.mode === 'online') roomNet().leave();
+  if (game?.mode === 'watch') watcher.stop();
+  paintWatchers(0);
   if (chatWith?.kind === 'room') closeChat();
   endPractice();
   match = null;
-  const back = game?.mode === 'tower' ? 'tower' : game?.mode === 'online' ? 'online' : 'menu';
+  const back = game?.mode === 'tower' ? 'tower' : game?.mode === 'online' ? 'online' : game?.mode === 'watch' ? 'watch' : 'menu';
   game = null;
   $('result').hidden = true;
   startDemo();
@@ -843,14 +853,14 @@ function loop(now) {
 function tick() {
   const m = match || demo;
   if (!m || (match && (paused || talking))) return;
-  if (match && practice?.freeze) { renderer.step(m); return; } // 연습 칭찬 중: 젤리는 멈추고 반짝이 효과만 움직인다
+  if (match && practice?.freeze) { renderer.step(m); return; } // 연습 칭찬 중: 뿌요는 멈추고 반짝이 효과만 움직인다
   const inputs = match ? controls.frame(2, m.players.map(p => p.state === 'control')) : [];
   m.step(inputs);
   for (const e of m.events) handle(e, m);
   m.events.length = 0;
   renderer.step(m);
   if (match && game?.mode === 'online') roomNet().tick(match);
-  if (match && game) watchDanger(m);
+  if (match && game && game.mode !== 'watch') watchDanger(m);
 }
 
 let heartClock = 0;
@@ -871,6 +881,7 @@ function trackEvent(ev) {
 function handle(e, m) {
   renderer.onEvent(e, m);
   if (m === demo) return;
+  if (game.mode === 'watch') { watchSound(e, m); return; }
   if (game.mode === 'practice' && e.p === 0) practiceEvent(e);
   const mine = e.p === game.tracked;
   switch (e.type) {
@@ -976,6 +987,11 @@ function finishMatch() {
     trackEvent({ type: 'endless', score });
     buttons.push(['primary', '다시 하기', () => { closeResult(); retry(); }], ['ghost', '메뉴로', () => { closeResult(); quitGame(); }]);
   }
+  // 트로피 (인혁이 기획서 3번): AI 대전, 온라인 대전을 이기면 1개씩
+  const trophy = win && (g.mode === 'vs' || g.mode === 'online');
+  if (trophy) p.trophies = (p.trophies || 0) + 1;
+  // 온라인 승리는 서버가 두 사람의 결과 보고로 센다 (온라인 계정 대전만)
+  if (g.mode === 'online' && !g.viaPeer) online.report(win);
   xp += totals.maxChain * 5;
   if (g.mode !== 'solo') trackEvent({ type: 'match', mode: g.mode, map: g.map, win });
   else trackEvent({ type: 'match', mode: 'solo', win: false });
@@ -997,7 +1013,8 @@ function finishMatch() {
   for (const level of lv.levels) trackEvent({ type: 'level', level });
   save();
   cloud?.flush().catch(() => {}); // 판이 끝나면 바로 올린다
-  const show = () => showResult({ title, sub, win: g.mode === 'solo' || g.mode === 'local' ? true : win, totals, coins, xp, lv, before, buttons, mode: g.mode, score: m.players[0].score });
+  syncStats(true);
+  const show = () => showResult({ title, sub, win: g.mode === 'solo' || g.mode === 'local' ? true : win, totals, coins, xp, lv, before, buttons, mode: g.mode, score: m.players[0].score, trophy });
   if (g.mode === 'tower') {
     const info = FLOORS[g.floor - 1];
     setTimeout(() => talk(info, win ? info.win : info.lose, () => (ending ? runEnding(show, ending) : show())), 900);
@@ -1012,8 +1029,8 @@ function showResult(r) {
   $('result-sub').textContent = r.sub;
   const t = r.totals;
   $('result-stats').innerHTML = [
-    ['최대 연쇄', `${t.maxChain}연쇄`], ['점수', fmt(r.mode === 'solo' ? r.score : t.maxScore)], ['보낸 방해 젤리', `${fmt(t.garbageSent)}개`],
-    ['터뜨린 젤리', `${fmt(t.popped)}개`], ['상쇄', `${t.offsets}번`], ['전소', `${t.allClears}번`],
+    ['최대 연쇄', `${t.maxChain}연쇄`], ['점수', fmt(r.mode === 'solo' ? r.score : t.maxScore)], ['보낸 방해 뿌요', `${fmt(t.garbageSent)}개`],
+    ['터뜨린 뿌요', `${fmt(t.popped)}개`], ['상쇄', `${t.offsets}번`], ['전소', `${t.allClears}번`],
   ].map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join('');
   $('result-xp').textContent = `+${r.xp}`;
   $('result-coins').textContent = `+${fmt(r.coins + (r.lv.coins || 0))}`;
@@ -1026,6 +1043,8 @@ function showResult(r) {
   if (r.lv.levels.length) { sound.sfx('level'); haptic('success'); } else sound.sfx('coin');
   const view = missionView(p);
   const ready = [...view.daily, ...view.list].filter(x => x.done && !x.claimed);
+  $('result-trophy').hidden = !r.trophy;
+  if (r.trophy) $('result-trophy').textContent = `🏆 트로피 +1 (모두 ${fmt(p.trophies)}개)`;
   $('result-missions').innerHTML = ready.length ? `<div>🎯 받을 수 있는 챌린지 보상이 ${ready.length}개 있어! 메뉴 → 챌린지</div>` : '';
   const row = $('result-buttons');
   row.innerHTML = '';
@@ -1089,7 +1108,7 @@ function runEnding(done, kind = 'crown') {
     $('ending').hidden = true;
     if (kind === 'comet') toast('🌠 우주의 친구들 엔딩! 코멧과 함께 별빛을 되찾았어! 초신성 층이 열렸어!', true);
     else {
-      toast('👑 황금 왕관 젤리 스킨을 상점에서 장착해 봐.', true);
+      toast('👑 황금 왕관 뿌요 스킨을 상점에서 장착해 봐.', true);
       toast('✨ 탑 너머 비밀의 혜성 층이 열렸어!', true);
     }
     done?.();
@@ -1324,11 +1343,11 @@ function renderShop() {
     const cv = document.createElement('canvas');
     cv.width = 240; cv.height = 200;
     card.append(cv);
-    card.insertAdjacentHTML('beforeend', `<b>${esc(item.name)}</b><p>${esc(item.desc)}</p>`);
+    card.insertAdjacentHTML('beforeend', `<b>${esc(item.name)}</b><p>${esc(item.desc)}</p>${item.noTicket && !owned ? `<small class="hard-tag">🏅 Lv.${item.level} 고난이도 · 교환권으로 못 받아</small>` : ''}`);
     const b = document.createElement('button');
     if (on) { b.textContent = '✔ 장착 중'; b.disabled = true; }
     else if (owned) { b.textContent = '장착하기'; b.className = 'ghost'; }
-    else if (state === 'reward') { b.textContent = item.reward === 'tower' ? '🗼 타워 정복 보상' : item.reward === 'nova' ? '🌟 노바 클리어 보상' : '☄️ 혜성 클리어 보상'; b.disabled = true; }
+    else if (state === 'reward') { b.textContent = item.reward === 'tower' ? '🗼 타워 정복 보상' : item.reward === 'nova' ? '🌟 노바 클리어 보상' : item.reward === 'ranking' ? '🎖️ 온라인 랭킹 5등 보상' : '☄️ 혜성 클리어 보상'; b.disabled = true; }
     else if (state === 'level') { b.innerHTML = `🔒 Lv.${item.level}부터 · <span class="price">🪙${fmt(item.price)}</span>`; b.disabled = true; }
     else { b.innerHTML = `<span class="price">🪙${fmt(item.price)}</span> 사기`; b.className = state === 'ok' ? 'primary' : ''; b.disabled = state !== 'ok'; }
     b.onclick = () => {
@@ -1382,6 +1401,7 @@ function renderProfile() {
   const p = P();
   $('profile-name').textContent = me()?.name || '손님';
   $('profile-level').textContent = p.level;
+  $('profile-trophies').textContent = fmt(p.trophies || 0);
   $('profile-xp').style.width = `${Math.min(100, (p.xp / xpToNext(p.level)) * 100)}%`;
   $('profile-xp-text').textContent = `경험치 ${fmt(p.xp)} / ${fmt(xpToNext(p.level))}`;
   const av = $('profile-avatar'), ctx = av.getContext('2d');
@@ -1392,7 +1412,7 @@ function renderProfile() {
   $('profile-stats').innerHTML = [
     ['타워', t.cleared ? (t.nova ? '🌟 우주 정복' : t.comet ? '👑 + ☄️ 정복' : '👑 정복') : `${t.best}층까지`], ['판 수', `${fmt(s.games)}판`], ['승리', `${fmt(s.wins)}승 ${fmt(s.losses)}패`],
     ['최대 연쇄', `${s.maxChain}연쇄`], ['최고 점수', fmt(s.maxScore)], ['혼자 하기 최고', fmt(s.endlessBest)],
-    ['터뜨린 젤리', `${fmt(s.popped)}개`], ['보낸 방해 젤리', `${fmt(s.garbageSent)}개`], ['전소', `${fmt(s.allClears)}번`],
+    ['터뜨린 뿌요', `${fmt(s.popped)}개`], ['보낸 방해 뿌요', `${fmt(s.garbageSent)}개`], ['전소', `${fmt(s.allClears)}번`],
     ['상쇄', `${fmt(s.offsets)}번`], ['온라인', `${fmt(s.onlineWins)}승 / ${fmt(s.onlineGames)}판`], ['엔딩 본 횟수', `${t.endings || 0}번`],
   ].map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join('');
   $('set-sound').checked = device.sound;
@@ -1490,6 +1510,7 @@ const online = createOnline({
   // 대전 채팅: 내가 보낸 줄은 sendChat 이 이미 적었다
   chatLine: entry => { if (entry.who === 'them') roomChat({ name: online.peerName(), text: entry.text, sticker: entry.sticker }); },
   chatReset: () => roomJoined(),
+  watchersChanged: n => { if (game?.mode === 'online' && !game.viaPeer) paintWatchers(n); },
 });
 // 방 코드 대전 (PeerJS): 이 기기 계정과 손님. 주고받는 모양은 예전 버전 게임과 같다.
 const peerOnline = createPeerOnline({
@@ -1521,12 +1542,185 @@ const ui = createSocialUI({
   lost: reason => lostLogin(reason),
   chatOn: () => chatOn(),
   stickerImg: i => stickerURL(i),
+  watch: entry => watchMatch(entry),
 });
 // 시작 단추: 온라인 계정 방이면 net 서버 대전, 아니면 방 코드 대전
 $('online-start').onclick = () => { sound.sfx('click'); roomNet().start(); };
 addEventListener('pagehide', () => { online.leave(); cloud?.flush().catch(() => {}); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) cloud?.flush().catch(() => {}); });
 addEventListener('online', () => cloud?.retryNow());
+
+// ---------- 온라인 랭킹 (인혁이 기획서 5, 6번) ----------
+// 온라인 계정이면 랭킹에 쓰는 레벨, 경험치, 트로피를 서버에 올린다 (바뀌었을 때만, 조용해지고 나서).
+// 온라인 승리는 서버가 대전 결과 보고로 직접 센다. 세 랭킹 중 하나라도 5등 안에 들면 「챔피언 뿌요」 스킨을 준다.
+function syncStats(soon = false) {
+  if (!account?.cloud || !hub) return;
+  clearTimeout(statsTimer);
+  statsTimer = setTimeout(() => { sendStats(); }, soon ? 1500 : 20000);
+}
+// 올리는 중이면 그 일이 끝나기를 같이 기다린다 (랭킹 화면이 올리기 전 기록을 받아 오지 않게)
+function sendStats() {
+  if (statsJob) return statsJob;
+  if (!account?.cloud || !hub) return Promise.resolve();
+  const p = P(), body = { level: p.level, xp: p.xp, trophies: p.trophies || 0 };
+  const key = JSON.stringify(body);
+  if (key === statsSent) return Promise.resolve();
+  const social = hub;
+  statsJob = (async () => {
+    try {
+      await social.putStats(NET_GAME, body);
+      if (social !== hub) return; // 그사이 로그아웃하거나 다른 계정으로 들어감
+      statsSent = key;
+      const { me: mine } = await social.rankings(NET_GAME, 'trophies');
+      if (social === hub) rewardTop5(mine);
+    } catch { /* 인터넷이 없으면 다음 저장 때 다시 */ } finally { statsJob = null; }
+  })();
+  return statsJob;
+}
+function rewardTop5(mine) {
+  const p = P();
+  if (!mine?.top5 || !account?.cloud || p.owned.skin.includes(RANK_SKIN)) return;
+  grant(p, 'skin', RANK_SKIN);
+  save();
+  toast(`🎖️ 온라인 랭킹 5등 안에 들어서 「${findItem('skin', RANK_SKIN).name}」 스킨을 받았어! 상점에서 낄 수 있어.`, true);
+  sound.sfx('level');
+}
+
+const RANK_VALUE = { trophies: '트로피', level: '경험치', wins: '온라인 승리' };
+const RANK_TIP = {
+  trophies: 'AI 대전, 온라인 대전을 이길 때마다 트로피를 1개씩 받아.',
+  level: '레벨이 높은 순서야 (레벨 2부터 나와). 레벨이 같으면 경험치가 많은 사람이 위야.',
+  wins: '온라인 대전에서 이긴 횟수야. 두 사람이 보낸 결과가 같아야 세어져.',
+};
+let rankBy = 'trophies', rankLoading = 0;
+const fineText = text => Object.assign(document.createElement('p'), { className: 'fine', textContent: text });
+function cell(cls, text) { const e = document.createElement('span'); e.className = cls; e.textContent = text; return e; }
+const rankValue = (row, by) => (by === 'trophies' ? `🏆 ${fmt(row.trophies)}` : by === 'wins' ? `🌐 ${fmt(row.wins)}승` : `✨ ${fmt(row.xp)}`);
+async function renderRanking() {
+  const on = !!(account?.cloud && hub);
+  $('rank-need-login').hidden = on;
+  $('rank-board').hidden = !on;
+  $('rank-me').hidden = !on;
+  $('rank-tabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.by === rankBy));
+  $('rank-tip').textContent = RANK_TIP[rankBy];
+  $('rank-val-head').textContent = RANK_VALUE[rankBy];
+  if (!on) return;
+  const ticket = ++rankLoading, by = rankBy;
+  $('rank-list').replaceChildren(fineText('랭킹을 불러오는 중…'));
+  $('rank-me').textContent = '';
+  await sendStats(); // 내 기록이 바뀌었으면 먼저 올린다
+  let r;
+  try { r = await hub.rankings(NET_GAME, by); } catch (error) { if (ticket === rankLoading) $('rank-list').replaceChildren(fineText(error.message)); return; }
+  if (ticket !== rankLoading || screen !== 'ranking') return;
+  const myId = net.user?.id;
+  $('rank-list').replaceChildren(...(r.list.length ? r.list.map(row => {
+    const line = document.createElement('div');
+    line.className = `rank-row${row.id === myId ? ' me' : ''}${row.rank <= 5 ? ' top' : ''}`;
+    line.append(cell('rk', ['🥇', '🥈', '🥉'][row.rank - 1] || `${row.rank}`), cell('nm', row.nickname), cell('lv', `Lv.${row.level}`), cell('val', rankValue(row, by)));
+    return line;
+  }) : [fineText(by === 'wins' ? '아직 온라인 대전을 이긴 사람이 없어. 첫 번째가 되어 봐!' : '아직 랭킹에 아무도 없어. 첫 번째가 되어 봐!')]));
+  $('rank-me').textContent = r.me.rank
+    ? `내 순위: ${r.me.rank}등 · ${rankValue({ trophies: r.me.trophies, wins: r.me.wins, xp: P().xp }, by)}`
+    : by === 'trophies' ? '아직 트로피가 없어. AI 대전이나 온라인 대전을 이겨 봐!' : by === 'wins' ? '아직 온라인 승리가 없어. 게임 찾기로 한 판 해 봐!' : '레벨 2가 되면 랭킹에 나와. 한 판 해 봐!';
+  rewardTop5(r.me);
+}
+$('rank-tabs').querySelectorAll('button').forEach(b => { b.onclick = () => { sound.sfx('click'); rankBy = b.dataset.by; renderRanking(); }; });
+
+// ---------- 관전 (인혁이 기획서 4번 그림) ----------
+const watcher = createWatch({
+  social: () => hub,
+  begin: ({ match: m, names, levels }) => startWatchGame(m, names, levels),
+  restart: m => { if (game?.mode === 'watch') { match = m; renderer.resetRound(); } },
+  peer: (side, peer) => {
+    const v = game?.mode === 'watch' ? renderer.views[side] : null;
+    if (!v) return;
+    v.skin = peer.skin || 'classic'; v.effect = peer.effect || 'sparkle';
+    if (peer.level) v.level = peer.level;
+  },
+  ended: text => { toast(`👀 ${text}`); if (game?.mode === 'watch') quitGame(); },
+});
+function startWatchGame(m, names, levels) {
+  closePromo(true);
+  demo = null;
+  endPractice();
+  game = { mode: 'watch', tracked: -1, started: performance.now(), warned: false };
+  match = m;
+  renderer.setTheme('starry');
+  renderer.setup(names.map((name, i) => ({ name, level: levels[i], skin: 'classic', effect: 'sparkle', char: null, color: i ? '#9fe3ff' : '#ffe45c' })),
+    { watch: true, ghost: false, insets: computeInsets() });
+  hideScreens();
+  $('hud').hidden = false;
+  $('hud-chat').hidden = true;
+  paintWatchers(0);
+  $('hud-title').textContent = `👀 관전 · ${names[0]} VS ${names[1]}`;
+  $('touch').hidden = true;
+  document.body.classList.remove('duo');
+  controls.enabled = false;
+  paused = false;
+  sound.play('battle');
+}
+async function watchMatch(entry) {
+  if (!hub) { toast('관전은 온라인 계정으로 로그인해야 할 수 있어.'); return; }
+  if (match || watcher.active) return;
+  if (online.active || online.searching) { toast('대전 방에서 나와야 관전할 수 있어.'); return; }
+  sound.sfx('click');
+  try { await watcher.start(entry); } catch (error) { toast(error.message || '이 대전은 볼 수 없어.'); if (screen === 'watch') renderWatchList(); }
+}
+// 관전: 소리와 판 결과 표시만 (챌린지, 기록, 보상은 없다)
+function watchSound(e, m) {
+  switch (e.type) {
+    case 'pop': sound.sfx('pop', e.chain); setTimeout(() => sound.sfx('burst'), 560); break;
+    case 'allClear': sound.sfx('allclear'); break;
+    case 'offset': sound.sfx('offset'); break;
+    case 'garbage': sound.sfx('garbage', e.count); break;
+    case 'count': sound.sfx('count', 0); break;
+    case 'go': sound.sfx('count', 1); break;
+    case 'round': renderer.resetRound(); break;
+    case 'roundEnd': m.players.forEach((_, i) => renderer.setResult(i, e.winner < 0 ? 'draw' : i === e.winner ? 'win' : 'lose')); sound.sfx('win'); break;
+    case 'matchEnd': { const w = m.winner(); toast(w < 0 ? '👀 비겼어!' : `👀 ${renderer.views[w]?.name ?? ''} 승리!`); break; }
+    default: break;
+  }
+}
+// 지금 하는 대전 목록
+let watchLoading = 0;
+async function renderWatchList() {
+  const on = !!(account?.cloud && hub);
+  $('watch-need-login').hidden = on;
+  $('watch-refresh').hidden = !on;
+  const list = $('watch-list');
+  list.replaceChildren();
+  if (!on) return;
+  const ticket = ++watchLoading;
+  list.append(fineText('대전 목록을 불러오는 중…'));
+  let matches;
+  try { matches = await hub.matches(NET_GAME); } catch (error) { if (ticket === watchLoading) list.replaceChildren(fineText(error.message)); return; }
+  if (ticket !== watchLoading || screen !== 'watch') return;
+  list.replaceChildren(...(matches.length ? matches.map(entry => {
+    const row = document.createElement('div');
+    row.className = 'watch-row';
+    const vs = document.createElement('div');
+    vs.className = 'vsline';
+    const [a, b] = entry.players;
+    vs.append(cell('', `${a.nickname} Lv.${a.level}`), Object.assign(document.createElement('b'), { textContent: 'VS' }), cell('', `${b.nickname} Lv.${b.level}`));
+    row.append(vs);
+    if (entry.friend) row.append(cell('friend-tag', '👫 친구'));
+    const go = document.createElement('button');
+    go.className = 'primary';
+    go.textContent = '👀 보기';
+    go.onclick = () => watchMatch(entry);
+    row.append(go);
+    return row;
+  }) : [fineText('지금 하고 있는 온라인 대전이 없어. 조금 뒤에 🔄 새로 보기를 눌러 봐!')]));
+}
+// 온라인 대전 중: 지금 몇 명이 보고 있는지
+function paintWatchers(n) {
+  $('hud-watchers').hidden = !n;
+  $('hud-watchers').textContent = `👀 ${n}명이 보는 중`;
+}
+$('go-watch').onclick = () => { sound.sfx('click'); show('watch'); };
+$('go-ranking').onclick = () => { sound.sfx('click'); show('ranking'); };
+$('watch-refresh').onclick = () => { sound.sfx('click'); renderWatchList(); };
+$('watch-login').onclick = $('rank-login').onclick = () => { sound.sfx('click'); show('login'); };
 
 // ---------- 친구와 채팅 ----------
 // 친구는 계정마다 6글자 친구 코드로 맺는다.
@@ -1749,7 +1943,7 @@ function friendData(code, m, { via = 'live', quiet = false } = {}) {
     if (chatWith?.code === code && !$('chat').hidden) renderChat();
     else {
       unread.set(code, (unread.get(code) || 0) + 1);
-      if (!quiet) toast(`💬 ${friend.name}: ${entry.text ?? `젤리 이모티콘 「${STICKERS[entry.sticker].text}」`}`);
+      if (!quiet) toast(`💬 ${friend.name}: ${entry.text ?? `뿌요 이모티콘 「${STICKERS[entry.sticker].text}」`}`);
     }
     if (!quiet) { sound.sfx('talk'); haptic('light'); }
   } else if (m.t === 'inv' && friend && via === 'live') {
@@ -1931,7 +2125,7 @@ $('friend-add').onsubmit = async e => {
     $('friend-input').value = '';
     friendStatus(r.live || r.known !== false
       ? '친구 신청을 보냈어! 친구가 받으면 친구가 돼. (친구가 게임을 꺼 두었어도 켜면 받아)'
-      : '친구 신청을 보냈어! 그런데 아직 그 코드로 젤리 타워 친구 화면을 연 사람이 없어. 코드가 맞는지 확인해 줘. 맞으면 친구가 열 때 받아.');
+      : '친구 신청을 보냈어! 그런데 아직 그 코드로 뿌요뿌요 타워 친구 화면을 연 사람이 없어. 코드가 맞는지 확인해 줘. 맞으면 친구가 열 때 받아.');
     renderFriends();
     return;
   }
@@ -1944,7 +2138,7 @@ $('friend-code-copy').onclick = async () => {
 };
 $('friends-login').onclick = () => { sound.sfx('click'); show('login'); };
 
-// ---------- 젤리 이모티콘 ----------
+// ---------- 뿌요 이모티콘 ----------
 // 게임 캐릭터를 그려서 한 번만 그림으로 만들어 둔다 (글꼴이 늦게 오면 다시 그린다)
 const stickerCache = new Map();
 document.fonts?.ready.then(() => stickerCache.clear());
@@ -1961,9 +2155,9 @@ function stickerURL(i) {
   stickerCache.set(i, url);
   return url;
 }
-const stickerImg = (i, cls = '') => `<img class="${cls}" src="${stickerURL(i)}" alt="젤리 이모티콘 ${esc(STICKERS[i].text)}" draggable="false">`;
+const stickerImg = (i, cls = '') => `<img class="${cls}" src="${stickerURL(i)}" alt="뿌요 이모티콘 ${esc(STICKERS[i].text)}" draggable="false">`;
 function renderEmojiPanel() {
-  $('chat-stickers').innerHTML = STICKERS.map((s, i) => `<button type="button" data-sticker="${i}" aria-label="젤리 이모티콘 ${esc(s.text)}">${stickerImg(i)}</button>`).join('');
+  $('chat-stickers').innerHTML = STICKERS.map((s, i) => `<button type="button" data-sticker="${i}" aria-label="뿌요 이모티콘 ${esc(s.text)}">${stickerImg(i)}</button>`).join('');
   $('chat-emojis').innerHTML = EMOJIS.map(e => `<button type="button" data-emoji="${e}" aria-label="${e}">${e}</button>`).join('');
 }
 function toggleEmojiPanel(open = $('chat-emoji').hidden) {
@@ -2054,7 +2248,7 @@ async function sendChat({ q, text, sticker }) {
   const entry = isSticker ? { me: true, sticker } : { me: true, text: out };
   if (chatWith.kind === 'legacy') return;
   if (chatWith.kind === 'room') {
-    // 온라인 계정 방: 직접 쓴 말은 서버가 거르는 room.chat, 빠른 말과 젤리 이모티콘은 번호만
+    // 온라인 계정 방: 직접 쓴 말은 서버가 거르는 room.chat, 빠른 말과 뿌요 이모티콘은 번호만
     const sent = account?.cloud ? (isSticker ? online.say({ sticker }) : quick ? online.say({ quick: q }) : online.chat(out))
       : peerOnline.say(isSticker ? { sticker } : quick ? { q } : { text: out });
     if (!sent) { chatNote('방에 친구가 없어.'); return; }
@@ -2147,8 +2341,8 @@ async function reportChat() {
   const room = chatWith.kind === 'room';
   const name = room ? roomNet().peerName() : social().friends.find(f => f.code === chatWith.code)?.name || '친구';
   const log = (room ? roomLog : social().chats[chatWith.code] || []).slice(-20);
-  const line = m => (validSticker(m.sticker) ? `[젤리 이모티콘: ${STICKERS[m.sticker].text}]` : m.text);
-  const text = `[젤리 타워 신고] ${name}${room ? ' (온라인 대전)' : ` (친구 코드 ${chatWith.code})`}\n${log.map(m => `${m.me ? '나' : name}: ${line(m)}`).join('\n')}`;
+  const line = m => (validSticker(m.sticker) ? `[뿌요 이모티콘: ${STICKERS[m.sticker].text}]` : m.text);
+  const text = `[뿌요뿌요 타워 신고] ${name}${room ? ' (온라인 대전)' : ` (친구 코드 ${chatWith.code})`}\n${log.map(m => `${m.me ? '나' : name}: ${line(m)}`).join('\n')}`;
   try { await navigator.clipboard.writeText(text); } catch { /* 복사가 안 되면 안내만 */ }
   chatNote('🚩 대화를 복사했어. 어른께 보여 드리고 seonn.dev/jelly-tower 의 문의하기로 알려 줘. 싫은 친구는 차단할 수 있어.');
 }
@@ -2187,7 +2381,7 @@ window.render_game_to_text = () => JSON.stringify({
 });
 if (TEST) {
   window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, get mailState() { return mailState; }, pollMail, friendNet, P, handleBack, store, startTower, startVs, startSolo, startLocal, startPractice, show, finishMatch, renderer, online, peerOnline, runEnding, recordPlayTime, pause, save,
-    get cloud() { return cloud; }, get social() { return hub; }, net,
+    get cloud() { return cloud; }, get social() { return hub; }, net, get watcher() { return watcher; }, sendStats,
     // 예전 방식의 이 기기 계정 만들기 (화면에서는 더 이상 만들지 않는다. 브라우저 확인용)
     async localSignup(name, password) { const r = await createAccount(store, name, password); if (r.ok) { account = r.account; guest = null; save(); afterLogin(); } return r.ok; } };
 }

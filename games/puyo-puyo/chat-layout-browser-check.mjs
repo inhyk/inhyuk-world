@@ -1,4 +1,4 @@
-// 긴 친구 채팅의 모양: 대화가 길어져 채팅 칸이 넘쳐도 젤리 이모티콘·글·큰 이모지·초대가 서로 겹치지 않는지,
+// 긴 친구 채팅의 모양: 대화가 길어져 채팅 칸이 넘쳐도 뿌요 이모티콘·글·큰 이모지·초대가 서로 겹치지 않는지,
 // 맨 아래 메시지가 다 보이는지, 받은 글이 빨간 오류 글씨가 아닌지 (.msg는 로그인 화면 오류 글에도 쓰는 이름이다).
 // 인혁이 화면(맥북 크롬)과 휴대폰 크기에서 본다. 이모티콘 판을 열어도 새 메시지가 가려지지 않는지도 본다.
 // 만든 친구는 "게임 중"인 척만 하고(그래야 이모티콘 판이 열린다) 아무것도 보내지 않으며, 친구 서버에도 잇지 않는다.
@@ -14,10 +14,10 @@ const errors = [];
 const quiet = text => /peerjs|PeerJS|ICE|webrtc|Could not connect to peer|Failed to load resource/i.test(text);
 const ERROR_RED = 'rgb(224, 50, 79)';
 
-// 인혁이 스크린샷의 대화 + 긴 글·큰 이모지·받은 젤리 이모티콘·대전 초대. 끝은 "젤리 이모티콘 → 글" (겹치던 곳)
+// 인혁이 스크린샷의 대화 + 긴 글·큰 이모지·받은 뿌요 이모티콘·대전 초대. 끝은 "뿌요 이모티콘 → 글" (겹치던 곳)
 const LINES = [
   { me: true, text: '👋 안녕!' }, { me: true, text: '😮 와!' }, { me: true, text: '👍 잘한다!' },
-  { text: '안녕' }, { sticker: 3 }, { text: '오늘 타워 몇 층까지 갔어? 나는 왕관 층 바로 앞에서 방해 젤리 때문에 졌어 ㅠㅠ 다음엔 같이 하자' },
+  { text: '안녕' }, { sticker: 3 }, { text: '오늘 타워 몇 층까지 갔어? 나는 왕관 층 바로 앞에서 방해 뿌요 때문에 졌어 ㅠㅠ 다음엔 같이 하자' },
   { me: true, text: '😂🔥' }, { me: true, sticker: 4 }, { text: '🎮 같이 하자! 대전 초대가 왔어', invite: 'HM94HE' },
   { me: true, text: '가아니에요' }, { me: true, text: '아빠 한판 해요' }, { me: true, text: '🙏 봐줘~' },
   { me: true, sticker: 6 }, { me: true, text: '아빠' },
@@ -80,7 +80,7 @@ try {
     await page.screenshot({ path: `${shots}/${label}-chat.png` });
     assert.equal(r.overflowing, true, `${label}: 대화가 채팅 칸을 넘쳐야 이 검사가 의미 있다`);
     assert.deepEqual(r.overlaps, [], `${label}: 채팅 줄이 겹친다`);
-    assert.ok(r.stickers.length === 3 && r.stickers.every(h => h >= 96), `${label}: 젤리 이모티콘 줄 높이 ${r.stickers}`);
+    assert.ok(r.stickers.length === 3 && r.stickers.every(h => h >= 96), `${label}: 뿌요 이모티콘 줄 높이 ${r.stickers}`);
     assert.equal(await lastVisible(), true, `${label}: 채팅을 열면 맨 아래 메시지가 다 보여야 한다`);
     // 채팅 칸이 넘쳐도 줄어드는 건 채팅 기록뿐: 빠른 말 줄·입력 줄·단추 줄은 납작해지지 않는다
     const squashed = () => page.evaluate(() => [...document.querySelector('.chat-card').children]
@@ -114,6 +114,6 @@ try {
     await ctx.close();
   }
   assert.deepEqual(errors, []);
-  console.log('PASS: 긴 친구 채팅(컴퓨터·휴대폰) — 젤리 이모티콘·글·큰 이모지·초대가 안 겹침, 이모티콘 96px, 열 때와 이모티콘 판을 열어도 맨 아래까지 보임, 받은 글은 보통 글씨 · 로그인 오류 글은 그대로 — 오류 없음');
+  console.log('PASS: 긴 친구 채팅(컴퓨터·휴대폰) — 뿌요 이모티콘·글·큰 이모지·초대가 안 겹침, 이모티콘 96px, 열 때와 이모티콘 판을 열어도 맨 아래까지 보임, 받은 글은 보통 글씨 · 로그인 오류 글은 그대로 — 오류 없음');
   console.log(`Screenshots: ${shots}`);
 } finally { await browser.close(); }

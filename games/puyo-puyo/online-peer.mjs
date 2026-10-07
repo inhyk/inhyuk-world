@@ -164,7 +164,7 @@ export function createPeerOnline(api) {
       case 'chat': {
         // 방 채팅: 빠른 말은 번호로 오고, 직접 쓴 말은 받을 때도 나쁜 말을 다시 가린다
         if (!chatIn()) break;
-        if (validSticker(m.st)) { api.roomChat?.({ name: peer?.name || '친구', sticker: m.st }); break; } // 젤리 이모티콘
+        if (validSticker(m.st)) { api.roomChat?.({ name: peer?.name || '친구', sticker: m.st }); break; } // 뿌요 이모티콘
         const text = Number.isInteger(m.q) && QUICK[m.q] ? QUICK[m.q] : cleanChat(m.text);
         if (text) api.roomChat?.({ name: peer?.name || '친구', text });
         break;
@@ -228,7 +228,7 @@ export function createPeerOnline(api) {
       else toast('친구를 기다리는 중… 친구도 “한 번 더!”를 누르면 시작해.');
     },
     setFirstTo(n) { firstTo = n; if (room.host) room.send({ t: 'first', n }); },
-    // 방 채팅 보내기: 빠른 말 번호(q), 젤리 이모티콘 번호(sticker) 또는 직접 쓴 말(text)
+    // 방 채팅 보내기: 빠른 말 번호(q), 뿌요 이모티콘 번호(sticker) 또는 직접 쓴 말(text)
     say({ q, text, sticker }) {
       if (!room.ready) return false;
       if (validSticker(sticker)) room.send({ t: 'chat', st: sticker });

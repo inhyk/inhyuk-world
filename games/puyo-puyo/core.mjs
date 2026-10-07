@@ -24,8 +24,8 @@ export const MARGIN_STEP = 16 * 60;    // 16초마다 방해뿌요가 더 잘 �
 
 // 방해뿌요 예고 아이콘. 인혁이 기획서 순서: 작은 → 큰 → 운석 → 별 → 달 → 왕관 (+ 비밀의 혜성)
 export const GARBAGE_ICONS = [
-  { id: 'small', value: 1, name: '작은 방해 젤리' },
-  { id: 'big', value: 6, name: '큰 방해 젤리' },
+  { id: 'small', value: 1, name: '작은 방해 뿌요' },
+  { id: 'big', value: 6, name: '큰 방해 뿌요' },
   { id: 'rock', value: 30, name: '운석' },
   { id: 'star', value: 180, name: '별' },
   { id: 'moon', value: 360, name: '달' },

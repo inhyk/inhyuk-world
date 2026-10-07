@@ -5,15 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#7a5cff">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2254%22 r=%2242%22 fill=%22%23ff4f64%22/%3E%3Ccircle cx=%2236%22 cy=%2250%22 r=%229%22 fill=%22white%22/%3E%3Ccircle cx=%2264%22 cy=%2250%22 r=%229%22 fill=%22white%22/%3E%3C/svg%3E">
-<title>젤리 타워 · JELLY TOWER</title>
+<title>뿌요뿌요 타워 · PUYO PUYO TOWER</title>
 </head>
 <body>
-<canvas id="stage" aria-label="젤리 타워 게임 화면"></canvas>
+<canvas id="stage" aria-label="뿌요뿌요 타워 게임 화면"></canvas>
 
 <!-- 게임 중 위쪽 버튼 -->
 <header id="hud" hidden>
   <button id="hud-pause" class="round" aria-label="일시정지">⏸</button>
   <b id="hud-title"></b>
+  <span id="hud-watchers" class="hud-watchers" hidden></span>
   <button id="hud-music" class="round" aria-label="음악 켜고 끄기">🎵</button>
   <button id="hud-sound" class="round" aria-label="효과음 켜고 끄기">🔊</button>
   <button id="hud-chat" class="round" aria-label="채팅" hidden>💬<i class="dot-badge" id="hud-chat-dot" hidden></i></button>
@@ -52,7 +53,7 @@
   <section id="scr-login" class="screen" hidden>
     <div class="card login">
       <div class="logo"><span class="blob r"></span><span class="blob g"></span><span class="blob b"></span><span class="blob y"></span>
-        <h1>젤리<small>타워</small></h1><p>JELLY TOWER</p></div>
+        <h1>뿌요뿌요<small>타워</small></h1><p>PUYO PUYO TOWER</p></div>
       <p id="login-accounts-title" class="fine center" hidden>이 기기에만 있는 계정 · 눌러서 들어가거나 온라인 계정으로 옮겨 줘</p>
       <div id="login-accounts" class="accounts"></div>
       <form id="login-form" class="stack" hidden>
@@ -113,7 +114,7 @@
     </div>
     <div class="title">
       <div class="logo small"><span class="blob r"></span><span class="blob g"></span><span class="blob b"></span><span class="blob y"></span>
-        <h1>젤리<small>타워</small></h1></div>
+        <h1>뿌요뿌요<small>타워</small></h1></div>
     </div>
     <div id="menu-event" class="event-banner" role="status"></div>
     <div class="menu-grid">
@@ -123,6 +124,7 @@
       <button class="menu-btn" data-go="local"><span class="ico">👥</span><b>2인 플레이</b><small>한 키보드로 둘이서</small></button>
       <button class="menu-btn" data-go="online"><span class="ico">🌐</span><b>온라인 대전</b><small>게임 찾기 · 친구와</small><i class="badge" id="online-badge" hidden></i></button>
       <button class="menu-btn friends" data-go="friends"><span class="ico">👫</span><b>친구</b><small>친구 맺고 채팅</small><i class="badge" id="friend-badge" hidden></i></button>
+      <button class="menu-btn ranking" data-go="ranking"><span class="ico">🏆</span><b>온라인 랭킹</b><small>트로피 · 레벨 · 온라인 승리</small></button>
       <button class="menu-btn" data-go="solo"><span class="ico">♾️</span><b>혼자 하기</b><small>점점 빨라지는 연습</small></button>
       <button class="menu-btn" data-go="missions"><span class="ico">🎯</span><b>챌린지</b><small>미션 깨고 보상 받기</small><i class="badge" id="mission-badge" hidden></i></button>
       <button class="menu-btn" data-go="shop"><span class="ico">🛍️</span><b>상점</b><small>스킨 · 터짐 효과</small></button>
@@ -134,7 +136,7 @@
 
   <!-- 타워 -->
   <section id="scr-tower" class="screen" hidden>
-    <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🗼 젤리 타워</h2><span class="coins">🪙 <b class="coin-count">0</b></span></div>
+    <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🗼 뿌요뿌요 타워</h2><span class="coins">🪙 <b class="coin-count">0</b></span></div>
     <p class="lead">한 번 이길 때마다 한 층씩! 꼭대기 <b>왕관 층</b>까지 올라가면 엔딩이 기다려. 층이 높을수록 AI가 세져.</p>
     <ol id="tower-list" class="tower-list"></ol>
     <div class="row center"><button id="tower-ending" class="ghost" hidden>🎬 왕관 엔딩 다시 보기</button><button id="tower-comet-ending" class="primary" hidden>🌠 혜성 엔딩 다시 보기</button></div>
@@ -185,6 +187,7 @@
       <div id="online-searching" class="searching" hidden><span class="pulse-dot"></span><b>상대를 찾는 중…</b><button id="online-cancel" class="ghost">그만 찾기</button></div>
       <div id="online-inviting" class="searching" hidden><span class="pulse-dot"></span><b id="online-inviting-text"></b><button id="online-invite-cancel" class="ghost">초대 취소</button></div>
       <p class="fine">게임 찾기를 누르면 먼저 기다리던 사람과 바로 붙어. 아는 친구와 하려면 👫 친구에서 초대해 줘.</p>
+      <div class="row center online-more"><button id="go-watch" class="ghost">👀 관전하기</button><button id="go-ranking" class="ghost">🏆 온라인 랭킹</button></div>
     </div>
     <div id="online-lobby" class="lobby" hidden>
       <div class="vsline"><span id="lobby-me"></span><b>VS</b><span id="lobby-you"></span></div>
@@ -194,6 +197,34 @@
       <button id="lobby-chat" class="ghost lobby-chat">💬 채팅<i class="dot-badge" id="lobby-chat-dot" hidden></i></button>
       <div class="row center"><button id="online-leave" class="ghost" hidden>방 나가기</button></div>
     </div>
+  </section>
+
+  <!-- 관전 (인혁이 기획서 4번): 지금 하는 온라인 대전을 골라서 보기만 한다 -->
+  <section id="scr-watch" class="screen" hidden>
+    <div class="head"><button class="ghost back" data-go="online">← 온라인</button><h2>👀 관전하기</h2><button id="watch-refresh" class="ghost">🔄 새로 보기</button></div>
+    <p class="lead">지금 하고 있는 온라인 대전이야. 골라서 보기만 할 수 있어 (조작이랑 채팅은 못 해).</p>
+    <div id="watch-need-login" class="card stack" hidden>
+      <p class="lead">관전은 온라인 계정으로 로그인해야 할 수 있어.</p>
+      <button id="watch-login" class="ghost">🔑 로그인 · 온라인 계정</button>
+    </div>
+    <div id="watch-list" class="watch-list"></div>
+  </section>
+
+  <!-- 온라인 랭킹 (인혁이 기획서 5번 그림: 맨 위 "닉네임 레벨" 칸, 아래로 줄) -->
+  <section id="scr-ranking" class="screen" hidden>
+    <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🏆 온라인 랭킹</h2></div>
+    <div class="seg rank-tabs" id="rank-tabs"><button data-by="trophies" class="on">🏆 트로피</button><button data-by="level">⭐ 레벨</button><button data-by="wins">🌐 온라인 승리</button></div>
+    <p class="fine" id="rank-tip"></p>
+    <div id="rank-need-login" class="card stack" hidden>
+      <p class="lead">랭킹에는 온라인 계정만 나와. 로그인하면 내 트로피, 레벨, 온라인 승리가 올라가!</p>
+      <button id="rank-login" class="ghost">🔑 로그인 · 온라인 계정</button>
+    </div>
+    <div id="rank-board" class="rank-board">
+      <div class="rank-head"><span class="rk">순위</span><span class="nm">닉네임</span><span class="lv">레벨</span><span class="val" id="rank-val-head">트로피</span></div>
+      <div id="rank-list"></div>
+    </div>
+    <div id="rank-me" class="rank-me"></div>
+    <p class="fine rank-reward">🎖️ 세 랭킹 중 하나라도 5등 안에 들면 「챔피언 뿌요」 스킨을 받아. 한 번 받으면 순위가 내려가도 계속 가져!</p>
   </section>
 
   <!-- 친구: 온라인 계정은 닉네임 친구(서버), 이 기기 계정은 친구 코드 친구(직접 연결 + 친구 우체통) -->
@@ -254,7 +285,7 @@
     <div id="dm-quick" class="chat-quick"></div>
     <form id="dm-form" class="row chat-form"><button type="button" id="dm-emoji-toggle" class="ghost emoji-toggle" aria-label="이모티콘 고르기" aria-expanded="false" aria-controls="dm-emoji">😊</button><input id="dm-input" maxlength="300" placeholder="하고 싶은 말" autocomplete="off"><button class="primary" type="submit">보내기</button></form>
     <div id="dm-emoji" class="chat-emoji" hidden>
-      <small>젤리 이모티콘 (누르면 바로 보내져)</small><div id="dm-stickers" class="chat-stickers"></div>
+      <small>뿌요 이모티콘 (누르면 바로 보내져)</small><div id="dm-stickers" class="chat-stickers"></div>
       <small>이모지 (누르면 글에 들어가)</small><div id="dm-emojis" class="chat-emojis"></div>
     </div>
     <div class="row center"><button id="dm-block" class="ghost danger">🚫 차단</button><button id="dm-report" class="ghost danger">🚨 신고</button></div>
@@ -334,7 +365,7 @@
   <!-- 상점 -->
   <section id="scr-shop" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🛍️ 상점</h2><span class="coins">🪙 <b class="coin-count">0</b></span></div>
-    <div class="seg tabs" id="shop-tabs"><button data-v="skin" class="on">🟢 젤리 스킨</button><button data-v="effect">✨ 터질 때 효과</button></div>
+    <div class="seg tabs" id="shop-tabs"><button data-v="skin" class="on">🟢 뿌요 스킨</button><button data-v="effect">✨ 터질 때 효과</button></div>
     <p id="shop-inventory" class="event-banner"></p>
     <p class="fine">🎟️ 교환권은 판매 상품 하나와 교환할 수 있어. 보스 전용 스킨·효과는 해당 보스를 이기면 받아!</p>
     <div id="shop-grid" class="shop-grid"></div>
@@ -344,7 +375,7 @@
   <section id="scr-profile" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>👤 내 정보</h2></div>
     <div class="profile-top"><canvas id="profile-avatar" width="120" height="120"></canvas>
-      <div><h3 id="profile-name"></h3><p>Lv.<b id="profile-level"></b> · 🪙 <b class="coin-count"></b></p><div class="xpbar big"><i id="profile-xp"></i></div><small id="profile-xp-text"></small></div></div>
+      <div><h3 id="profile-name"></h3><p>Lv.<b id="profile-level"></b> · 🪙 <b class="coin-count"></b> · 🏆 <b id="profile-trophies">0</b></p><div class="xpbar big"><i id="profile-xp"></i></div><small id="profile-xp-text"></small></div></div>
     <div id="profile-stats" class="stats"></div>
     <h3>설정</h3>
     <div class="toggles">
@@ -373,21 +404,21 @@
   <!-- 하는 방법 -->
   <section id="scr-help" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>❓ 하는 방법</h2></div>
-    <button class="primary big help-practice" data-go="practice">🐣 꼬마 젤리랑 직접 해 보면서 배우기</button>
+    <button class="primary big help-practice" data-go="practice">🐣 꼬마 뿌요랑 직접 해 보면서 배우기</button>
     <div class="help">
-      <div class="tip"><b>1. 같은 색 4개를 붙이면 퐁!</b><p>떨어지는 젤리 두 개를 돌리고 옮겨서 같은 색을 위아래·옆으로 4개 이상 이어 붙이면 터져. 2인용 쫀득 연구소에서는 6개 이상이 필요해!</p></div>
-      <div class="tip"><b>2. 연쇄를 만들자</b><p>터진 자리로 위의 젤리가 떨어져서 또 4개가 이어지면 <b>연쇄</b>! 연쇄가 길수록 점수가 쑥쑥 커져.</p></div>
-      <div class="tip"><b>3. 방해 젤리 보내기 · 상쇄</b><p>점수 70점마다 상대에게 방해 젤리가 1개씩 날아가. 나한테 오는 방해 젤리는 내가 연쇄를 터뜨리면 <b>상쇄</b>해서 막을 수 있어.</p><div id="help-icons" class="icons"></div></div>
-      <div class="tip"><b>4. X에 쌓이면 끝</b><p>왼쪽에서 세 번째 줄 맨 위 <b style="color:#ff6f86">X</b> 칸까지 젤리가 쌓이면 져. 가운데는 비워 두자!</p></div>
-      <div class="tip"><b>5. 전소</b><p>필드를 모두 지우면 <b>전소</b>! 다음 연쇄에 방해 젤리 30개가 더 날아가.</p></div>
-      <div class="tip"><b>6. 96초가 지나면</b><p><b>마진 타임</b>이 시작돼서 같은 연쇄로도 방해 젤리가 점점 더 많이 나가.</p></div>
+      <div class="tip"><b>1. 같은 색 4개를 붙이면 퐁!</b><p>떨어지는 뿌요 두 개를 돌리고 옮겨서 같은 색을 위아래·옆으로 4개 이상 이어 붙이면 터져. 2인용 쫀득 연구소에서는 6개 이상이 필요해!</p></div>
+      <div class="tip"><b>2. 연쇄를 만들자</b><p>터진 자리로 위의 뿌요가 떨어져서 또 4개가 이어지면 <b>연쇄</b>! 연쇄가 길수록 점수가 쑥쑥 커져.</p></div>
+      <div class="tip"><b>3. 방해 뿌요 보내기 · 상쇄</b><p>점수 70점마다 상대에게 방해 뿌요가 1개씩 날아가. 나한테 오는 방해 뿌요는 내가 연쇄를 터뜨리면 <b>상쇄</b>해서 막을 수 있어.</p><div id="help-icons" class="icons"></div></div>
+      <div class="tip"><b>4. X에 쌓이면 끝</b><p>왼쪽에서 세 번째 줄 맨 위 <b style="color:#ff6f86">X</b> 칸까지 뿌요가 쌓이면 져. 가운데는 비워 두자!</p></div>
+      <div class="tip"><b>5. 전소</b><p>필드를 모두 지우면 <b>전소</b>! 다음 연쇄에 방해 뿌요 30개가 더 날아가.</p></div>
+      <div class="tip"><b>6. 96초가 지나면</b><p><b>마진 타임</b>이 시작돼서 같은 연쇄로도 방해 뿌요가 점점 더 많이 나가.</p></div>
       <div class="tip keys"><b>키보드</b><p><kbd>←</kbd><kbd>→</kbd> 옮기기 · <kbd>↓</kbd> 빨리 내리기 · <kbd>↑</kbd>/<kbd>X</kbd> 오른쪽 돌리기 · <kbd>Z</kbd> 왼쪽 돌리기 · <kbd>Space</kbd> 바로 떨어뜨리기 · <kbd>Esc</kbd> 일시정지</p><p>좁은 틈에서 돌리기를 두 번 누르면 위아래가 확 뒤집혀 (퀵턴).</p></div>
       <div class="tip keys"><b>휴대폰</b><p>아래 버튼을 쓰거나, 필드를 좌우로 쓸어서 옮기고, 톡 치면 돌리고, 아래로 휙 내리면 바로 떨어져.</p></div>
     </div>
   </section>
 </main>
 
-<!-- 연습하기: 꼬마 젤리 말풍선 (필드 위쪽에 자리를 비워 두고 띄운다) -->
+<!-- 연습하기: 꼬마 뿌요 말풍선 (필드 위쪽에 자리를 비워 두고 띄운다) -->
 <div id="coach" role="status" aria-live="polite" hidden>
   <canvas id="coach-face" width="120" height="120" aria-hidden="true"></canvas>
   <div class="coach-body"><small id="coach-step"></small><b id="coach-title"></b><p id="coach-text"></p></div>
@@ -402,7 +433,7 @@
     <div id="chat-quick" class="chat-quick"></div>
     <form id="chat-form" class="chat-form"><button type="button" id="chat-emoji-toggle" class="ghost emoji-toggle" aria-label="이모티콘 고르기" aria-expanded="false" aria-controls="chat-emoji">😊</button><input id="chat-input" maxlength="120" placeholder="메시지 (60글자까지)" autocomplete="off"><button class="primary" type="submit">보내기</button></form>
     <div id="chat-emoji" class="chat-emoji" hidden>
-      <small>젤리 이모티콘 (누르면 바로 보내져)</small><div id="chat-stickers" class="chat-stickers"></div>
+      <small>뿌요 이모티콘 (누르면 바로 보내져)</small><div id="chat-stickers" class="chat-stickers"></div>
       <small>이모지 (누르면 글에 들어가)</small><div id="chat-emojis" class="chat-emojis"></div>
     </div>
     <p id="chat-note" class="fine chat-note" role="status"></p>
@@ -439,6 +470,7 @@
       <div class="xpline"><span>경험치 <b id="result-xp">+0</b></span><div class="xpbar big"><i id="result-xpbar"></i></div><small id="result-level"></small></div>
       <div class="coinline">🪙 <b id="result-coins">+0</b></div>
     </div>
+    <div id="result-trophy" class="trophy-line" hidden></div>
     <div id="result-missions" class="done-list"></div>
     <div class="row center" id="result-buttons"></div>
     <div class="row center result-social" id="result-social" hidden><button id="result-friend" class="ghost">🤝 친구 요청</button><button id="result-block" class="ghost danger">🚫 차단</button><button id="result-report" class="ghost danger">🚨 신고</button></div>

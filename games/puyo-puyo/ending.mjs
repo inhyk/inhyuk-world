@@ -50,7 +50,7 @@ export function playEnding(canvas, { name = '나', kind = 'crown', sound, onDone
   let raf = 0, start = performance.now(), stopped = false, lastBoom = 0, lastSpark = 0;
   const bosses = FLOORS.slice(0, 6);
   const credits = [
-    ['젤리 타워', 44, '#ffe45c'],
+    ['뿌요뿌요 타워', 44, '#ffe45c'],
     ['', 20],
     ['기획 · 서인혁', 30, '#fff'],
     ['(손으로 쓴 기획서 12가지를 전부 넣었어!)', 18, '#d9ccff'],
@@ -60,7 +60,7 @@ export function playEnding(canvas, { name = '나', kind = 'crown', sound, onDone
     ['함께한 층 주인들', 30, '#ffb3d9'],
     ...bosses.map(f => [`${f.floor}층 ${f.name} · ${f.boss}`, 22, '#fff']),
     ['', 20],
-    ['방해 젤리는 작은 → 큰 → 운석 → 별 → 달 → 왕관', 20, '#9ff2ff'],
+    ['방해 뿌요는 작은 → 큰 → 운석 → 별 → 달 → 왕관', 20, '#9ff2ff'],
     ['', 20],
     [`그리고 타워를 정복한 ${name}!`, 30, '#ffe45c'],
     ['', 30],
@@ -92,7 +92,7 @@ export function playEnding(canvas, { name = '나', kind = 'crown', sound, onDone
       drawCharacter(ctx, 'hero', heroX, y + s * 0.05, s * 0.3, k >= 1 ? 'happy' : 'idle', t, { crown: k >= 1 });
       if (k < 1) drawGarbageIcon(ctx, 'crown', cx, cy, s * 0.13, t);
       if (k >= 1 && t - lastSpark > 0.15) { lastSpark = t; fx.pop('star', heroX, y - s * 0.12, 4, s * 0.12, 3); }
-      text(ctx, '젤리 대왕: 훌륭하다…! 이 왕관은 이제 너의 것이다!', w / 2, h * 0.14, s * 0.045, '#fff', fade(t, 0.3, 5.8));
+      text(ctx, '뿌요 대왕: 훌륭하다…! 이 왕관은 이제 너의 것이다!', w / 2, h * 0.14, s * 0.045, '#fff', fade(t, 0.3, 5.8));
     } else if (t < 13) {
       // 2. 탑 꼭대기의 새벽, 불꽃놀이
       const k = (t - 6) / 7;
@@ -106,7 +106,7 @@ export function playEnding(canvas, { name = '나', kind = 'crown', sound, onDone
         fx.pop('firework', w * (0.15 + Math.random() * 0.7), h * (0.12 + Math.random() * 0.3), 1 + ((Math.random() * 5) | 0), s * 0.2, 6);
         sound?.sfx('burst');
       }
-      text(ctx, `${name}, 젤리 타워 정복!`, w / 2, h * 0.1, s * 0.07, '#ffe45c', fade(t, 6.4, 12.8));
+      text(ctx, `${name}, 뿌요뿌요 타워 정복!`, w / 2, h * 0.1, s * 0.07, '#ffe45c', fade(t, 6.4, 12.8));
     } else if (t < 20) {
       // 3. 층 주인들이 모두 모여 축하
       sky(ctx, w, h, '#ffb3d9', '#9fe3ff');

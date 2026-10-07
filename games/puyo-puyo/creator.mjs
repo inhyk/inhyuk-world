@@ -37,7 +37,8 @@ export function createCreatorSession() {
         return '🎯 모든 챌린지와 오늘의 미션 완료! 챌린지에서 보상을 받아 줘.';
       }
       if (action === 'skins') {
-        for (const item of SKINS) grant(progress, 'skin', item.id);
+        // 온라인 랭킹 5등 보상(챔피언)은 진짜 5등 안에 들어야만 받는다
+        for (const item of SKINS) if (item.reward !== 'ranking') grant(progress, 'skin', item.id);
         for (const item of EFFECTS) grant(progress, 'effect', item.id);
         return '🎨 모든 스킨과 터짐 효과 해제! 상점에서 장착할 수 있어.';
       }

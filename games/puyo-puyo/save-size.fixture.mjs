@@ -1,4 +1,4 @@
-// 가장 큰 젤리 타워 기록 (클라우드 저장 크기 확인용). 실제로 될 수 있는 값을 모두 끝까지 채운다.
+// 가장 큰 뿌요뿌요 타워 기록 (클라우드 저장 크기 확인용). 실제로 될 수 있는 값을 모두 끝까지 채운다.
 import { newProgress, sanitize } from './profile.mjs';
 import { SKINS, EFFECTS } from './shop.mjs';
 import { MISSIONS, dailyFor } from './missions.mjs';

@@ -163,7 +163,9 @@ test('제작자 기능은 타워·챌린지·스킨에 반영, 반복 사용해�
   assert.ok([...view.list, ...view.daily].every(m => m.done));
   assert.ok(claim(p, 'tower-chain-5')); session.apply(p, 'missions'); assert.equal(claim(p, 'tower-chain-5'), null);
   session.apply(p, 'skins'); session.apply(p, 'skins');
-  assert.deepEqual(p.owned.skin.slice().sort(), SKINS.map(s => s.id).sort());
+  // 온라인 랭킹 5등 스킨은 제작자 모드로도 받지 못한다
+  assert.deepEqual(p.owned.skin.slice().sort(), SKINS.filter(s => s.reward !== 'ranking').map(s => s.id).sort());
+  assert.equal(p.owned.skin.includes('champion'), false);
   assert.deepEqual(p.owned.effect.slice().sort(), EFFECTS.map(s => s.id).sort());
   assert.equal(p.equip.skin, 'classic'); assert.equal(session.apply(p, 'invalid'), null);
 });

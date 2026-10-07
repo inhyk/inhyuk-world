@@ -62,7 +62,7 @@ const SAVES = '**/saves/jelly-tower';
 try {
   // ---------- 1) 옮기기: 다른 기기가 계속 먼저 저장 ----------
   const a = await open('A');
-  const nick = `젤리E${tag}`;
+  const nick = `뿌요E${tag}`;
   await a.evaluate(n => window.__puyo.localSignup(n, '1111'), nick);
   await a.evaluate(() => { const p = window.__puyo.P(); p.level = 8; p.coins = 888; window.__puyo.save(); window.__puyo.show('profile'); });
   await a.click('#logout');
@@ -100,7 +100,7 @@ try {
 
   // ---------- 2) 기기 저장소가 꽉 참 ----------
   const q = await open('Q');
-  await q.evaluate(() => window.__puyo.localSignup(`젤리Q${Math.random().toString(36).slice(2, 6)}`, '2222'));
+  await q.evaluate(() => window.__puyo.localSignup(`뿌요Q${Math.random().toString(36).slice(2, 6)}`, '2222'));
   await q.evaluate(() => {
     const real = Storage.prototype.setItem;
     Storage.prototype.setItem = function (k, v) { if (k === 'puyo-tower-v1') { const e = new Error('full'); e.name = 'QuotaExceededError'; throw e; } return real.call(this, k, v); };
@@ -112,7 +112,7 @@ try {
   // ---------- 3) 서버가 너무 크다고 함 (413) ----------
   const c = await open('C');
   await c.click('#go-signup');
-  await c.fill('#signup-name', `젤리C${tag}`); await c.fill('#signup-pass', 'cccc');
+  await c.fill('#signup-name', `뿌요C${tag}`); await c.fill('#signup-pass', 'cccc');
   await c.click('#signup-form button[type=submit]');
   await screenIs(c, 'menu');
   await c.waitForFunction(() => window.__puyo.cloud?.state === 'synced', null, { timeout: 15000 });

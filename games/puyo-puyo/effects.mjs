@@ -1,4 +1,4 @@
-// 터질 때 나오는 효과(상점에서 사는 13가지)와 "N연쇄!" 글자, 화면 흔들림.
+// 터질 때 나오는 효과(상점의 터짐 효과들)와 "N연쇄!" 글자, 화면 흔들림.
 import { PALETTE } from './skins.mjs';
 
 const TAU = Math.PI * 2;
@@ -109,6 +109,17 @@ export class Effects {
         this.rings.push({ x, y, r: s * 0.9, grow: -s * 0.03, life: 26, t: 0, color: '#2a1540', width: s * 0.1, delay: 0 });
         this.rings.push({ x, y, r: s * 0.1, grow: s * 0.09 * boost, life: 20, t: 0, color: '#d9b8ff', width: s * 0.08, delay: 26 });
         break;
+      case 'meteor': // 30레벨: 별똥별이 비스듬히 쏟아지고 닿은 자리에 별이 튄다
+        for (let i = 0; i < 5; i++) {
+          const v = rand(3.2, 4.6) * s / 40;
+          this.add({ kind: 'comet', x: x + rand(-1.5, -0.3) * s, y: y - rand(1.1, 2.1) * s, vx: v * 0.62, vy: v, drag: 1, size: rand(0.08, 0.14) * s, color: pick(['#fff1a5', '#ffb36b', '#ffffff', light]), life: rand(20, 30), trail: [] });
+        }
+        for (let i = 0; i < 4; i++) { const a = rand(0, TAU); this.add({ kind: 'star', x, y, vx: Math.cos(a) * 2 * s / 40, vy: Math.sin(a) * 2 * s / 40, size: rand(0.1, 0.16) * s, color: i % 2 ? '#ffe45c' : c, vr: 0.15, life: 34 }); }
+        break;
+      case 'storm': // 50레벨: 무지개 고리가 퍼지고 무지개 알갱이가 회오리치며 밖으로 나간다
+        this.rings.push({ x, y, r: s * 0.15, grow: s * 0.07 * boost, life: 30, t: 0, rainbow: true, width: s * 0.1 });
+        for (let i = 0; i < 12; i++) this.add({ kind: 'orbit', out: true, cx: x, cy: y, x, y, ang: i * TAU / 12, dist: s * (0.22 + (i % 3) * 0.12), size: s * 0.085, color: RAINBOW[i % RAINBOW.length], life: 38 });
+        break;
       case 'comet':
         for (let i = 0; i < 3; i++) { const a = rand(-2.6, -2.1), v = rand(3, 5) * s / 40; this.add({ kind: 'comet', x: x + rand(-0.3, 0.3) * s, y: y + rand(-0.3, 0.3) * s, vx: -Math.cos(a) * v, vy: Math.sin(a) * v, drag: 0.985, size: rand(0.1, 0.16) * s, color: pick(['#bff4ff', '#7ad7ff', '#ffffff']), life: 38, trail: [] }); }
         break;
@@ -142,7 +153,7 @@ export class Effects {
       if (p.kind === 'orbit') {
         const k = p.t / p.life;
         p.ang += 0.25;
-        p.dist *= 0.9;
+        p.dist *= p.out ? 1.06 : 0.9; // out: 밖으로 퍼지는 회오리 (무지개 폭풍), 아니면 안으로 빨려 든다
         p.x = p.cx + Math.cos(p.ang) * p.dist;
         p.y = p.cy + Math.sin(p.ang) * p.dist;
         p.alpha = 1 - k * 0.3;

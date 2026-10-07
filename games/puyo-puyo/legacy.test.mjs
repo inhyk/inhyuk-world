@@ -66,7 +66,7 @@ test('편지 하나 넣기: 친구가 아닌 사람의 말, 차단한 사람, �
   assert.equal(hasLegacy(emptySocial()), false);
 });
 
-test('1:1 대화의 젤리 이모티콘은 [[st:번호]] 글로 오가고, 정해진 번호만 그림이 된다', () => {
+test('1:1 대화의 뿌요 이모티콘은 [[st:번호]] 글로 오가고, 정해진 번호만 그림이 된다', () => {
   assert.equal(stickerBody(3), '[[st:3]]');
   assert.equal(bodySticker('[[st:3]]'), 3);
   assert.equal(bodySticker(' [[st:11]] '), 11);

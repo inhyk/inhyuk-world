@@ -457,6 +457,269 @@ for (const kind of ['bunny', 'bear', 'robot', 'donut', 'flower', 'dragon', 'astr
   };
 }
 
+// 업그레이드 3 (인혁이 기획서 2, 6번): 코인으로 사는 새 스킨 6가지, 고난이도 레벨 스킨 6가지(30·40·50·60·70·99레벨),
+// 온라인 랭킹 5등 챔피언. 몸은 다섯 기본 색을 그대로 써서 게임 중 색 구별이 쉽다 (꾸밈은 그 위나 둘레에 그린다).
+const RAINBOW6 = ['#ff4f64', '#ff9f2e', '#ffd84a', '#3fd972', '#3d8bff', '#9b5cff'];
+function beak(ctx, r, y, w = 0.14, h = 0.2) {
+  ctx.fillStyle = '#ffa52e'; ctx.strokeStyle = '#b45f00'; ctx.lineWidth = Math.max(0.8, r * 0.04);
+  ctx.beginPath(); ctx.moveTo(-r * w, r * y); ctx.lineTo(r * w, r * y); ctx.lineTo(0, r * (y + h)); ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+function cheeks(ctx, r, y = 0.18, spread = 0.53) {
+  ctx.fillStyle = 'rgba(255,110,150,.48)';
+  for (const s of [-1, 1]) { ellipse(ctx, s * r * spread, r * y, r * 0.11, r * 0.07); ctx.fill(); }
+}
+function smile(ctx, r, color, y = 0.2, w = 0.15) {
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, r * 0.07); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(0, r * y, r * w, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+}
+const MORE_SKINS = {
+  // ---- 코인으로 사는 스킨 ----
+  chick: {
+    body(ctx, pal, r) {
+      ctx.fillStyle = pal.light; ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.06);
+      for (const [x, y, a] of [[-0.2, -0.92, -0.5], [0, -1.02, 0], [0.2, -0.92, 0.5]]) { ellipse(ctx, x * r, y * r, r * 0.12, r * 0.26, a); ctx.fill(); ctx.stroke(); }
+      ctx.fillStyle = pal.dark;
+      for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.86, r * 0.22, r * 0.17, r * 0.3, s * 0.45); ctx.fill(); }
+      roundBody(ctx, pal, r * 0.9);
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.85, 0.6);
+      eyes(ctx, r, v, { size: 0.7, spread: 0.28, y: -0.1 });
+      beak(ctx, r, 0.1);
+      cheeks(ctx, r);
+    },
+  },
+  penguin: {
+    body(ctx, pal, r) {
+      for (const s of [-1, 1]) {
+        ctx.fillStyle = pal.dark; ellipse(ctx, s * r * 0.9, r * 0.12, r * 0.16, r * 0.38, s * 0.35); ctx.fill();
+        ctx.fillStyle = '#ffa52e'; ellipse(ctx, s * r * 0.34, r * 0.92, r * 0.2, r * 0.1); ctx.fill();
+      }
+      roundBody(ctx, pal, r * 0.92);
+      ctx.fillStyle = 'rgba(255,255,255,.92)'; ellipse(ctx, 0, r * 0.3, r * 0.52, r * 0.54); ctx.fill();
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.85, 0.55);
+      eyes(ctx, r, v, { size: 0.68, spread: 0.26, y: -0.22 });
+      ctx.fillStyle = '#ffa52e'; ctx.strokeStyle = '#b45f00'; ctx.lineWidth = Math.max(0.8, r * 0.04);
+      ctx.beginPath(); ctx.moveTo(-r * 0.15, r * 0.02); ctx.lineTo(0, -r * 0.06); ctx.lineTo(r * 0.15, r * 0.02); ctx.lineTo(0, r * 0.14); ctx.closePath(); ctx.fill(); ctx.stroke();
+    },
+  },
+  cookie: {
+    body(ctx, pal, r) {
+      ctx.beginPath();
+      for (let i = 0; i <= 48; i++) { const a = i * TAU / 48, rr = r * (0.94 + 0.045 * Math.sin(a * 9)), x = Math.cos(a) * rr, y = Math.sin(a) * rr; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+      ctx.closePath();
+      const g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r * 1.05);
+      g.addColorStop(0, pal.light); g.addColorStop(0.5, pal.base); g.addColorStop(1, pal.dark);
+      ctx.fillStyle = g; ctx.fill();
+      ctx.lineWidth = Math.max(1, r * 0.07); ctx.strokeStyle = pal.deep; ctx.stroke();
+      ctx.fillStyle = '#5a3320';
+      for (const [x, y, s] of [[-0.55, -0.42, 0.11], [0.5, -0.5, 0.09], [0.64, 0.2, 0.1], [-0.62, 0.34, 0.09], [0.1, 0.7, 0.1], [-0.08, -0.72, 0.08]]) { ellipse(ctx, x * r, y * r, r * s, r * s * 0.85, x); ctx.fill(); }
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.72, spread: 0.27, y: -0.05 });
+      smile(ctx, r, pal.deep);
+    },
+  },
+  ninja: {
+    body(ctx, pal, r) {
+      // 뒤로 날리는 머리띠 끈 (어두운 필드에서도 보이게 몸 색으로)
+      ctx.fillStyle = pal.dark; ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.05);
+      for (const [dy, a] of [[-0.52, -0.38], [-0.34, 0.08]]) {
+        ctx.save(); ctx.translate(r * 0.84, r * dy); ctx.rotate(a);
+        ctx.beginPath(); ctx.moveTo(0, -r * 0.08); ctx.lineTo(r * 0.5, -r * 0.16); ctx.lineTo(r * 0.45, r * 0.12); ctx.lineTo(0, r * 0.08); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+      roundBody(ctx, pal, r);
+      ctx.save(); ellipse(ctx, 0, 0, r, r * 0.97); ctx.clip();
+      ctx.fillStyle = '#2a1640'; ctx.fillRect(-r, -r * 0.64, r * 2, r * 0.34);
+      ctx.fillStyle = '#d8dfee'; ctx.fillRect(-r * 0.22, -r * 0.6, r * 0.44, r * 0.26);
+      ctx.restore();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.78, y: 0.04 });
+      ctx.strokeStyle = '#1b1330'; ctx.lineWidth = Math.max(1, r * 0.09); ctx.lineCap = 'round';
+      for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * r * 0.52, -r * 0.27); ctx.lineTo(s * r * 0.16, -r * 0.15); ctx.stroke(); }
+    },
+  },
+  pumpkin: {
+    body(ctx, pal, r) {
+      ctx.fillStyle = '#5f8f2e'; ctx.strokeStyle = '#34531a'; ctx.lineWidth = Math.max(1, r * 0.06);
+      ctx.beginPath(); ctx.moveTo(-r * 0.1, -r * 0.8); ctx.quadraticCurveTo(-r * 0.05, -r * 1.2, r * 0.22, -r * 1.22); ctx.lineTo(r * 0.26, -r * 1.02); ctx.quadraticCurveTo(r * 0.12, -r * 1.0, r * 0.12, -r * 0.8); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.lineWidth = Math.max(1, r * 0.07); ctx.strokeStyle = pal.deep;
+      for (const [x, w, mid] of [[-0.48, 0.54, pal.dark], [0.48, 0.54, pal.dark], [0, 0.6, pal.base]]) {
+        const g = ctx.createLinearGradient(0, -r, 0, r); g.addColorStop(0, pal.light); g.addColorStop(0.45, mid); g.addColorStop(1, pal.dark);
+        ctx.fillStyle = g; ellipse(ctx, x * r, r * 0.03, r * w, r * 0.9); ctx.fill(); ctx.stroke();
+      }
+    },
+    face(ctx, pal, r, v) {
+      ctx.fillStyle = '#3a1c05';
+      if (v === 1) { ctx.fillRect(-r * 0.46, -r * 0.12, r * 0.28, r * 0.08); ctx.fillRect(r * 0.18, -r * 0.12, r * 0.28, r * 0.08); }
+      else for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * r * 0.32, -r * 0.3); ctx.lineTo(s * r * 0.5, r * 0.02); ctx.lineTo(s * r * 0.14, r * 0.02); ctx.closePath(); ctx.fill(); }
+      ctx.beginPath(); ctx.moveTo(-r * 0.42, r * 0.28);
+      for (let i = 1; i <= 5; i++) ctx.lineTo(-r * 0.42 + i * r * 0.14, r * (i % 2 ? 0.46 : 0.3));
+      ctx.lineTo(r * 0.42, r * 0.28); ctx.closePath(); ctx.fill();
+    },
+  },
+  octopus: {
+    body(ctx, pal, r) {
+      ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.06);
+      for (const x of [-0.66, -0.22, 0.22, 0.66]) { ctx.fillStyle = pal.base; ellipse(ctx, x * r, r * 0.72, r * 0.2, r * 0.3, x * 0.5); ctx.fill(); ctx.stroke(); }
+      ctx.save(); ctx.translate(0, -r * 0.12); roundBody(ctx, pal, r * 0.9); ctx.restore();
+      ctx.fillStyle = pal.light;
+      for (const x of [-0.66, -0.22, 0.22, 0.66]) { ellipse(ctx, x * r, r * 0.86, r * 0.06, r * 0.05); ctx.fill(); }
+    },
+    face(ctx, pal, r, v) {
+      ctx.translate(0, -r * 0.12);
+      shine(ctx, r * 0.85, 0.6);
+      eyes(ctx, r, v, { size: 0.72, spread: 0.28, y: -0.04 });
+      ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.07);
+      ellipse(ctx, 0, r * 0.3, r * 0.08, r * 0.07); ctx.stroke();
+      cheeks(ctx, r, 0.2, 0.56);
+    },
+  },
+  // ---- 고난이도 레벨 스킨 (교환권으로 못 받는다) ----
+  knight: { // 30레벨
+    body(ctx, pal, r) {
+      ctx.fillStyle = pal.base; ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.06);
+      ctx.beginPath(); ctx.moveTo(-r * 0.08, -r * 0.9); ctx.quadraticCurveTo(-r * 0.46, -r * 1.34, r * 0.3, -r * 1.24); ctx.quadraticCurveTo(r * 0.05, -r * 1.12, r * 0.12, -r * 0.9); ctx.closePath(); ctx.fill(); ctx.stroke();
+      roundBody(ctx, pal, r);
+      ctx.save(); ellipse(ctx, 0, 0, r, r * 0.97); ctx.clip();
+      const g = ctx.createLinearGradient(0, -r, 0, -r * 0.2); g.addColorStop(0, '#f6f9ff'); g.addColorStop(1, '#8f9bb5');
+      ctx.fillStyle = g; ctx.fillRect(-r, -r, r * 2, r * 0.72);
+      ctx.fillStyle = '#5d6880'; ctx.fillRect(-r, -r * 0.33, r * 2, r * 0.07); ctx.fillRect(-r * 0.05, -r, r * 0.1, r * 0.7);
+      ctx.restore();
+      ctx.lineWidth = Math.max(1, r * 0.07); ctx.strokeStyle = pal.deep; ellipse(ctx, 0, 0, r, r * 0.97); ctx.stroke();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.78, y: 0.1 });
+      ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.07); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-r * 0.14, r * 0.54); ctx.lineTo(r * 0.14, r * 0.54); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.75)'; ellipse(ctx, -r * 0.42, -r * 0.68, r * 0.2, r * 0.08, -0.5); ctx.fill();
+    },
+  },
+  wizard: { // 40레벨
+    body(ctx, pal, r) {
+      ctx.save(); ctx.translate(0, r * 0.1); roundBody(ctx, pal, r * 0.9); ctx.restore();
+      ctx.fillStyle = '#3a2a86'; ctx.strokeStyle = '#1c1250'; ctx.lineWidth = Math.max(1, r * 0.06);
+      ctx.beginPath(); ctx.moveTo(-r * 0.62, -r * 0.5); ctx.quadraticCurveTo(-r * 0.1, -r * 0.95, r * 0.28, -r * 1.3); ctx.quadraticCurveTo(r * 0.34, -r * 0.85, r * 0.62, -r * 0.5); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = pal.light; ctx.beginPath(); ctx.moveTo(-r * 0.55, -r * 0.6); ctx.lineTo(r * 0.56, -r * 0.6); ctx.lineTo(r * 0.62, -r * 0.46); ctx.lineTo(-r * 0.62, -r * 0.46); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#4a37a6'; ellipse(ctx, 0, -r * 0.44, r * 0.95, r * 0.16); ctx.fill(); ctx.stroke();
+    },
+    face(ctx, pal, r, v) {
+      ctx.save(); ctx.translate(0, r * 0.1);
+      eyes(ctx, r, v, { size: 0.74, spread: 0.27, y: 0 });
+      smile(ctx, r, pal.deep, 0.26, 0.14);
+      ctx.restore();
+      ctx.fillStyle = '#ffe45c';
+      for (const [x, y, s] of [[0.04, -0.8, 0.19], [0.2, -1.04, 0.11], [-0.24, -0.7, 0.1]]) { ctx.save(); ctx.translate(x * r, y * r); symbolPath(ctx, 'star', r * s); ctx.fill(); ctx.restore(); }
+    },
+  },
+  phoenix: { // 50레벨
+    body(ctx, pal, r) {
+      const flame = (x, y, w, h, rot) => {
+        ctx.save(); ctx.translate(x * r, y * r); ctx.rotate(rot);
+        const g = ctx.createLinearGradient(0, h * r * 0.5, 0, -h * r); g.addColorStop(0, '#ff5a2a'); g.addColorStop(0.55, '#ffb03a'); g.addColorStop(1, '#fff3a6');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(0, -h * r); ctx.quadraticCurveTo(w * r, 0, 0, h * r * 0.5); ctx.quadraticCurveTo(-w * r, 0, 0, -h * r); ctx.fill();
+        ctx.restore();
+      };
+      // 불꽃은 옆 칸 몸을 덮지 않을 만큼만 (끝이 가운데에서 1.3r 안쪽)
+      for (const s of [-1, 1]) { flame(s * 0.8, 0.12, 0.42, 0.58, s * 1.05); flame(s * 0.7, -0.36, 0.36, 0.56, s * 0.6); }
+      flame(0, -0.8, 0.3, 0.5, 0); flame(-0.3, -0.72, 0.24, 0.4, -0.35); flame(0.3, -0.72, 0.24, 0.4, 0.35);
+      roundBody(ctx, pal, r * 0.86);
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.82, 0.6);
+      eyes(ctx, r, v, { size: 0.72, spread: 0.26, y: -0.04 });
+      beak(ctx, r, 0.16, 0.12);
+    },
+  },
+  galaxy: { // 60레벨
+    body(ctx, pal, r) {
+      const g = ctx.createRadialGradient(0, 0, r * 0.05, 0, 0, r);
+      g.addColorStop(0, pal.light); g.addColorStop(0.5, pal.base); g.addColorStop(0.82, pal.dark); g.addColorStop(1, '#16123c');
+      ctx.fillStyle = g; ellipse(ctx, 0, 0, r, r * 0.97); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = Math.max(1, r * 0.07); ctx.lineCap = 'round';
+      for (const start of [0, Math.PI]) {
+        ctx.beginPath();
+        for (let k = 0; k <= 16; k++) { const t = k / 16, a = start + t * 3.4, rr = r * (0.18 + t * 0.68), x = Math.cos(a) * rr, y = Math.sin(a) * rr * 0.92; if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#ffffff';
+      for (const [x, y, s] of [[-0.62, -0.3, 0.05], [0.55, -0.55, 0.06], [0.68, 0.25, 0.04], [-0.4, 0.62, 0.05], [0.2, 0.74, 0.04], [-0.75, 0.18, 0.035]]) { ellipse(ctx, x * r, y * r, r * s, r * s); ctx.fill(); }
+      ctx.lineWidth = Math.max(1.2, r * 0.09); ctx.strokeStyle = pal.glow; ellipse(ctx, 0, 0, r * 0.97, r * 0.94); ctx.stroke();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.74, spread: 0.27 });
+      ctx.fillStyle = 'rgba(255,255,255,.75)'; ellipse(ctx, -r * 0.38, -r * 0.5, r * 0.22, r * 0.1, -0.55); ctx.fill();
+    },
+  },
+  thunder: { // 70레벨
+    body(ctx, pal, r) {
+      ctx.strokeStyle = '#ffe45c'; ctx.lineWidth = Math.max(1.2, r * 0.09); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        ctx.save(); ctx.rotate(i * TAU / 6 + 0.3);
+        ctx.beginPath(); ctx.moveTo(r * 0.95, 0); ctx.lineTo(r * 1.12, -r * 0.1); ctx.lineTo(r * 1.08, r * 0.06); ctx.lineTo(r * 1.3, -r * 0.04); ctx.stroke();
+        ctx.restore();
+      }
+      roundBody(ctx, pal, r * 0.93);
+      ctx.lineWidth = Math.max(1, r * 0.06); ctx.strokeStyle = '#fff6a8'; ellipse(ctx, 0, 0, r * 0.86, r * 0.83); ctx.stroke();
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.88, 0.55);
+      eyes(ctx, r, v, { size: 0.72, spread: 0.3, y: -0.14 });
+      ctx.fillStyle = '#ffe45c'; ctx.strokeStyle = '#a86b00'; ctx.lineWidth = Math.max(0.8, r * 0.045); ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(r * 0.1, r * 0.14); ctx.lineTo(-r * 0.18, r * 0.48); ctx.lineTo(-r * 0.02, r * 0.48); ctx.lineTo(-r * 0.12, r * 0.8); ctx.lineTo(r * 0.2, r * 0.4); ctx.lineTo(r * 0.04, r * 0.4); ctx.closePath(); ctx.fill(); ctx.stroke();
+    },
+  },
+  legend: { // 99레벨
+    body(ctx, pal, r) {
+      RAINBOW6.forEach((col, i) => { ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, r * 0.06); ctx.beginPath(); ctx.arc(0, 0, r * (1.24 - i * 0.06), Math.PI * 1.12, Math.PI * 1.88); ctx.stroke(); });
+      ctx.strokeStyle = '#b9c4e6'; ctx.lineWidth = Math.max(1, r * 0.05);
+      for (const s of [-1, 1]) for (const [dy, len] of [[-0.06, 0.46], [0.14, 0.38], [0.32, 0.3]]) {
+        ctx.fillStyle = '#ffffff'; ellipse(ctx, s * r * (0.84 + len * 0.35), r * dy, r * len * 0.5, r * 0.13, s * -0.35); ctx.fill(); ctx.stroke();
+      }
+      roundBody(ctx, pal, r * 0.86);
+      ctx.lineWidth = Math.max(1, r * 0.08); ctx.strokeStyle = '#ffd34d'; ellipse(ctx, 0, 0, r * 0.86, r * 0.835); ctx.stroke();
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.82, 0.65);
+      eyes(ctx, r, v, { size: 0.74, spread: 0.26, y: 0.06 });
+      ctx.fillStyle = '#ffcf3a'; ctx.strokeStyle = '#a86b00'; ctx.lineWidth = Math.max(0.8, r * 0.045);
+      ctx.beginPath(); ctx.moveTo(-r * 0.34, -r * 0.52); ctx.lineTo(-r * 0.38, -r * 0.88); ctx.lineTo(-r * 0.17, -r * 0.7); ctx.lineTo(0, -r * 0.98); ctx.lineTo(r * 0.17, -r * 0.7); ctx.lineTo(r * 0.38, -r * 0.88); ctx.lineTo(r * 0.34, -r * 0.52); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ff4f7b'; ellipse(ctx, 0, -r * 0.64, r * 0.06, r * 0.06); ctx.fill();
+    },
+  },
+  // ---- 온라인 랭킹 5등 안에 든 사람만 (기획서 6번) ----
+  champion: {
+    body(ctx, pal, r) {
+      ctx.fillStyle = '#7ccf4a'; ctx.strokeStyle = '#3f7a1f'; ctx.lineWidth = Math.max(0.8, r * 0.04);
+      for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
+        const a = Math.PI / 2 + s * (0.5 + i * 0.42);
+        ctx.save(); ctx.translate(Math.cos(a) * r * 1.02, Math.sin(a) * r); ctx.rotate(a + s * 0.9);
+        ellipse(ctx, 0, 0, r * 0.2, r * 0.09); ctx.fill(); ctx.stroke(); ctx.restore();
+      }
+      roundBody(ctx, pal, r * 0.92);
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.88, 0.6);
+      eyes(ctx, r, v, { size: 0.7, spread: 0.28, y: -0.22 });
+      ctx.lineCap = 'round';
+      for (const [s, col] of [[-1, '#ff4f64'], [1, '#3d8bff']]) { ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.2, r * 0.12); ctx.beginPath(); ctx.moveTo(s * r * 0.52, -r * 0.02); ctx.lineTo(0, r * 0.34); ctx.stroke(); }
+      const g = ctx.createRadialGradient(-r * 0.08, r * 0.4, r * 0.02, 0, r * 0.48, r * 0.3); g.addColorStop(0, '#fff6b0'); g.addColorStop(0.6, '#ffcf3a'); g.addColorStop(1, '#d99a06');
+      ctx.fillStyle = g; ellipse(ctx, 0, r * 0.5, r * 0.27, r * 0.27); ctx.fill();
+      ctx.lineWidth = Math.max(0.8, r * 0.05); ctx.strokeStyle = '#a86b00'; ctx.stroke();
+      ctx.save(); ctx.translate(0, r * 0.5); symbolPath(ctx, 'star', r * 0.17); ctx.fillStyle = '#fff8cf'; ctx.fill(); ctx.restore();
+    },
+  },
+};
+for (const [kind, art] of Object.entries(MORE_SKINS)) {
+  SKIN_STYLE[kind] = { connect: false };
+  SKINS[kind] = (ctx, c, r, layer, v) => (layer === 'body' ? art.body(ctx, PALETTE[c], r) : art.face(ctx, PALETTE[c], r, v));
+}
+
 export const SKIN_IDS = Object.keys(SKINS);
 
 // 스킨 하나의 한 층을 (0,0) 가운데에 반지름 r로 그린다

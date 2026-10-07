@@ -45,7 +45,7 @@ try {
   for (const action of ['tower', 'level', 'missions', 'skins']) await page.click(`[data-creator="${action}"]`);
   let state = await read(page);
   assert.equal(state.tower.best, 6); assert.equal(state.level, 50); assert.equal(state.tower.comet, false);
-  assert.equal(await page.evaluate(() => window.__puyo.P().owned.skin.length), SKINS.length);
+  assert.equal(await page.evaluate(() => window.__puyo.P().owned.skin.length), SKINS.filter(s => s.reward !== 'ranking').length); // 랭킹 5등 스킨은 빼고
   assert.equal(await page.evaluate(() => window.__puyo.P().owned.effect.length), EFFECTS.length);
   await page.screenshot({ path: `${screenshotDir}/creator.png` });
   await page.click('#creator-lock'); assert.equal(await page.locator('#creator-tools').isVisible(), false);

@@ -1,4 +1,4 @@
-// 친구가 게임을 꺼 두었어도 채팅: 친구 우체통(/api/jelly-mail)을 거쳐 친구 신청 → 받기 → 메시지·젤리 이모티콘·이모지가
+// 친구가 게임을 꺼 두었어도 채팅: 친구 우체통(/api/jelly-mail)을 거쳐 친구 신청 → 받기 → 메시지·뿌요 이모티콘·이모지가
 // 상대가 다시 켰을 때 도착하는지, 사이트처럼 같은 주소에서 보는 게임으로 끝까지 해 본다.
 // 실행: 사이트를 빌드하고 JELLY_MAIL_MEMORY=1 로 next start 한 뒤
 //   PUYO_URL=http://127.0.0.1:3000/play/puyo-puyo/index.html node games/puyo-puyo/offline-chat-browser-check.mjs
@@ -65,7 +65,7 @@ try {
   await A.waitForFunction(() => document.querySelector('#friend-list .friend')?.textContent.includes('민준'), null, T);
   assert.match(await A.textContent('#friend-list .friend small'), /편지는 보낼 수 있어/);
 
-  // 4) 지우: 꺼져 있는 민준에게 글·젤리 이모티콘·이모지를 보낸다
+  // 4) 지우: 꺼져 있는 민준에게 글·뿌요 이모티콘·이모지를 보낸다
   await A.click('#friend-list [data-chat]');
   assert.equal(await A.locator('#chat-input').isDisabled(), false);
   assert.match(await A.textContent('#chat-note'), /친구가 지금 없어도 보내 두면/);
@@ -94,7 +94,7 @@ try {
   assert.equal(await B.locator('.sent-list').count(), 0); // 보낸 신청은 친구가 되면서 사라짐
   assert.equal(await B.textContent('#friend-list [data-chat] .badge'), '3');
   await B.click('#friend-list [data-chat]');
-  assert.deepEqual(await logTexts(B), ['안녕 민준! 내일 같이 연쇄 연습하자', '젤리 이모티콘 최고!', '😂🔥']);
+  assert.deepEqual(await logTexts(B), ['안녕 민준! 내일 같이 연쇄 연습하자', '뿌요 이모티콘 최고!', '😂🔥']);
   assert.equal(await B.locator('#chat-log .msg.them.sticker img').count(), 1);
   assert.equal(await B.locator('#chat-log .msg.them.big').count(), 1);
   await B.screenshot({ path: `${shots}/b-received.png` });
@@ -110,7 +110,7 @@ try {
   await B.click('#chat-emoji-toggle'); await B.click('#chat-stickers [data-sticker="0"]'); // 좋아!
   await B.fill('#chat-input', '좋아 ㅋㅋ'); await B.click('#chat-form button[type=submit]');
   await A.waitForFunction(() => document.querySelectorAll('#chat-log .msg.them').length === 2, null, { timeout: 8000 }); // 직접 연결이라 금방
-  assert.deepEqual((await logTexts(A)).slice(-2), ['젤리 이모티콘 좋아!', '좋아 ㅋㅋ']);
+  assert.deepEqual((await logTexts(A)).slice(-2), ['뿌요 이모티콘 좋아!', '좋아 ㅋㅋ']);
   // 우체통에서 받아 간 편지는 지워진다 (다시 열어도 같은 편지가 또 오지 않는다)
   await A.reload(); await A.waitForSelector('#scr-menu:not([hidden])');
   await A.click('[data-go="friends"]'); await mailOn(A);
@@ -128,6 +128,6 @@ try {
   assert.equal(gone, 401); // 지운 계정의 코드로는 더 보낼 수 없다
 
   assert.deepEqual(errors, []);
-  console.log('PASS: 친구가 꺼 둔 동안 친구 신청(없는 코드 알림) → 다시 켜서 받기 → 꺼 둔 친구에게 글·젤리 이모티콘·이모지 → 켜면 도착(메뉴 배지·안 읽음) → 둘 다 켜 있을 때 바로 · 중복 없음 · 계정 지우면 우체통도 지움 — 오류 없음');
+  console.log('PASS: 친구가 꺼 둔 동안 친구 신청(없는 코드 알림) → 다시 켜서 받기 → 꺼 둔 친구에게 글·뿌요 이모티콘·이모지 → 켜면 도착(메뉴 배지·안 읽음) → 둘 다 켜 있을 때 바로 · 중복 없음 · 계정 지우면 우체통도 지움 — 오류 없음');
   console.log(`Screenshots: ${shots}`);
 } finally { await browser.close(); }

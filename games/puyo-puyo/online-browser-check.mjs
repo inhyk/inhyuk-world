@@ -1,6 +1,6 @@
 // 온라인 계정으로 하는 것들을 실제 Chrome 두 창(+ 다른 기기 하나)과 로컬 net 서버로 끝까지 확인한다.
-// 가입 두 명 → 둘 다 "게임 찾기" → 같은 판 → 대전 채팅(빠른 말, 젤리 이모티콘, 이모지, 서버가 가린 번호) → 채팅 끄기
-// → 판이 끝난 뒤 결과 화면에서 친구 요청 → 수락 → 친구 목록에서 초대 → 1:1 대화(빠른 말, 젤리 이모티콘, 이모지)
+// 가입 두 명 → 둘 다 "게임 찾기" → 같은 판 → 대전 채팅(빠른 말, 뿌요 이모티콘, 이모지, 서버가 가린 번호) → 채팅 끄기
+// → 판이 끝난 뒤 결과 화면에서 친구 요청 → 수락 → 친구 목록에서 초대 → 1:1 대화(빠른 말, 뿌요 이모티콘, 이모지)
 // → 클라우드 저장(다른 기기에서 같은 레벨, 코인) → 저장 충돌 고르기 창 → 신고, 차단
 // → 친구 코드 친구가 있는 기기 계정을 옮기기(우체통에 남은 편지를 받아 기존 친구 기록에 넣음, 기록 보기).
 // 온라인 계정은 친구 우체통(/api/jelly-mail)과 친구 코드 직접 연결을 쓰지 않는다 (같은 말이 두 길로 가지 않음).
@@ -79,7 +79,7 @@ async function signup(page, nick, pass) {
   await screenIs(page, 'menu');
 }
 const tag = Math.random().toString(36).slice(2, 6);
-const nickA = `젤리A${tag}`, nickB = `젤리B${tag}`;
+const nickA = `뿌요A${tag}`, nickB = `뿌요B${tag}`;
 
 try {
   // 1. 가입 두 명 (A 는 컴퓨터, B 는 휴대폰 화면)
@@ -119,11 +119,11 @@ try {
   assert.equal(await a.textContent('#hud-title'), `온라인 · ${nickB}`);
   assert.equal(await b.textContent('#hud-title'), `온라인 · ${nickA}`);
 
-  // 3. 대전 채팅: 빠른 말과 젤리 이모티콘은 번호로, 직접 쓴 말은 서버가 걸러서. 전화번호처럼 보이면 보내지도 않는다
+  // 3. 대전 채팅: 빠른 말과 뿌요 이모티콘은 번호로, 직접 쓴 말은 서버가 걸러서. 전화번호처럼 보이면 보내지도 않는다
   await a.click('#hud-chat');
   await a.waitForSelector('#chat:not([hidden])');
   await a.click('#chat-quick [data-q="0"]'); // 👋 안녕!
-  await a.click('#chat-emoji-toggle'); await a.click('#chat-stickers [data-sticker="4"]'); // 젤리 이모티콘 「최고!」
+  await a.click('#chat-emoji-toggle'); await a.click('#chat-stickers [data-sticker="4"]'); // 뿌요 이모티콘 「최고!」
   await a.click('#chat-emojis [data-emoji="😀"]'); await a.click('#chat-emojis [data-emoji="🎉"]');
   await a.click('#chat-form button[type=submit]'); // 이모지만 두 개
   await a.fill('#chat-input', '내 번호 010-1234-5678');
@@ -136,7 +136,7 @@ try {
   await b.click('#hud-chat');
   await b.waitForFunction(() => document.querySelectorAll('#chat-log .msg.them').length >= 4, null, { timeout: 15000 });
   const themB = await b.evaluate(() => [...document.querySelectorAll('#chat-log .msg.them')].map(m => (m.classList.contains('sticker') ? `sticker:${m.querySelector('img').alt}` : `${m.classList.contains('big') ? 'big:' : ''}${m.textContent}`)));
-  assert.deepEqual(themB.slice(0, 3), ['👋 안녕!', 'sticker:젤리 이모티콘 최고!', 'big:😀🎉']);
+  assert.deepEqual(themB.slice(0, 3), ['👋 안녕!', 'sticker:뿌요 이모티콘 최고!', 'big:😀🎉']);
   assert.match(themB[3], /^안녕! 내 번호 /);
   assert.ok(!/1234|5678/.test(themB[3]) && themB[3].includes('*'), themB[3]);
   assert.equal(themB.length, 4); // 막힌 전화번호 말은 가지 않았다
@@ -211,13 +211,13 @@ try {
   await b.waitForFunction(() => [...document.querySelectorAll('#dm-list .line.them span')].some(s => s.textContent === 'B야 안녕!'), null, { timeout: 15000 });
   await b.fill('#dm-input', 'A도 안녕!'); await b.click('#dm-form button[type=submit]');
   await a.waitForFunction(() => [...document.querySelectorAll('#dm-list .line.them span')].some(s => s.textContent === 'A도 안녕!'), null, { timeout: 15000 });
-  // 1:1 대화의 빠른 말, 젤리 이모티콘([[st:번호]]), 이모지
+  // 1:1 대화의 빠른 말, 뿌요 이모티콘([[st:번호]]), 이모지
   await b.click('#dm-quick [data-q="1"]'); // 👍 잘한다!
   await b.click('#dm-emoji-toggle'); await b.click('#dm-stickers [data-sticker="3"]'); // ㅋㅋㅋ
   await b.click('#dm-emoji-toggle'); await b.click('#dm-emojis [data-emoji="🥳"]'); await b.click('#dm-form button[type=submit]');
   await a.waitForFunction(() => document.querySelectorAll('#dm-list .line.them').length >= 4, null, { timeout: 15000 });
   const dmA = await a.evaluate(() => [...document.querySelectorAll('#dm-list .line.them')].map(l => (l.classList.contains('sticker') ? `sticker:${l.querySelector('img.dm-sticker').alt}` : `${l.classList.contains('emoji-big') ? 'big:' : ''}${l.querySelector('span').textContent}`)));
-  assert.deepEqual(dmA.slice(-3), ['👍 잘한다!', 'sticker:젤리 이모티콘 ㅋㅋㅋ', 'big:🥳']);
+  assert.deepEqual(dmA.slice(-3), ['👍 잘한다!', 'sticker:뿌요 이모티콘 ㅋㅋㅋ', 'big:🥳']);
   assert.equal(dmA.filter(x => x === 'A도 안녕!').length, 1); // 한 번만 온다
   await shot(a, 'dm-sticker');
   // 채팅을 끄면 1:1 대화도 열지 않는다
@@ -314,7 +314,7 @@ try {
   await d.click('#migrate-go');
   await d.waitForSelector('#migrate-form:not([hidden])', { timeout: 15000 });
   assert.match(await d.textContent('#migrate-text'), /이미 온라인에 있어/);
-  const nickD = `젤리D${tag}`;
+  const nickD = `뿌요D${tag}`;
   await d.fill('#migrate-nick', nickD); await d.fill('#migrate-pass', 'dddd');
   await d.click('#migrate-form button[type=submit]');
   await screenIs(d, 'menu');
@@ -379,7 +379,7 @@ try {
   assert.equal(await b.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
 
   assert.deepEqual(errors, []);
-  console.log(`PASS: 가입 2명(같은 닉네임 거절), 게임 찾기로 같은 판, 대전 채팅(빠른 말, 젤리 이모티콘, 이모지, 번호는 기기에서 막고 서버가 가림), 채팅 끄기, 결과 화면 친구 요청과 수락, 닉네임 찾기, 친구 초대, 1:1 대화(빠른 말, 젤리 이모티콘, 이모지, 한 번만 도착, 채팅 끄면 안 열림), 다른 기기에서 같은 레벨/코인, 저장 충돌 고르기, 신고, 차단, 기기 계정 옮기기(닉네임 겹침 → 새 닉네임, 친구 코드 기록은 기기에 남고 ${mailOn ? `우체통 편지 ${letters}통을 받아 넣음` : '우체통 없음: 비우기 건너뜀'}), 기존 친구 기록과 지난 대화(보내기 막힘), 제작자 비밀번호 다시 정하기는 기기 계정만, 온라인 계정은 우체통·친구 코드 연결을 안 씀 — 오류 없음 (net ${NET})`);
+  console.log(`PASS: 가입 2명(같은 닉네임 거절), 게임 찾기로 같은 판, 대전 채팅(빠른 말, 뿌요 이모티콘, 이모지, 번호는 기기에서 막고 서버가 가림), 채팅 끄기, 결과 화면 친구 요청과 수락, 닉네임 찾기, 친구 초대, 1:1 대화(빠른 말, 뿌요 이모티콘, 이모지, 한 번만 도착, 채팅 끄면 안 열림), 다른 기기에서 같은 레벨/코인, 저장 충돌 고르기, 신고, 차단, 기기 계정 옮기기(닉네임 겹침 → 새 닉네임, 친구 코드 기록은 기기에 남고 ${mailOn ? `우체통 편지 ${letters}통을 받아 넣음` : '우체통 없음: 비우기 건너뜀'}), 기존 친구 기록과 지난 대화(보내기 막힘), 제작자 비밀번호 다시 정하기는 기기 계정만, 온라인 계정은 우체통·친구 코드 연결을 안 씀 — 오류 없음 (net ${NET})`);
   console.log(`Screenshots: ${shots}`);
 } finally {
   await browser.close();

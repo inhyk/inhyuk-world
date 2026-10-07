@@ -26,6 +26,42 @@ export function computeLayout(w, h, opt = {}) {
       side: { x: f.x + c * 6.4, y: f.y + c * 4.2, w: c * 3.8, h: c * 7.8 },
     };
   }
+  if (opt.watch && aw / ah < 0.85) {
+    // 관전, 좁은 세로 화면(휴대폰): 가운데 칸 없이 두 필드를 크게. 그림 그대로 위에 "닉네임 레벨", 아래에 "점수"만.
+    // 맨 위 한 줄(center)에 "관전 중 · VS · 판 수"를 적는다. 다음 뿌요 미리보기는 자리가 없어 뺀다.
+    const c = Math.floor(Math.min(aw / 12.9, ah / 16.9));
+    const totalW = c * 12.9, totalH = c * 16.7;
+    const x0 = ox + (aw - totalW) / 2, y0 = oy + (ah - totalH) / 2;
+    const f0 = { x: x0 + c * 0.2, y: y0 + c * 3.35, cell: c };
+    const f1 = { x: f0.x + c * 6.5, y: f0.y, cell: c };
+    return {
+      portrait: false, watch: true, cell: c,
+      fields: [f0, f1],
+      label: [{ x: f0.x, y: f0.y - c * 2.25, w: c * 6, h: c * 0.95 }, { x: f1.x, y: f1.y - c * 2.25, w: c * 6, h: c * 0.95 }],
+      next: [{ hidden: true }, { hidden: true }],
+      tray: [{ x: f0.x, y: f0.y - c * 1.2, w: c * 6, h: c * 0.95 }, { x: f1.x, y: f1.y - c * 1.2, w: c * 6, h: c * 0.95 }],
+      score: [{ x: f0.x, y: f0.y + c * 12.15, w: c * 6, h: c * 1 }, { x: f1.x, y: f1.y + c * 12.15, w: c * 6, h: c * 1 }],
+      center: { x: x0, y: y0 + c * 0.1, w: totalW, h: c * 0.9, strip: true },
+    };
+  }
+  if (opt.watch) {
+    // 관전 (인혁이 기획서 4번 그림): 두 필드를 똑같은 크기로 나란히, 필드 위에 "닉네임 레벨", 아래에 "점수"
+    const c = Math.floor(Math.min(aw / 17.4, ah / 16));
+    const totalW = c * 17, totalH = c * 15.7;
+    const x0 = ox + (aw - totalW) / 2, y0 = oy + (ah - totalH) / 2;
+    const f0 = { x: x0 + c * 0.2, y: y0 + c * 2.35, cell: c };
+    const f1 = { x: x0 + c * 10.8, y: f0.y, cell: c };
+    const cx = f0.x + c * 6.4;
+    return {
+      portrait: false, watch: true, cell: c,
+      fields: [f0, f1],
+      label: [{ x: f0.x, y: f0.y - c * 2.25, w: c * 6, h: c * 0.95 }, { x: f1.x, y: f1.y - c * 2.25, w: c * 6, h: c * 0.95 }],
+      next: [{ x: cx + c * 0.15, y: f0.y, cell: c * 0.8 }, { x: f1.x - c * 1.75, y: f0.y, cell: c * 0.8 }],
+      tray: [{ x: f0.x, y: f0.y - c * 1.2, w: c * 6, h: c * 0.95 }, { x: f1.x, y: f1.y - c * 1.2, w: c * 6, h: c * 0.95 }],
+      score: [{ x: f0.x, y: f0.y + c * 12.15, w: c * 6, h: c * 1 }, { x: f1.x, y: f1.y + c * 12.15, w: c * 6, h: c * 1 }],
+      center: { x: cx, y: f0.y + c * 3.6, w: c * 4, h: c * 8.4 },
+    };
+  }
   const portrait = opt.portrait ?? (aw / ah < 1.05);
   if (portrait && !opt.symmetric) {
     const c = Math.floor(Math.min(aw / 9.9, ah / 14.9));
@@ -193,7 +229,7 @@ export class Renderer {
   }
 
   relayout() {
-    this.layout = computeLayout(this.w, this.h, { solo: this.opts.solo, insets: this.opts.insets, symmetric: this.opts.symmetric });
+    this.layout = computeLayout(this.w, this.h, { solo: this.opts.solo, insets: this.opts.insets, symmetric: this.opts.symmetric, watch: this.opts.watch });
   }
 
   setInsets(insets) { this.opts.insets = insets; this.relayout(); }
@@ -364,6 +400,7 @@ export class Renderer {
     }
     this.drawTray(ctx, match, player, i, time);
     this.drawScore(ctx, player, i);
+    if (this.layout.label) this.drawLabel(ctx, i);
     if (!this.layout.next[i]?.hidden) this.drawNext(ctx, player, i, v);
     ctx.restore();
   }
@@ -518,9 +555,30 @@ export class Renderer {
       ctx.textAlign = 'center'; ctx.fillStyle = '#9ff2ff';
       ctx.fillText(v.formula, box.x + box.w / 2, box.y + box.h / 2);
     } else {
+      if (this.layout.watch) {
+        ctx.textAlign = 'left'; ctx.fillStyle = '#ffe45c';
+        ctx.fillText('점수', box.x + box.h * 0.35, box.y + box.h / 2);
+      }
       ctx.textAlign = 'right'; ctx.fillStyle = '#fff';
       ctx.fillText(String(v.shown).padStart(8, '0'), box.x + box.w - box.h * 0.35, box.y + box.h / 2);
     }
+    ctx.restore();
+  }
+
+  // 관전: 필드 위 이름표 "닉네임 Lv.레벨" (인혁이 기획서 4번 그림)
+  drawLabel(ctx, i) {
+    const box = this.layout.label?.[i], v = this.views[i];
+    if (!box || !v) return;
+    const text = `${v.name || '?'}  Lv.${v.level || 1}`;
+    ctx.save();
+    roundRect(ctx, box.x, box.y, box.w, box.h, box.h * 0.35);
+    ctx.fillStyle = 'rgba(16,10,40,.7)'; ctx.fill();
+    ctx.lineWidth = Math.max(2, box.h * 0.08); ctx.strokeStyle = v.color || 'rgba(255,255,255,.85)'; ctx.stroke();
+    let size = box.h * 0.58;
+    ctx.font = `${Math.round(size)}px ${FONT}`;
+    while (ctx.measureText(text).width > box.w * 0.92 && size > box.h * 0.3) { size *= 0.92; ctx.font = `${Math.round(size)}px ${FONT}`; }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff';
+    ctx.fillText(text, box.x + box.w / 2, box.y + box.h / 2);
     ctx.restore();
   }
 
@@ -564,6 +622,26 @@ export class Renderer {
       ctx.restore();
       return;
     }
+    if (this.layout.watch && box.strip) {
+      // 좁은 화면: 맨 위 한 줄에 "👀 관전 중 · VS · 판 수"
+      const wins = match.firstTo > 1 ? `  ${match.wins[0]} : ${match.wins[1]} (${match.firstTo}선승)` : '';
+      ctx.font = `${Math.round(c * 0.5)}px ${FONT}`; ctx.fillStyle = '#ffe45c';
+      ctx.lineJoin = 'round'; ctx.lineWidth = c * 0.12; ctx.strokeStyle = 'rgba(20,10,40,.75)';
+      const text = `👀 관전 중 · VS${wins}`;
+      ctx.strokeText(text, box.x + box.w / 2, box.y + box.h / 2); ctx.fillText(text, box.x + box.w / 2, box.y + box.h / 2);
+      ctx.restore();
+      return;
+    }
+    if (this.layout.watch) {
+      ctx.font = `${Math.round(c * 0.36)}px ${FONT}`; ctx.fillStyle = '#9ff2ff';
+      ctx.lineJoin = 'round'; ctx.lineWidth = c * 0.12; ctx.strokeStyle = 'rgba(20,10,40,.75)';
+      ctx.strokeText('👀 관전 중', box.x + box.w / 2, box.y + c * 0.2); ctx.fillText('👀 관전 중', box.x + box.w / 2, box.y + c * 0.2);
+      ctx.font = `${Math.round(c * 0.7)}px ${FONT}`; ctx.fillStyle = '#ffe45c';
+      ctx.strokeText('VS', box.x + box.w / 2, box.y + c * 1.1); ctx.fillText('VS', box.x + box.w / 2, box.y + c * 1.1);
+      this.drawWins(ctx, match, box.x + box.w / 2, box.y + c * 2, c);
+      ctx.restore();
+      return;
+    }
     // 이름표
     const names = this.views.map(v => `${v.name || ''}${v.level ? ` Lv.${v.level}` : ''}`);
     ctx.font = `${Math.round(c * 0.4)}px ${FONT}`;
@@ -582,7 +660,7 @@ export class Renderer {
     // 마진 타임
     if (match.frame > 96 * 60 && match.phase === 'play') {
       ctx.font = `${Math.round(c * 0.32)}px ${FONT}`; ctx.fillStyle = '#ff9fb0';
-      ctx.fillText(`마진 타임! 방해 젤리 ×${(70 / match.target).toFixed(1)}`, box.x + box.w / 2, box.y + c * 8.4);
+      ctx.fillText(`마진 타임! 방해 뿌요 ×${(70 / match.target).toFixed(1)}`, box.x + box.w / 2, box.y + c * 8.4);
     }
     ctx.restore();
   }
@@ -605,9 +683,9 @@ export class Renderer {
     ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillStyle = '#fff';
     const lines = [
       ['속도', `${Math.min(16, Math.floor(p.stats.pieces / 25) + 1)}단계`],
-      ['놓은 젤리', `${p.stats.pieces}쌍`],
+      ['놓은 뿌요', `${p.stats.pieces}쌍`],
       ['최대 연쇄', `${p.stats.maxChain}연쇄`],
-      ['터뜨린 젤리', `${p.stats.popped}개`],
+      ['터뜨린 뿌요', `${p.stats.popped}개`],
       ['전소', `${p.stats.allClears}번`],
     ];
     lines.forEach(([k, val], n) => {

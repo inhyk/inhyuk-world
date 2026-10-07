@@ -13,7 +13,7 @@ class FakeSocket {
 }
 
 function setup({ maxPlayers, created = { code: 'ABCDEF', maxPlayers: 2 } } = {}) {
-  const log = { status: [], join: [], depart: [], message: [], host: [], error: [], fetch: [], sockets: [] };
+  const log = { status: [], join: [], depart: [], message: [], host: [], error: [], watchers: [], fetch: [], sockets: [] };
   const hooks = {
     status: (s, m) => log.status.push([s, m]),
     join: id => log.join.push(id),
@@ -21,6 +21,7 @@ function setup({ maxPlayers, created = { code: 'ABCDEF', maxPlayers: 2 } } = {})
     message: (data, from) => log.message.push([data, from]),
     host: id => log.host.push(id),
     error: code => log.error.push(code),
+    watchers: n => log.watchers.push(n),
   };
   const room = new Room(hooks, {
     game: 'test-game', server: 'ws://local.test', maxPlayers,
@@ -177,5 +178,66 @@ test('server warnings go to the error hook', async () => {
   log.sockets[0].serve({ t: 'error', code: 'too-big' });
   assert.deepEqual(log.error, ['too-big']);
   assert.equal(room.status, 'connected');
+  room.leave();
+});
+
+test('watching: opens with a ticket and watch=1, gets both players\' messages, never sends, and ends with the match', async () => {
+  const { room, log } = setup();
+  const opening = room.open('abc-def', { ticket: 'T1', watch: true });
+  await tick();
+  assert.deepEqual(log.fetch, []); // 방을 만들지 않는다
+  const socket = log.sockets[0];
+  assert.equal(socket.url, 'ws://local.test/rooms/test-game/ABCDEF?ticket=T1&watch=1');
+  socket.serve({ t: 'welcome', id: 'w1', watch: true, host: 'p1', max: 2, peers: ['p1', 'p2'], users: { p1: 12, p2: 34 } });
+  await opening;
+  assert.deepEqual(room.users, { p1: 12, p2: 34 });
+  assert.equal(room.watcher, true);
+  assert.equal(room.host, false);
+  assert.equal(room.guest, false);
+  assert.deepEqual(room.peers, ['p1', 'p2']);
+  socket.serve({ t: 'msg', from: 'p2', data: { t: 's', sc: 10 } });
+  assert.deepEqual(log.message.at(-1), [{ t: 's', sc: 10 }, 'p2']);
+  assert.equal(room.send({ t: 'atk' }), false);
+  assert.equal(room.sendTo('p1', { t: 'atk' }), false);
+  assert.equal(room.chat('hi'), false);
+  assert.equal(room.report(1, true), false);
+  assert.deepEqual(socket.sent, []);
+  socket.serve({ t: 'host', id: 'p2' }); // 방장이 바뀌어도 나는 계속 관전
+  assert.equal(room.watcher, true);
+  socket.serve({ t: 'leave', id: 'p1' });
+  socket.serve({ t: 'join', id: 'p3', user: 12 });
+  assert.deepEqual(room.users, { p1: 12, p2: 34, p3: 12 });
+  assert.deepEqual(room.peers, ['p2', 'p3']);
+  socket.serve({ t: 'error', code: 'ended' });
+  assert.deepEqual(log.error, ['ended']);
+  assert.deepEqual(log.status.at(-1), ['error', MESSAGES.ended]);
+  assert.equal(room.active, false);
+});
+
+test('watching a match that can not be watched fails with a kind message', async () => {
+  for (const [code, text] of [['not-watchable', MESSAGES.notWatchable], ['watch-full', MESSAGES.watchFull(10)], ['not-found', MESSAGES.notFound]]) {
+    const { room, log } = setup();
+    const opening = room.open('ABCDEF', { ticket: 'T', watch: true });
+    await tick();
+    log.sockets[0].serve({ t: 'error', code, max: 10 });
+    await assert.rejects(opening, { message: text });
+  }
+  const { room } = setup();
+  await assert.rejects(room.open('', { ticket: 'T', watch: true }), { message: MESSAGES.code });
+});
+
+test('players keep a message for later viewers, report results, and hear how many are watching', async () => {
+  const { room, log } = setup();
+  const opening = room.open('ABCDEF', { ticket: 'T' });
+  await tick();
+  const socket = log.sockets[0];
+  socket.serve({ t: 'welcome', id: 'p2', host: 'p1', max: 2, peers: ['p1'] });
+  await opening;
+  room.send({ t: 'hello', level: 3 }, { keep: true });
+  room.report(2, true);
+  room.report(3, 0);
+  assert.deepEqual(socket.sent, [{ t: 'send', data: { t: 'hello', level: 3 }, keep: true }, { t: 'report', n: 2, won: true }, { t: 'report', n: 3, won: false }]);
+  socket.serve({ t: 'watchers', n: 3 });
+  assert.deepEqual(log.watchers, [3]);
   room.leave();
 });

@@ -10,6 +10,7 @@ export const NAME_MAX = 10, PASS_MIN = 4, PASS_MAX = 16, LEVEL_MAX = 99;
 export function newProgress() {
   return {
     level: 1, xp: 0, coins: 100,
+    trophies: 0, // AI 대전, 온라인 대전을 이길 때마다 1개 (온라인 랭킹)
     owned: { skin: ['classic'], effect: ['sparkle'] },
     equip: { skin: 'classic', effect: 'sparkle' },
     tower: { best: 0, cleared: false, comet: false, nova: false, losses: {}, endings: 0, cometEndings: 0 },
@@ -35,6 +36,7 @@ export function sanitize(p) {
   out.level = clampInt(out.level, 1, LEVEL_MAX);
   out.xp = clampInt(out.xp, 0, 1e9);
   out.coins = clampInt(out.coins, 0, 1e9);
+  out.trophies = clampInt(out.trophies, 0, 1e7);
   out.owned = {
     skin: uniq(['classic', ...arr(out.owned?.skin)]),
     effect: uniq(['sparkle', ...arr(out.owned?.effect)]),
@@ -211,7 +213,7 @@ export function exportCode(account) {
 export function importCode(store, code) {
   const text = String(code ?? '').replace(/\s+/g, '');
   const parts = text.split('.');
-  // 젤리 타워로 이름을 바꾸기 전에 만든 PUYO1 코드도 그대로 가져올 수 있다
+  // 뿌요뿌요 타워로 이름을 바꾸기 전에 만든 PUYO1 코드도 그대로 가져올 수 있다
   if (parts.length !== 3 || !['JELLY1', 'PUYO1'].includes(parts[0])) return { ok: false, error: '기록 코드 모양이 이상해. 처음부터 끝까지 다 복사했는지 확인해 줘.' };
   if (checksum(parts[1]) !== parts[2]) return { ok: false, error: '기록 코드가 중간에 잘렸거나 바뀌었어.' };
   let data;
