@@ -282,7 +282,7 @@ for (let x = 0; x < 6; x++) { ALL_PLACES.push([x, 0], [x, 2]); if (x < 5) ALL_PL
 const lesson = id => GRADES.flatMap(g => g.lessons).find(l => l.id === id);
 
 test('배우기: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막 → 찐 마지막 순서', () => {
-  assert.deepEqual(GRADES.map(g => g.name), ['초급', '중급', '상급', '최상급', '초초상급', '마지막', '찐 마지막', '졸업', '졸업2', '졸업3']);
+  assert.deepEqual(GRADES.map(g => g.name), ['초급', '중급', '상급', '최상급', '초초상급', '마지막', '찐 마지막', '졸업', '졸업2', '졸업3', '졸업4', '졸업5']);
   assert.deepEqual(GRADES.slice(1).map(g => g.id), SCHOOL_IDS);
   for (const g of GRADES.slice(0, 5)) assert.equal(g.lessons.length, 3);
   // 마지막: 다섯 등급 복습 5개 → 빈 필드에서 직접 쌓기 → 진짜 연쇄를 잘하는 비결 4개 (맨 끝에)
@@ -317,11 +317,14 @@ test('배우기: 앞 등급을 끝내야 다음 등급이 열리고, 끝낸 선�
   assert.equal(finishGrade(p, 6), true); assert.equal(finishGrade(p, 6), false);
   assert.deepEqual(sanitize(p).school, ['middle', 'high', 'master', 'ultra', 'final', 'real']);
   assert.deepEqual(GRADES.map((_, i) => gradeDone(p, i)), flags(7));
-  // 졸업, 졸업2, 졸업3 도 순서대로 (찐 마지막을 끝내야 졸업이 열린다)
+  // 졸업, 졸업2, 졸업3, 졸업4, 졸업5 도 순서대로 (찐 마지막을 끝내야 졸업이 열린다)
   assert.deepEqual(GRADES.map((_, i) => gradeOpen(p, i)), flags(8));
-  for (const i of [7, 8, 9]) { assert.equal(gradeOpen(p, i), true); assert.equal(finishGrade(p, i), true); assert.equal(finishGrade(p, i), false); }
-  assert.deepEqual(GRADES.map((_, i) => gradeDone(p, i)), flags(10));
-  assert.deepEqual(sanitize(p).school, ['middle', 'high', 'master', 'ultra', 'final', 'real', 'grad1', 'grad2', 'grad3']);
+  for (const i of [7, 8, 9, 10, 11]) { assert.equal(gradeOpen(p, i), true); assert.equal(gradeOpen(p, i + 1), false); assert.equal(finishGrade(p, i), true); assert.equal(finishGrade(p, i), false); }
+  assert.deepEqual(GRADES.map((_, i) => gradeDone(p, i)), flags(12));
+  assert.deepEqual(sanitize(p).school, ['middle', 'high', 'master', 'ultra', 'final', 'real', 'grad1', 'grad2', 'grad3', 'grad4', 'grad5']);
+  // 졸업3까지 끝낸 예전 기록(졸업3이 25가지였을 때 끝낸 사람)은 끝낸 그대로이고, 바로 졸업4가 열려 있다
+  const doctor = sanitize({ tutorial: true, school: ['middle', 'high', 'master', 'ultra', 'final', 'real', 'grad1', 'grad2', 'grad3'] });
+  assert.deepEqual([gradeDone(doctor, 9), gradeOpen(doctor, 10), gradeDone(doctor, 10), gradeOpen(doctor, 11)], [true, true, false, false]);
   assert.deepEqual(sanitize({ school: ['master', 'master', 'beginner', 7, 'boss'] }).school, ['master']);
   // 예전 기록(연습하기만 끝냄)은 초급을 끝낸 것으로 본다
   const old = sanitize({ tutorial: true });
@@ -362,7 +365,7 @@ test('배우기: 알려 준 대로 놓으면 성공한다 (진짜 판으로 확�
   for (const [id, moves] of Object.entries(answers)) assert.equal(playLesson(lesson(id), moves), 'done', `${id} 정답`);
   // 졸업 등급의 문제는 정답(answer)을 문제에 같이 적어 둔다
   const withAnswer = GRADES.flatMap(g => g.lessons).filter(l => l.answer);
-  assert.equal(withAnswer.length, 53);
+  assert.equal(withAnswer.length, 182); // 졸업·졸업2·졸업3(처음 것) 53 + 졸업3에 더한 31 + 졸업4 49 + 졸업5 49
   for (const l of withAnswer) {
     assert.equal(l.answer.length, l.pairs.length, `${l.id}: 짝마다 놓을 자리`);
     assert.equal(playLesson(l, l.answer), 'done', `${l.id} 정답`);
@@ -596,32 +599,39 @@ test('찐 마지막 4부: 졸업 시험은 안내가 없고, 두 번 틀리면 �
 });
 
 // ---------- 졸업, 졸업2, 졸업3 (찐 마지막 다음, 모두 길게) ----------
-const kindOf = l => (l.tip ? 'tip' : l.steps ? 'build' : /find/.test(l.id) ? 'find' : /mega/.test(l.id) ? 'mega' : /two/.test(l.id) ? 'two' : /exam/.test(l.id) ? 'exam' : '?');
+// 세 수·네 수 퍼즐은 안내(steps)가 있어도 쌓기가 아니라 퍼즐로 센다. flat 눕혀서 발화, duo 두 색 발화, dig 방해 뿌요 속 발화점 (tutorial.test.mjs 에서 자세히 확인)
+const kindOf = l => (l.tip ? 'tip' : /three/.test(l.id) ? 'three' : /four/.test(l.id) ? 'four' : l.steps ? 'build' : /find/.test(l.id) ? 'find' : /flat/.test(l.id) ? 'flat'
+  : /duo/.test(l.id) ? 'duo' : /dig/.test(l.id) ? 'dig' : /mega/.test(l.id) ? 'mega' : /two/.test(l.id) ? 'two' : /exam/.test(l.id) ? 'exam' : '?');
 const count = (list, kind) => list.filter(l => kindOf(l) === kind).length;
-test('졸업 셋: 찐 마지막 다음에 졸업 → 졸업2 → 졸업3, 모두 길다', () => {
-  const [g1, g2, g3] = GRADES.slice(7);
-  assert.deepEqual([g1.id, g2.id, g3.id], ['grad1', 'grad2', 'grad3']);
-  assert.deepEqual([g1.lessons.length, g2.lessons.length, g3.lessons.length], [26, 20, 25]);
-  for (const g of [g1, g2, g3]) assert.ok(g.lessons.length >= 20, `${g.name}: 길게`);
+test('졸업 다섯: 찐 마지막 다음에 졸업 → 졸업2 → 졸업3 → 졸업4 → 졸업5, 모두 길다', () => {
+  const [g1, g2, g3, g4, g5] = GRADES.slice(7);
+  assert.deepEqual([g1.id, g2.id, g3.id, g4.id, g5.id], ['grad1', 'grad2', 'grad3', 'grad4', 'grad5']);
+  assert.deepEqual([g1.lessons.length, g2.lessons.length, g3.lessons.length, g4.lessons.length, g5.lessons.length], [26, 20, 62, 63, 65]);
+  for (const g of [g1, g2, g3, g4, g5]) assert.ok(g.lessons.length >= 20, `${g.name}: 길게`);
   // 졸업: 발화점 찾기 22판 (2연쇄 → 10연쇄로 점점 길어진다)
   assert.equal(count(g1.lessons, 'find'), 22); assert.equal(count(g1.lessons, 'tip'), 4);
   const chains = g1.lessons.filter(l => kindOf(l) === 'find').map(l => l.goal.chain);
   assert.deepEqual(chains, [2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10]);
   // 졸업2: 쌓기 3개 → 두 수 퍼즐 9판 → 쌓기 시험 3개 → 6연쇄 쌓기
   assert.deepEqual(g2.lessons.map(kindOf), ['tip', 'build', 'build', 'build', 'tip', ...Array(9).fill('two'), 'tip', 'exam', 'exam', 'exam', 'build', 'tip']);
-  // 졸업3: 초대연쇄 3 → 발화점 찾기 6 → 두 수 퍼즐 4 → 최종 시험 2 → 졸업 비결 5 와 졸업장
-  assert.deepEqual(g3.lessons.map(kindOf), ['tip', 'mega', 'mega', 'mega', 'tip', ...Array(6).fill('find'), 'tip', ...Array(4).fill('two'), 'tip', 'exam', 'exam', ...Array(6).fill('tip')]);
+  // 졸업3 (처음 25가지는 그대로): 초대연쇄 3 → 발화점 찾기 6 → 두 수 퍼즐 4 → 쌓기 시험 2 → [더한 여섯 부] → 졸업 비결 5 와 졸업장
+  const first = ['tip', 'mega', 'mega', 'mega', 'tip', ...Array(6).fill('find'), 'tip', ...Array(4).fill('two'), 'tip', 'exam', 'exam'];
+  assert.deepEqual(g3.lessons.slice(0, 19).map(kindOf), first);
+  assert.deepEqual(g3.lessons.slice(-6).map(kindOf), Array(6).fill('tip'));
+  assert.deepEqual([...g3.lessons.slice(0, 19), ...g3.lessons.slice(-6)].map(l => l.id), ['grad3-part1', 'grad3-mega1', 'grad3-mega2', 'grad3-mega3', 'grad3-part2',
+    'grad3-find1', 'grad3-find2', 'grad3-find3', 'grad3-find4', 'grad3-find5', 'grad3-find6', 'grad3-part3', 'grad3-two1', 'grad3-two2', 'grad3-two3', 'grad3-two4',
+    'grad3-part4', 'grad3-exam5r', 'grad3-exam6', 'grad3-tip1', 'grad3-tip2', 'grad3-tip3', 'grad3-tip4', 'grad3-tip5', 'grad3-diploma']);
   assert.equal(g3.lessons.at(-1).title, '🎓 졸업장');
   assert.match(g3.lessons.at(-1).text, /초급부터 졸업3까지 뿌요뿌요 배우기 열 단계를 모두 마쳤습니다/);
   // 선물은 갈수록 커진다
-  assert.deepEqual(GRADES.slice(6).map(g => g.reward.coins), [10000, 15000, 20000, 30000]);
+  assert.deepEqual(GRADES.slice(6).map(g => g.reward.coins), [10000, 15000, 20000, 30000, 40000, 60000]);
   const ids = GRADES.flatMap(g => g.lessons.map(l => l.id));
-  assert.equal(new Set(ids).size, ids.length); assert.equal(ids.length, 126);
+  assert.equal(new Set(ids).size, ids.length); assert.equal(ids.length, 291);
 });
 
 test('졸업: 발화점 찾기는 자리를 알려 주지 않고, 두 번 틀리면 도움말이 나온다', () => {
   const finds = GRADES.slice(7).flatMap(g => g.lessons).filter(l => kindOf(l) === 'find');
-  assert.equal(finds.length, 28);
+  assert.equal(finds.length, 48); // 졸업 22 + 졸업3 6 + 졸업4 10 + 졸업5 10
   for (const l of finds) {
     const cells = lessonCells(l), h = heights(cells), [[x, rot]] = l.answer;
     assert.equal(findGroups(cells).length, 0, l.id);
@@ -640,9 +650,9 @@ test('졸업: 발화점 찾기는 자리를 알려 주지 않고, 두 번 틀리
   }
 });
 
-test('졸업3: 초대연쇄 11·12·13연쇄는 한 번 놓아 전소까지', () => {
-  const megas = GRADES[9].lessons.filter(l => kindOf(l) === 'mega');
-  assert.deepEqual(megas.map(l => l.goal.chain), [11, 12, 13]);
+test('졸업3·졸업4·졸업5: 초대연쇄 11연쇄부터 16연쇄까지 한 번 놓아 전소까지', () => {
+  const megas = GRADES.slice(9).flatMap(g => g.lessons).filter(l => kindOf(l) === 'mega');
+  assert.deepEqual(megas.map(l => l.goal.chain), [11, 12, 13, 14, 14, 15, 15, 16]);
   for (const l of megas) {
     const cells = lessonCells(l), h = heights(cells), [[x]] = l.answer;
     assert.match(l.text, new RegExp(`${l.goal.chain}연쇄`)); assert.match(l.text, /줄에 세워서/); // 자리를 알려 준다
@@ -653,7 +663,7 @@ test('졸업3: 초대연쇄 11·12·13연쇄는 한 번 놓아 전소까지', ()
 
 test('두 수 퍼즐: 첫 짝으로 채우고 둘째 짝으로 발화해야 끝까지 이어진다', () => {
   const twos = GRADES.slice(7).flatMap(g => g.lessons).filter(l => kindOf(l) === 'two');
-  assert.equal(twos.length, 13);
+  assert.equal(twos.length, 31); // 졸업2 9 + 졸업3 4 + 졸업4 10 + 졸업5 8
   for (const l of twos) {
     const [setup, fire] = l.answer;
     assert.equal(l.goal.moves, 2); assert.equal(l.pairs.length, 2);

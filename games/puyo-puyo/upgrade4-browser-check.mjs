@@ -116,7 +116,7 @@ try {
   await hideToasts(g);
   for (const to of ['pets', 'boost', 'school', 'solo']) assert.equal(await g.locator(`#scr-menu [data-go="${to}"]`).count(), 1, `메뉴에 ${to} 단추`);
   assert.equal(await g.locator('#scr-menu [data-go="practice"]').count(), 0); // 연습하기는 배우기(초급)로 들어갔다
-  assert.equal(await g.textContent('#scr-menu [data-go="school"] small'), '초급부터 졸업3까지 10단계');
+  assert.equal(await g.textContent('#scr-menu [data-go="school"] small'), '초급부터 졸업5까지 12단계');
   assert.equal(await g.locator('#practice-badge').isVisible(), true);
   assert.equal(await g.locator('#menu-bonus').isVisible(), false); // 아직 배수가 없다
   await settle(g); await g.screenshot({ path: `${shots}/menu.png` });
@@ -254,7 +254,7 @@ try {
   // ---------- 5. 뿌요뿌요 배우기: 초급 → 중급 → 상급 → 최상급 ----------
   await g.click('#scr-menu [data-go="school"]'); await screenIs(g, 'school');
   assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => [r.querySelector('h3').textContent, r.classList.contains('open'), r.querySelector('button').disabled])),
-    [['초급', true, false], ['중급', false, true], ['상급', false, true], ['최상급', false, true], ['초초상급', false, true], ['마지막', false, true], ['찐 마지막', false, true], ['졸업', false, true], ['졸업2', false, true], ['졸업3', false, true]]);
+    [['초급', true, false], ['중급', false, true], ['상급', false, true], ['최상급', false, true], ['초초상급', false, true], ['마지막', false, true], ['찐 마지막', false, true], ['졸업', false, true], ['졸업2', false, true], ['졸업3', false, true], ['졸업4', false, true], ['졸업5', false, true]]);
   await settle(g); await g.screenshot({ path: `${shots}/school.png` });
   // 초급(예전 연습하기)은 건너뛸 수 있다
   await g.click('#school-list .grade[data-grade="beginner"] button');

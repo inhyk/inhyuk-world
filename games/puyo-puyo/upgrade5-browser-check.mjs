@@ -79,7 +79,6 @@ async function startMatch(a, b) {
   for (const p of [a, b]) await p.waitForFunction(() => window.__puyo.game?.mode === 'online' && window.__puyo.match?.phase === 'play', null, T);
   return [host, guest];
 }
-const bubbles = page => page.evaluate(() => [...document.querySelectorAll('#bubbles .bubble')].map(b => b.textContent));
 const waitBubble = (page, text) => page.waitForFunction(t => [...document.querySelectorAll('#bubbles .bubble')].some(b => b.textContent.includes(t)), text, T);
 const tag = Math.random().toString(36).slice(2, 6);
 
@@ -170,7 +169,7 @@ try {
   await n.waitForFunction(() => document.getElementById('hi-pop').hidden, null, T);
   assert.equal(await n.evaluate(() => window.__puyo.P().hiAsked), true);
   await hi.waitForFunction(async () => (await window.__puyo.social.requests()).incoming.length === 1, null, T);
-  assert.equal(await hi.evaluate(async t => (await window.__puyo.social.requests()).incoming[0].nickname, tag), `새${tag}`);
+  assert.equal(await hi.evaluate(async () => (await window.__puyo.social.requests()).incoming[0].nickname), `새${tag}`);
   // 한 번 본 뒤에는 다시 뜨지 않는다 (서버 기록에 남는다)
   await n.evaluate(() => window.__puyo.cloud.flush());
   await n.reload({ waitUntil: 'domcontentloaded' });
