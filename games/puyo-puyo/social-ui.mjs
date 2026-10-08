@@ -534,6 +534,8 @@ export function createSocialUI(deps) {
     // 대전 채팅 창의 차단, 신고 (온라인 계정 방)
     blockOpponent: () => blockUser(online.recent),
     reportOpponent: () => reportUser(online.reportPayload(''), online.recent),
+    // 관전 채팅을 한 사람을 차단, 신고 (who: { id, nickname })
+    blockUser, reportUser,
     render(name) {
       if (name === 'online') renderOnline();
       if (name === 'friends') renderFriends();

@@ -4,6 +4,7 @@
 
 import { MAPS } from './maps.mjs';
 import { todayKey } from './calendar.mjs';
+import { GRADES } from './tutorial.mjs';
 export { todayKey } from './calendar.mjs';
 const tower = e => e.mode === 'tower';
 const m = (id, group, title, goal, event, value, reward, kind = 'max') => ({ id, group, title, goal, event, value, reward, kind });
@@ -76,7 +77,65 @@ MISSIONS.push(m('tower-floor-8', 'tower', '별의 수호자 노바 이기기', 8
 for (const n of [2, 4]) MISSIONS.push(m(`tower-floor-${n}`, 'tower', `${n}층 처음 깨기`, n, 'tower', e => e.floor, prize(n)));
 for (const n of [5, 20, 50]) MISSIONS.push(m(`tower-win-${n}`, 'tower', `타워에서 ${n}번 승리`, n, 'match', e => tower(e) && e.win ? 1 : 0, prize(n), 'sum'));
 
-export const GROUPS = { tower: '타워 챌린지', skill: '실력 챌린지', play: '놀이 챌린지', grow: '성장 챌린지', maps: '맵 탐험 챌린지', gifts: '선물 챌린지' };
+
+// ---------- 인혁이 기획서 「뿌요뿌요 (업그레이드)」 5번: "챌린지를 더 만들어줘" ----------
+// 업그레이드 3, 4와 이번에 생긴 것들(트로피, 관전, 응원, 펫, 2배 부스트, 배우기, 친구, 친구 선물)에도 챌린지를 만들고,
+// 예전 챌린지는 더 높은 목표를 붙였다. 예전 ID 는 그대로 둔다 (저장된 기록이 이어지게).
+// status 이벤트: 지금 내 기록을 한꺼번에 알려 준다 { trophies, friends, petKinds, petDraws, school: [끝낸 등급 id], streak, coins }
+const NUM = n => n.toLocaleString('ko-KR');
+// 트로피와 대전 승리
+for (const [i, n] of [1, 5, 10, 25, 50, 100, 300].entries())
+  MISSIONS.push(m(`trophy-${n}`, 'trophy', `트로피 ${NUM(n)}개 모으기`, n, 'status', e => e.trophies, prize(i + 2)));
+for (const [i, n] of [1, 10, 30, 100].entries())
+  MISSIONS.push(m(`vs-win-${n}`, 'trophy', `AI 대전에서 ${n}번 이기기`, n, 'match', e => (e.mode === 'vs' && e.win ? 1 : 0), prize(i + 2), 'sum'));
+for (const [i, n] of [3, 10, 30].entries())
+  MISSIONS.push(m(`online-win-${n}`, 'trophy', `온라인 대전에서 ${n}번 이기기`, n, 'match', e => (e.mode === 'online' && e.win ? 1 : 0), prize(i + 4), 'sum'));
+// 친구, 관전, 응원, 친구 선물
+for (const [i, n] of [1, 3, 5, 10, 20].entries())
+  MISSIONS.push(m(`friends-${n}`, 'friends', `친구 ${n}명 사귀기`, n, 'status', e => e.friends, prize(i + 2)));
+for (const [i, n] of [1, 5, 20].entries())
+  MISSIONS.push(m(`watch-${n}`, 'friends', `온라인 대전 ${n}번 관전하기`, n, 'watch', () => 1, prize(i + 1), 'sum'));
+for (const [i, n] of [1, 10, 50].entries())
+  MISSIONS.push(m(`cheer-${n}`, 'friends', `관전하면서 응원 ${n}번 보내기 (화이팅 · 좋아요)`, n, 'cheer', () => 1, prize(i + 1), 'sum'));
+for (const [i, n] of [1, 5, 20].entries())
+  MISSIONS.push(m(`gift-send-${n}`, 'friends', `친구에게 선물 ${n}번 보내기`, n, 'giftSent', () => 1, { ...prize(i + 2), tickets: n === 20 ? { effect: 1 } : { spin: 1 } }, 'sum'));
+// 펫과 2배 부스트
+for (const [i, n] of [1, 2, 3, 4, 5].entries())
+  MISSIONS.push(m(`pet-kinds-${n}`, 'pets', n === 1 ? '알에서 첫 펫 뽑기' : n === 5 ? '펫 다섯 종류 모두 모으기' : `펫 ${n}종류 모으기`, n, 'status', e => e.petKinds, n === 5 ? { coins: 5000, xp: 2000, tickets: { skin: 1, effect: 1 } } : prize(i * 3 + 2)));
+for (const [i, n] of [5, 10, 30].entries())
+  MISSIONS.push(m(`pet-draw-${n}`, 'pets', `펫 뽑기 ${n}번 하기`, n, 'status', e => e.petDraws, { ...prize(i * 2 + 3), tickets: { pet: 1 } }));
+for (const [i, n] of [1, 5, 20].entries())
+  MISSIONS.push(m(`boost-${n}`, 'pets', `2배 부스트 ${n}번 쓰기`, n, 'boost', () => 1, { ...prize(i + 2), tickets: n === 20 ? { boost: 2 } : {} }, 'sum'));
+// 뿌요뿌요 배우기: 등급마다 하나 (초급부터 맨 끝 등급까지)
+for (const [i, g] of GRADES.entries())
+  MISSIONS.push(m(`school-${g.id}`, 'school', `뿌요뿌요 배우기 「${g.name}」 끝내기`, 1, 'status', e => (e.school?.includes(g.id) ? 1 : 0), prize(i * 2 + 1)));
+// 실력: 더 긴 연쇄, 연쇄 여러 번, 한 번에 많이
+for (const [i, n] of [13, 14, 15].entries())
+  MISSIONS.push(m(`chain-master-${n}`, 'skill', `${n}연쇄 달성하기`, n, 'chain', e => e.chain, prize(i + 11)));
+for (const [min, values] of [[3, [10, 50, 200]], [5, [5, 25, 100]]]) for (const [i, n] of values.entries())
+  MISSIONS.push(m(`chain${min}-total-${n}`, 'skill', `${min}연쇄 이상 · 누적 ${n}번`, n, 'chain', e => (e.chain >= min ? 1 : 0), prize(i + min - 1), 'sum'));
+for (const [i, n] of [30, 60, 120].entries())
+  MISSIONS.push(m(`send-once-${n}`, 'skill', `한 번의 연쇄로 방해 뿌요 ${n}개 보내기`, n, 'chain', e => e.sent || 0, prize(i * 2 + 3)));
+for (const [i, n] of [10, 12].entries())
+  MISSIONS.push(m(`big-group-${n}`, 'skill', `한 번에 ${n}개 이상 이어서 터뜨리기`, n, 'pop', e => e.maxGroup, prize(i + 4)));
+MISSIONS.push(m('five-colors', 'skill', '5가지 색을 한 번에 터뜨리기 (다섯 색 맵에서)', 5, 'pop', e => e.colors, prize(8)));
+for (const [i, n] of [500000, 1000000].entries())
+  MISSIONS.push(m(`solo-score-${n}`, 'skill', `혼자 하기 ${NUM(n)}점 달성`, n, 'endless', e => e.score, prize(i * 2 + 7)));
+// 성장: 높은 레벨, 코인, 출석
+for (const n of [60, 70, 80, 99])
+  MISSIONS.push(m(`grow-level-${n}`, 'grow', `레벨 ${n} 달성`, n, 'level', e => e.level, { coins: n * 30, xp: 0 }));
+for (const [i, n] of [1000, 5000, 20000, 100000].entries())
+  MISSIONS.push(m(`coins-${n}`, 'grow', `코인 ${NUM(n)}개 모으기 (한 번에 가진 수)`, n, 'status', e => e.coins, { coins: 0, xp: 60 + i * 80, tickets: { spin: 1 } }));
+for (const [i, n] of [3, 7, 14, 30].entries())
+  MISSIONS.push(m(`streak-${n}`, 'gifts', `${n}일 이어서 출석 선물 받기`, n, 'status', e => e.streak, { ...prize(i * 2 + 2), tickets: n >= 14 ? { skin: 1 } : { spin: 1 } }));
+// 맵 탐험: 맵마다 이기기
+for (const map of MAPS) for (const [i, n] of [3, 10].entries())
+  MISSIONS.push(m(`map-win-${map.id}-${n}`, 'maps', `${map.name}에서 ${n}번 이기기`, n, 'match', e => (e.map === map.id && e.win ? 1 : 0), prize(i * 3 + 3), 'sum'));
+
+export const GROUPS = {
+  tower: '타워 챌린지', skill: '실력 챌린지', play: '놀이 챌린지', trophy: '트로피 챌린지', friends: '친구 · 관전 챌린지', pets: '펫 · 부스트 챌린지',
+  school: '배우기 챌린지', grow: '성장 챌린지', maps: '맵 탐험 챌린지', gifts: '선물 챌린지',
+};
 
 // 오늘의 미션: 날짜마다 3개씩 바뀐다
 export const DAILY_POOL = [
@@ -90,6 +149,13 @@ export const DAILY_POOL = [
   m('d-endless', 'daily', '오늘 혼자 하기에서 5,000점', 5000, 'endless', e => e.score, { coins: 60, xp: 40 }),
   m('d-games3', 'daily', '오늘 3판 하기', 3, 'match', () => 1, { coins: 50, xp: 40 }, 'sum'),
   m('d-offset', 'daily', '오늘 상쇄 2번 하기', 2, 'offset', () => 1, { coins: 70, xp: 50 }, 'sum'),
+  // 「챌린지를 더 만들어줘」로 더한 오늘의 미션
+  m('d-chain4', 'daily', '오늘 4연쇄 하기', 4, 'chain', e => e.chain, { coins: 80, xp: 60 }),
+  m('d-pop400', 'daily', '오늘 뿌요 400개 터뜨리기', 400, 'pop', e => e.puyos, { coins: 90, xp: 60 }, 'sum'),
+  m('d-vs', 'daily', '오늘 AI 대전에서 1번 이기기', 1, 'match', e => (e.mode === 'vs' && e.win ? 1 : 0), { coins: 70, xp: 50 }, 'sum'),
+  m('d-games5', 'daily', '오늘 5판 하기', 5, 'match', () => 1, { coins: 80, xp: 60 }, 'sum'),
+  m('d-garbage120', 'daily', '오늘 방해 뿌요 120개 보내기', 120, 'chain', e => e.sent || 0, { coins: 100, xp: 70 }, 'sum'),
+  m('d-colors3', 'daily', '오늘 3가지 색을 한 번에 터뜨리기', 3, 'pop', e => e.colors, { coins: 70, xp: 50 }),
 ];
 
 function hash(text) {

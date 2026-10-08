@@ -33,6 +33,7 @@ export function newProgress() {
     pets: emptyPets(), // 가진 펫과 데리고 다니는 펫 (pets.mjs)
     boost: { until: 0 }, // 2배 부스트가 끝나는 때 (bonus.mjs)
     friendCount: 0, // 마지막으로 본 온라인 계정 친구 수 (친구 배수)
+    hiAsked: false, // 처음 인사 「하이와 친구가 되어 주세요」를 봤는지 (온라인 계정)
     gifts: emptyGifts(), // 친구 선물: 친구마다 어디까지 받았는지, 오늘 받은 코인
     social: emptySocial(), // 내 친구 코드, 친구 목록, 차단, 친구마다 최근 대화
     missions: {},
@@ -71,6 +72,7 @@ export function sanitize(p) {
   out.pets = sanitizePets(out.pets);
   out.boost = { until: clampInt(out.boost?.until, 0, 1e14) };
   out.friendCount = clampInt(out.friendCount, 0, 1000);
+  out.hiAsked = out.hiAsked === true;
   out.gifts = sanitizeGifts(out.gifts);
   out.social = sanitizeSocial(out.social);
   out.stats = { ...base.stats, ...(out.stats || {}) };

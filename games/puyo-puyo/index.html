@@ -15,8 +15,8 @@
   <button id="hud-pause" class="round" aria-label="일시정지">⏸</button>
   <b id="hud-title"></b>
   <span id="hud-watchers" class="hud-watchers" hidden></span>
-  <button id="hud-music" class="round" aria-label="음악 켜고 끄기">🎵</button>
-  <button id="hud-sound" class="round" aria-label="효과음 켜고 끄기">🔊</button>
+  <button id="hud-music" class="round" aria-label="배경음악 켜고 끄기" aria-pressed="true">🎵</button>
+  <button id="hud-sound" class="round" aria-label="효과음 켜고 끄기" aria-pressed="true">🔊</button>
   <button id="hud-chat" class="round" aria-label="채팅" hidden>💬<i class="dot-badge" id="hud-chat-dot" hidden></i></button>
 </header>
 
@@ -46,6 +46,13 @@
       <button data-act="rotR" data-pad="1" aria-label="2P 오른쪽으로 돌리기">↻</button>
     </div>
   </div>
+</div>
+
+<!-- 관전: 하고 있는 사람에게 화이팅, 좋아요 같은 응원과 친구 요청 보내기, 관전 채팅 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 3번) -->
+<div id="watch-bar" hidden>
+  <div class="cheer-side" data-side="0"></div>
+  <button id="watch-chat" class="primary" type="button">💬 관전 채팅<i class="dot-badge" id="watch-chat-dot" hidden></i></button>
+  <div class="cheer-side" data-side="1"></div>
 </div>
 
 <main id="ui">
@@ -112,6 +119,8 @@
         <span class="coins">🪙 <b id="chip-coins">0</b></span>
       </button>
     </div>
+    <!-- 효과음 on and off, 배경음악 끄기 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 1번) -->
+    <div class="sound-row" role="group" aria-label="소리 켜고 끄기"><button type="button" class="sound-switch" data-sound="sfx" aria-pressed="true">🔊 효과음 ON</button><button type="button" class="sound-switch" data-sound="music" aria-pressed="true">🎵 배경음악 ON</button></div>
     <div class="title">
       <div class="logo small"><span class="blob r"></span><span class="blob g"></span><span class="blob b"></span><span class="blob y"></span>
         <h1>뿌요뿌요<small>타워</small></h1></div>
@@ -222,7 +231,7 @@
   <!-- 관전 (인혁이 기획서 4번): 지금 하는 온라인 대전을 골라서 보기만 한다 -->
   <section id="scr-watch" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="online">← 온라인</button><h2>👀 관전하기</h2><button id="watch-refresh" class="ghost">🔄 새로 보기</button></div>
-    <p class="lead">지금 하고 있는 온라인 대전이야. 골라서 보기만 할 수 있어 (조작이랑 채팅은 못 해).</p>
+    <p class="lead">지금 하고 있는 온라인 대전이야. 골라서 보면서 💬 관전 채팅을 하고, 하고 있는 사람에게 🤝 친구 요청, 💪 화이팅, 👍 좋아요를 보낼 수 있어 (조작은 못 해).</p>
     <div id="watch-need-login" class="card stack" hidden>
       <p class="lead">관전은 온라인 계정으로 로그인해야 할 수 있어.</p>
       <button id="watch-login" class="ghost">🔑 로그인 · 온라인 계정</button>
@@ -422,7 +431,7 @@
   <!-- 챌린지 -->
   <section id="scr-missions" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🎯 챌린지</h2><span class="coins">🪙 <b class="coin-count">0</b></span></div>
-    <div class="mission-toolbar"><p id="mission-count"></p><label>도전 종류 <select id="mission-filter"><option value="all">전체 도전</option><option value="ready">보상 받을 도전</option><option value="daily">오늘의 미션</option><option value="tower">타워</option><option value="skill">실력</option><option value="play">놀이</option><option value="grow">성장 · 수집</option><option value="maps">맵 탐험</option><option value="gifts">선물</option></select></label></div>
+    <div class="mission-toolbar"><p id="mission-count"></p><label>도전 종류 <select id="mission-filter"><option value="all">전체 도전</option><option value="ready">보상 받을 도전</option><option value="daily">오늘의 미션</option><option value="tower">타워</option><option value="skill">실력</option><option value="play">놀이</option><option value="trophy">트로피</option><option value="friends">친구 · 관전</option><option value="pets">펫 · 부스트</option><option value="school">배우기</option><option value="grow">성장 · 수집</option><option value="maps">맵 탐험</option><option value="gifts">선물</option></select></label></div>
     <div id="mission-list"></div>
   </section>
 
@@ -442,6 +451,7 @@
       <div><h3 id="profile-name"></h3><p>Lv.<b id="profile-level"></b> · 🪙 <b class="coin-count"></b> · 🏆 <b id="profile-trophies">0</b></p><div class="xpbar big"><i id="profile-xp"></i></div><small id="profile-xp-text"></small></div></div>
     <div id="profile-stats" class="stats"></div>
     <h3>설정</h3>
+    <div class="sound-row left" role="group" aria-label="소리 켜고 끄기"><button type="button" class="sound-switch" data-sound="sfx" aria-pressed="true">🔊 효과음 ON</button><button type="button" class="sound-switch" data-sound="music" aria-pressed="true">🎵 배경음악 ON</button></div>
     <div class="toggles">
       <label><input type="checkbox" id="set-sound" checked> 효과음</label>
       <label><input type="checkbox" id="set-music" checked> 배경음악</label>
@@ -524,6 +534,7 @@
   <div class="card small stack">
     <h2>⏸ 잠깐 멈춤</h2>
     <button id="pause-resume" class="primary big">계속하기</button>
+    <div class="sound-row" role="group" aria-label="소리 켜고 끄기"><button type="button" class="sound-switch" data-sound="sfx" aria-pressed="true">🔊 효과음 ON</button><button type="button" class="sound-switch" data-sound="music" aria-pressed="true">🎵 배경음악 ON</button></div>
     <button id="pause-retry" class="ghost">처음부터 다시</button>
     <button id="pause-quit" class="ghost">그만하고 메뉴로</button>
   </div>
@@ -583,6 +594,17 @@
     <h2 id="pet-pop-title"></h2>
     <p id="pet-pop-text" class="lead"></p>
     <div class="row"><button id="pet-pop-again" class="ghost">한 번 더 뽑기</button><button id="pet-pop-ok" class="primary">좋아!</button></div>
+  </div>
+</div>
+
+<!-- 처음에 나오는 인사 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 7번: "처음에 하이와 친구가 돼어주세요 라고 나오게 해줘") -->
+<div id="hi-pop" class="overlay" hidden>
+  <div class="card small stack hi-card" role="alertdialog" aria-labelledby="hi-title" aria-describedby="hi-text">
+    <canvas id="hi-face" width="200" height="200" aria-hidden="true"></canvas>
+    <h2 id="hi-title">하이와 친구가 되어 주세요!</h2>
+    <p id="hi-text" class="lead"></p>
+    <p id="hi-msg" class="fine center-text" role="status" aria-live="polite"></p>
+    <div class="row"><button id="hi-later" class="ghost" type="button">다음에</button><button id="hi-yes" class="primary" type="button">🤝 하이에게 친구 요청</button></div>
   </div>
 </div>
 
