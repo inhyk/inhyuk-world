@@ -10,6 +10,7 @@ import { QUICK, cleanChat, rateLimiter, validSticker } from './chat.mjs';
 import { W, H, heights } from './core.mjs';
 import { emptyTotals } from './match.mjs';
 import { MAPS, cleanMapIndex, voteResult } from './maps.mjs';
+import { setPiece, setFalling, tickView } from './remote-smooth.mjs';
 
 const SEND_EVERY = 3;   // 3프레임마다 (초당 20번)
 
@@ -20,27 +21,31 @@ export class RemoteView {
     this.cells = new Uint8Array(W * H);
     this.h = new Int8Array(W);
     this.piece = null; this.state = 'ready'; this.score = 0; this.incoming = 0;
-    this.popping = null; this.timer = 0; this.falling = []; this.land = new Map();
+    this.popping = null; this.timer = 0; this.falling = []; this.land = new Map(); this.pace = null;
     this.chaining = false; this.dead = false; this.events = []; this.nextPairs = [[1, 1], [1, 1]];
     this.stats = emptyTotals();
   }
   get next() { return this.nextPairs; }
   ghost() { return null; }
+  // 매 프레임: 받은 모습 사이를 이어서 움직인다 (match.mjs 가 부른다)
+  tick() { tickView(this); }
   apply(s) {
     if (typeof s.c === 'string' && s.c.length === W * H) {
       for (let i = 0; i < W * H; i++) { const v = s.c.charCodeAt(i) - 48; this.cells[i] = v >= 0 && v <= 6 ? v : 0; }
       heights(this.cells, this.h);
     }
     const n = v => (Number.isFinite(v) ? v : 0);
-    this.piece = Array.isArray(s.p) ? { x: n(s.p[0]), y: n(s.p[1]), rot: n(s.p[2]) & 3, a: n(s.p[3]), c: n(s.p[4]) } : null;
-    if (this.piece && (this.piece.x < 0 || this.piece.x > 5)) this.piece = null;
+    let piece = Array.isArray(s.p) ? { x: n(s.p[0]), y: n(s.p[1]), rot: n(s.p[2]) & 3, a: n(s.p[3]), c: n(s.p[4]) } : null;
+    if (piece && (piece.x < 0 || piece.x > 5)) piece = null;
+    setPiece(this, piece, s.f); // 같은 짝이면 자리만 고쳐서 부드럽게 잇는다 (remote-smooth.mjs)
     if (Array.isArray(s.n) && s.n.length === 4) this.nextPairs = [[n(s.n[0]), n(s.n[1])], [n(s.n[2]), n(s.n[3])]];
     this.score = Math.max(0, n(s.sc));
     this.incoming = Math.max(0, n(s.in));
+    const wasPop = this.state === 'pop';
     this.state = typeof s.st === 'string' ? s.st.slice(0, 10) : 'control';
-    this.timer = n(s.pt);
+    this.timer = wasPop && this.state === 'pop' ? Math.min(this.timer, n(s.pt)) : n(s.pt); // 반짝임이 뒤로 돌아가지 않게
     this.popping = Array.isArray(s.pop) ? { cells: new Set(s.pop.filter(Number.isInteger)), garbage: Array.isArray(s.pg) ? s.pg.filter(Number.isInteger) : [] } : null;
-    this.falling = Array.isArray(s.fl) ? s.fl.slice(0, 90).map(f => ({ x: n(f[0]), to: n(f[1]), y: n(f[2]), color: n(f[3]) })) : [];
+    setFalling(this, Array.isArray(s.fl) ? s.fl.slice(0, 90).map(f => ({ x: n(f?.[0]), to: n(f?.[1]), y: n(f?.[2]), color: n(f?.[3]) })) : []);
     this.chaining = !!s.ch;
     this.dead = !!s.d;
     if (this.dead) this.state = 'dead';
@@ -226,7 +231,7 @@ export function createPeerOnline(api) {
       if (++clock % SEND_EVERY) return;
       const snap = snapshot(match.players[0]);
       const text = JSON.stringify(snap);
-      if (text !== last) { last = text; room.send(snap); }
+      if (text !== last) { last = text; room.send({ ...snap, f: clock }); } // f: 프레임 번호 (받는 쪽이 내려오는 빠르기를 잰다)
     },
     roundOver(e, match) {
       if (!room.host) return;

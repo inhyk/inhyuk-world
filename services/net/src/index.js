@@ -4,7 +4,9 @@
 // 신고에 쓰려고 마지막 50줄을 잠깐 기억한다. 랜덤 매칭, 초대로 만든 방(members)은 data 안의 모든 글자열을 거른다.
 // 게임 데이터는 저장하거나 로그로 남기지 않는다.
 // 관전: 관계자 방에는 로그인한 사람이 ?watch=1 로 보기만 하러 들어올 수 있다(자리, 방장, 인원 수와 상관없음).
-// 관전하는 사람은 아무것도 보낼 수 없고, 채팅 글(data.chat)은 받지 않는다. 두 사람 중 누구와든 차단한 사이면 못 들어온다.
+// 관전하는 사람은 게임 메시지를 보낼 수 없고, 두 사람끼리의 채팅 글(data.chat)은 받지 않는다. 두 사람 중 누구와든 차단한 사이면 못 들어온다.
+// 관전하는 사람이 보낼 수 있는 것은 관전 채팅({ chat })과 응원({ t:'cheer', k: 번호, to: 자리 }) 둘뿐이고,
+// 두 사람과 다른 관전자에게 { t:'wmsg', from, user:{ id, nickname }, data } 로 따로 전한다 (아래 fromWatcher).
 // 결과 보고: 관계자 방의 두 사람은 대전이 끝나면 { t:'report', n, won } 을 보낸다. 둘이 같으면(한 사람만 보냈으면 방이 빌 때) 온라인 승리 1개.
 // 계정, 친구, 1:1 대화, 차단, 신고는 social.js, 게임 저장은 saves.js, 랭킹과 관전 목록은 stats.js,
 // 접속 상태와 초대는 lobby.js, 랜덤 매칭은 match.js, 관리 페이지는 admin.js.
@@ -49,6 +51,8 @@ const WATCH_MAX = 10;
 const LIVE_TOUCH_MS = 5 * 60 * 1000;
 // 관전하러 들어온 사람에게 먼저 보내 줄 메시지(send 의 keep: true): 보낸 사람과 종류(data.t)마다 마지막 것, 8개, 4KB까지
 const KEEP_MAX = 8, KEEP_BYTES = 4096;
+// 관전하는 사람이 보내는 응원 종류는 번호로만 (0 ~ 15). 무슨 말과 그림인지는 게임이 정한다.
+const CHEER_KINDS = 16;
 
 const ROUTES = [
   ['POST', 'auth/signup', (r, e) => auth.signup(r, e)],
@@ -158,7 +162,10 @@ async function rooms(request, env, parts, url, headers) {
   }
   const watch = url.searchParams.get('watch') === '1';
   if (watch && !user) return json({ error: 'login-required' }, 401, headers);
-  return roomStub(env, game, code).fetch(internalRequest(request, { 'X-Net-User': user?.id, 'X-Net-Watch': watch ? '1' : undefined }));
+  // 관전하는 사람의 닉네임도 방에 알려 준다 (관전 채팅과 응원에 서버가 아는 이름을 붙이려고)
+  return roomStub(env, game, code).fetch(internalRequest(request, {
+    'X-Net-User': user?.id, 'X-Net-Watch': watch ? '1' : undefined, 'X-Net-Nick': watch ? encodeURIComponent(user.nickname) : undefined,
+  }));
 }
 
 // GET /live?ticket=  (접속 상태와 알림),  GET /match/:game?ticket=  (랜덤 매칭 줄)
@@ -196,7 +203,7 @@ export class Room extends DurableObject {
     const [client, server] = Object.values(new WebSocketPair());
     const room = await this.ctx.storage.get('room');
     const uid = Number(request.headers.get('X-Net-User')) || null;
-    if (request.headers.get('X-Net-Watch') === '1') return this.watch(room, uid, server, client);
+    if (request.headers.get('X-Net-Watch') === '1') return this.watch(room, uid, server, client, nickOf(request));
     const peers = this.peers();
     // 한 사람(사용자 번호)은 자리 하나. 같은 사람이 또 들어오면 새 자리를 주지 않고 예전 연결을 바꿔 낀다.
     const seat = uid ? peers.find(p => p.uid === uid) : null;
@@ -257,7 +264,7 @@ export class Room extends DurableObject {
   }
 
   // 보기만 하러 들어온 사람 (관계자 방만, 두 사람이 아닌 로그인한 사람, 둘 중 누구와도 차단한 사이가 아닐 때)
-  async watch(room, uid, server, client) {
+  async watch(room, uid, server, client, nick = '') {
     let refusal = !room ? 'not-found' : !room.members || !uid || room.members.includes(uid) ? 'not-watchable'
       : this.watchers().length >= WATCH_MAX ? 'watch-full' : '';
     if (!refusal) {
@@ -273,9 +280,12 @@ export class Room extends DurableObject {
     room.watchSeq = (room.watchSeq ?? 0) + 1;
     const id = `w${room.watchSeq}`;
     await this.ctx.storage.put('room', room);
+    // 관전 채팅을 신고하거나 신고당할 수 있게 "이 방에 있었던 사람"으로 기억한다.
+    const chat = (await this.ctx.storage.get('chat')) ?? { lines: [], users: [] };
+    if (!chat.users.includes(uid)) { chat.users.push(uid); await this.ctx.storage.put('chat', chat); }
     const players = this.peers();
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ id, joined: Date.now(), uid, watcher: true });
+    server.serializeAttachment({ id, joined: Date.now(), uid, watcher: true, nick });
     // users: 자리마다 누구인지 (관전 목록의 닉네임과 맞춰 보려고). 두 사람의 이름은 서버가 준 닉네임만 쓴다.
     const users = Object.fromEntries(players.map(p => [p.id, p.uid]));
     server.send(JSON.stringify({ t: 'welcome', id, watch: true, host: room.host, max: room.max, peers: players.map(p => p.id), users }));
@@ -289,6 +299,33 @@ export class Room extends DurableObject {
     await this.ctx.storage.setAlarm(Date.now() + SWEEP_MS);
     if (room.name) await social.track(this.env, uid, 'room', room.name);
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // 관전하는 사람이 보낸 것. 관전 채팅({ chat: 글 })과 응원({ t:'cheer', k: 번호, to: 자리 })만 받는다.
+  // - 게임 메시지(msg)와 섞이지 않게 { t:'wmsg' } 로 따로 전한다. 그래서 관전자가 방해 뿌요 같은 게임 메시지를 흉내 낼 수 없고,
+  //   wmsg 를 모르는 예전 버전 게임은 그냥 버린다.
+  // - 이름은 보낸 사람이 적은 것이 아니라 서버가 아는 닉네임을 붙인다.
+  // - 채팅 글은 두 사람의 채팅과 같은 거르개를 거치고, 신고에 쓰려고 방 기록에 남긴다. 채팅과 응원을 합쳐 1초에 1개(몰아서 5개).
+  async fromWatcher(ws, me, msg) {
+    const data = msg.data;
+    if (msg.t !== 'send' || !data || typeof data !== 'object' || Array.isArray(data)) return this.warn(ws, 'watch-only');
+    let out;
+    if ('chat' in data) {
+      if (typeof data.chat !== 'string') return this.warn(ws, 'bad');
+      if (!this.allowChat(ws)) return;
+      let { text } = filterText(data.chat);
+      if (!text) return;
+      text = maskSplitPhone(await this.recentLines(me.id), text);
+      await this.remember({ from: me.id, uid: me.uid ?? null, text, at: Date.now() });
+      out = { chat: text };
+    } else if (data.t === 'cheer') {
+      const to = this.peers().find(p => p.id === data.to);
+      if (!Number.isInteger(data.k) || data.k < 0 || data.k >= CHEER_KINDS || !to) return this.warn(ws, 'bad');
+      if (!this.allowChat(ws)) return;
+      out = { t: 'cheer', k: data.k, to: to.id };
+    } else return this.warn(ws, 'watch-only');
+    const text = JSON.stringify({ t: 'wmsg', from: me.id, user: { id: me.uid ?? null, nickname: me.nick ?? '' }, data: out });
+    for (const p of [...this.peers(), ...this.watchers()]) if (p.ws !== ws) safeSend(p.ws, text);
   }
 
   // 두 사람에게 지금 몇 명이 보고 있는지 알린다
@@ -311,7 +348,7 @@ export class Room extends DurableObject {
     if (!msg || typeof msg !== 'object') return this.warn(ws, 'bad');
     if (msg.t === 'ping') return ws.send(PONG);
     if (msg.t === 'bye') { this.close(ws, 1000, 'bye'); return this.departed(ws); }
-    if (me.watcher) return this.warn(ws, 'watch-only'); // 관전하는 사람은 보기만 한다
+    if (me.watcher) return this.fromWatcher(ws, me, msg); // 관전하는 사람은 관전 채팅과 응원만 보낼 수 있다
     if (msg.t === 'report') return this.report(ws, me, msg);
     if (msg.t !== 'send' || msg.data === undefined) return this.warn(ws, 'bad');
     let data = msg.data;
@@ -577,6 +614,11 @@ export class Room extends DurableObject {
 }
 
 function safeSend(ws, text) { try { ws.send(text); } catch { /* 닫히는 중 */ } }
+
+// Worker 가 붙여 준 닉네임 (관전하는 사람만)
+function nickOf(request) {
+  try { return decodeURIComponent(request.headers.get('X-Net-Nick') ?? '').slice(0, 20); } catch { return ''; }
+}
 
 // data 안의 모든 글자열(이름표 포함)을 거른다. 너무 깊으면 던진다(→ 'bad').
 function cleanData(value, depth = 0) {

@@ -656,3 +656,49 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 .gift-btn { color: #b0308a; }
 .chat-lines .line.gift { background: linear-gradient(110deg, #fff3b8, #ffdcec); border: 2px solid #ffc94a; }
 .chat-lines .line.gift span { font-family: 'Jua', var(--body-font); font-size: 16px; }
+
+/* 효과음 on and off, 배경음악 끄기 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 1번) */
+.sound-row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 8px; }
+.sound-row.left { justify-content: flex-start; margin: 8px 0; }
+#pause .sound-row { justify-content: center; margin-top: 0; }
+.sound-switch { padding: 7px 12px; font-size: 14px; border: 2px solid #b9f0cd; background: #eafff2; color: #116b38; white-space: nowrap; }
+.sound-switch.off { border-color: #e2dcec; background: #f1eef6; color: #7a7090; }
+.round.off { position: relative; background: rgba(226, 220, 236, .85); }
+#hud-music.off::after { content: ''; position: absolute; left: 9px; right: 9px; top: 50%; height: 3px; border-radius: 2px; background: #e0324f; transform: rotate(-45deg); }
+
+/* 관전: 응원 줄과 관전 채팅 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 3번) */
+#watch-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: end; padding: 0 max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); pointer-events: none; }
+#watch-bar > * { pointer-events: auto; }
+.cheer-side { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 6px 8px; border-radius: 16px; background: rgba(20, 10, 50, .55); }
+.cheer-side[data-side="1"] { align-items: flex-end; }
+.cheer-side > b { font-weight: 400; font-size: 13px; color: #fff; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cheer-side[data-side="0"] > b { color: #ffe45c; }
+.cheer-side[data-side="1"] > b { color: #9fe3ff; }
+.cheer-buttons { display: flex; flex-wrap: wrap; gap: 5px; }
+.cheer-side[data-side="1"] .cheer-buttons { justify-content: flex-end; }
+.cheer-buttons button { padding: 6px 9px; font-size: 13px; white-space: nowrap; }
+.cheer-buttons .cheer-friend { background: #fff3b8; }
+#watch-bar.off .cheer-buttons button[data-cheer] { opacity: .55; }
+#watch-chat { position: relative; padding: 9px 14px; font-size: 15px; white-space: nowrap; }
+@media (max-width: 700px) {
+  #watch-bar { grid-template-columns: 1fr 1fr; gap: 6px; }
+  #watch-chat { grid-column: 1 / -1; grid-row: 2; justify-self: center; padding: 7px 18px; }
+  .cheer-side { padding: 5px 6px; }
+  .cheer-buttons { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 4px; }
+  .cheer-buttons button { padding: 5px 2px; font-size: 12px; }
+  .cheer-buttons .cheer-friend { grid-column: 1 / -1; }
+}
+.cheer-float { position: fixed; z-index: 6; pointer-events: none; transform: translate(-50%, -50%); animation: cheerUp 1.6s ease-out forwards; text-shadow: 0 3px 0 rgba(40, 10, 80, .35); }
+@keyframes cheerUp { 0% { opacity: 0; transform: translate(-50%, -20%) scale(.5); } 15% { opacity: 1; transform: translate(-50%, -60%) scale(1.25); } 30% { transform: translate(-50%, -110%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -420%) scale(1); } }
+.chat-log .msg .who { padding: 2px 8px; font-size: 12px; border-radius: 10px; background: #efe9ff; color: #5b3bb3; box-shadow: none; }
+.msg.watcher span { background: #f4fbff; border-color: #cdeaff; }
+.msg.cheer span { background: linear-gradient(110deg, #fff3b8, #ffe2ef); border: 2px solid #ffc94a; color: var(--ink); font-family: 'Jua', var(--body-font); font-size: 15px; }
+.chat-tools .pick-name { align-self: center; font-size: 14px; color: #5b3bb3; max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-tools small.fine { align-self: center; flex: 1 1 140px; }
+
+/* 처음 인사 「하이와 친구가 되어 주세요!」 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 7번) */
+.hi-card { text-align: center; align-items: center; }
+.hi-card canvas { width: 120px; height: 120px; }
+.hi-card h2 { font-size: 26px; color: #5b3bb3; line-height: 1.3; }
+.hi-card .lead, .hi-card .fine { margin: 0; }
+.hi-card .row { width: 100%; }

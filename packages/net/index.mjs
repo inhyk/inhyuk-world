@@ -9,9 +9,13 @@
 //   host(peerId)             방장이 바뀜 (방장이 나가면 가장 먼저 들어온 사람이 방장)
 //   error(code)              too-big | rate | chat-rate | bad  (메시지가 너무 크거나 너무 자주 보냄)
 //   watchers(n)              지금 이 방을 보고 있는(관전) 사람 수
+//   watcherMessage(data, user, fromId)  관전하는 사람이 보낸 관전 채팅({ chat }) 이나 응원({ t:'cheer', k, to })
+//                            user 는 서버가 붙여 준 { id, nickname }. 두 사람과 다른 관전자가 받는다.
 //
 // 관전: open(code, { ticket, watch: true }) 로 들어가면 보기만 한다 (role 'watcher', send 는 false).
-// 두 사람이 보낸 메시지를 message(data, fromId) 로 받는다. 채팅 글은 오지 않는다. 두 사람이 다 나가면 'ended' 로 끝난다.
+// 두 사람이 보낸 메시지를 message(data, fromId) 로 받는다. 두 사람끼리의 채팅 글은 오지 않는다. 두 사람이 다 나가면 'ended' 로 끝난다.
+// 관전하는 사람은 chat(text) (관전 채팅)과 cheer(peerId, k) (응원, 번호만)만 보낼 수 있다.
+// 서버가 예전 버전이면 error('watch-only') 가 온다.
 // send(message, { keep: true }): 관전하러 나중에 들어온 사람에게도 먼저 보내 줄 메시지 (처음 인사 같은 것. 종류(t)마다 마지막 것)
 // report(n, won): 랜덤 매칭, 초대 방에서 n 번째 대전이 끝났을 때 내가 이겼는지 서버에 알린다 (온라인 승리 세기)
 //
@@ -176,6 +180,11 @@ export class Room {
       case 'msg':
         if (this.ready) this.hooks.message?.(msg.data, msg.from);
         return;
+      case 'wmsg': // 관전하는 사람이 보낸 관전 채팅, 응원 (게임 메시지와 섞이지 않게 따로 온다)
+        if (this.ready && msg.data && typeof msg.data === 'object') {
+          this.hooks.watcherMessage?.(msg.data, { id: Number(msg.user?.id) || 0, nickname: String(msg.user?.nickname ?? '') }, msg.from);
+        }
+        return;
       case 'error':
         if (this.settle && ['not-found', 'full', 'not-member', 'not-watchable', 'watch-full'].includes(msg.code)) {
           this.settle.reject(Error(msg.code === 'full' ? MESSAGES.full(msg.max) : msg.code === 'not-member' ? MESSAGES.notMember
@@ -203,7 +212,13 @@ export class Room {
     return this.ready && !this.watcher && this.raw(JSON.stringify(keep ? { t: 'send', data: message, keep: true } : { t: 'send', data: message }));
   }
   // 채팅 한 줄 (서버가 걸러서 보낸다). 받는 쪽은 message hook 의 data.chat 으로 받는다.
-  chat(text, extra = {}) { return this.send({ ...extra, chat: String(text ?? '') }); }
+  // 관전하는 사람이 부르면 관전 채팅이 된다 (두 사람과 다른 관전자가 watcherMessage 로 받는다).
+  chat(text, extra = {}) {
+    if (this.watcher) return this.ready && this.raw(JSON.stringify({ t: 'send', data: { chat: String(text ?? '') } }));
+    return this.send({ ...extra, chat: String(text ?? '') });
+  }
+  // 관전하는 사람이 두 사람 중 한 명(peerId)에게 보내는 응원. k 는 번호 (무슨 말인지는 게임이 정한다)
+  cheer(peerId, k) { return this.ready && this.watcher && this.raw(JSON.stringify({ t: 'send', data: { t: 'cheer', k, to: peerId } })); }
   sendTo(peerId, message) { return this.ready && !this.watcher && this.raw(JSON.stringify({ t: 'send', to: peerId, data: message })); }
   // n 번째 대전이 끝났다: 내가 이겼나 (랜덤 매칭, 초대 방의 온라인 승리 세기)
   report(n, won) { return this.ready && !this.watcher && this.raw(JSON.stringify({ t: 'report', n, won: !!won })); }

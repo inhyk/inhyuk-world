@@ -1,17 +1,19 @@
 // 온라인 대전. 방 코드 없이 "게임 찾기"(랜덤 매칭)나 친구 초대로 같은 방(@inhyuk/net Room)에 들어간다.
-// 각자 자기 필드를 계산하고, 상대에게는 필드 모습(초당 12번)과 방해 뿌요, 연쇄 시작/끝, 쓰러짐만 보낸다.
+// 각자 자기 필드를 계산하고, 상대에게는 필드 모습(초당 20번)과 방해 뿌요, 연쇄 시작/끝, 쓰러짐만 보낸다.
+// 받는 쪽은 받은 모습 사이를 매 프레임 이어서 그린다 (remote-smooth.mjs, 인혁이 기획서 「뿌요뿌요 (업그레이드)」 4번).
 // 판정(누가 이겼나)은 방장(먼저 들어온 사람)이 한다.
 // - 상대 이름은 서버가 준 opponent.nickname 만 쓴다. 상대가 보낸 글자는 이름으로 쓰지 않는다 (hello 에 이름을 넣지도 않는다).
 // - 매칭, 초대 방에서는 서버가 data 안의 모든 글자열을 거르고 숫자 8개 이상을 가린다.
 //   그래서 필드 모습은 글자열이 아니라 숫자 배열로 보낸다.
-// - 서버는 한 연결에서 1초에 30개(몰아서 60개)까지만 전한다. 필드 모습을 초당 12번으로 줄여 공격 메시지가 버려지지 않게 한다.
+// - 서버는 한 연결에서 1초에 30개(몰아서 60개)까지만 전한다. 필드 모습은 초당 20번까지만 보내서 공격 메시지가 버려지지 않게 한다.
 // - 직접 쓴 채팅은 room.chat(text) (data.chat) 으로만 보낸다. 빠른 말과 뿌요 이모티콘은 번호만 보낸다
 //   ({ t: 'say', quick: n } / { t: 'say', sticker: n }). 번호라서 거를 글자가 없고, 받는 쪽이 정해진 말과 그림으로 바꾼다.
 // - 다시 접속(rejoin): 상대 계정이 다른 연결로 다시 들어오면 판을 맞추지 않고 이번 대전을 끝낸다(둘 다 온라인 화면으로).
 //   필드를 다시 맞추려면 양쪽 뿌요 순서와 방해 뿌요 수를 모두 다시 보내야 해서, 끝내는 쪽이 간단하고 어긋나지 않는다.
 //   내 연결이 끊기거나(lost) 다른 기기에서 같은 계정이 들어오면(replaced) 지금처럼 대전을 끝내고 온라인 화면으로 돌아간다.
-// - 관전: 다른 사람이 보기만 하러 들어올 수 있다(서버가 채팅 글은 보내지 않는다). 처음 인사(hello)와 판 수(first)는
+// - 관전: 다른 사람이 보기만 하러 들어올 수 있다(서버가 두 사람의 채팅 글은 보내지 않는다). 처음 인사(hello)와 판 수(first)는
 //   keep 으로 보내서 나중에 들어온 사람도 받는다. 지금 몇 명이 보는지는 watchers 로 알려 준다.
+//   관전하는 사람이 보낸 관전 채팅과 응원(화이팅, 좋아요)은 게임 메시지와 따로(watcherMessage) 온다. 이름은 서버가 붙인 닉네임.
 // - 대전이 끝나면 몇 번째 대전인지(n)와 내가 이겼는지를 서버에 보고한다(report). 두 사람 보고가 같으면 온라인 승리 1개.
 // - 맵 투표 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 4번): 두 사람이 하고 싶은 맵에 표를 던진다({ t: 'vote', m: 맵 번호 }).
 //   방장이 시작할 때 표가 더 많은 맵(둘이 다르면 둘 중에서 뽑기)을 정해서 start 에 번호(m)로 같이 보낸다.
@@ -19,10 +21,11 @@
 import { clampFirstTo, emptyTotals } from './match.mjs';
 import { W, H, heights } from './core.mjs';
 import { NET_GAME } from './net.mjs';
-import { QUICK, STICKERS, validSticker } from './chat.mjs';
+import { QUICK, STICKERS, validSticker, validCheer } from './chat.mjs';
 import { MAPS, cleanMapIndex, voteResult } from './maps.mjs';
+import { setPiece, setFalling, tickView } from './remote-smooth.mjs';
 
-const SEND_EVERY = 5;        // 5프레임마다 (초당 12번)
+const SEND_EVERY = 3;        // 3프레임마다 (초당 20번). 예전에는 5프레임마다(초당 12번)라 상대가 느리고 끊겨 보였다
 export const CHAT_MAX = 60;  // 짧은 말만 (서버는 200글자까지)
 const LINES_KEEP = 50;
 
@@ -33,27 +36,31 @@ export class RemoteView {
     this.cells = new Uint8Array(W * H);
     this.h = new Int8Array(W);
     this.piece = null; this.state = 'ready'; this.score = 0; this.incoming = 0;
-    this.popping = null; this.timer = 0; this.falling = []; this.land = new Map();
+    this.popping = null; this.timer = 0; this.falling = []; this.land = new Map(); this.pace = null;
     this.chaining = false; this.dead = false; this.events = []; this.nextPairs = [[1, 1], [1, 1]];
     this.stats = emptyTotals();
   }
   get next() { return this.nextPairs; }
   ghost() { return null; }
+  // 매 프레임: 받은 모습 사이를 이어서 움직인다 (match.mjs 가 부른다)
+  tick() { tickView(this); }
   apply(s) {
     if (Array.isArray(s.c) && s.c.length === W * H) {
       for (let i = 0; i < W * H; i++) { const v = s.c[i]; this.cells[i] = Number.isInteger(v) && v >= 0 && v <= 6 ? v : 0; }
       heights(this.cells, this.h);
     }
     const n = v => (Number.isFinite(v) ? v : 0);
-    this.piece = Array.isArray(s.p) ? { x: n(s.p[0]), y: n(s.p[1]), rot: n(s.p[2]) & 3, a: n(s.p[3]), c: n(s.p[4]) } : null;
-    if (this.piece && (this.piece.x < 0 || this.piece.x > 5)) this.piece = null;
+    let piece = Array.isArray(s.p) ? { x: n(s.p[0]), y: n(s.p[1]), rot: n(s.p[2]) & 3, a: n(s.p[3]), c: n(s.p[4]) } : null;
+    if (piece && (piece.x < 0 || piece.x > 5)) piece = null;
+    setPiece(this, piece, s.f); // 같은 짝이면 자리만 고쳐서 부드럽게 잇는다 (remote-smooth.mjs)
     if (Array.isArray(s.n) && s.n.length === 4) this.nextPairs = [[n(s.n[0]), n(s.n[1])], [n(s.n[2]), n(s.n[3])]];
     this.score = Math.max(0, n(s.sc));
     this.incoming = Math.max(0, n(s.in));
+    const wasPop = this.state === 'pop';
     this.state = typeof s.st === 'string' ? s.st.slice(0, 10) : 'control';
-    this.timer = n(s.pt);
+    this.timer = wasPop && this.state === 'pop' ? Math.min(this.timer, n(s.pt)) : n(s.pt); // 반짝임이 뒤로 돌아가지 않게
     this.popping = Array.isArray(s.pop) ? { cells: new Set(s.pop.filter(Number.isInteger)), garbage: Array.isArray(s.pg) ? s.pg.filter(Number.isInteger) : [] } : null;
-    this.falling = Array.isArray(s.fl) ? s.fl.slice(0, 90).map(f => ({ x: n(f?.[0]), to: n(f?.[1]), y: n(f?.[2]), color: n(f?.[3]) })) : [];
+    setFalling(this, Array.isArray(s.fl) ? s.fl.slice(0, 90).map(f => ({ x: n(f?.[0]), to: n(f?.[1]), y: n(f?.[2]), color: n(f?.[3]) })) : []);
     this.chaining = !!s.ch;
     this.dead = !!s.d;
     if (this.dead) this.state = 'dead';
@@ -131,6 +138,13 @@ export function createOnline(api) {
     },
     message(m) { received(m); },
     watchers(n) { watchers = n; api.watchersChanged?.(n); },
+    // 관전하는 사람의 말과 응원: { id, name, text } 또는 { id, name, cheer: 번호, mine: 나에게 보낸 것인가 }
+    watcherMessage(data, user) {
+      if (!room || !user?.id) return;
+      const who = { id: user.id, name: String(user.nickname || '관전자').slice(0, 20) };
+      if (typeof data.chat === 'string') { if (data.chat) api.watcherLine?.({ ...who, text: data.chat.slice(0, 200) }); }
+      else if (data.t === 'cheer' && validCheer(data.k)) api.watcherLine?.({ ...who, cheer: data.k, mine: data.to === room.id });
+    },
   };
 
   const render = () => api.render?.();
@@ -355,7 +369,7 @@ export function createOnline(api) {
       if (++clock % SEND_EVERY) return;
       const snap = snapshot(match.players[0]);
       const text = JSON.stringify(snap);
-      if (text !== last) { last = text; room.send(snap); }
+      if (text !== last) { last = text; room.send({ ...snap, f: clock }); } // f: 프레임 번호 (받는 쪽이 내려오는 빠르기를 잰다)
     },
     roundOver(e, match) {
       if (!room?.host) return;

@@ -25,6 +25,16 @@ export const STICKERS = [
   { char: 'comet', mood: 'attack', text: '한 판 더!' },
 ];
 export const validSticker = n => Number.isInteger(n) && n >= 0 && n < STICKERS.length;
+// 관전하는 사람이 대전하는 사람에게 보내는 응원 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 3번: "화이팅, 좋아요 등을 보낼 수 있게").
+// 번호로만 주고받아서 나쁜 말이 섞일 수 없다. 서버는 0~15번을 받으니 뒤에 더 붙일 수 있다 (순서는 바꾸지 않는다).
+export const CHEERS = [
+  { emoji: '💪', text: '화이팅!' },
+  { emoji: '👍', text: '좋아요!' },
+  { emoji: '👏', text: '대단해!' },
+  { emoji: '✨', text: '멋진 연쇄!' },
+];
+export const validCheer = n => Number.isInteger(n) && n >= 0 && n < CHEERS.length;
+export const cheerText = n => `${CHEERS[n].emoji} ${CHEERS[n].text}`;
 // 이모지 고르기 판 (글자처럼 메시지에 넣는다)
 export const EMOJIS = [
   '😀', '😂', '🥰', '😎', '🤩', '😮', '😭', '😡', '🤔', '😴', '🥳', '😇',

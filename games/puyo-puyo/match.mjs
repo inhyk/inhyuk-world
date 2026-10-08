@@ -81,7 +81,7 @@ export class Match {
     this.frame++;
     const target = this.target, gravity = this.gravity();
     this.players.forEach((me, i) => {
-      if (this.specs[i].kind === 'remote') return;
+      if (this.specs[i].kind === 'remote') { me.tick?.(); return; } // 온라인 상대: 받은 모습 사이를 이어서 움직인다
       const opp = this.players[1 - i];
       const oppRemote = this.specs[1 - i]?.kind === 'remote';
       const oppChaining = opp ? (oppRemote ? this.remoteChaining : opp.chaining) : false;

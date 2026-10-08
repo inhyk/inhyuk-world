@@ -591,7 +591,7 @@ try {
   mark = errors.length;
   await a.route('**/auth/delete', route => route.abort());
   await a.fill('#delete-pass', 'abcd1'); await a.click('#delete-yes');
-  await a.waitForFunction(() => /아직 지울 수 없어\. 게임 서버를 새로 배포해야 계정 지우기가 돼/.test(document.getElementById('delete-msg').textContent), null, T);
+  await a.waitForFunction(() => /아직 지울 수 없어\. 게임 서버가 새 버전으로 바뀌어야 계정 지우기가 돼/.test(document.getElementById('delete-msg').textContent), null, T);
   assert.ok(!/인터넷을 확인/.test(await a.textContent('#delete-msg')));
   // 인터넷이 정말 안 될 때만 인터넷을 확인하라고 한다
   await a.route('**/me', route => route.abort());

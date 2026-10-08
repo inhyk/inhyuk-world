@@ -88,7 +88,7 @@ describe('stats and rankings', () => {
 });
 
 describe('watching a match', () => {
-  it('a logged-in third person sees both players, gets their game messages but not their chat, and can not send', async () => {
+  it('a logged-in third person sees both players, gets their game messages but not their chat, and can not send game messages', async () => {
     const g = newGame('w');
     const a = await signup(), b = await signup(), viewer = await signup();
     const code = await memberRoom(g, a, b);
@@ -135,6 +135,74 @@ describe('watching a match', () => {
     p2.close();
     expect(await w2.until(m => m.t === 'error')).toEqual({ t: 'error', code: 'ended' });
     expect(await w2.until(m => m.t === '__closed')).toEqual({ t: '__closed', code: 4410 });
+  });
+
+  it('a viewer can chat and cheer: both players and other viewers get it as wmsg with the server nickname, filtered and rate limited', async () => {
+    const g = newGame('w');
+    const a = await signup(), b = await signup(), v1 = await signup(), v2 = await signup();
+    const code = await memberRoom(g, a, b);
+    const p1 = await enter(g, code, a), p2 = await enter(g, code, b);
+    const w1 = await watchRoom(g, code, v1), w2 = await watchRoom(g, code, v2);
+    await p1.until(m => m.t === 'watchers' && m.n === 2);
+    await p2.until(m => m.t === 'watchers' && m.n === 2);
+
+    // 관전 채팅: 이름은 서버가 아는 닉네임, 보낸 사람이 적은 이름과 다른 칸은 버린다. 보낸 사람에게는 돌아오지 않는다.
+    w1.send({ t: 'send', data: { chat: '둘 다 잘한다', name: '가짜이름', t: 'atk', n: 99 } });
+    const wanted = { t: 'wmsg', from: 'w1', user: { id: v1.id, nickname: v1.nickname }, data: { chat: '둘 다 잘한다' } };
+    expect(await p1.until(m => m.t === 'wmsg')).toEqual(wanted);
+    expect(await p2.until(m => m.t === 'wmsg')).toEqual(wanted);
+    expect(await w2.until(m => m.t === 'wmsg')).toEqual(wanted);
+    expect(await w1.quiet()).toBeNull();
+
+    // 전화번호는 가려진다 (두 사람의 채팅과 같은 거르개)
+    w2.send({ t: 'send', data: { chat: '전화해 010-1234-5678' } });
+    const masked = await p1.until(m => m.t === 'wmsg');
+    expect(masked.from).toBe('w2');
+    expect(masked.data.chat).not.toMatch(/1234/);
+    await w1.until(m => m.t === 'wmsg');
+
+    // 응원은 번호와 받는 자리만. 없는 자리, 이상한 번호는 bad
+    w1.send({ t: 'send', data: { t: 'cheer', k: 1, to: 'p2', text: '몰래 넣은 글' } });
+    const cheer = { t: 'wmsg', from: 'w1', user: { id: v1.id, nickname: v1.nickname }, data: { t: 'cheer', k: 1, to: 'p2' } };
+    expect(await p2.until(m => m.t === 'wmsg' && m.data.t === 'cheer')).toEqual(cheer);
+    expect(await p1.until(m => m.t === 'wmsg' && m.data.t === 'cheer')).toEqual(cheer);
+    expect(await w2.until(m => m.t === 'wmsg' && m.data.t === 'cheer')).toEqual(cheer);
+    w1.send({ t: 'send', data: { t: 'cheer', k: 1, to: 'p9' } });
+    expect(await w1.next()).toEqual({ t: 'error', code: 'bad' });
+    w1.send({ t: 'send', data: { t: 'cheer', k: 99, to: 'p1' } });
+    expect(await w1.next()).toEqual({ t: 'error', code: 'bad' });
+    w1.send({ t: 'send', data: { t: 'cheer', k: '1', to: 'p1' } });
+    expect(await w1.next()).toEqual({ t: 'error', code: 'bad' });
+
+    // 게임 메시지는 여전히 못 보낸다 (두 사람에게 아무것도 가지 않는다)
+    w1.send({ t: 'send', data: { t: 'atk', n: 99 } });
+    expect(await w1.next()).toEqual({ t: 'error', code: 'watch-only' });
+    w1.send({ t: 'send', to: 'p1', data: [1, 2, 3] });
+    expect(await w1.next()).toEqual({ t: 'error', code: 'watch-only' });
+    expect(await p1.quiet()).toBeNull();
+    expect(await p2.quiet()).toBeNull();
+
+    // 두 사람끼리의 채팅은 여전히 관전하는 사람에게 가지 않는다
+    p1.send({ t: 'send', data: { chat: '우리끼리 얘기' } });
+    expect(await p2.until(m => m.t === 'msg')).toMatchObject({ from: 'p1', data: { chat: '우리끼리 얘기' } });
+    expect(await w1.quiet()).toBeNull();
+
+    // 너무 빨리 보내면 chat-rate (몰아서 5개까지). 앞에서 w2 는 1개를 썼다.
+    for (let i = 0; i < 8; i++) w2.send({ t: 'send', data: { chat: `도배 ${i}` } });
+    expect(await w2.until(m => m.t === 'error')).toEqual({ t: 'error', code: 'chat-rate' });
+
+    // 신고: 관전한 사람도 "그 방에 있었던 사람"이고, 관전 채팅이 증거에 남는다
+    const report = await api('/reports', { method: 'POST', token: a.token, body: { target: v1.id, context: { kind: 'room', game: g, room: code }, reason: '관전 채팅' } });
+    expect(report.status).toBe(201);
+    const row = await env.DB.prepare('SELECT evidence FROM reports WHERE id = ?').bind(report.data.id).first();
+    const evidence = JSON.parse(row.evidence);
+    expect(evidence.targetWasThere).toBe(true);
+    expect(evidence.lines.some(l => l.uid === v1.id && l.text === '둘 다 잘한다')).toBe(true);
+    const fromViewer = await api('/reports', { method: 'POST', token: v2.token, body: { target: v1.id, context: { kind: 'room', game: g, room: code } } });
+    expect(fromViewer.status).toBe(201);
+    const viewerRow = await env.DB.prepare('SELECT evidence FROM reports WHERE id = ?').bind(fromViewer.data.id).first();
+    expect(JSON.parse(viewerRow.evidence).error).toBeUndefined();
+    p1.close(); p2.close();
   });
 
   it('refuses players, guests, code rooms, people who blocked a player, and too many viewers', async () => {
