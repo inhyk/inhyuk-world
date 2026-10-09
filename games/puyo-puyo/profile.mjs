@@ -12,6 +12,8 @@ export const NAME_MAX = 10, PASS_MIN = 4, PASS_MAX = 16, LEVEL_MAX = 99;
 export const TICKET_KINDS = ['skin', 'effect', 'spin', 'pet', 'boost'];
 // 시간 선물 이름 (rewards.mjs 의 TIME_REWARDS 와 같아야 한다)
 export const TIME_IDS = ['5m', '10m', '15m', '20m', '30m', '45m', '60m'];
+// 광고 선물 이름 (rewards.mjs 의 AD_REWARDS 와 같아야 한다)
+export const AD_IDS = ['coins', 'boost', 'spin', 'pet'];
 // 뿌요뿌요 배우기의 등급 이름 (tutorial.mjs 의 GRADES 와 같아야 한다). 초급은 tutorial 칸에 적는다. 중급, 상급, 최상급, 초초상급, 마지막, 찐 마지막, 졸업, 졸업2, 졸업3.
 export const SCHOOL_IDS = ['middle', 'high', 'master', 'ultra', 'final', 'real', 'grad1', 'grad2', 'grad3', 'grad4', 'grad5'];
 // 맵을 고르는 설정 칸: 2인 플레이, AI 대전, 혼자 하기, 온라인 대전(내 표)
@@ -87,6 +89,8 @@ export function sanitize(p) {
     spinDate: date(r.spinDate), spinIndex: Number.isInteger(r.spinIndex) && r.spinIndex >= 0 && r.spinIndex < 6 ? r.spinIndex : null,
     date: date(r.date), playSeconds: Math.max(0, Math.min(86400, Number(r.playSeconds) || 0)),
     claimedTime: uniq(arr(r.claimedTime).filter(id => TIME_IDS.includes(id))),
+    // 오늘 광고 선물을 받은 횟수 (받은 것만 적는다)
+    ads: Object.fromEntries(AD_IDS.map(id => [id, clampInt(r.ads?.[id], 0, 99)]).filter(([, n]) => n > 0)),
   };
   return out;
 }

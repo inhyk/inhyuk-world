@@ -15,7 +15,7 @@ import {
 } from './profile.mjs';
 import { isApp, buzz, restoreSaves, mirrorSave, hideSplash, onBackButton } from './platform.mjs';
 import { calendarBonus, todayKey } from './calendar.mjs';
-import { DAILY_REWARDS, SPIN_PRIZES, TIME_REWARDS, rewardPreview, grantReward, rewardView, claimDaily, spin, addPlayTime, claimTime } from './rewards.mjs';
+import { DAILY_REWARDS, SPIN_PRIZES, TIME_REWARDS, AD_SECONDS, rewardPreview, grantReward, rewardView, claimDaily, spin, addPlayTime, claimTime, adView, claimAd } from './rewards.mjs';
 import { createCreatorSession } from './creator.mjs';
 import { drawCharacter, drawGarbageIcon } from './characters.mjs';
 import { drawPreview } from './skins.mjs';
@@ -67,7 +67,7 @@ let statsSent = '', statsTimer = null, statsJob = null; // 온라인 랭킹에 �
 let cloudLoaded = false; // 서버 저장을 다 읽었나. 읽기 전에는 친구 선물을 기록에 넣지 않는다 (읽어 온 기록과 어긋나지 않게)
 let account = net.loggedIn ? null : currentAccount(store); // 이 기기 계정, 또는 온라인 계정({ cloud: true, uid })
 let guest = null;
-let device = { sound: true, music: true, haptics: true, hiSeen: false };
+let device = { sound: true, music: true, haptics: true, hiSeen: false, classicSongs: false };
 try { device = { ...device, ...JSON.parse(storage?.getItem(DEVICE_KEY) || '{}') }; } catch { /* 기본값 */ }
 const me = () => account || guest;
 const P = () => me()?.progress || (guest = { name: '손님', guest: true, progress: newProgress() }).progress;
@@ -97,6 +97,7 @@ const renderer = new Renderer(canvas);
 const sound = new Sound();
 sound.setSfx(device.sound);
 sound.setMusic(device.music);
+sound.setClassic(device.classicSongs === true); // 이스터에그로 고른 예전 노래 (이 기기에 저장)
 const controls = new Controls();
 controls.bindButtons($('touch'));
 const coarse = matchMedia('(pointer: coarse)').matches;
@@ -853,13 +854,16 @@ function finishPractice() {
 function renderSchool() {
   const p = P(), list = $('school-list');
   list.innerHTML = '';
+  $('school-last').textContent = GRADES.at(-1).name;
+  $('school-total').textContent = `모두 ${GRADES.length}단계, ${fmt(GRADES.reduce((n, g) => n + g.lessons.length, 0))}가지야. 뒤로 갈수록 엄청 길어.`;
   GRADES.forEach((grade, i) => {
     const done = gradeDone(p, i), open = gradeOpen(p, i);
     const li = document.createElement('li');
     li.className = `grade ${done ? 'done' : open ? 'open' : 'locked'}`;
     li.dataset.grade = grade.id;
     const state = done ? '✔ 다 배웠어' : open ? '▶ 배울 수 있어' : `🔒 ${GRADES[i - 1].name}을 끝내면 열려`;
-    li.innerHTML = `<div class="em">${grade.emoji}</div><div><h3>${grade.name}</h3><p>${esc(grade.desc)} (${grade.lessons.length}가지)</p><p class="state">${state}</p><p>${done ? '선물 받음' : '끝내면 선물'}: ${esc(rewardText(rewardPreview(grade.reward)))}</p></div>`;
+    // 기획서 2026-10-09 3번 그림: 칸마다 "졸업8  100가지" 처럼 이름 옆에 몇 가지인지
+    li.innerHTML = `<div class="em">${grade.emoji}</div><div><h3>${grade.name} <span class="count">${grade.lessons.length}가지</span></h3><p>${esc(grade.desc)}</p><p class="state">${state}</p><p>${done ? '선물 받음' : '끝내면 선물'}: ${esc(rewardText(rewardPreview(grade.reward)))}</p></div>`;
     const b = document.createElement('button');
     if (open) {
       b.className = done ? 'ghost' : 'primary';
@@ -869,6 +873,9 @@ function renderSchool() {
     li.append(b);
     list.append(li);
   });
+  // 등급이 많아서 목록 안에서 스크롤한다. 지금 배울 등급이 보이게 내려 둔다.
+  const now = list.querySelector('.grade.open:not(.done)') || list.querySelector('.grade.open');
+  if (now) list.scrollTop = Math.max(0, now.offsetTop - list.offsetTop - 12);
 }
 function endPractice() {
   practice = null;
@@ -968,9 +975,25 @@ function updateHudButtons() {
 }
 function setSound(kind, on) {
   if (kind === 'sfx') { device.sound = on; sound.setSfx(on); if (on) sound.sfx('click'); } // 켤 때는 소리로 알려 준다
-  else { device.music = on; sound.setMusic(on); }
+  else { device.music = on; sound.setMusic(on); musicEgg(); }
   updateHudButtons();
   save();
+}
+// 이스터에그 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 2026-10-09 6번): 배경음악 ON/OFF 를 연속으로 5번 누르면 예전 노래로 바뀐다.
+// 한 번 더 5번 누르면 새 노래로 돌아온다. "연속"은 앞에 누른 뒤 EGG_GAP 안에 또 누른 것. 고른 노래는 이 기기에 저장된다.
+const EGG_TAPS = 5, EGG_GAP = 1500;
+let eggTaps = 0, eggLast = -1e9;
+function musicEgg() {
+  const now = performance.now();
+  eggTaps = now - eggLast <= EGG_GAP ? eggTaps + 1 : 1;
+  eggLast = now;
+  if (eggTaps < EGG_TAPS) return;
+  eggTaps = 0;
+  device.classicSongs = !device.classicSongs;
+  device.music = true; sound.setMusic(true); // 다섯 번째에 꺼진 채로 끝나지 않게 켠다
+  sound.setClassic(device.classicSongs);
+  toast(device.classicSongs ? '🥚 이스터에그 발견! 예전 노래로 바뀌었어. (또 5번 누르면 새 노래로 돌아와)' : '🎵 새 노래로 돌아왔어!', true);
+  sound.sfx('level');
 }
 $('hud-sound').onclick = () => setSound('sfx', !device.sound);
 $('hud-music').onclick = () => setSound('music', !device.music);
@@ -1286,18 +1309,22 @@ function closeResult() { $('result').hidden = true; }
 
 // ---------- seonn 광고 (기획서 6번 그림) ----------
 // 오른쪽 위 단추는 "5초 뒤에 ✕"에서 1초씩 줄어들다가, 0이 되면 눌러서 닫는 ✕가 된다.
+// 광고 보고 선물 받기 (기획서 2026-10-09 4번): 같은 광고를 AD_SECONDS 초 보면 단추가 "🎁 선물 받기"로 바뀌고, 누르면 선물을 받는다.
 const PROMO_WAIT = 5;
-let promoLeft = 0, promoTimer = null;
+let promoLeft = 0, promoTimer = null, promoReward = null; // promoReward: 다 보면 받을 광고 선물 { id, title }
 function paintPromoClose() {
   const b = $('promo-close'), waiting = promoLeft > 0;
-  b.textContent = waiting ? `${promoLeft}초 뒤에 ✕` : '✕ 닫기';
+  b.textContent = waiting ? `${promoLeft}초 뒤에 ${promoReward ? '🎁' : '✕'}` : promoReward ? '🎁 선물 받기' : '✕ 닫기';
   b.classList.toggle('waiting', waiting);
+  b.classList.toggle('primary', !waiting && !!promoReward);
   b.setAttribute('aria-disabled', String(waiting));
-  b.setAttribute('aria-label', waiting ? `광고는 ${promoLeft}초 뒤에 닫을 수 있어` : '광고 닫기');
+  b.setAttribute('aria-label', waiting ? (promoReward ? `선물은 ${promoLeft}초 뒤에 받을 수 있어` : `광고는 ${promoLeft}초 뒤에 닫을 수 있어`) : promoReward ? '선물 받고 광고 닫기' : '광고 닫기');
+  $('promo-label').textContent = promoReward ? `📺 광고 보고 ${promoReward.title}` : '📢 광고';
 }
-function openPromo() {
+function openPromo(reward = null) {
   clearInterval(promoTimer);
-  promoLeft = PROMO_WAIT;
+  promoReward = reward;
+  promoLeft = reward ? AD_SECONDS : PROMO_WAIT;
   paintPromoClose();
   promoTimer = setInterval(() => { promoLeft--; paintPromoClose(); if (promoLeft <= 0) clearInterval(promoTimer); }, 1000);
   $('seonn-promo').showModal();
@@ -1305,13 +1332,27 @@ function openPromo() {
 // force: 온라인 상대가 먼저 다음 판을 시작했을 때처럼 기다리지 않고 닫아야 할 때
 function closePromo(force = false) {
   if (promoLeft > 0 && !force) return;
+  if (promoLeft > 0) promoReward = null; // 다 보기 전에 닫혔으면 선물은 없다
   clearInterval(promoTimer); promoLeft = 0;
+  finishPromo();
   if ($('seonn-promo').open) $('seonn-promo').close();
+}
+// 광고를 다 본 뒤: 걸려 있던 광고 선물을 한 번만 준다 (단추로 닫을 때 바로, Esc 로 닫혔을 때는 close 이벤트에서)
+function finishPromo() {
+  const reward = promoReward;
+  promoReward = null;
+  if (!reward) return;
+  received(claimAd(P(), reward.id), 'ad');
+  if (screen === 'rewards') renderScreen('rewards');
 }
 $('promo-close').onclick = () => { sound.sfx(promoLeft > 0 ? 'bump' : 'click'); closePromo(); };
 $('seonn-promo').addEventListener('cancel', e => { if (promoLeft > 0) e.preventDefault(); });
 // Esc를 연달아 누르면 브라우저가 막아 둔 창도 닫아 버린다. 다 세기 전이라면 남은 시간 그대로 다시 연다.
-$('seonn-promo').addEventListener('close', () => { if (promoLeft > 0) $('seonn-promo').showModal(); });
+// 다 본 뒤에 닫히면(단추, Esc 모두) 광고 선물을 준다.
+$('seonn-promo').addEventListener('close', () => {
+  if (promoLeft > 0) { $('seonn-promo').showModal(); return; }
+  finishPromo();
+});
 
 // ---------- 엔딩 ----------
 function runEnding(done, kind = 'crown') {
@@ -1443,6 +1484,15 @@ function renderRewards() {
     $('spin-result').textContent = view.spinIndex !== null ? `최근 당첨: ${rewardText(rewardPreview(SPIN_PRIZES[view.spinIndex]))}` : '어느 선물이 나올까?';
   }
   $('spin-prizes').textContent = `룰렛에는 기본 보상이 표시돼. 오늘 받을 보상: ${SPIN_PRIZES.map(r => rewardText(rewardPreview(r))).join(' / ')}`;
+  // 광고 보고 선물 받기 (기획서 2026-10-09 4번)
+  $('ad-seconds').textContent = AD_SECONDS;
+  $('ad-rewards').innerHTML = adView(P()).map(r => `<div class="ad-gift"><span class="ico" aria-hidden="true">${r.icon}</span><b>${r.title}</b><p class="fine">${rewardText(r)} · 하루 ${r.perDay}번</p><button data-ad="${r.id}" ${r.left ? 'class="primary"' : 'disabled'}>${r.left ? `📺 광고 보고 받기${r.perDay > 1 ? ` (오늘 ${r.left}번 남음)` : ''}` : '✔ 오늘은 다 받았어 · 내일 또!'}</button></div>`).join('');
+  $('ad-rewards').querySelectorAll('button').forEach(button => { button.onclick = () => {
+    const reward = adView(P()).find(r => r.id === button.dataset.ad);
+    if (!reward?.left || $('seonn-promo').open) return;
+    sound.sfx('click');
+    openPromo({ id: reward.id, title: reward.title });
+  }; });
   const minutes = Math.floor(view.playSeconds / 60), seconds = Math.floor(view.playSeconds % 60);
   $('play-time').textContent = `오늘 게임한 시간: ${minutes}분 ${seconds}초`;
   $('time-rewards').innerHTML = view.time.map(r => `<div class="time-gift"><b>${r.seconds / 60}분 선물</b><p class="fine">${rewardText(r)}</p><button data-time="${r.id}" ${r.ready && !r.claimed ? 'class="primary"' : 'disabled'}>${r.claimed ? '✔ 받음' : r.ready ? '선물 받기!' : `${Math.ceil((r.seconds - view.playSeconds) / 60)}분 더!`}</button></div>`).join('');
@@ -3018,7 +3068,7 @@ window.render_game_to_text = () => JSON.stringify({
 if (TEST) {
   window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, get mailState() { return mailState; }, pollMail, friendNet, P, handleBack, store, startTower, startVs, startSolo, startLocal, startPractice, show, finishMatch, renderer, online, peerOnline, runEnding, recordPlayTime, pause, save,
     get cloud() { return cloud; }, get social() { return hub; }, net, get watcher() { return watcher; }, sendStats,
-    watchTalkOff, greetHi, get device() { return device; }, get roomLog() { return roomLog; },
+    watchTalkOff, greetHi, get device() { return device; }, get roomLog() { return roomLog; }, sound,
     // 예전 방식의 이 기기 계정 만들기 (화면에서는 더 이상 만들지 않는다. 브라우저 확인용)
     async localSignup(name, password) { const r = await createAccount(store, name, password); if (r.ok) { account = r.account; guest = null; save(); afterLogin(); } return r.ok; } };
 }
