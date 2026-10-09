@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "뿌요뿌요 타워 · PUYO PUYO TOWER",
   description:
-    "같은 색 뿌요 4개를 이어 터뜨리는 퍼즐 게임. 연습하기, 타워와 혜성 너머 노바, 2인용 맵 6개, 챌린지 151개.",
+    "같은 색 뿌요 4개를 이어 터뜨리는 퍼즐 게임. 초급부터 졸업10까지 17단계 831가지 배우기와 이어 하기, 스킨 45종, 챌린지 251개.",
 };
 
 export default function PuyoPuyoPage() {
