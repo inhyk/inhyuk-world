@@ -21,6 +21,16 @@ export const TIME_REWARDS = [
   { id: '45m', seconds: 2700, coins: 500, xp: 200, tickets: { boost: 1, spin: 1 } },
   { id: '60m', seconds: 3600, coins: 700, xp: 300, tickets: { pet: 1 } },
 ];
+// 광고 보고 선물 받기 (인혁이 기획서 「뿌요뿌요 (업그레이드)」 2026-10-09 4번 "광고보고 코인 1000 받기 같은것도 만들어줘").
+// seonn 광고(5판마다 나오는 것과 같은 포스터)를 AD_SECONDS 초 동안 보면 선물을 받는다. 광고 회사의 광고가 아니라 우리 사이트 알림이라 돈이 오가지 않는다.
+// 선물마다 하루에 받을 수 있는 횟수(perDay)가 있고, 한국 시간 밤 12시에 다시 채워진다.
+export const AD_SECONDS = 10;
+export const AD_REWARDS = [
+  { id: 'coins', icon: '🪙', title: '코인 1000 받기', coins: 1000, xp: 0, perDay: 3 },
+  { id: 'boost', icon: '⚡', title: '2배 부스트 받기', coins: 0, xp: 0, tickets: { boost: 1 }, perDay: 1 },
+  { id: 'spin', icon: '🎡', title: '추가 스핀권 받기', coins: 0, xp: 0, tickets: { spin: 1 }, perDay: 1 },
+  { id: 'pet', icon: '🥚', title: '펫 뽑기권 받기', coins: 0, xp: 0, tickets: { pet: 1 }, perDay: 1 },
+];
 export function rewardPreview(reward, now = new Date()) {
   const bonus = calendarBonus(now);
   const tickets = Object.fromEntries(TICKET_KINDS.map(k => [k, Math.max(0, Math.floor(Number(reward.tickets?.[k]) || 0))]));
@@ -40,8 +50,25 @@ export function ensureRewards(progress, now = new Date()) {
   const date = todayKey(now);
   progress.rewards ||= { dailyDate: '', dailyStreak: 0, spinDate: '', spinIndex: null };
   const r = progress.rewards;
-  if (r.date !== date) Object.assign(r, { date, playSeconds: 0, claimedTime: [] });
+  if (r.date !== date) Object.assign(r, { date, playSeconds: 0, claimedTime: [], ads: {} });
+  r.ads ||= {};
   return r;
+}
+// 광고 선물 목록: 오늘 몇 번 받았고(used) 몇 번 남았는지(left)
+export function adView(progress, now = new Date()) {
+  const r = ensureRewards(progress, now);
+  return AD_REWARDS.map(reward => {
+    const used = Math.max(0, Math.floor(Number(r.ads[reward.id]) || 0));
+    return { ...reward, ...rewardPreview(reward, now), used, left: Math.max(0, reward.perDay - used) };
+  });
+}
+// 광고를 다 본 뒤에 부른다. 오늘 횟수가 남아 있지 않으면 null
+export function claimAd(progress, id, now = new Date()) {
+  const r = ensureRewards(progress, now), reward = AD_REWARDS.find(x => x.id === id);
+  const used = Math.max(0, Math.floor(Number(r.ads[id]) || 0));
+  if (!reward || used >= reward.perDay) return null;
+  r.ads[id] = used + 1;
+  return grantReward(progress, reward, now);
 }
 export function rewardView(progress, now = new Date()) {
   const r = ensureRewards(progress, now), date = todayKey(now);

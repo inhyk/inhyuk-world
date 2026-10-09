@@ -9,13 +9,15 @@
 // client 는 @inhyuk/net 의 Account (loadSave, putSave) 와 같은 모양이면 된다 (테스트는 가짜를 쓴다).
 
 import { sanitize } from './profile.mjs';
+import { compactMissions } from './missions.mjs';
 import { emptySocial } from './chat.mjs';
 
 export const GAME = 'jelly-tower';
 
 // 서버에 올리는 기록. 친구 코드 기록(progress.social: 우체통 열쇠, 친구 대화)은 이 기기에만 둔다.
 // (친구 30명 대화를 끝까지 채우면 2MB 가 넘어 서버 한도 32KB 에 들어가지도 않는다. save-size.fixture.mjs)
-export function cloudPayload(progress) { return { ...sanitize(progress), social: emptySocial() }; }
+// 챌린지 진행도는 목표까지만 적어서 크기를 줄인다 (missions.mjs 의 compactMissions).
+export function cloudPayload(progress) { const p = sanitize(progress); return { ...p, missions: compactMissions(p.missions), social: emptySocial() }; }
 // 두 기록의 내용이 같은가 (칸 순서가 달라도, 옛 버전이 올려서 새 칸이 빠져 있어도). 같으면 고를 것이 없다.
 function stable(v) {
   if (Array.isArray(v)) return `[${v.map(stable).join(',')}]`;

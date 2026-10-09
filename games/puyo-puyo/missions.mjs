@@ -69,7 +69,8 @@ for (const n of [2, 3, 7, 15, 25, 30, 40, 50])
   MISSIONS.push(m(`grow-level-${n}`, 'grow', `레벨 ${n} 달성`, n, 'level', e => e.level, { coins: n * 30, xp: 0 }));
 for (const map of MAPS) for (const n of [1, 5, 15])
   MISSIONS.push(m(`map-${map.id}-${n}`, 'maps', `${map.name}에서 ${n}번 대전 완료`, n, 'match', e => (e.map === map.id ? 1 : 0), prize(n), 'sum'));
-for (const [kind, title] of [['daily', '출석 선물'], ['spin', '스핀 선물'], ['time', '시간 선물']]) for (const n of [1, 5, 15])
+// 'ad' = 광고 보고 받는 선물 (2026-10-09 기획서 4번)
+for (const [kind, title] of [['daily', '출석 선물'], ['spin', '스핀 선물'], ['time', '시간 선물'], ['ad', '광고 선물']]) for (const n of [1, 5, 15])
   MISSIONS.push(m(`gift-${kind}-${n}`, 'gifts', `${title} ${n}번 받기`, n, 'gift', e => e.kind === kind ? 1 : 0, { ...prize(n), tickets: n === 15 ? { skin: 1 } : { spin: 1 } }, 'sum'));
 for (const [kind, title] of [['skin', '스킨'], ['effect', '터짐 효과']]) for (const n of [3, 5, 10, 15, 18])
   MISSIONS.push(m(`collect-${kind}-${n}`, 'grow', `${title} ${n}개 모으기`, n, 'collection', e => e[kind], prize(n)));
@@ -136,6 +137,18 @@ export const GROUPS = {
   tower: '타워 챌린지', skill: '실력 챌린지', play: '놀이 챌린지', trophy: '트로피 챌린지', friends: '친구 · 관전 챌린지', pets: '펫 · 부스트 챌린지',
   school: '배우기 챌린지', grow: '성장 챌린지', maps: '맵 탐험 챌린지', gifts: '선물 챌린지',
 };
+
+// 클라우드 저장을 작게: 목표를 넘은 진행도는 목표까지만 적는다 (화면과 판정은 목표까지만 본다).
+// 모르는 챌린지(더 새 버전의 게임이 만든 것)는 손대지 않는다.
+const GOALS = new Map(MISSIONS.map(d => [d.id, d.goal]));
+export function compactMissions(missions) {
+  const out = {};
+  for (const [id, slot] of Object.entries(missions && typeof missions === 'object' ? missions : {})) {
+    const goal = GOALS.get(id);
+    out[id] = goal && slot && slot.v > goal ? { ...slot, v: goal } : slot;
+  }
+  return out;
+}
 
 // 오늘의 미션: 날짜마다 3개씩 바뀐다
 export const DAILY_POOL = [
