@@ -725,3 +725,6 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 #scr-school .school-list::-webkit-scrollbar-track { margin: 10px 0; background: #efe6ff; border-radius: 999px; border: 2px solid #fff; }
 #scr-school .school-list::-webkit-scrollbar-thumb { background: linear-gradient(#ff8fc0, #8a5cff); border-radius: 999px; border: 3px solid #efe6ff; min-height: 56px; }
 .grade h3 .count { display: inline-block; margin-left: 6px; padding: 1px 10px; border-radius: 999px; background: #fff0f7; color: #b3306f; font-size: 15px; vertical-align: middle; white-space: nowrap; }
+/* 이어서 배우기: 「이어서 배우기」 아래에 작은 「처음부터」 */
+.grade-buttons { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.grade-buttons .again { padding: 5px 10px; font-size: 13px; }

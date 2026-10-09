@@ -1,15 +1,19 @@
-// 뿌요뿌요 배우기의 졸업, 졸업2, 졸업3, 졸업4, 졸업5 (찐 마지막 다음의 다섯 등급, 236가지)를 실제 Chrome 에서 처음부터 끝까지 푼다.
+// 뿌요뿌요 배우기의 졸업, 졸업2 ~ 졸업10 (찐 마지막 다음의 열 등급, 776가지)을 실제 Chrome 에서 처음부터 끝까지 푼다.
 // - 졸업: 발화점 찾기 22판 (자리를 알려 주지 않음, 두 번 되돌리면 도움말)
 // - 졸업2: 오른쪽 4·5연쇄와 끼워 넣기를 빈 필드에서 쌓기, 두 수 퍼즐 9판, 쌓기 시험 3개, 6연쇄 쌓기(열두 번 놓기)
 // - 졸업3 (62가지): 초대연쇄 11~14연쇄, 어려운 발화점 찾기, 두 수 퍼즐, 쌓기 시험, 눕혀서 발화, 두 색 발화, 세 수 퍼즐(안내),
 //   방해 뿌요 속 발화점, 오른쪽 6연쇄 쌓기, 졸업 비결과 졸업장
 // - 졸업4 (63가지): 혼자 푸는 발화점 찾기·눕혀서 발화·두 수·두 색·세 수 퍼즐, 방해 뿌요 속 발화점, 2층 쌓기 7연쇄(열다섯 번), 14·15연쇄
-// - 졸업5 (65가지): 10~15연쇄 발화점 찾기, 뒤집어서 두 색 발화, 두 색 짝 두 수 퍼즐, 세 수·네 수 퍼즐, 2층 쌓기 8연쇄(열여덟 번), 16연쇄, 진짜 졸업장
+// - 졸업5 (65가지): 10~15연쇄 발화점 찾기, 뒤집어서 두 색 발화, 두 색 짝 두 수 퍼즐, 세 수·네 수 퍼즐, 2층 쌓기 8연쇄(열여덟 번), 16연쇄, 다섯 번째 졸업장
+// - 졸업6 (75가지), 졸업7 (85가지), 졸업8 (100가지), 졸업9 (130가지), 졸업10 (150가지): 2026-10-09 기획서 3번. 모든 퍼즐이 더 길어지고,
+//   혼자 푸는 네 수 ~ 일곱 수 퍼즐, 방해 뿌요 속 눕혀서 발화와 두 수 퍼즐, 보고 따라 쌓기(스무 번까지), 한 번 더 쌓기, 오른쪽 2층 쌓기, 17·18연쇄, 진짜 졸업장
 // 문제마다 적어 둔 answer 대로 놓고, 비결 쪽은 단추로 넘긴다. 손님으로 하므로 서버는 쓰지 않는다.
 //
 // 사용법: npm run puyo-puyo:dev 후 PUYO_URL=http://127.0.0.1:5190/ node games/puyo-puyo/graduation-browser-check.mjs
-// (예전 세 등급 71가지가 8분쯤 걸렸으니, 다섯 등급 236가지는 어림잡아 30분쯤. 아직 재 보지 않았다)
-// 일부만: PUYO_GRADES=grad4,grad5 (이어진 등급만, 앞 등급은 끝낸 기록으로 시작한다. 등급 하나에 어림잡아 7~9분)
+// 열 등급을 한 번에 돌리면 아주 오래 걸린다 (아래 어림으로 100분쯤). 등급을 골라서 창 여러 개로 같이 돌린다.
+// 일부만: PUYO_GRADES=grad4,grad5 (이어진 등급만, 앞 등급은 끝낸 기록으로 시작한다)
+// 걸리는 시간: 졸업3 · 4 · 5 는 하나에 8분쯤 (2026-10-08 에 잰 것). 졸업6 ~ 10 은 아직 재지 않았고, 한 가지에 8초로 어림하면
+//   졸업6 10분, 졸업7 12분, 졸업8 14분, 졸업9 18분, 졸업10 21분쯤.
 // 화면 사진: PUYO_SHOTS (기본 /tmp/puyo-graduation)
 import { chromium } from '../../tools/node_modules/playwright/index.mjs';
 import assert from 'node:assert/strict';
@@ -18,12 +22,13 @@ import { GRADES } from './tutorial.mjs';
 
 const base = process.env.PUYO_URL || 'http://127.0.0.1:5190/';
 const shots = process.env.PUYO_SHOTS || '/tmp/puyo-graduation';
-const ALL = ['grad1', 'grad2', 'grad3', 'grad4', 'grad5'];
+const ALL = ['grad1', 'grad2', 'grad3', 'grad4', 'grad5', 'grad6', 'grad7', 'grad8', 'grad9', 'grad10'];
 const wanted = (process.env.PUYO_GRADES || ALL.join(',')).split(',').map(s => s.trim()).filter(Boolean);
 const indexes = wanted.map(id => GRADES.findIndex(g => g.id === id));
 assert.ok(indexes.length && indexes.every((gi, k) => gi >= 7 && (k === 0 || gi === indexes[k - 1] + 1)), `PUYO_GRADES 는 ${ALL.join(', ')} 가운데 이어진 등급이어야 한다`);
-const LAST = GRADES.length - 1, MARK = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱';
-const SHOTS = { 'grad1-find22': 'find-10chain', 'grad3-mega3': 'mega-13chain', 'grad3-flat1': 'flat', 'grad3-duo1': 'duo', 'grad3-dig7': 'dig', 'grad4-two1': 'two-solo', 'grad5-duo1': 'duo-flipped', 'grad5-mega2': 'mega-16chain' };
+const LAST = GRADES.length - 1, MARK = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+const SHOTS = { 'grad1-find22': 'find-10chain', 'grad3-mega3': 'mega-13chain', 'grad3-flat1': 'flat', 'grad3-duo1': 'duo', 'grad3-dig7': 'dig', 'grad4-two1': 'two-solo', 'grad5-duo1': 'duo-flipped', 'grad5-mega2': 'mega-16chain',
+  'grad6-digflat1': 'dig-flat', 'grad6-mega2': 'mega-17chain', 'grad7-digtwo1': 'dig-two', 'grad8-mega3': 'mega-18chain', 'grad10-seven1': 'seven-solo', 'grad10-find12': 'find-16chain' };
 await mkdir(shots, { recursive: true });
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const T = { timeout: 20000 }, LONG = { timeout: 120000 };
@@ -40,7 +45,7 @@ try {
   // 처음 풀 등급의 앞 등급까지 끝낸 기록에서 시작한다: 그 등급만 열려 있고 뒤 등급은 잠겨 있다
   const first = indexes[0], doneIds = GRADES.slice(1, first).map(g => g.id);
   await page.evaluate(ids => { const p = window.__puyo.P(); p.tutorial = true; p.school = ids; window.__puyo.show('school'); }, doneIds);
-  assert.deepEqual(await page.$$eval('#school-list .grade', rows => rows.map(r => [r.querySelector('h3').textContent, r.className.replace('grade ', '')])),
+  assert.deepEqual(await page.$$eval('#school-list .grade', rows => rows.map(r => [r.querySelector('h3').childNodes[0].textContent.trim(), r.className.replace('grade ', '')])), // 제목 칸에는 이름 뒤에 걸음 수도 있다
     GRADES.map((g, i) => [g.name, i < first ? 'done' : i === first ? 'open' : 'locked']));
   await page.locator(`#school-list .grade[data-grade="${GRADES[first].id}"]`).scrollIntoViewIfNeeded();
   await page.waitForTimeout(400); await page.screenshot({ path: `${shots}/school-graduation.png` });
@@ -64,7 +69,7 @@ try {
         await page.waitForFunction(([g, i]) => { const p = window.__puyo.practice; return p?.grade === g && p.index === i && p.freeze; }, [gi, index], T);
         assert.equal(await page.textContent('#coach-step'), `${grade.name} ${index + 1} / ${lessons.length}`);
         assert.equal(await page.textContent('#coach-title'), l.title);
-        if (/diploma|grad4-done/.test(l.id)) { await page.waitForTimeout(400); await page.screenshot({ path: `${shots}/${l.id}.png` }); }
+        if (/diploma|grad(4|6|7|8|9)-done/.test(l.id)) { await page.waitForTimeout(400); await page.screenshot({ path: `${shots}/${l.id}.png` }); }
         await page.click('#coach-buttons button');
         continue;
       }
@@ -89,10 +94,17 @@ try {
         assert.match(await page.textContent('#coach-text'), /^도움말 ① /);
         await page.waitForTimeout(300); await page.screenshot({ path: `${shots}/three-help.png` });
       }
+      if (l.id === 'grad6-four1' || l.id === 'grad9-again1') {
+        // 혼자 푸는 네 수 퍼즐, 한 번 더 쌓기: 처음에는 자리를 알려 주지 않고, "↺ 처음 모양으로"를 두 번 누르면 도와준다
+        assert.ok(!/줄(에|과)/.test(await page.textContent('#coach-text')), l.id); // "해 줄게" 는 자리가 아니다
+        for (let k = 0; k < 2; k++) { await control(); await page.click('#coach-buttons button'); await lessonIs(gi, index); }
+        assert.match(await page.textContent('#coach-text'), l.id === 'grad6-four1' ? /^도움말 ① / : /^조금 어렵지\? 이번에는 같이 하자! ①/);
+        await page.waitForTimeout(300); await page.screenshot({ path: `${shots}/${l.id}-help.png` });
+      }
       if (SHOTS[l.id]) { await page.waitForTimeout(300); await page.screenshot({ path: `${shots}/${SHOTS[l.id]}.png` }); }
       for (const [n, [x, rot]] of l.answer.entries()) {
         if (l.steps) await page.waitForFunction(mark => document.getElementById('coach-text').textContent.includes(mark), MARK[n], T); // 쌓기와 안내 퍼즐: 짝마다 안내가 바뀐다
-        if (['grad2-scratch6', 'grad4-build7', 'grad5-build8'].includes(l.id) && n === l.answer.length - 1) { await page.waitForTimeout(300); await page.screenshot({ path: `${shots}/${l.id}.png` }); }
+        if (['grad2-scratch6', 'grad4-build7', 'grad5-build8', 'grad6-copy1', 'grad8-right8', 'grad9-copy2'].includes(l.id) && n === l.answer.length - 1) { await page.waitForTimeout(300); await page.screenshot({ path: `${shots}/${l.id}.png` }); }
         await place(x, rot);
       }
       await page.waitForFunction(() => /잘했어!|다시 해 보자!/.test(document.getElementById('coach-title').textContent), null, LONG);
@@ -104,7 +116,7 @@ try {
     if (gi !== indexes.at(-1)) await page.click('#coach-buttons button.primary');
   }
   const last = indexes.at(-1);
-  if (last === LAST) assert.match(await page.textContent('#coach-text'), /초급부터 졸업5까지 뿌요뿌요 배우기 열두 단계를 모두 끝냈어/);
+  if (last === LAST) assert.match(await page.textContent('#coach-text'), /초급부터 졸업10까지 뿌요뿌요 배우기 열일곱 단계를 모두 끝냈어/);
   await page.waitForTimeout(400); await page.screenshot({ path: `${shots}/all-done.png` });
   // 푼 등급의 선물: 펫 뽑기권, 부스트, 스킨·효과 교환권이 등급에 적힌 만큼 늘었다
   const after = await page.evaluate(() => ({ ...window.__puyo.P().tickets, school: window.__puyo.P().school.slice() }));
@@ -115,5 +127,5 @@ try {
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text()).screen === 'school', null, T);
   assert.deepEqual(await page.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), GRADES.map((_, i) => (i <= last ? 'done' : i === last + 1 ? 'open' : 'locked')));
   assert.deepEqual(errors, []);
-  console.log(`PASS: ${indexes.map(gi => `${GRADES[gi].name}(${GRADES[gi].lessons.length}가지)`).join(' → ')} ${solved}문제를 모두 풀고 ${last === LAST ? '열두 등급 완료' : `${GRADES[last].name}까지 완료`} — 오류 없음 (사진 ${shots})`);
+  console.log(`PASS: ${indexes.map(gi => `${GRADES[gi].name}(${GRADES[gi].lessons.length}가지)`).join(' → ')} ${solved}문제를 모두 풀고 ${last === LAST ? '열일곱 등급 완료' : `${GRADES[last].name}까지 완료`} — 오류 없음 (사진 ${shots})`);
 } finally { await browser.close(); }

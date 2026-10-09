@@ -107,7 +107,7 @@ const unlock = () => sound.unlock();
 for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown']) addEventListener(type, unlock, { capture: true });
 
 let screen = '', match = null, demo = null, game = null, paused = false, talking = false;
-let practice = null; // 배우기(연습하기) 중이면 { grade, index, judge, freeze, fails }. grade: 0 초급 ~ 11 졸업5, fails: 이 문제를 틀린 횟수
+let practice = null; // 배우기(연습하기) 중이면 { grade, index, judge, freeze, fails }. grade: 0 초급 ~ 16 졸업10, fails: 이 문제를 틀린 횟수
 
 // ---------- 알림 ----------
 function toast(text, gold = false) {
@@ -526,6 +526,7 @@ function renderMenu() {
   $('reward-badge').hidden = !gifts;
   $('reward-badge').textContent = gifts;
   $('practice-badge').hidden = !!p.tutorial; // 배우기 초급(연습하기)을 끝내기 전까지 NEW
+  $('menu-school-sub').textContent = `초급부터 ${GRADES.at(-1).name}까지 ${GRADES.length}단계`;
   // 펫, 2배 부스트, 지금 내 배수
   const pet = equippedPet(p), left = boostLeft(p);
   $('menu-pet-sub').textContent = pet ? `${petName(pet)}와 함께 · 경험치 ${multText(pet.mult)}` : '알에서 펫 뽑기 · 경험치 배수';
@@ -749,8 +750,19 @@ const lessonsNow = () => GRADES[practice?.grade ?? 0].lessons;
 const lessonNow = () => lessonsNow()[practice.index];
 // "연습 2 / 3" (초급), "중급 2 / 3"
 const stepText = () => `${practice.grade ? GRADES[practice.grade].name : '연습'} ${practice.index + 1} / ${lessonsNow().length}`;
+// 이어서 배우기: 졸업10 은 150가지라 한 번에 끝내기 어렵다. 중급부터는 어디까지 했는지 적어 두고, 다음에 그 걸음부터 다시 시작할 수 있다.
+// 첫 걸음에서는 적어 둔 것을 지운다 (「처음부터」를 눌렀을 때).
+function rememberLesson(grade, index) {
+  const id = GRADES[grade]?.id, p = P();
+  if (!grade || !id) return;
+  p.schoolAt ||= {};
+  const before = p.schoolAt[id] || 0;
+  if (index > 0) p.schoolAt[id] = index; else delete p.schoolAt[id];
+  if ((p.schoolAt[id] || 0) !== before) save();
+}
 function setLesson(index, grade = practice?.grade ?? 0, fails = 0) {
   practice = { index, grade, judge: newJudge(), freeze: false, fails };
+  rememberLesson(grade, index);
   const lessons = lessonsNow(), lesson = lessons[index];
   const next = () => { sound.sfx('click'); if (index + 1 < lessons.length) setLesson(index + 1); else finishPractice(); };
   showCoach({
@@ -820,6 +832,7 @@ function finishPractice() {
   if (!practice) return;
   practice.freeze = true;
   const p = P(), gi = practice.grade, grade = GRADES[gi];
+  if (p.schoolAt) delete p.schoolAt[grade.id]; // 다 끝냈으니 이어서 할 곳은 없다
   if (finishGrade(p, gi)) { // 처음 끝낸 등급이면 선물
     const r = grantReward(p, grade.reward);
     for (const level of r.lv.levels) trackEvent({ type: 'level', level });
@@ -842,7 +855,7 @@ function finishPractice() {
   const next = GRADES[gi + 1];
   showCoach({
     step: `${grade.name} 끝!`, title: next ? `다음은 ${next.name}!` : '모두 배웠어! 👑', mood: 'happy',
-    text: next ? `${grade.name}을 모두 배웠어. 이어서 ${next.name}에 도전해 볼까?` : '초급부터 졸업5까지 뿌요뿌요 배우기 열두 단계를 모두 끝냈어! 졸업 축하해! 이제 타워와 온라인 대전에서 진짜 연쇄를 보여 줘.',
+    text: next ? `${grade.name}을 모두 배웠어. 이어서 ${next.name}에 도전해 볼까?` : '초급부터 졸업10까지 뿌요뿌요 배우기 열일곱 단계를 모두 끝냈어! 졸업 축하해! 이제 타워와 온라인 대전에서 진짜 연쇄를 보여 줘.',
     buttons: [
       next ? ['primary', `${next.emoji} ${next.name} 배우기`, () => { sound.sfx('click'); startPractice(0, gi + 1); }]
         : ['primary', '🗼 타워로', () => { sound.sfx('click'); quitGame(); show('tower'); }],
@@ -850,7 +863,7 @@ function finishPractice() {
     ],
   });
 }
-// 배우기 목록: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막 → 찐 마지막 → 졸업 → 졸업2 → 졸업3 → 졸업4 → 졸업5. 앞 등급을 끝내야 다음 등급이 열린다.
+// 배우기 목록: 초급 → 중급 → 상급 → 최상급 → 초초상급 → 마지막 → 찐 마지막 → 졸업 → 졸업2 → … → 졸업10. 앞 등급을 끝내야 다음 등급이 열린다.
 function renderSchool() {
   const p = P(), list = $('school-list');
   list.innerHTML = '';
@@ -861,16 +874,32 @@ function renderSchool() {
     const li = document.createElement('li');
     li.className = `grade ${done ? 'done' : open ? 'open' : 'locked'}`;
     li.dataset.grade = grade.id;
-    const state = done ? '✔ 다 배웠어' : open ? '▶ 배울 수 있어' : `🔒 ${GRADES[i - 1].name}을 끝내면 열려`;
+    // 이어서 배우기: 그만둔 걸음이 적혀 있으면 그 걸음부터
+    const at = open && i ? Math.min(grade.lessons.length - 1, Math.max(0, Math.floor(Number(p.schoolAt?.[grade.id]) || 0))) : 0;
+    const state = at ? `▶ ${at + 1}번째부터 이어서 할 수 있어 (${grade.lessons.length}가지 중 ${at}가지 끝)` : done ? '✔ 다 배웠어' : open ? '▶ 배울 수 있어' : `🔒 ${GRADES[i - 1].name}을 끝내면 열려`;
     // 기획서 2026-10-09 3번 그림: 칸마다 "졸업8  100가지" 처럼 이름 옆에 몇 가지인지
     li.innerHTML = `<div class="em">${grade.emoji}</div><div><h3>${grade.name} <span class="count">${grade.lessons.length}가지</span></h3><p>${esc(grade.desc)}</p><p class="state">${state}</p><p>${done ? '선물 받음' : '끝내면 선물'}: ${esc(rewardText(rewardPreview(grade.reward)))}</p></div>`;
     const b = document.createElement('button');
-    if (open) {
-      b.className = done ? 'ghost' : 'primary';
-      b.textContent = done ? '다시 배우기' : '배우기!';
-      b.onclick = () => { sound.sfx('click'); startPractice(0, i); };
-    } else { b.textContent = '🔒'; b.disabled = true; b.setAttribute('aria-label', `${grade.name} 잠김`); }
-    li.append(b);
+    if (open && at) {
+      b.className = 'primary';
+      b.textContent = '이어서 배우기';
+      b.onclick = () => { sound.sfx('click'); startPractice(at, i); };
+      const again = document.createElement('button');
+      again.className = 'ghost again';
+      again.textContent = '처음부터';
+      again.onclick = () => { sound.sfx('click'); startPractice(0, i); };
+      const box = document.createElement('div');
+      box.className = 'grade-buttons';
+      box.append(b, again);
+      li.append(box);
+    } else {
+      if (open) {
+        b.className = done ? 'ghost' : 'primary';
+        b.textContent = done ? '다시 배우기' : '배우기!';
+        b.onclick = () => { sound.sfx('click'); startPractice(0, i); };
+      } else { b.textContent = '🔒'; b.disabled = true; b.setAttribute('aria-label', `${grade.name} 잠김`); }
+      li.append(b);
+    }
     list.append(li);
   });
   // 등급이 많아서 목록 안에서 스크롤한다. 지금 배울 등급이 보이게 내려 둔다.
