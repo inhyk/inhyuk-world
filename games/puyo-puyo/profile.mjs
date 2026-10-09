@@ -15,7 +15,7 @@ export const TIME_IDS = ['5m', '10m', '15m', '20m', '30m', '45m', '60m'];
 // 광고 선물 이름 (rewards.mjs 의 AD_REWARDS 와 같아야 한다)
 export const AD_IDS = ['coins', 'boost', 'spin', 'pet'];
 // 뿌요뿌요 배우기의 등급 이름 (tutorial.mjs 의 GRADES 와 같아야 한다). 초급은 tutorial 칸에 적는다. 중급, 상급, 최상급, 초초상급, 마지막, 찐 마지막, 졸업, 졸업2, 졸업3.
-export const SCHOOL_IDS = ['middle', 'high', 'master', 'ultra', 'final', 'real', 'grad1', 'grad2', 'grad3', 'grad4', 'grad5'];
+export const SCHOOL_IDS = ['middle', 'high', 'master', 'ultra', 'final', 'real', 'grad1', 'grad2', 'grad3', 'grad4', 'grad5', 'grad6', 'grad7', 'grad8', 'grad9', 'grad10'];
 // 맵을 고르는 설정 칸: 2인 플레이, AI 대전, 혼자 하기, 온라인 대전(내 표)
 export const MAP_SETTINGS = ['localMap', 'vsMap', 'soloMap', 'onlineMap'];
 export const emptyGifts = () => ({ seen: {}, day: '', dayCoins: 0, sent: 0, got: 0 });
@@ -31,7 +31,8 @@ export function newProgress() {
     tickets: { skin: 0, effect: 0, spin: 0, pet: 0, boost: 0 },
     promo: { lastGame: 0 },
     tutorial: false, // 연습하기(뿌요뿌요 배우기 초급)를 끝냈는지 (처음 끝내면 선물)
-    school: [], // 뿌요뿌요 배우기에서 끝낸 등급: 'middle'(중급), 'high'(상급), 'master'(최상급), 'ultra'(초초상급), 'final'(마지막), 'real'(찐 마지막), 'grad1'~'grad5'(졸업, 졸업2, 졸업3, 졸업4, 졸업5)
+    school: [], // 뿌요뿌요 배우기에서 끝낸 등급: 'middle'(중급), 'high'(상급), 'master'(최상급), 'ultra'(초초상급), 'final'(마지막), 'real'(찐 마지막), 'grad1'~'grad10'(졸업, 졸업2 ~ 졸업10)
+    schoolAt: {}, // 이어서 배우기: 등급 id → 다음에 할 걸음 번호 (그만둔 곳부터 다시 시작)
     pets: emptyPets(), // 가진 펫과 데리고 다니는 펫 (pets.mjs)
     boost: { until: 0 }, // 2배 부스트가 끝나는 때 (bonus.mjs)
     friendCount: 0, // 마지막으로 본 온라인 계정 친구 수 (친구 배수)
@@ -71,6 +72,9 @@ export function sanitize(p) {
   out.promo = { lastGame: clampInt(out.promo?.lastGame, 0, 1e9) };
   out.tutorial = out.tutorial === true;
   out.school = uniq(arr(out.school).filter(id => SCHOOL_IDS.includes(id)));
+  // 이어서 배우기: 등급마다 다음에 할 걸음 (0 이면 적지 않는다)
+  out.schoolAt = Object.fromEntries(Object.entries(out.schoolAt && typeof out.schoolAt === 'object' ? out.schoolAt : {})
+    .filter(([id, n]) => SCHOOL_IDS.includes(id) && Number.isInteger(n) && n > 0 && n < 1000));
   out.pets = sanitizePets(out.pets);
   out.boost = { until: clampInt(out.boost?.until, 0, 1e14) };
   out.friendCount = clampInt(out.friendCount, 0, 1000);

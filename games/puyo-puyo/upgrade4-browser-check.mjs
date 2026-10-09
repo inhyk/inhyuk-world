@@ -66,6 +66,10 @@ async function open(name, viewport = { width: 1100, height: 900 }) {
   await load(page);
   return page;
 }
+const gradeStates = async (page, head) => {
+  const got = await page.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', '')));
+  assert.deepEqual(got, [...head, ...Array(Math.max(0, got.length - head.length)).fill('locked')]);
+};
 const settle = page => page.waitForTimeout(400);
 const read = page => page.evaluate(() => JSON.parse(window.render_game_to_text()));
 const screenIs = (page, name) => page.waitForFunction(n => JSON.parse(window.render_game_to_text()).screen === n, name, T);
@@ -116,7 +120,7 @@ try {
   await hideToasts(g);
   for (const to of ['pets', 'boost', 'school', 'solo']) assert.equal(await g.locator(`#scr-menu [data-go="${to}"]`).count(), 1, `메뉴에 ${to} 단추`);
   assert.equal(await g.locator('#scr-menu [data-go="practice"]').count(), 0); // 연습하기는 배우기(초급)로 들어갔다
-  assert.equal(await g.textContent('#scr-menu [data-go="school"] small'), '초급부터 졸업5까지 12단계');
+  assert.equal(await g.textContent('#scr-menu [data-go="school"] small'), '초급부터 졸업10까지 17단계');
   assert.equal(await g.locator('#practice-badge').isVisible(), true);
   assert.equal(await g.locator('#menu-bonus').isVisible(), false); // 아직 배수가 없다
   await settle(g); await g.screenshot({ path: `${shots}/menu.png` });
@@ -253,8 +257,8 @@ try {
 
   // ---------- 5. 뿌요뿌요 배우기: 초급 → 중급 → 상급 → 최상급 ----------
   await g.click('#scr-menu [data-go="school"]'); await screenIs(g, 'school');
-  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => [r.querySelector('h3').textContent, r.classList.contains('open'), r.querySelector('button').disabled])),
-    [['초급', true, false], ['중급', false, true], ['상급', false, true], ['최상급', false, true], ['초초상급', false, true], ['마지막', false, true], ['찐 마지막', false, true], ['졸업', false, true], ['졸업2', false, true], ['졸업3', false, true], ['졸업4', false, true], ['졸업5', false, true]]);
+  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => [r.querySelector('h3').childNodes[0].textContent.trim(), r.classList.contains('open'), r.querySelector('button').disabled])), // 제목에는 이름 옆에 "N가지"도 있다
+    [['초급', true, false], ['중급', false, true], ['상급', false, true], ['최상급', false, true], ['초초상급', false, true], ['마지막', false, true], ['찐 마지막', false, true], ['졸업', false, true], ['졸업2', false, true], ['졸업3', false, true], ['졸업4', false, true], ['졸업5', false, true], ['졸업6', false, true], ['졸업7', false, true], ['졸업8', false, true], ['졸업9', false, true], ['졸업10', false, true]]);
   await settle(g); await g.screenshot({ path: `${shots}/school.png` });
   // 초급(예전 연습하기)은 건너뛸 수 있다
   await g.click('#school-list .grade[data-grade="beginner"] button');
@@ -265,7 +269,7 @@ try {
   await g.click('#coach-buttons button.ghost'); await screenIs(g, 'menu');
   assert.equal(await g.locator('#practice-badge').isVisible(), false);
   await go(g, 'school');
-  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'open', 'locked', 'locked', 'locked', 'locked', 'locked', 'locked', 'locked', 'locked']);
+  await gradeStates(g, ['done', 'open']);
   // 중급 1: 뒤집어 놓으면 "다시 해 보자", 알려 준 대로 놓으면 3연쇄
   const ticketsBefore = (await read(g)).tickets;
   await g.click('#school-list .grade[data-grade="middle"] button');
@@ -378,7 +382,7 @@ try {
   assert.equal(s.tickets.pet, ticketsBefore.pet + 12); assert.equal(s.tickets.boost, ticketsBefore.boost + 8);
   assert.equal(s.tickets.skin, ticketsBefore.skin + 3); assert.equal(s.tickets.effect, ticketsBefore.effect + 3);
   await g.click('#coach-buttons button.ghost'); await screenIs(g, 'school'); // 배우기 목록으로
-  assert.deepEqual(await g.$$eval('#school-list .grade', rows => rows.map(r => r.className.replace('grade ', ''))), ['done', 'done', 'done', 'done', 'done', 'done', 'done', 'open', 'locked', 'locked']);
+  await gradeStates(g, ['done', 'done', 'done', 'done', 'done', 'done', 'done', 'open']);
   // 다시 배워도 선물은 한 번만
   await g.click('#school-list .grade[data-grade="middle"] button');
   for (const [index, moves] of answers[0][1].entries()) { await lessonIs(g, 1, index); for (const [x, rot] of moves) await place(g, x, rot); }

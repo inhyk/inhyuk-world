@@ -131,3 +131,13 @@ test('클라우드 저장: 목표를 넘은 챌린지 진행도는 목표까지�
   assert.ok(MISSIONS.length >= 246);
   assert.ok(size < 16 * 1024, `저장 ${size}바이트`);
 });
+
+// ---------- 이어서 배우기 (졸업6~10 이 길어서 같이 넣음) ----------
+test('이어서 배우기: 등급마다 다음에 할 걸음이 기록에 남고, 이상한 값은 버린다', () => {
+  assert.deepEqual(newProgress().schoolAt, {});
+  const old = newProgress(); delete old.schoolAt;
+  assert.deepEqual(sanitize(old).schoolAt, {});
+  const p = sanitize({ ...newProgress(), schoolAt: { grad10: 87, middle: 2, grad3: 0, nope: 5, grad4: -1, grad5: 1.5, grad6: '7', grad7: 5000 } });
+  assert.deepEqual(p.schoolAt, { grad10: 87, middle: 2 });
+  assert.deepEqual(cloudPayload(p).schoolAt, { grad10: 87, middle: 2 });
+});

@@ -195,6 +195,31 @@ try {
     await settle(g); await g.screenshot({ path: `${shots}/school-bottom.png` });
     assert.equal(await g.evaluate(() => { const list = document.getElementById('school-list'), r = list.getBoundingClientRect(), last = list.querySelector('[data-grade="grad10"]').getBoundingClientRect(); return last.bottom <= r.bottom + 1 && last.top >= r.top; }), true);
   } else console.log('참고: 이 빌드에는 졸업6~10 이 아직 없어서 걸음 수 확인은 건너뜀');
+  // 이어서 배우기: 중간에 그만두면 그 걸음부터 다시 시작할 수 있다 (졸업10 은 150가지라 한 번에 끝내기 어렵다)
+  await g.evaluate(() => { const p = window.__puyo.P(); p.tutorial = true; p.school = ['middle', 'high', 'master', 'ultra', 'final']; p.schoolAt = {}; window.__puyo.show('school'); });
+  assert.equal(await g.textContent('#school-list [data-grade="real"] button'), '배우기!');
+  await g.evaluate(() => window.__puyo.startPractice(4, 6)); // 찐 마지막의 다섯 번째 걸음까지 온 것처럼
+  await g.waitForFunction(() => window.__puyo.practice?.index === 4, null, T);
+  assert.deepEqual(await g.evaluate(() => window.__puyo.P().schoolAt), { real: 4 });
+  await g.evaluate(() => window.__puyo.pause(true));
+  await g.click('#pause-quit'); await screenIs(g, 'school');
+  const real = '#school-list [data-grade="real"]';
+  assert.deepEqual(await g.evaluate(sel => [...document.querySelectorAll(`${sel} button`)].map(b => b.textContent), real), ['이어서 배우기', '처음부터']);
+  assert.match(await g.textContent(`${real} .state`), /5번째부터 이어서 할 수 있어 \(30가지 중 4가지 끝\)/);
+  await g.locator(real).scrollIntoViewIfNeeded(); await settle(g); await g.screenshot({ path: `${shots}/school-resume.png` });
+  await g.click(`${real} button.primary`);
+  await g.waitForFunction(() => window.__puyo.practice?.grade === 6 && window.__puyo.practice?.index === 4, null, T);
+  assert.match(await g.textContent('#coach-step'), /찐 마지막 5 \/ 30/);
+  await g.evaluate(() => window.__puyo.pause(true));
+  await g.click('#pause-quit'); await screenIs(g, 'school');
+  // 「처음부터」를 누르면 첫 걸음부터, 적어 둔 곳은 지워진다
+  await g.click(`${real} button.again`);
+  await g.waitForFunction(() => window.__puyo.practice?.grade === 6 && window.__puyo.practice?.index === 0, null, T);
+  assert.deepEqual(await g.evaluate(() => window.__puyo.P().schoolAt), {});
+  await g.evaluate(() => window.__puyo.pause(true));
+  await g.click('#pause-quit'); await screenIs(g, 'school');
+  assert.equal(await g.textContent(`${real} button`), '배우기!');
+
   // 휴대폰에서도 목록이 화면 안에서 스크롤된다
   const m = await open('휴대폰', { width: 390, height: 844 });
   await m.click('#go-guest'); await screenIs(m, 'menu');
