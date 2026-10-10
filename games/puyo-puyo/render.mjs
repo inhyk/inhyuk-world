@@ -3,6 +3,8 @@ import { W, VISIBLE, GARBAGE, garbageIcons, idx, SPAWN_X, SPAWN_Y, TIMING } from
 import { SkinCache, SKIN_STYLE, PALETTE, drawBridge } from './skins.mjs';
 import { Effects } from './effects.mjs';
 import { drawCharacter, drawGarbageIcon } from './characters.mjs';
+import { Clash, clashGain } from './clash.mjs';
+import { SKY_IDS } from './sky.mjs';
 
 const TAU = Math.PI * 2;
 const FONT = "Jua, 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif";
@@ -62,13 +64,15 @@ export function computeLayout(w, h, opt = {}) {
       center: { x: cx, y: f0.y + c * 3.6, w: c * 4, h: c * 8.4 },
     };
   }
+  // 대전: 맨 위에 방해 뿌요 힘겨루기 막대 한 줄 (인혁이 기획서 2026-10-10 2번 그림 「나 ⚡ 상대」)
+  const bar = opt.clash ? 1 : 0;
   const portrait = opt.portrait ?? (aw / ah < 1.05);
   if (portrait && !opt.symmetric) {
-    const c = Math.floor(Math.min(aw / 9.9, ah / 14.9));
+    const c = Math.floor(Math.min(aw / 9.9, ah / (14.9 + bar)));
     const m = c * 0.46;
-    const totalW = c * 9.7, totalH = c * 14.6;
+    const totalW = c * 9.7, totalH = c * (14.6 + bar);
     const x0 = ox + (aw - totalW) / 2, y0 = oy + (ah - totalH) / 2;
-    const f0 = { x: x0 + c * 0.2, y: y0 + c * 1.3, cell: c };
+    const f0 = { x: x0 + c * 0.2, y: y0 + c * (1.3 + bar), cell: c };
     const rx = f0.x + c * 6.35;
     const f1 = { x: rx + (c * 3.1 - m * 6) / 2, y: f0.y + c * 6.15, cell: m, mini: true };
     return {
@@ -78,12 +82,13 @@ export function computeLayout(w, h, opt = {}) {
       tray: [{ x: f0.x, y: f0.y - c * 1.2, w: c * 6, h: c * 0.95 }, { x: f1.x, y: f1.y - m * 1.5, w: m * 6, h: m * 1.2 }],
       score: [{ x: f0.x, y: f0.y + c * 12.15, w: c * 6, h: c * 1 }, { x: f1.x - m * 0.5, y: f1.y + m * 12.25, w: m * 7, h: m * 1.8 }],
       center: { x: rx, y: f0.y + c * 3.3, w: c * 3.1, h: c * 2.1 },
+      clash: bar ? { x: x0 + c * 0.2, y: y0 + c * 0.1, w: c * 9.3, h: c * 0.9 } : null,
     };
   }
-  const c = Math.floor(Math.min(aw / 17.4, ah / 15));
-  const totalW = c * 17, totalH = c * 14.7;
+  const c = Math.floor(Math.min(aw / 17.4, ah / (15 + bar)));
+  const totalW = c * 17, totalH = c * (14.7 + bar);
   const x0 = ox + (aw - totalW) / 2, y0 = oy + (ah - totalH) / 2;
-  const f0 = { x: x0 + c * 0.2, y: y0 + c * 1.35, cell: c };
+  const f0 = { x: x0 + c * 0.2, y: y0 + c * (1.35 + bar), cell: c };
   const f1 = { x: x0 + c * 10.8, y: f0.y, cell: c };
   const cx = f0.x + c * 6.4;
   return {
@@ -93,6 +98,7 @@ export function computeLayout(w, h, opt = {}) {
     tray: [{ x: f0.x, y: f0.y - c * 1.2, w: c * 6, h: c * 0.95 }, { x: f1.x, y: f1.y - c * 1.2, w: c * 6, h: c * 0.95 }],
     score: [{ x: f0.x, y: f0.y + c * 12.15, w: c * 6, h: c * 1 }, { x: f1.x, y: f1.y + c * 12.15, w: c * 6, h: c * 1 }],
     center: { x: cx, y: f0.y + c * 3.6, w: c * 4, h: c * 8.4 },
+    clash: bar ? { x: x0 + c * 0.2, y: y0 + c * 0.1, w: c * 16.6, h: c * 0.9 } : null,
   };
 }
 
@@ -110,7 +116,70 @@ const THEMES = {
   lab: ['#123f47', '#287367', '#91e4c3'],
   nova: ['#120e35', '#344c71', '#9adebc'],
   ending: ['#ff9ec7', '#ffd88a', '#8fd8ff'],
+  // 대전 화면의 하늘 (sky.mjs): 지금 시각에 맞춰 고른다
+  morning: ['#7fc4ff', '#ffe2c8', '#ffb57c'],
+  noon: ['#4aa9ff', '#a3dbff', '#e6f8ff'],
+  evening: ['#3a2f7c', '#e9637b', '#ffc56c'],
+  night: ['#050824', '#141d57', '#2c2a68'],
 };
+const DARK = new Set(['crater', 'starry', 'moon', 'space', 'nova', 'lab', 'night']);
+const SKY = new Set(SKY_IDS);
+
+// 대전 화면의 하늘: 해나 달, 구름이나 별, 그리고 아래에는 뿌요 정원의 언덕
+function paintSky(ctx, theme, w, h, rnd) {
+  const s = Math.min(w, h);
+  const disc = (x, y, r, color) => { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); };
+  const glow = (x, y, r, inner, outer) => {
+    const g = ctx.createRadialGradient(x, y, r * 0.15, x, y, r);
+    g.addColorStop(0, inner); g.addColorStop(1, outer);
+    ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  };
+  const clouds = (n, color, top, bottom) => {
+    for (let i = 0; i < n; i++) {
+      const cx = rnd() * w, cy = h * (top + rnd() * (bottom - top)), r = s * (0.05 + rnd() * 0.07);
+      ctx.fillStyle = color;
+      for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(cx + (k - 1.5) * r * 0.55, cy + (k % 2) * r * 0.15, r * (0.5 + (k % 2) * 0.2), 0, TAU); ctx.fill(); }
+    }
+  };
+  if (theme === 'morning') {
+    // 언덕 너머로 떠오르는 해
+    glow(w * 0.14, h * 0.8, s * 0.62, 'rgba(255,238,170,.9)', 'rgba(255,222,160,0)');
+    disc(w * 0.14, h * 0.8, s * 0.12, '#fff4b4');
+    clouds(6, 'rgba(255,240,234,.78)', 0.05, 0.5);
+  } else if (theme === 'noon') {
+    glow(w * 0.86, h * 0.15, s * 0.36, 'rgba(255,255,222,.92)', 'rgba(255,255,222,0)');
+    disc(w * 0.86, h * 0.15, s * 0.075, '#fffbe2');
+    clouds(7, 'rgba(255,255,255,.82)', 0.05, 0.55);
+  } else if (theme === 'evening') {
+    // 먼저 뜬 별 몇 개와 지는 해, 노을 구름
+    for (let i = 0; i < 32; i++) disc(rnd() * w, rnd() * h * 0.3, rnd() * 1.2 + 0.4, `rgba(255,255,255,${0.2 + rnd() * 0.45})`);
+    glow(w * 0.85, h * 0.78, s * 0.64, 'rgba(255,196,112,.92)', 'rgba(255,150,90,0)');
+    disc(w * 0.85, h * 0.78, s * 0.13, '#ffb45e');
+    clouds(4, 'rgba(112,72,152,.42)', 0.08, 0.4);
+    clouds(4, 'rgba(255,172,150,.46)', 0.3, 0.62);
+  } else {
+    for (let i = 0; i < 170; i++) disc(rnd() * w, rnd() * h * 0.82, rnd() * 1.6 + 0.3, `rgba(255,255,255,${0.2 + rnd() * 0.7})`);
+    const mx = w * 0.84, my = h * 0.17, r = s * 0.085;
+    glow(mx, my, r * 2.6, 'rgba(255,250,220,.75)', 'rgba(255,250,220,0)');
+    disc(mx, my, r, '#fff6d6');
+    for (const [dx, dy, cr] of [[-0.3, -0.2, 0.2], [0.3, 0.2, 0.15], [0.05, 0.45, 0.1]]) disc(mx + dx * r, my + dy * r, cr * r, 'rgba(200,190,150,.4)');
+  }
+  const [far, near] = { morning: ['#a5e08a', '#6cc96c'], noon: ['#86dc7c', '#55c462'], evening: ['#4a7560', '#2f5348'], night: ['#1c3554', '#12243c'] }[theme];
+  const hill = (color, base, wave, swing) => {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, h);
+    for (let x = 0; x <= w + 20; x += 20) ctx.lineTo(x, h * base + Math.sin(x / wave + swing) * s * 0.035);
+    ctx.lineTo(w, h); ctx.fill();
+  };
+  hill(far, 0.8, 150, 1.4);
+  hill(near, 0.86, 95, 0);
+  if (theme === 'night') {
+    // 반딧불이
+    for (let i = 0; i < 26; i++) { const x = rnd() * w, y = h * (0.78 + rnd() * 0.2); glow(x, y, s * 0.018, 'rgba(255,250,150,.9)', 'rgba(255,250,150,0)'); }
+  } else {
+    const dots = theme === 'evening' ? ['#c98aa5', '#c9b56a', '#b9b3c9'] : ['#ff7aa2', '#ffe45c', '#ffffff'];
+    for (let i = 0; i < 40; i++) disc(rnd() * w, h * (0.89 + rnd() * 0.11), 3, dots[i % 3]);
+  }
+}
 
 function paintBackground(ctx, theme, w, h, seed = 7) {
   const cols = THEMES[theme] || THEMES.default;
@@ -119,8 +188,8 @@ function paintBackground(ctx, theme, w, h, seed = 7) {
   ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
   let s = seed;
   const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-  const dark = ['crater', 'starry', 'moon', 'space', 'nova', 'lab'].includes(theme);
-  if (dark) {
+  if (SKY.has(theme)) { paintSky(ctx, theme, w, h, rnd); return; }
+  if (DARK.has(theme)) {
     for (let i = 0; i < 160; i++) { ctx.fillStyle = `rgba(255,255,255,${0.2 + rnd() * 0.7})`; const r = rnd() * 1.6 + 0.3; ctx.beginPath(); ctx.arc(rnd() * w, rnd() * h * 0.85, r, 0, TAU); ctx.fill(); }
   }
   if (theme === 'meadow' || theme === 'default' || theme === 'sky' || theme === 'ending') {
@@ -202,6 +271,7 @@ export class Renderer {
     this.opts = {};
     this.pending = [];
     this.tick = 0;
+    this.clash = new Clash();
     this.resize();
   }
 
@@ -225,11 +295,12 @@ export class Renderer {
     this.opts = opts;
     this.effects.clear();
     this.pending = [];
+    this.clash.reset();
     this.relayout();
   }
 
   relayout() {
-    this.layout = computeLayout(this.w, this.h, { solo: this.opts.solo, insets: this.opts.insets, symmetric: this.opts.symmetric, watch: this.opts.watch });
+    this.layout = computeLayout(this.w, this.h, { solo: this.opts.solo, insets: this.opts.insets, symmetric: this.opts.symmetric, watch: this.opts.watch, clash: !!this.opts.clash });
   }
 
   setInsets(insets) { this.opts.insets = insets; this.relayout(); }
@@ -241,6 +312,11 @@ export class Renderer {
 
   // 매치 이벤트를 받아 효과를 준비한다 (고정 60프레임마다 한 번씩 부른다)
   onEvent(e, match) {
+    if (this.opts.clash) {
+      if (e.type === 'round') this.clash.reset();
+      const gain = clashGain(e, match.specs);
+      if (gain) this.clash.add(gain[0], gain[1]);
+    }
     const i = e.p;
     const v = this.views[i];
     if (!v || !this.layout.fields[i]) return;
@@ -289,8 +365,20 @@ export class Renderer {
       if (v.moodT > 0 && --v.moodT === 0 && !v.result) v.mood = 'idle';
       if (v.fall > 0) v.fall += 1;
     }
+    if (this.opts.clash && match) this.stepClash(match);
     this.match = match;
   }
+
+  // 힘겨루기: 떨어질 방해 뿌요가 남았거나 누가 연쇄 중이면 계속, 다 끝나면 누가 더 셌는지 알려 준다
+  stepClash(match) {
+    const busy = match.phase === 'play' && (match.remoteChaining || match.players.some(p => p.incoming > 0 || p.chaining));
+    this.clash.step(busy);
+    const end = this.clash.takeEnded(), box = this.layout.clash;
+    if (!end || !box) return;
+    const names = this.clashNames();
+    this.effects.text(box.x + box.w / 2, box.y + box.h * 1.7, end.winner < 0 ? '비겼다!' : `${names[end.winner]} 승!`, box.h * 0.85, { color: end.winner === 1 ? '#ffb3c8' : '#fff6a8', life: 70, rise: 0.1 });
+  }
+  clashNames() { return this.opts.clash?.names || ['나', '상대']; }
 
   setResult(i, result) {
     const v = this.views[i];
@@ -301,6 +389,7 @@ export class Renderer {
   }
   resetRound() {
     for (const v of this.views) { v.result = ''; v.fall = 0; v.mood = 'idle'; v.pieceRef = null; v.shown = 0; }
+    this.clash.reset();
     this.effects.clear();
     this.pending = [];
   }
@@ -324,6 +413,7 @@ export class Renderer {
     match.players.forEach((p, i) => this.drawSide(ctx, match, p, i, time));
     if (!this.layout.solo && this.layout.center) this.drawCenter(ctx, match, time);
     if (this.layout.solo) this.drawSoloSide(ctx, match, time);
+    if (this.layout.clash && this.opts.clash) this.drawClash(ctx, time);
     this.effects.draw(ctx);
     ctx.restore();
     this.drawOverlay(ctx, match);
@@ -331,15 +421,14 @@ export class Renderer {
   }
 
   drawAmbient(ctx, time) {
-    const dark = ['crater', 'starry', 'moon', 'space', 'nova', 'lab'].includes(this.theme);
-    if (dark) {
+    if (DARK.has(this.theme)) {
       for (let i = 0; i < 18; i++) {
         const x = ((i * 137.5) % 100) / 100 * this.w, y = ((i * 71.3) % 100) / 100 * this.h * 0.8;
         const a = 0.3 + 0.7 * Math.abs(Math.sin(time * 1.5 + i));
         ctx.fillStyle = `rgba(255,255,230,${a})`;
         ctx.beginPath(); ctx.arc(x, y, 1.4 + (i % 3) * 0.4, 0, TAU); ctx.fill();
       }
-      if (this.theme === 'crater' || this.theme === 'starry' || this.theme === 'space') {
+      if (this.theme === 'crater' || this.theme === 'starry' || this.theme === 'space' || this.theme === 'night') {
         const k = (time * 0.35) % 1, x = this.w * (1.1 - k * 1.3), y = this.h * (k * 0.7 - 0.05);
         const g = ctx.createLinearGradient(x, y, x + 90, y - 50);
         g.addColorStop(0, this.theme === 'crater' ? 'rgba(255,170,80,.9)' : 'rgba(255,255,255,.9)'); g.addColorStop(1, 'rgba(255,255,255,0)');
@@ -618,7 +707,11 @@ export class Renderer {
       ctx.fillStyle = v.color || '#fff'; ctx.lineWidth = size * 0.28; ctx.strokeStyle = 'rgba(20,10,40,.75)'; ctx.lineJoin = 'round';
       ctx.strokeText(label, box.x + box.w / 2, box.y + c * 0.3); ctx.fillText(label, box.x + box.w / 2, box.y + c * 0.3);
       if (match.firstTo > 1) this.drawWins(ctx, match, box.x + box.w / 2, box.y + c * 0.78, c * 0.62);
-      if (v.char) drawCharacter(ctx, v.char, box.x + box.w / 2, box.y + c * 1.6, c * 1.15, v.mood, time);
+      if (this.opts.duel && this.views[0]?.char) {
+        // 온라인 대전: 두 사람이 고른 캐릭터를 나란히 (왼쪽이 나)
+        drawCharacter(ctx, this.views[0].char, box.x + box.w * 0.26, box.y + c * 1.6, c * 1.05, this.views[0].mood, time, this.views[0].charExtra || {});
+        if (v.char) drawCharacter(ctx, v.char, box.x + box.w * 0.74, box.y + c * 1.6, c * 1.05, v.mood, time);
+      } else if (v.char) drawCharacter(ctx, v.char, box.x + box.w / 2, box.y + c * 1.6, c * 1.15, v.mood, time);
       ctx.restore();
       return;
     }
@@ -655,12 +748,66 @@ export class Renderer {
     this.drawWins(ctx, match, box.x + box.w / 2, box.y + c * 2.3, c);
     // 캐릭터
     const chars = this.views.map(v => v.char);
-    if (chars[1]) drawCharacter(ctx, chars[1], box.x + box.w / 2, box.y + c * 4.4, c * 2.9, this.views[1].mood, time);
-    if (chars[0]) drawCharacter(ctx, chars[0], box.x + box.w / 2, box.y + c * 7.1, c * 1.9, this.views[0].mood, time, this.views[0].charExtra || {});
+    if (this.opts.duel) {
+      // 온라인 대전 (기획서 3번): 두 사람이 고른 캐릭터를 자기 필드 쪽에 같은 크기로
+      if (chars[0]) drawCharacter(ctx, chars[0], box.x + box.w * 0.25, box.y + c * 5.5, c * 1.95, this.views[0].mood, time, this.views[0].charExtra || {});
+      if (chars[1]) drawCharacter(ctx, chars[1], box.x + box.w * 0.75, box.y + c * 5.5, c * 1.95, this.views[1].mood, time);
+    } else {
+      if (chars[1]) drawCharacter(ctx, chars[1], box.x + box.w / 2, box.y + c * 4.4, c * 2.9, this.views[1].mood, time);
+      if (chars[0]) drawCharacter(ctx, chars[0], box.x + box.w / 2, box.y + c * 7.1, c * 1.9, this.views[0].mood, time, this.views[0].charExtra || {});
+    }
     // 마진 타임
     if (match.frame > 96 * 60 && match.phase === 'play') {
       ctx.font = `${Math.round(c * 0.32)}px ${FONT}`; ctx.fillStyle = '#ff9fb0';
       ctx.fillText(`마진 타임! 방해 뿌요 ×${(70 / match.target).toFixed(1)}`, box.x + box.w / 2, box.y + c * 8.4);
+    }
+    ctx.restore();
+  }
+
+  // 힘겨루기 막대 (기획서 2번 그림): 왼쪽은 나, 오른쪽은 상대. 가운데 번개 금이 센 쪽에서 약한 쪽으로 밀려간다.
+  drawClash(ctx, time) {
+    const box = this.layout.clash, k = this.clash, names = this.clashNames();
+    const colors = [this.views[0]?.color || '#ffe45c', this.views[1]?.color || '#9fe3ff'];
+    const fight = k.fighting, pulse = k.bump / 14;
+    const h = box.h * (1 + pulse * 0.12), y = box.y - (h - box.h) / 2, x = box.x, w = box.w;
+    const mid = x + w * k.pos + (fight ? Math.sin(time * 38) * h * 0.07 : 0);
+    const amp = h * 0.2, steps = 5, zig = [];
+    for (let i = 0; i <= steps; i++) zig.push([mid + (i % 2 ? amp : -amp), y + h * i / steps]);
+    const line = () => { ctx.beginPath(); zig.forEach(([zx, zy], i) => (i ? ctx.lineTo(zx, zy) : ctx.moveTo(zx, zy))); };
+    ctx.save();
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.save();
+    roundRect(ctx, x, y, w, h, h * 0.42); ctx.clip();
+    ctx.fillStyle = colors[1]; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = colors[0];
+    ctx.beginPath(); ctx.moveTo(x, y); for (const [zx, zy] of zig) ctx.lineTo(zx, zy); ctx.lineTo(x, y + h); ctx.closePath(); ctx.fill();
+    const shade = ctx.createLinearGradient(0, y, 0, y + h);
+    shade.addColorStop(0, 'rgba(255,255,255,.38)'); shade.addColorStop(0.5, 'rgba(255,255,255,0)'); shade.addColorStop(1, 'rgba(40,20,80,.3)');
+    ctx.fillStyle = shade; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#2a1640'; ctx.lineWidth = Math.max(3, h * 0.22); line(); ctx.stroke();
+    ctx.strokeStyle = fight && Math.floor(time * 12) % 2 ? '#fff27a' : '#ffffff'; ctx.lineWidth = Math.max(1.5, h * 0.1); line(); ctx.stroke();
+    ctx.restore();
+    roundRect(ctx, x, y, w, h, h * 0.42);
+    ctx.lineWidth = Math.max(2, h * 0.09); ctx.strokeStyle = '#2a1640'; ctx.stroke();
+    // 이름과, 이번 힘겨루기에서 만든 방해 뿌요
+    const pad = h * 0.45, icon = h * 0.62;
+    ctx.textBaseline = 'middle'; ctx.lineWidth = Math.max(2, h * 0.16); ctx.strokeStyle = '#2a1640'; ctx.fillStyle = '#fff';
+    [0, 1].forEach(side => {
+      let size = h * 0.62;
+      ctx.font = `${Math.round(size)}px ${FONT}`;
+      while (ctx.measureText(names[side]).width > w * 0.24 && size > h * 0.32) { size *= 0.92; ctx.font = `${Math.round(size)}px ${FONT}`; }
+      const tw = ctx.measureText(names[side]).width, dir = side ? -1 : 1, tx = side ? x + w - pad : x + pad;
+      ctx.textAlign = side ? 'right' : 'left';
+      ctx.strokeText(names[side], tx, y + h / 2); ctx.fillText(names[side], tx, y + h / 2);
+      garbageIcons(k.power[side], 3).forEach((id, n) => drawGarbageIcon(ctx, id, tx + dir * (tw + icon * (n + 0.75)), y + h / 2, icon, time));
+    });
+    // 서로 밀고 있을 때는 금 둘레에 불꽃이 튄다
+    if (fight) {
+      ctx.strokeStyle = '#fff6a8'; ctx.lineWidth = Math.max(1.5, h * 0.07);
+      for (let i = 0; i < 6; i++) {
+        const a = time * 9 + i * TAU / 6, r1 = h * 0.55, r2 = h * (0.8 + 0.22 * Math.sin(time * 20 + i));
+        ctx.beginPath(); ctx.moveTo(mid + Math.cos(a) * r1, y + h / 2 + Math.sin(a) * r1 * 0.7); ctx.lineTo(mid + Math.cos(a) * r2, y + h / 2 + Math.sin(a) * r2 * 0.7); ctx.stroke();
+      }
     }
     ctx.restore();
   }

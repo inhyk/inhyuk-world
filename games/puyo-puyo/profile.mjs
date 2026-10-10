@@ -46,7 +46,7 @@ export function newProgress() {
       games: 0, wins: 0, losses: 0, maxChain: 0, maxScore: 0, popped: 0, allClears: 0, offsets: 0,
       garbageSent: 0, onlineGames: 0, onlineWins: 0, localGames: 0, endlessBest: 0, playSeconds: 0,
     },
-    settings: { ghost: true, shake: true, localMap: 'garden', vsMap: 'garden', soloMap: 'garden', onlineMap: 'garden', chat: true },
+    settings: { ghost: true, shake: true, localMap: 'garden', vsMap: 'garden', soloMap: 'garden', onlineMap: 'garden', onlineChar: 'hero', chat: true },
   };
 }
 

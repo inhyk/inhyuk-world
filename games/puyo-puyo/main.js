@@ -30,6 +30,8 @@ import { CloudSave, CACHE_KEY, cloudPayload, writeCache } from './cloud.mjs';
 import { migrateLocal, checkLocalPassword, markMigrated, migrationMarker, importIdFor, MIGRATING_KEY } from './migrate.mjs';
 import { createSocialUI } from './social-ui.mjs';
 import { playEnding } from './ending.mjs';
+import { skyAt, getSky, skyText } from './sky.mjs';
+import { FIGHTERS, cleanFighter, fighterOpen, fighterHint, pickFighter } from './fighters.mjs';
 import { GRADES, gradeDone, gradeOpen, finishGrade, lessonCells, lessonSeq, lessonStep, newJudge, judge } from './tutorial.mjs';
 import { PETS, PET_PRICE, drawPet, drawWith, equipPet, equippedPet, ownedCount, petName, petKinds, multText, chanceText, chanceTotal } from './pets.mjs';
 import { drawPet as paintPet, drawEgg } from './pet-art.mjs';
@@ -157,7 +159,7 @@ function renderScreen(name) {
   if (name === 'watch') renderWatchList();
   if (name === 'ranking') renderRanking();
   ui.render(name); // 온라인 계정: 온라인, 친구, 1:1 대화
-  if (name === 'online') paintVote();
+  if (name === 'online') paintLobby();
   watchFriends(name === 'friends' && legacyOn());
 }
 
@@ -657,6 +659,11 @@ function computeInsets() {
 function myView(extra = {}) {
   return { name: me()?.name || '나', level: P().level, skin: P().equip.skin, effect: P().equip.effect, char: 'hero', color: '#ffe45c', ...extra };
 }
+// 대전 화면의 하늘 (인혁이 기획서 2026-10-10 1번): 밤이면 밤하늘, 아침이면 아침 하늘. 뿌요 정원에서 하는 대전(AI · 2인 · 온라인)에 쓴다.
+// 다른 맵과 타워의 층은 그곳만의 배경이 있어서 그대로 둔다. 브라우저 확인에서는 ?test&sky=night 처럼 하늘을 정할 수 있다.
+let skyForce = TEST ? getSky(new URLSearchParams(location.search).get('sky')) : null;
+const nowSky = () => skyForce || skyAt(new Date());
+let skyClock = 0;
 function startGame(cfg) {
   closePromo(true);
   demo = null;
@@ -664,9 +671,12 @@ function startGame(cfg) {
   const seed = cfg.seed ?? ((Math.random() * 2 ** 31) | 0);
   match = new Match({ seed, colors: cfg.colors, minGroup: cfg.minGroup, gravityScale: cfg.gravityScale, target: cfg.target, specs: cfg.specs, firstTo: cfg.firstTo || 1, solo: cfg.mode === 'solo' || cfg.mode === 'practice', online: cfg.online || null, makeRemote: cfg.makeRemote, brain });
   if (cfg.slow && match.ai[1]) match.ai[1].slow = cfg.slow;
-  renderer.setTheme(cfg.theme || 'default');
+  renderer.setTheme(cfg.sky ? nowSky().id : cfg.theme || 'default');
   if (cfg.mode !== 'practice') endPractice();
-  renderer.setup(cfg.views, { solo: cfg.mode === 'solo' || cfg.mode === 'practice', ghost: P().settings.ghost !== false, insets: computeInsets() });
+  // 둘이 겨루는 판에는 맨 위에 방해 뿌요 힘겨루기 막대 (기획서 2번 그림 「나 ⚡ 상대」). 2인 플레이는 두 사람 이름으로.
+  const clash = match.solo ? null : { names: cfg.mode === 'local' ? cfg.views.map((v, i) => v.name || `${i + 1}P`) : ['나', '상대'] };
+  renderer.setup(cfg.views, { solo: cfg.mode === 'solo' || cfg.mode === 'practice', ghost: P().settings.ghost !== false, insets: computeInsets(), clash, duel: cfg.mode === 'online' });
+  if (cfg.sky) toast(skyText(nowSky()));
   hideScreens();
   $('hud').hidden = false;
   $('hud-chat').hidden = cfg.mode !== 'online' || !chatOn();
@@ -700,7 +710,7 @@ const plainMap = arena => arena.id === 'garden';
 function startVs(level, firstTo, mapId = P().settings.vsMap) {
   const info = FLOORS[level - 1], arena = getMap(mapId);
   startGame({
-    mode: 'vs', level, title: `AI 대전 · ${info.boss}${plainMap(arena) ? '' : ` · ${mapTitle(arena)}`}`, theme: plainMap(arena) ? info.theme : arena.theme, music: level >= 6 ? 'boss' : 'battle', firstTo,
+    mode: 'vs', level, title: `AI 대전 · ${info.boss}${plainMap(arena) ? '' : ` · ${mapTitle(arena)}`}`, theme: plainMap(arena) ? info.theme : arena.theme, sky: plainMap(arena), music: level >= 6 ? 'boss' : 'battle', firstTo,
     ...mapRulesOf(arena),
     specs: [{ kind: 'human' }, { kind: 'ai', level }],
     views: [myView(), { name: info.boss, level: 0, skin: 'classic', effect: 'sparkle', char: info.char, color: '#ffb3c8' }],
@@ -721,7 +731,7 @@ function startLocal(firstTo, mapId = P().settings.localMap) {
   const arena = getMap(mapId);
   const name2 = ($('local-name').value || '2P').slice(0, 10);
   startGame({
-    mode: 'local', map: arena.id, title: `${arena.emoji} ${arena.name} · ${arena.minGroup}개 연결 · ${arena.colors}색`, theme: arena.theme, music: 'battle', firstTo,
+    mode: 'local', map: arena.id, title: `${arena.emoji} ${arena.name} · ${arena.minGroup}개 연결 · ${arena.colors}색`, theme: arena.theme, sky: plainMap(arena), music: 'battle', firstTo,
     colors: arena.colors, minGroup: arena.minGroup, gravityScale: arena.gravityScale, target: arena.target,
     specs: [{ kind: 'human' }, { kind: 'human' }],
     views: [myView({ char: null }), { name: name2, skin: 'classic', effect: 'sparkle', char: null, color: '#9fe3ff' }],
@@ -1107,6 +1117,8 @@ function loop(now) {
   last = now;
   const step = 1000 / 60;
   while (acc >= step) { acc -= step; tick(); }
+  // 대전하는 동안 아침 → 낮처럼 시간이 넘어가면 하늘도 바뀐다
+  if (match && game?.sky && ++skyClock % 120 === 0) renderer.setTheme(nowSky().id);
   renderer.draw(match || demo, now / 1000);
   requestAnimationFrame(loop);
 }
@@ -1999,22 +2011,22 @@ function renderHelp() {
 const online = createOnline({
   toast, sound,
   social: () => hub,
-  me: () => ({ level: P().level, skin: P().equip.skin, effect: P().equip.effect }), // 이름은 보내지 않는다 (상대는 서버가 준 닉네임을 씀)
+  me: () => ({ level: P().level, skin: P().equip.skin, effect: P().equip.effect, ch: myFighter() }), // 이름은 보내지 않는다 (상대는 서버가 준 닉네임을 씀)
   vote: () => mapIndex(P().settings.onlineMap),
   start: ({ seed, firstTo, opponent, peer, role, makeRemote, map, tie }) => {
     const arena = getMap(map);
     startGame({
-      mode: 'online', online: role, seed, firstTo, title: `온라인 · ${opponent.nickname}${plainMap(arena) ? '' : ` · ${mapTitle(arena)}`}`, theme: plainMap(arena) ? 'starry' : arena.theme, music: 'battle',
+      mode: 'online', online: role, seed, firstTo, title: `온라인 · ${opponent.nickname}${plainMap(arena) ? '' : ` · ${mapTitle(arena)}`}`, theme: plainMap(arena) ? 'starry' : arena.theme, sky: plainMap(arena), music: 'battle',
       ...mapRulesOf(arena),
       specs: [{ kind: 'human' }, { kind: 'remote' }], makeRemote,
-      views: [myView({ char: null }), { name: opponent.nickname, level: peer.level, skin: peer.skin || 'classic', effect: peer.effect || 'sparkle', char: null, color: '#9fe3ff' }],
+      views: [myView({ char: FIGHTERS[myFighter()].id }), { name: opponent.nickname, level: peer.level, skin: peer.skin || 'classic', effect: peer.effect || 'sparkle', char: FIGHTERS[cleanFighter(peer.char)].id, color: '#9fe3ff' }],
     });
     voteToast(arena, tie);
   },
   match: () => match,
   isFinished: () => !!game?.finished,
   quit: () => { if (match && game?.mode === 'online') { match = null; game = null; $('result').hidden = true; startDemo(); show('online'); } },
-  render: () => { if (!online.active && chatWith?.kind === 'room') closeChat(); ui.onlineChanged(); paintVote(); },
+  render: () => { if (!online.active && chatWith?.kind === 'room') closeChat(); ui.onlineChanged(); paintLobby(); },
   // 대전 채팅: 내가 보낸 줄은 sendChat 이 이미 적었다
   chatLine: entry => { if (entry.who === 'them') roomChat({ name: online.peerName(), text: entry.text, sticker: entry.sticker }); },
   chatReset: () => roomJoined(),
@@ -2028,16 +2040,16 @@ const online = createOnline({
 // 방 코드 대전 (PeerJS): 이 기기 계정과 손님. 주고받는 모양은 예전 버전 게임과 같다.
 const peerOnline = createPeerOnline({
   $, toast, sound, esc,
-  me: () => ({ name: me()?.name || '손님', level: P().level, skin: P().equip.skin, effect: P().equip.effect }),
+  me: () => ({ name: me()?.name || '손님', level: P().level, skin: P().equip.skin, effect: P().equip.effect, ch: myFighter() }),
   vote: () => mapIndex(P().settings.onlineMap),
-  lobbyChanged: () => paintVote(),
+  lobbyChanged: () => paintLobby(),
   start: ({ seed, firstTo, peer, role, makeRemote, map, tie }) => {
     const arena = getMap(map);
     startGame({
-      mode: 'online', online: role, viaPeer: true, seed, firstTo, title: `온라인 · ${peer.name}${plainMap(arena) ? '' : ` · ${mapTitle(arena)}`}`, theme: plainMap(arena) ? 'starry' : arena.theme, music: 'battle',
+      mode: 'online', online: role, viaPeer: true, seed, firstTo, title: `온라인 · ${peer.name}${plainMap(arena) ? '' : ` · ${mapTitle(arena)}`}`, theme: plainMap(arena) ? 'starry' : arena.theme, sky: plainMap(arena), music: 'battle',
       ...mapRulesOf(arena),
       specs: [{ kind: 'human' }, { kind: 'remote' }], makeRemote,
-      views: [myView({ char: null }), { name: peer.name, level: peer.level, skin: peer.skin || 'classic', effect: peer.effect || 'sparkle', char: null, color: '#9fe3ff' }],
+      views: [myView({ char: FIGHTERS[myFighter()].id }), { name: peer.name, level: peer.level, skin: peer.skin || 'classic', effect: peer.effect || 'sparkle', char: FIGHTERS[cleanFighter(peer.char)].id, color: '#9fe3ff' }],
     });
     voteToast(arena, tie);
   },
@@ -2068,6 +2080,42 @@ function paintVote() {
     : a === b ? `둘 다 ${mapTitle(a)}! 이 맵에서 대결해.`
       : `내 표: ${mapTitle(a)} · 상대 표: ${mapTitle(b)} → 표가 같아서 시작할 때 둘 중 하나를 뽑아!`;
 }
+// 온라인 캐릭터 고르기 (인혁이 기획서 2026-10-10 3번 "처음 온라인 대전에서 캐릭터를 고를 수 있게 해줘"):
+// 로비에서 고른 캐릭터가 대전 화면 가운데에 나오고 상대 화면에도 보인다. 고른 것은 저장해 두고 다음에도 쓴다.
+function myFighter() { return pickFighter(P().tower, P().settings.onlineChar); }
+function paintFace(canvas, char) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.hidden = !char;
+  if (char) drawCharacter(ctx, char, canvas.width / 2, canvas.height / 2, canvas.width * 0.95, 'happy', 0);
+}
+function paintChars() {
+  if (screen !== 'online' || $('online-lobby').hidden) return;
+  const peer = roomNet().state().peer;
+  const mine = myFighter(), theirs = peer ? cleanFighter(peer.char) : null;
+  paintFace($('lobby-me-char'), FIGHTERS[mine].id);
+  paintFace($('lobby-you-char'), theirs === null ? null : FIGHTERS[theirs].id);
+  const grid = $('online-char-grid');
+  grid.innerHTML = '';
+  FIGHTERS.forEach((f, i) => {
+    const open = fighterOpen(P().tower, i);
+    const b = document.createElement('button');
+    b.className = `char-card${i === mine ? ' selected' : ''}${open ? '' : ' locked'}`;
+    b.dataset.char = f.id;
+    b.disabled = !open;
+    b.setAttribute('aria-pressed', String(i === mine));
+    b.append(faceCanvas(f.id, 32, i === mine ? 'happy' : 'idle'));
+    b.insertAdjacentHTML('beforeend', `<b>${open ? esc(f.name) : '???'}</b>${open ? '' : `<small>${fighterHint(i)}</small>`}<i class="vote-tags">${i === mine ? '<i class="vote-tag me">나</i>' : ''}${i === theirs ? '<i class="vote-tag you">상대</i>' : ''}</i>`);
+    b.onclick = () => {
+      sound.sfx('click');
+      P().settings.onlineChar = f.id; save();
+      roomNet().setChar(i); // 상대에게 알리고 로비를 다시 그린다
+    };
+    grid.append(b);
+  });
+  $('online-char-text').textContent = `내 캐릭터: ${FIGHTERS[mine].name}${theirs === null ? '' : ` · 상대 캐릭터: ${FIGHTERS[theirs].name}`}`;
+}
+function paintLobby() { paintVote(); paintChars(); }
 function voteToast(arena, tie) {
   toast(tie ? `🎲 표가 갈려서 뽑기로 정했어: ${mapTitle(arena)} (${mapRules(arena)})` : `🗺️ ${mapTitle(arena)}에서 대결! (${mapRules(arena)})`);
 }
@@ -3084,7 +3132,9 @@ window.render_game_to_text = () => JSON.stringify({
   screen, paused, talking,
   account: me()?.name || null, level: P().level, coins: P().coins, tower: P().tower,
   rewards: P().rewards, creatorUnlocked: creator.unlocked, ending: $('ending').hidden ? null : $('ending').dataset.kind,
-  mode: game?.mode || null, map: game?.map || null,
+  mode: game?.mode || null, map: game?.map || null, theme: renderer.theme, sky: game?.sky ? nowSky().id : null,
+  clash: match && renderer.opts.clash ? { names: renderer.clashNames(), power: renderer.clash.power.slice(), pos: Math.round(renderer.clash.pos * 1000) / 1000, fighting: renderer.clash.fighting, box: renderer.layout.clash } : null,
+  chars: match ? renderer.views.map(v => v.char || null) : null,
   pets: P().pets, tickets: P().tickets, boostLeft: Math.ceil(boostLeft(P()) / 1000), friends: friendTotal(), bonus: { xp: currentBonus().xp, coins: currentBonus().coins },
   school: P().school, tutorial: P().tutorial, lesson: practice ? { grade: practice.grade, index: practice.index, freeze: practice.freeze } : null,
   net: account?.cloud ? { nickname: net.user?.nickname, cloud: cloud?.state ?? null, live: hub?.status ?? null } : null,
@@ -3098,6 +3148,7 @@ if (TEST) {
   window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, get mailState() { return mailState; }, pollMail, friendNet, P, handleBack, store, startTower, startVs, startSolo, startLocal, startPractice, show, finishMatch, renderer, online, peerOnline, runEnding, recordPlayTime, pause, save,
     get cloud() { return cloud; }, get social() { return hub; }, net, get watcher() { return watcher; }, sendStats,
     watchTalkOff, greetHi, get device() { return device; }, get roomLog() { return roomLog; }, sound,
+    setSky(id) { skyForce = getSky(id); if (game?.sky) renderer.setTheme(nowSky().id); return nowSky().id; },
     // 예전 방식의 이 기기 계정 만들기 (화면에서는 더 이상 만들지 않는다. 브라우저 확인용)
     async localSignup(name, password) { const r = await createAccount(store, name, password); if (r.ok) { account = r.account; guest = null; save(); afterLogin(); } return r.ok; } };
 }
