@@ -1,6 +1,6 @@
 // 인혁이 기획서 「뿌요뿌요 (업그레이드)」(2026-10-10)를 실제 Chrome 으로 끝까지 확인한다.
 // 4번 혜성 엔딩이 마지막 글만 나오고 멈추던 버그(그리기 시각이 앞설 때) → 1번 대전 화면의 하늘(아침·낮·저녁·밤)
-// → 2번 방해 뿌요 힘겨루기 막대 「나 ⚡ 상대」 → "스킨도 더 넣어줘" 새 스킨 12가지 → 3번 온라인 로비에서 캐릭터 고르기(두 계정).
+// → 2번 방해 뿌요 힘겨루기 막대 「나 ⚡ 상대」(조금 넘어가서는 「승!」이 안 뜸) → "스킨도 더 넣어줘" 새 스킨 12가지 → 3번 온라인 로비에서 캐릭터 고르기(두 계정).
 //
 // 사용법: npm run puyo-puyo:dev 후 PUYO_URL=http://127.0.0.1:5190/ node games/puyo-puyo/upgrade7-browser-check.mjs
 // net 서버: PUYO_NET 이 없으면 services/net 에서 빈 로컬 D1 로 wrangler dev 를 새로 띄우고(포트 8799) 끝나면 끈다.
@@ -156,35 +156,55 @@ try {
     await hideToasts(page);
     // 상대가 스스로 공격하지 않게 손을 멈추고, 확인하는 동안 뿌요가 바닥에 닿지 않게 아주 천천히 떨어뜨린다
     await page.evaluate(() => { const m = window.__puyo.match; m.ai[1] = null; m.gravityScale = 0.02; });
+    // 화면에 뜨는 글(「나 승!」 같은 것)을 모두 적어 둔다
+    await page.evaluate(() => {
+      const fx = window.__puyo.renderer.effects;
+      if (!fx.__recorded) { const text = fx.text.bind(fx); fx.text = (x, y, str, ...rest) => { window.__texts.push(str); return text(x, y, str, ...rest); }; fx.__recorded = true; }
+      window.__texts = [];
+    });
+    const wins = () => page.evaluate(() => window.__texts.filter(t => t.endsWith('승!')));
     let c = (await read(page)).clash;
-    assert.deepEqual([c.names, c.power, c.pos, c.fighting], [['나', '상대'], [0, 0], 0.5, false]);
+    assert.deepEqual([c.names, c.power, c.lead, c.pos, c.fighting], [['나', '상대'], [0, 0], 0, 0.5, false]);
     // 그림처럼 맨 위: 위쪽 단추 줄 아래, 두 필드의 예고 칸보다 위
     const layout = await page.evaluate(() => { const l = window.__puyo.renderer.layout; return { tray: l.tray.map(t => t.y), fields: l.fields.map(f => f.y), w: window.innerWidth }; });
     assert.ok(c.box.y >= 40 && c.box.x >= 0 && c.box.x + c.box.w <= layout.w, `${name} 막대 자리 ${JSON.stringify(c.box)}`);
     for (const y of layout.tray) assert.ok(c.box.y + c.box.h <= y + 0.5, `${name} 예고 칸 위`);
     await settle(page); await page.screenshot({ path: `${shots}/clash-rest-${name}.png` });
-    // 내가 12개를 보낸다 → 아직 혼자 미는 중
-    await page.evaluate(() => window.__puyo.match.players[0].events.push({ type: 'send', amount: 12 }));
-    await clashIs(page, () => { const k = JSON.parse(window.render_game_to_text()).clash; return k.power[0] === 12 && !k.fighting; });
-    assert.equal((await read(page)).match.players[1].incoming, 12);
-    await clashIs(page, max => JSON.parse(window.render_game_to_text()).clash.pos === max, CLASH_MAX);
-    // 상대가 12개를 상쇄하고 20개를 더 보낸다 → 왔다 갔다, 상대가 더 세서 금이 내 쪽으로 밀려온다
-    await page.evaluate(() => { const p = window.__puyo.match.players[1]; p.incoming = 0; p.events.push({ type: 'offset', amount: 12 }, { type: 'send', amount: 20 }); });
-    await clashIs(page, () => { const k = JSON.parse(window.render_game_to_text()).clash; return k.fighting && k.power[0] === 12 && k.power[1] === 32 && k.pos < 0.3; });
+    // 인혁이가 본 것: 상대가 조금(2개) 보내고, 내가 받아쳐서 상대한테 조금(3개) 넘어갔다.
+    // 금은 조금만 움직이고, 넘어간 3개가 떨어져도 「나 승!」은 뜨지 않는다 (전에는 1.3초 뒤에 떴다)
+    await page.evaluate(() => window.__puyo.match.players[1].events.push({ type: 'send', amount: 2 }));
+    await clashIs(page, () => { const k = JSON.parse(window.render_game_to_text()).clash; return k.power[1] === 2 && !k.fighting; });
+    assert.equal((await read(page)).match.players[0].incoming, 2);
+    await page.evaluate(() => { const p = window.__puyo.match.players[0]; p.incoming = 0; p.events.push({ type: 'offset', amount: 2 }, { type: 'send', amount: 3 }); });
+    await clashIs(page, () => { const k = JSON.parse(window.render_game_to_text()).clash; return k.fighting && k.power[0] === 5 && k.lead === 3 && k.pos === 0.536; });
+    assert.equal((await read(page)).match.players[1].incoming, 3);
+    await page.screenshot({ path: `${shots}/clash-small-${name}.png` });
+    await page.evaluate(() => { for (const p of window.__puyo.match.players) p.incoming = 0; });
+    await page.waitForTimeout(2200);
+    assert.deepEqual(await wins(), [], '조금 넘어간 것으로는 「승!」이 뜨지 않는다');
+    assert.equal((await read(page)).clash.pos, 0.536); // 금은 가운데로 돌아가지 않고 앞선 만큼 그 자리에
+    // 상대가 20개를 보낸다 → 상대가 17개 앞서서 금이 내 쪽으로 밀려온다
+    await page.evaluate(() => window.__puyo.match.players[1].events.push({ type: 'send', amount: 20 }));
+    await clashIs(page, () => { const k = JSON.parse(window.render_game_to_text()).clash; return k.power[1] === 22 && k.lead === -17 && k.pos < 0.3; });
     assert.equal((await read(page)).match.players[0].incoming, 20);
     await page.screenshot({ path: `${shots}/clash-fight-${name}.png` });
-    // 내가 더 큰 연쇄로 받아친다 → 금이 상대 쪽으로
+    // 내가 더 큰 연쇄로 받아친다 (20개 상쇄 + 40개) → 43개 앞서서 금이 끝까지. 아직 떨어지기 전이라 승부는 나지 않는다
     await page.evaluate(() => { const p = window.__puyo.match.players[0]; p.incoming = 0; p.events.push({ type: 'offset', amount: 20 }, { type: 'send', amount: 40 }); });
-    await clashIs(page, () => { const k = JSON.parse(window.render_game_to_text()).clash; return k.power[0] === 72 && k.pos > 0.68; });
+    await clashIs(page, max => { const k = JSON.parse(window.render_game_to_text()).clash; return k.lead === 43 && k.pos === max; }, CLASH_MAX);
     await page.screenshot({ path: `${shots}/clash-push-${name}.png` });
-    // 방해 뿌요가 다 떨어지면 누가 더 셌는지 알려 주고 가운데로 돌아온다
+    await page.waitForTimeout(1500);
+    assert.deepEqual(await wins(), [], '방해 뿌요가 떨어지기 전에는 「승!」이 뜨지 않는다');
+    // 방해 뿌요가 다 떨어지면 「나 승!」 한 번. 금은 끝에 남는다
     await page.evaluate(() => { for (const p of window.__puyo.match.players) p.incoming = 0; });
-    await page.waitForFunction(() => window.__puyo.renderer.effects.texts.some(t => t.text === '나 승!'), null, T);
-    await clashIs(page, () => { const k = JSON.parse(window.render_game_to_text()).clash; return k.power[0] === 0 && k.power[1] === 0 && !k.fighting && k.pos === 0.5; });
-    // 다음 판이 시작되면 처음부터
-    await page.evaluate(() => { window.__puyo.renderer.clash.add(1, 5); window.__puyo.renderer.resetRound(); });
+    await page.waitForFunction(() => window.__texts.includes('나 승!'), null, T);
+    await page.waitForTimeout(1500);
+    assert.deepEqual(await wins(), ['나 승!']);
     c = (await read(page)).clash;
-    assert.deepEqual([c.power, c.pos], [[0, 0], 0.5]);
+    assert.deepEqual([c.power, c.lead, c.pos], [[65, 22], 43, CLASH_MAX]);
+    // 다음 판이 시작되면 처음부터
+    await page.evaluate(() => window.__puyo.renderer.resetRound());
+    c = (await read(page)).clash;
+    assert.deepEqual([c.power, c.lead, c.pos], [[0, 0], 0, 0.5]);
   }
   await clashCheck(g, 'pc');
   const phone = await open('휴대폰', PHONE);
@@ -276,9 +296,9 @@ try {
   await a.evaluate(() => window.__puyo.match.players[0].events.push({ type: 'send', amount: 9 }));
   await b.waitForFunction(() => { const t = JSON.parse(window.render_game_to_text()); return t.clash.power[1] === 9 && t.match.players[0].incoming === 9; }, null, T);
   await b.evaluate(() => { const p = window.__puyo.match.players[0]; p.incoming = 0; p.events.push({ type: 'offset', amount: 9 }, { type: 'send', amount: 14 }); });
-  await a.waitForFunction(() => { const k = JSON.parse(window.render_game_to_text()).clash; return k.fighting && k.power[0] === 9 && k.power[1] === 23; }, null, T);
+  await a.waitForFunction(() => { const k = JSON.parse(window.render_game_to_text()).clash; return k.power[0] === 9 && k.power[1] === 23 && k.lead === -14; }, null, T);
   sb = await read(b);
-  assert.deepEqual(sb.clash.power, [23, 9]); assert.equal(sb.clash.fighting, true);
+  assert.deepEqual(sb.clash.power, [23, 9]); assert.equal(sb.clash.lead, 14);
   await a.screenshot({ path: `${shots}/online-chars-clash-pc.png` });
   await b.screenshot({ path: `${shots}/online-chars-clash-phone.png` });
 

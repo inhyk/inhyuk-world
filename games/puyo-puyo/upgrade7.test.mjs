@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SKIES, SKY_IDS, skyAtHour, skyAt, getSky, skyText } from './sky.mjs';
-import { Clash, clashGain, CLASH_MIN, CLASH_MAX, CLASH_HOLD } from './clash.mjs';
+import { Clash, clashGain, CLASH_MIN, CLASH_MAX, CLASH_FULL, CLASH_HOLD, CLASH_HOT } from './clash.mjs';
 import { FIGHTERS, cleanFighter, fighterIndex, fighterOpen, fighterHint, pickFighter } from './fighters.mjs';
 import { elapsed, cometScene, COMET_ENDING_SECONDS } from './ending.mjs';
 import { Match } from './match.mjs';
@@ -52,44 +52,80 @@ test('힘겨루기: 판 이벤트에서 누가 방해 뿌요를 얼마나 만들
   for (const e of [{ p: 0, type: 'pop', amount: 5 }, { p: -1, type: 'send', amount: 5 }, { p: 0, type: 'send', amount: 0 }, { p: 0, type: 'send' }, { p: 2, type: 'send', amount: 5 }, null]) assert.equal(clashGain(e, local), null);
 });
 
-test('힘겨루기: 센 쪽에서 약한 쪽으로 금이 밀리고, 방해 뿌요가 다 떨어지면 누가 이겼는지 알려 주고 가운데로 돌아온다', () => {
+test('힘겨루기는 한 판 내내 이어지는 줄다리기: 앞선 만큼만 금이 밀리고, 운석 하나(30개)만큼 앞서야 끝까지 간다', () => {
+  const settle = (c, busy, n = 200) => { for (let i = 0; i < n; i++) c.step(busy); };
   const c = new Clash();
-  assert.equal(c.pos, 0.5); assert.equal(c.fighting, false); assert.equal(c.leader, -1);
-  c.add(0, 10);
-  assert.equal(c.live, true); assert.equal(c.fighting, false); // 한 사람만 보냈을 때는 아직 "왔다 갔다"가 아니다
+  assert.equal(c.pos, 0.5); assert.equal(c.fighting, false); assert.equal(c.leader, -1); assert.equal(c.lead, 0);
+  assert.equal(CLASH_FULL, 30);
+  // 조금 보내면 조금만 움직인다
+  c.add(0, 3);
+  assert.equal(c.lead, 3); assert.equal(c.leader, 0);
+  assert.ok(Math.abs(c.target - (0.5 + 0.36 * 0.1)) < 1e-9);
+  settle(c, true, 60);
+  assert.equal(c.pos, c.target);
+  assert.equal(c.fighting, false); // 한 사람만 만들었을 때는 아직 "왔다 갔다"가 아니다
+  // 상대가 받아치면 금이 돌아와서 상대 쪽이 앞선다 (금은 내 쪽으로)
+  c.add(1, 18);
+  assert.equal(c.fighting, true); assert.equal(c.lead, -15); assert.equal(c.leader, 1);
+  assert.equal(c.target, 0.5 - 0.36 * 0.5);
+  settle(c, true, CLASH_HOT - 1);
+  assert.equal(c.fighting, false); // 한동안 아무도 만들지 않으면 불꽃이 멎는다 (금은 그 자리에 남는다)
+  assert.equal(c.pos, c.target);
+  // 끝까지: 30개 넘게 앞서도 금은 끝에서 멈춘다
+  c.add(0, 100);
+  assert.equal(c.lead, 85);
   assert.equal(c.target, CLASH_MAX);
-  c.add(1, 30);
-  assert.equal(c.fighting, true); assert.equal(c.leader, 1);
-  assert.equal(c.target, 0.25);
-  for (let i = 0; i < 200; i++) c.step(true);
-  assert.equal(c.pos, 0.25); // 상대가 세면 금이 왼쪽(내 쪽)으로 온다
-  assert.equal(c.takeEnded(), null);
-  c.add(0, 50); // 내가 더 큰 연쇄로 받아쳤다
-  assert.equal(c.leader, 0);
-  for (let i = 0; i < 200; i++) c.step(true);
-  assert.ok(Math.abs(c.pos - 60 / 90) < 1e-9);
-  // 떨어질 것이 없어지면 잠깐 더 보여 주고 끝낸다
-  for (let i = 0; i < CLASH_HOLD - 1; i++) c.step(false);
-  assert.equal(c.live, true);
-  c.step(false);
-  assert.equal(c.live, false);
-  assert.deepEqual(c.takeEnded(), { winner: 0, power: [60, 30] });
-  assert.equal(c.takeEnded(), null); // 한 번만
-  assert.deepEqual(c.power, [0, 0]);
-  for (let i = 0; i < 200; i++) c.step(false);
-  assert.equal(c.pos, 0.5);
-  // 한 사람만 보낸 것은 싸움이 아니라서 승패를 알리지 않는다
-  c.add(1, 4);
+  c.add(1, 400);
   assert.equal(c.target, CLASH_MIN);
-  for (let i = 0; i < CLASH_HOLD; i++) c.step(false);
-  assert.equal(c.takeEnded(), null);
+  c.reset();
+  assert.deepEqual([c.power, c.pos, c.lead, c.fighting, c.won], [[0, 0], 0.5, 0, false, -1]);
   // 이상한 값은 무시
   c.add(2, 5); c.add(0, -3); c.add(0, NaN); c.add(0, 0.4);
-  assert.equal(c.live, false);
-  c.add(0, 5); c.add(1, 5);
-  assert.equal(c.leader, -1); assert.equal(c.target, 0.5);
-  c.reset();
-  assert.deepEqual([c.power, c.pos, c.live, c.fought], [[0, 0], 0.5, false, false]);
+  assert.deepEqual(c.power, [0, 0]);
+});
+
+test('힘겨루기 「승!」: 상대한테 조금 넘어간 것으로는 뜨지 않고, 끝까지 민 채로 방해 뿌요가 다 떨어져야 뜬다', () => {
+  const settle = (c, busy, n = 200) => { for (let i = 0; i < n; i++) c.step(busy); };
+  const c = new Clash();
+  // 인혁이가 본 것: 상대가 조금 보내고 내가 조금 더 받아쳤을 때 → 전에는 「나 승!」, 이제는 아무 말도 없다
+  c.add(1, 2); c.add(0, 5);
+  settle(c, true); settle(c, false);
+  assert.equal(c.takeEnded(), null);
+  c.add(0, 20); // 모두 23개 앞섬: 아직 끝까지는 아니다
+  settle(c, false);
+  assert.equal(c.takeEnded(), null);
+  // 끝까지 밀었어도 방해 뿌요가 아직 떨어지지 않았으면(상대가 받아칠 수 있으면) 기다린다
+  c.add(0, 10); // 33개 앞섬
+  assert.equal(c.target, CLASH_MAX);
+  settle(c, true);
+  assert.equal(c.takeEnded(), null);
+  // 그사이 상대가 받아쳐서 금이 돌아오면 승부는 나지 않는다
+  c.add(1, 20); // 13개 앞섬
+  settle(c, false);
+  assert.equal(c.takeEnded(), null);
+  // 다시 끝까지 밀고 방해 뿌요가 다 떨어지면 「나 승!」 (한 번만)
+  c.add(0, 30); // 43개 앞섬
+  for (let i = 0; i < CLASH_HOLD - 1; i++) c.step(false);
+  assert.equal(c.takeEnded(), null);
+  c.step(false);
+  assert.deepEqual(c.takeEnded(), { winner: 0, lead: 43 });
+  assert.equal(c.takeEnded(), null);
+  c.add(0, 50); settle(c, false); // 93개 앞섬
+  assert.equal(c.takeEnded(), null); // 이미 이긴 채로 더 벌려도 또 뜨지 않는다
+  assert.equal(c.pos, CLASH_MAX);    // 금은 가운데로 돌아가지 않고 끝에 남는다
+  // 상대가 한 번에 뒤집으면 「상대 승!」
+  c.add(1, 200); // 상대가 107개 앞섬
+  settle(c, true);
+  assert.equal(c.takeEnded(), null);
+  settle(c, false);
+  assert.deepEqual(c.takeEnded(), { winner: 1, lead: 107 });
+  // 팽팽해졌다가 다시 끝까지 밀면 또 겨룬다
+  c.add(0, 100); // 상대가 7개 앞섬
+  settle(c, false);
+  assert.equal(c.won, -1);
+  c.add(1, 30);
+  settle(c, false);
+  assert.deepEqual(c.takeEnded(), { winner: 1, lead: 37 });
 });
 
 test('힘겨루기: 진짜 대전(AI 끼리)에서 센 힘은 두 사람이 보낸 방해 뿌요 + 상쇄한 방해 뿌요와 같다', () => {
