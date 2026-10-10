@@ -3133,7 +3133,7 @@ window.render_game_to_text = () => JSON.stringify({
   account: me()?.name || null, level: P().level, coins: P().coins, tower: P().tower,
   rewards: P().rewards, creatorUnlocked: creator.unlocked, ending: $('ending').hidden ? null : $('ending').dataset.kind,
   mode: game?.mode || null, map: game?.map || null, theme: renderer.theme, sky: game?.sky ? nowSky().id : null,
-  clash: match && renderer.opts.clash ? { names: renderer.clashNames(), power: renderer.clash.power.slice(), pos: Math.round(renderer.clash.pos * 1000) / 1000, fighting: renderer.clash.fighting, box: renderer.layout.clash } : null,
+  clash: match && renderer.opts.clash ? { names: renderer.clashNames(), power: renderer.clash.power.slice(), lead: renderer.clash.lead, pos: Math.round(renderer.clash.pos * 1000) / 1000, fighting: renderer.clash.fighting, box: renderer.layout.clash } : null,
   chars: match ? renderer.views.map(v => v.char || null) : null,
   pets: P().pets, tickets: P().tickets, boostLeft: Math.ceil(boostLeft(P()) / 1000), friends: friendTotal(), bonus: { xp: currentBonus().xp, coins: currentBonus().coins },
   school: P().school, tutorial: P().tutorial, lesson: practice ? { grade: practice.grade, index: practice.index, freeze: practice.freeze } : null,

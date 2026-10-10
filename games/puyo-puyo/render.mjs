@@ -369,14 +369,14 @@ export class Renderer {
     this.match = match;
   }
 
-  // 힘겨루기: 떨어질 방해 뿌요가 남았거나 누가 연쇄 중이면 계속, 다 끝나면 누가 더 셌는지 알려 준다
+  // 힘겨루기: 한 판 내내 이어지는 줄다리기. 금을 끝까지 민 채로 떨어질 방해 뿌요와 연쇄가 다 끝나면 「승!」
   stepClash(match) {
-    const busy = match.phase === 'play' && (match.remoteChaining || match.players.some(p => p.incoming > 0 || p.chaining));
+    // 판이 끝난 뒤에는 필드에 WIN / LOSE 가 뜨므로 힘겨루기 승부는 대전 중에만 알린다
+    const busy = match.phase !== 'play' || match.remoteChaining || match.players.some(p => p.incoming > 0 || p.chaining);
     this.clash.step(busy);
     const end = this.clash.takeEnded(), box = this.layout.clash;
     if (!end || !box) return;
-    const names = this.clashNames();
-    this.effects.text(box.x + box.w / 2, box.y + box.h * 1.7, end.winner < 0 ? '비겼다!' : `${names[end.winner]} 승!`, box.h * 0.85, { color: end.winner === 1 ? '#ffb3c8' : '#fff6a8', life: 70, rise: 0.1 });
+    this.effects.text(box.x + box.w / 2, box.y + box.h * 1.7, `${this.clashNames()[end.winner]} 승!`, box.h * 0.85, { color: end.winner === 1 ? '#ffb3c8' : '#fff6a8', life: 70, rise: 0.1 });
   }
   clashNames() { return this.opts.clash?.names || ['나', '상대']; }
 
@@ -764,7 +764,7 @@ export class Renderer {
     ctx.restore();
   }
 
-  // 힘겨루기 막대 (기획서 2번 그림): 왼쪽은 나, 오른쪽은 상대. 가운데 번개 금이 센 쪽에서 약한 쪽으로 밀려간다.
+  // 힘겨루기 막대 (기획서 2번 그림): 왼쪽은 나, 오른쪽은 상대. 가운데 번개 금이 앞선 쪽에서 뒤진 쪽으로 밀려간다.
   drawClash(ctx, time) {
     const box = this.layout.clash, k = this.clash, names = this.clashNames();
     const colors = [this.views[0]?.color || '#ffe45c', this.views[1]?.color || '#9fe3ff'];
@@ -789,7 +789,7 @@ export class Renderer {
     ctx.restore();
     roundRect(ctx, x, y, w, h, h * 0.42);
     ctx.lineWidth = Math.max(2, h * 0.09); ctx.strokeStyle = '#2a1640'; ctx.stroke();
-    // 이름과, 이번 힘겨루기에서 만든 방해 뿌요
+    // 이름과, 앞선 쪽 이름 옆에는 얼마나 앞서는지 (예고 칸과 같은 방해 뿌요 그림)
     const pad = h * 0.45, icon = h * 0.62;
     ctx.textBaseline = 'middle'; ctx.lineWidth = Math.max(2, h * 0.16); ctx.strokeStyle = '#2a1640'; ctx.fillStyle = '#fff';
     [0, 1].forEach(side => {
@@ -799,7 +799,7 @@ export class Renderer {
       const tw = ctx.measureText(names[side]).width, dir = side ? -1 : 1, tx = side ? x + w - pad : x + pad;
       ctx.textAlign = side ? 'right' : 'left';
       ctx.strokeText(names[side], tx, y + h / 2); ctx.fillText(names[side], tx, y + h / 2);
-      garbageIcons(k.power[side], 3).forEach((id, n) => drawGarbageIcon(ctx, id, tx + dir * (tw + icon * (n + 0.75)), y + h / 2, icon, time));
+      garbageIcons(side === k.leader ? Math.abs(k.lead) : 0, 3).forEach((id, n) => drawGarbageIcon(ctx, id, tx + dir * (tw + icon * (n + 0.75)), y + h / 2, icon, time));
     });
     // 서로 밀고 있을 때는 금 둘레에 불꽃이 튄다
     if (fight) {
