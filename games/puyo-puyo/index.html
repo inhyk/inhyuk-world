@@ -213,7 +213,13 @@
       <div class="row center online-more"><button id="go-watch" class="ghost">👀 관전하기</button><button id="go-ranking" class="ghost">🏆 온라인 랭킹</button></div>
     </div>
     <div id="online-lobby" class="lobby" hidden>
-      <div class="vsline"><span id="lobby-me"></span><b>VS</b><span id="lobby-you"></span></div>
+      <div class="vsline"><canvas id="lobby-me-char" class="lobby-char" width="112" height="112" aria-hidden="true" hidden></canvas><span id="lobby-me"></span><b>VS</b><span id="lobby-you"></span><canvas id="lobby-you-char" class="lobby-char" width="112" height="112" aria-hidden="true" hidden></canvas></div>
+      <div id="online-chars" class="vote-box">
+        <h3>🎭 캐릭터 고르기</h3>
+        <p class="fine">대전에서 나를 대신할 캐릭터를 골라 줘. 상대 화면에도 보여!</p>
+        <div id="online-char-grid" class="char-grid" aria-label="온라인 대전 캐릭터 고르기"></div>
+        <p id="online-char-text" class="event-banner" aria-live="polite"></p>
+      </div>
       <div id="online-vote" class="vote-box">
         <h3>🗳️ 맵 투표</h3>
         <p class="fine">하고 싶은 맵에 표를 던져 줘. 둘이 같은 맵을 고르면 그 맵! 서로 다르면 둘 중 하나를 뽑기로 정해.</p>

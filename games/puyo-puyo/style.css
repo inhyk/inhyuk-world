@@ -580,7 +580,16 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 .vote-box { margin: 12px 0 4px; }
 .vote-box h3 { font-size: 20px; }
 .vote-box .event-banner { margin: 10px auto 0; font-size: 14px; }
-.map-card .vote-tags { position: absolute; top: -9px; right: -4px; display: flex; gap: 3px; font-size: 11px; }
+.map-card .vote-tags, .char-card .vote-tags { position: absolute; top: -9px; right: -4px; display: flex; gap: 3px; font-size: 11px; }
+/* 온라인 캐릭터 고르기 (기획서 2026-10-10 3번) */
+.lobby-char { width: 56px; height: 56px; flex: none; }
+.char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px 8px; }
+.char-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 6px; background: linear-gradient(150deg, #fff, #f1e6ff); border: 3px solid #fff9; box-shadow: 0 4px 0 #62439120; }
+.char-card canvas { width: 54px; height: 54px; }
+.char-card b { font-size: 13px; font-weight: 400; line-height: 1.25; word-break: keep-all; }
+.char-card small { font: 11px/1.4 var(--body-font); }
+.char-card.selected { border-color: #7851c9; box-shadow: 0 0 0 3px #d5bcff; }
+.char-card.locked canvas { filter: brightness(0); opacity: .35; }
 .vote-tag { padding: 1px 8px; border-radius: 10px; background: #7851c9; color: #fff; font-style: normal; font-size: 11px; line-height: 1.6; }
 .vote-tag.you { background: #ff7a2e; }
 

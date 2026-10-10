@@ -85,7 +85,7 @@ try {
   // ---------- 1번: 새 스킨 ----------
   await hideToasts(g);
   await g.click('[data-go="shop"]'); await screenIs(g, 'shop');
-  assert.equal(await g.locator('#shop-grid .item').count(), 45);
+  assert.equal(await g.locator('#shop-grid .item').count(), 57); // 업그레이드 7 에서 12가지를 더해 57종
   const names = await g.evaluate(() => [...document.querySelectorAll('#shop-grid .item > b')].map(b => b.textContent));
   for (const name of ['개구리 뿌요', '꿀벌 뿌요', '아이스크림 뿌요', '판다 뿌요', '버섯 뿌요', '눈사람 뿌요', '해적 뿌요', '외계인 뿌요', '상어 뿌요', '유니콘 뿌요', '다이아 뿌요', '태양 뿌요']) assert.ok(names.includes(name), name);
   // 레벨과 코인이 되면 사서 끼고 한 판 한다 (그리기 오류가 없어야 한다)

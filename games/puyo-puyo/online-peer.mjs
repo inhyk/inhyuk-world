@@ -10,6 +10,7 @@ import { QUICK, cleanChat, rateLimiter, validSticker } from './chat.mjs';
 import { W, H, heights } from './core.mjs';
 import { emptyTotals } from './match.mjs';
 import { MAPS, cleanMapIndex, voteResult } from './maps.mjs';
+import { cleanFighter } from './fighters.mjs';
 import { setPiece, setFalling, tickView } from './remote-smooth.mjs';
 
 const SEND_EVERY = 3;   // 3프레임마다 (초당 20번)
@@ -73,6 +74,7 @@ const cleanPeer = m => ({
   level: Math.max(1, Math.min(99, Number(m?.level) | 0)),
   skin: typeof m?.skin === 'string' ? m.skin.slice(0, 20) : 'classic',
   effect: typeof m?.effect === 'string' ? m.effect.slice(0, 20) : 'sparkle',
+  char: cleanFighter(m?.ch),
 });
 
 export function createPeerOnline(api) {
@@ -147,6 +149,10 @@ export function createPeerOnline(api) {
         if (v !== null) { peerVote = v; api.lobbyChanged?.(); }
         break;
       }
+      // 상대가 로비에서 캐릭터를 바꿈 (online.mjs 와 같은 모양)
+      case 'char':
+        if (peer) { peer.char = cleanFighter(m.c); api.lobbyChanged?.(); }
+        break;
       case 'first':
         if (!room.host) { firstTo = clampFirstTo(m.n); lobby(); }
         break;
@@ -248,6 +254,8 @@ export function createPeerOnline(api) {
     setFirstTo(n) { firstTo = n; if (room.host) room.send({ t: 'first', n }); },
     // 맵 투표: 내 표를 바꾸고 상대에게 알린다
     setVote(n) { const v = cleanMapIndex(n); if (v === null) return; myVote = v; if (room.ready) room.send({ t: 'vote', m: v }); api.lobbyChanged?.(); },
+    // 캐릭터 고르기: 바꾼 캐릭터 번호를 상대에게 알린다
+    setChar(n) { if (room.ready) room.send({ t: 'char', c: cleanFighter(n) }); api.lobbyChanged?.(); },
     // 방 채팅 보내기: 빠른 말 번호(q), 뿌요 이모티콘 번호(sticker) 또는 직접 쓴 말(text)
     say({ q, text, sticker }) {
       if (!room.ready) return false;

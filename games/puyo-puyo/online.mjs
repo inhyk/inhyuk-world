@@ -23,6 +23,7 @@ import { W, H, heights } from './core.mjs';
 import { NET_GAME } from './net.mjs';
 import { QUICK, STICKERS, validSticker, validCheer } from './chat.mjs';
 import { MAPS, cleanMapIndex, voteResult } from './maps.mjs';
+import { cleanFighter } from './fighters.mjs';
 import { setPiece, setFalling, tickView } from './remote-smooth.mjs';
 
 const SEND_EVERY = 3;        // 3프레임마다 (초당 20번). 예전에는 5프레임마다(초당 12번)라 상대가 느리고 끊겨 보였다
@@ -91,11 +92,12 @@ export function hasLongDigits(value, depth = 0) {
   return Object.entries(value).some(([k, v]) => hasLongDigits(k) || hasLongDigits(v, depth + 1));
 }
 
-// 상대가 보낸 hello: 레벨과 꾸미기만 (이름은 서버가 준 것을 쓴다)
+// 상대가 보낸 hello: 레벨과 꾸미기, 고른 캐릭터 번호만 (이름은 서버가 준 것을 쓴다)
 export const cleanPeer = m => ({
   level: Math.max(1, Math.min(99, Number(m?.level) | 0)),
   skin: typeof m?.skin === 'string' ? m.skin.slice(0, 20) : 'classic',
   effect: typeof m?.effect === 'string' ? m.effect.slice(0, 20) : 'sparkle',
+  char: cleanFighter(m?.ch),
 });
 
 // 판 이벤트 → 보내는 메시지 (글자열은 종류 이름만)
@@ -216,6 +218,10 @@ export function createOnline(api) {
         if (v !== null) { peerVote = v; render(); }
         break;
       }
+      // 상대가 로비에서 캐릭터를 바꿈 (기획서 2026-10-10 3번). 예전 버전은 보내지 않아서 주인공으로 보인다.
+      case 'char':
+        if (peer) { peer.char = cleanFighter(m.c); render(); }
+        break;
       case 'first':
         if (!room?.host) { firstTo = clampFirstTo(m.n); render(); }
         break;
@@ -331,6 +337,8 @@ export function createOnline(api) {
     setFirstTo(n) { firstTo = clampFirstTo(n); if (room?.host) room.send({ t: 'first', n: firstTo }, { keep: true }); },
     // 맵 투표: 내 표를 바꾼다 (방에 있으면 상대에게도 알린다)
     setVote(n) { const v = cleanMapIndex(n); if (v === null) return; myVote = v; sendVote(); render(); },
+    // 캐릭터 고르기: 바꾼 캐릭터 번호를 상대에게 알린다
+    setChar(n) { room?.send({ t: 'char', c: cleanFighter(n) }); render(); },
     // 대전이 끝났다: 내가 이겼는지 서버에 한 번만 알린다 (온라인 승리 세기)
     report(won) {
       if (!room?.ready || !matchNo || reported === matchNo) return false;

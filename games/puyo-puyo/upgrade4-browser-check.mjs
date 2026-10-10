@@ -442,7 +442,8 @@ try {
   await a.click('#ask-ok');
   await a.waitForFunction(() => window.__puyo.P().coins === 33, null, T);
   await b.waitForFunction(() => window.__puyo.P().coins === 200, null, T); // B 는 접속 중이라 바로 받는다
-  assert.match(await a.textContent('#gift-note'), /코인 100개을\(를\) 보냈어/);
+  // 「보냈어」 글은 서버의 답이 온 뒤에 적힌다. B 가 먼저 받을 수도 있으니 글이 뜰 때까지 기다린다
+  await a.waitForFunction(() => /코인 100개을\(를\) 보냈어/.test(document.getElementById('gift-note').textContent), null, T);
   // 스킨: 내 코인으로 사서 준다 (내 것은 그대로). 이미 가진 스킨이면 친구는 코인으로 받는다
   await a.evaluate(() => { window.__puyo.P().coins = 2000; window.__puyo.save(); });
   await a.click('#gift-tabs [data-v="skin"]');

@@ -78,7 +78,7 @@ export function playEnding(canvas, { name = '나', kind = 'crown', sound, onDone
 
   function frame(now) {
     if (stopped) return;
-    const t = (now - start) / 1000;
+    const t = elapsed(now, start);
     const w = canvas.clientWidth, h = canvas.clientHeight, s = Math.min(w, h);
     ctx.clearRect(0, 0, w, h);
     if (t < 6) {
@@ -163,8 +163,13 @@ export function playEnding(canvas, { name = '나', kind = 'crown', sound, onDone
   return stop;
 }
 
+// 엔딩이 시작하고 몇 초 지났는지. 0 보다 작아지지 않는다.
+export const elapsed = (now, start) => Math.max(0, (now - start) / 1000);
+
 // 7장, 70초의 혜성 엔딩. 마지막 장면이 다음 보스의 도전으로 이어진다.
 export const COMET_ENDING_SECONDS = 70;
+// 몇 번째 장면인지 (0 ~ 6). 10초마다 다음 장면.
+export const cometScene = t => Math.max(0, Math.min(6, Math.floor(t / 10)));
 function playCometEnding(canvas, { name, sound, onDone }) {
   const ctx = canvas.getContext('2d'), fx = new Effects();
   const start = performance.now();
@@ -185,7 +190,9 @@ function playCometEnding(canvas, { name, sound, onDone }) {
   }
   function frame(now) {
     if (stopped) return;
-    const t = (now - start) / 1000, scene = Math.min(6, Math.floor(t / 10)), local = t % 10;
+    // 첫 그림의 시각(now)이 시작 시각보다 조금 앞설 수 있다(단추를 누른 바로 그 화면에서 그릴 때).
+    // 그러면 장면 번호가 -1 이 되어 마지막 장면의 글만 찍히고 멈췄다 (인혁이 기획서 2026-10-10 4번).
+    const t = elapsed(now, start), scene = cometScene(t), local = t % 10;
     const w = canvas.clientWidth, h = canvas.clientHeight, s = Math.min(w, h);
     canvas.dataset.chapter = String(scene + 1);
     sky(ctx, w, h, scene === 4 ? '#322b66' : '#070b27', scene === 5 ? '#437d79' : '#48366f');

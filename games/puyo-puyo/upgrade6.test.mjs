@@ -16,7 +16,7 @@ const NEW_LEVEL = ['diamond', 'sun'];
 
 // ---------- 1번: 스킨을 더 ----------
 test('새 스킨 12가지: 코인 스킨 10가지와 레벨 스킨 2가지가 상점에 있고 그림도 있다', () => {
-  assert.equal(SKINS.length, 45);
+  assert.equal(SKINS.length, 57); // 업그레이드 7 에서 12가지를 더해 57종
   assert.equal(new Set(SKINS.map(s => s.id)).size, SKINS.length);
   for (const id of [...NEW_COIN, ...NEW_LEVEL]) {
     const item = SKINS.find(s => s.id === id);
