@@ -653,10 +653,11 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 .lab-box b { font-weight: 400; color: #ffe45c; }
 .lab-tip { font: calc(var(--c, 36px) * .26)/1.2 var(--body-font); color: #d9ccff; }
 .lab-row { display: flex; align-items: center; gap: calc(var(--c, 36px) * .1); width: 100%; }
-.lab-row small { flex: 0 0 auto; width: calc(var(--c, 36px) * .72); font-size: calc(var(--c, 36px) * .3); text-align: center; }
+.lab-row small { flex: 0 0 auto; width: calc(var(--c, 36px) * .62); font-size: calc(var(--c, 36px) * .28); text-align: center; }
 .lab-dots { flex: 1; display: flex; justify-content: space-between; }
-.lab-dots button { width: calc(var(--c, 36px) * .5); height: calc(var(--c, 36px) * .5); min-width: 0; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55); background: var(--dot); box-shadow: none; }
+.lab-dots button { width: calc(var(--c, 36px) * .44); height: calc(var(--c, 36px) * .44); min-width: 0; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55); background: var(--dot); box-shadow: none; }
 .lab-dots button.on { border-color: #fff; box-shadow: 0 0 0 2px #ffe45c; transform: scale(1.15); }
+.lab-dots button.garbage { background: radial-gradient(circle at 35% 35%, #ffffff, #d3dbec 55%, #8e9ab6); } /* 방해 뿌요 */
 .lab-panel > button { padding: calc(var(--c, 36px) * .22) calc(var(--c, 36px) * .1); font-size: calc(var(--c, 36px) * .4); white-space: nowrap; }
 /* 뿌요 동영상 (기획서 2026-10-11 2번) */
 .video-card { background: linear-gradient(120deg, #ffe9f3, #efe6ff); margin-bottom: 6px; }

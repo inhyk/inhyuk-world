@@ -573,7 +573,7 @@ export class Renderer {
       const [cpx, cpy] = this.cellCenter(i, cxp, cyp);
       const pulse = 0.5 + 0.5 * Math.sin(time * 10);
       const aItem = { col: p.a, px: apx, py: apy, land: 0, pop: false, j: -2 }, cItem = { col: p.c, px: cpx, py: cpy, land: 0, pop: false, j: -3 };
-      if (style.connect && p.a === p.c && Math.abs(v.shownAngle - v.angle) < 1) {
+      if (style.connect && p.a === p.c && p.a !== GARBAGE && Math.abs(v.shownAngle - v.angle) < 1) { // 방해 뿌요 짝(직접 놓아 보는 배우기)은 이어 그리지 않는다
         this.drawLayer(ctx, aItem, c, skin, 'body', -1, time); this.drawLayer(ctx, cItem, c, skin, 'body', -1, time);
         const horizontal = p.rot === 1 || p.rot === 3;
         const [bx, by] = p.rot === 1 ? [apx, apy] : p.rot === 3 ? [cpx, cpy] : p.rot === 0 ? [apx, apy] : [cpx, cpy];

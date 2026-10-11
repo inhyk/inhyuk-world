@@ -843,12 +843,14 @@ function practiceEvent(e) {
 // 색을 골라 마음대로 놓는 동안에는 터지지 않고(core.mjs 의 hold), ▶ 실행을 누르면 천천히 한 번씩 터진다.
 // 그림: 왼쪽에 큰 필드, 오른쪽 위에 놓을 뿌요 칸, 그 아래 칸들(▶ 실행, ↩ 무르기, 🧹 처음부터).
 const LAB_TIMING = { popFrames: 58, chainPause: 26 }; // 하나씩 터지는 것이 잘 보이게 보통보다 천천히
-const LAB_COLORS = [1, 2, 3, 4, 5], LAB_NAME = ['', '빨강', '초록', '파랑', '노랑', '보라'];
+// 고를 수 있는 것: 다섯 색과 방해 뿌요(6). 방해 뿌요는 2026-10-11 인혁이가 "방해뿌요도 놓을 수 있게 만들어줘"라고 해서 더했다.
+const LAB_COLORS = [1, 2, 3, 4, 5, 6], LAB_NAME = ['', '빨강', '초록', '파랑', '노랑', '보라', '방해'];
 let lab = null; // { colors: [아래, 위], history: [놓을 때마다 적어 둔 필드], running, chain: 지금까지 가장 긴 연쇄, ran: 방금 실행했는지 }
 let labColors = [1, 3], labPlace = '';
 function startLab() {
   startGame({
-    mode: 'practice', lab: true, title: '🧪 직접 놓아 보는 배우기', theme: 'meadow', music: 'menu', firstTo: 1, gravityScale: 0.6, timing: LAB_TIMING,
+    // gravityScale 0: 뿌요가 스스로 떨어지지 않는다. 색을 고르는 동안 혼자 내려앉지 않게, 내릴 때(▼, 바로 떨어뜨리기)까지 기다린다.
+    mode: 'practice', lab: true, title: '🧪 직접 놓아 보는 배우기', theme: 'meadow', music: 'menu', firstTo: 1, gravityScale: 0, timing: LAB_TIMING,
     specs: [{ kind: 'human' }], views: [myView()],
   });
   game.tracked = -1; // 마음대로 만든 연쇄는 챌린지와 기록에 세지 않는다
@@ -859,7 +861,7 @@ function startLab() {
   match.phase = 'play'; match.timer = 0; p.start(); // 준비~ 3, 2, 1 없이 바로 놓는다
   $('lab-panel').hidden = false;
   labPlace = '';
-  labSay('마음대로 놓아 봐!', `오른쪽에서 뿌요 색을 고르고 ${coarse ? '아래 단추로' : '화살표 키로'} 놓아. 같은 색이 4개 붙어도 아직 안 터져! 다 놓았으면 ▶ 실행을 눌러 봐.`);
+  labSay('마음대로 놓아 봐!', `오른쪽에서 뿌요 색(회색은 방해 뿌요)을 고르고 ${coarse ? '◀ ▶ 로 옮겨서 ⤓ 로' : '← → 로 옮겨서 스페이스로'} 내려놓아. 뿌요는 네가 내릴 때까지 기다려! 같은 색이 4개 붙어도 아직 안 터져. 다 놓았으면 ▶ 실행!`);
   paintLab();
 }
 function endLab() {
@@ -896,7 +898,8 @@ function paintLab() {
       b.className = lab.colors[slot] === color ? 'on' : '';
       b.dataset.color = String(color);
       b.style.setProperty('--dot', PALETTE[color].base);
-      b.setAttribute('aria-label', `${slot ? '위' : '아래'} ${LAB_NAME[color]}`);
+      if (color === 6) b.classList.add('garbage');
+      b.setAttribute('aria-label', `${slot ? '위' : '아래'} ${LAB_NAME[color]}${color === 6 ? ' 뿌요' : ''}`);
       b.setAttribute('aria-pressed', String(lab.colors[slot] === color));
       b.onclick = () => { b.blur(); sound.sfx('click'); labPick(slot, color); };
       box.append(b);
@@ -969,10 +972,13 @@ function labEvent(e) {
   } else if (e.type === 'pop') {
     lab.steps = e.chain;
     const names = [...new Set(e.colors.map(c => LAB_NAME[c]).filter(Boolean))].join(', ');
-    labSay(`${e.chain}연쇄!`, `${names} 뿌요 ${e.puyos}개가 터졌어. 위에 있던 뿌요가 떨어져서 또 붙으면 다음 연쇄야!`, 'happy');
+    // 터진 뿌요 바로 옆에 있던 방해 뿌요는 같이 사라진다
+    const swept = e.garbage ? ` 옆에 있던 방해 뿌요 ${e.garbage}개도 같이 사라졌어!` : '';
+    labSay(`${e.chain}연쇄!`, `${names} 뿌요 ${e.puyos}개가 터졌어.${swept} 위에 있던 뿌요가 떨어져서 또 붙으면 다음 연쇄야!`, 'happy');
   } else if (e.type === 'fireEnd') {
     lab.running = false; lab.ran = e.chain > 0; // 터진 것이 있을 때만 "터지기 전으로"
-    if (!e.chain) labSay('아직 터질 게 없어', '같은 색 뿌요를 4개 넘게 붙여야 터져. 가로나 세로로 붙여 봐! (대각선은 안 붙어)', 'sad');
+    if (!e.chain && p.cells.includes(6)) labSay('아직 터질 게 없어', '방해 뿌요는 색이 없어서 저희끼리는 안 터져. 바로 옆에서 같은 색 뿌요 4개를 터뜨려야 같이 사라져!', 'sad');
+    else if (!e.chain) labSay('아직 터질 게 없어', '같은 색 뿌요를 4개 넘게 붙여야 터져. 가로나 세로로 붙여 봐! (대각선은 안 붙어)', 'sad');
     else {
       const best = e.chain > lab.chain;
       lab.chain = Math.max(lab.chain, e.chain);

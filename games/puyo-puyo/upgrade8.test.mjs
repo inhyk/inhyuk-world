@@ -122,6 +122,27 @@ test('필드가 꽉 차도 지지 않고 기다린다. 그대로 실행하면 �
   assert.equal(p.state, 'full');
 });
 
+test('방해 뿌요도 놓을 수 있다: 저희끼리는 안 터지고, 옆에서 같은 색 4개를 터뜨리면 같이 사라진다', () => {
+  const p = lab(), O = 6;
+  // 방해 뿌요만 여덟 개를 붙여 놓아도 터질 것이 없다
+  place(p, 4, O, O); place(p, 4, O, O); place(p, 5, O, O); place(p, 5, O, O);
+  assert.deepEqual(fieldRows(p.cells, 3), ['....OO', '....OO', '....OO', '....OO']);
+  assert.equal(p.fire(), true);
+  run(p, q => events(q, 'fireEnd').length > 0);
+  assert.deepEqual(events(p, 'fireEnd'), [{ type: 'fireEnd', chain: 0 }]);
+  assert.equal(p.cells.filter(v => v === O).length, 8);
+  // 맨 왼쪽 줄에 아래부터 방해, 빨강 넷, 방해: 실행하면 빨강 4개와 위아래의 방해 뿌요 2개가 같이 사라진다
+  p.events.length = 0;
+  place(p, 0, O, R); place(p, 0, R, R); place(p, 0, R, O);
+  assert.deepEqual(fieldRows(p.cells, 5).map(r => r[0]).join(''), 'ORRRRO');
+  assert.equal(events(p, 'pop').length, 0);
+  assert.equal(p.fire(), true);
+  run(p, q => events(q, 'fireEnd').length > 0);
+  assert.deepEqual(events(p, 'pop').map(e => [e.chain, e.colors, e.puyos, e.garbage]), [[1, [R], 4, 2]]);
+  assert.deepEqual(events(p, 'fireEnd'), [{ type: 'fireEnd', chain: 1 }]);
+  assert.deepEqual(fieldRows(p.cells, 3), ['....OO', '....OO', '....OO', '....OO']); // 멀리 있는 방해 뿌요는 그대로
+});
+
 test('보통 판은 그대로: hold 가 아니면 놓자마자 터진다', () => {
   const p = new Player({ seq: seqOf([1, 1], [1, 1], [2, 2]) });
   p.start();
