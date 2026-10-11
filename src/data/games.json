@@ -20,37 +20,56 @@
     "playUrl": "/play/geometry-dash",
     "createdAt": "2026-10",
     "featured": true,
-    "order": 48,
+    "order": 50,
     "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/geometry-dash"
   },
   {
-    "slug": "sky-obby",
-    "title": "하늘 점프맵 · SKY OBBY",
-    "description": "구름 위 100개 스테이지를 점프로 넘어 트로피까지! 10스테이지마다 하늘이 바뀌고 뒤로 갈수록 어려워져요.",
-    "longDescription": "구름 위에 떠 있는 3D 점프맵입니다. 100개 스테이지를 넘어 무지개 정상의 황금 트로피에 도착하세요. 1~15 스테이지는 손으로 만든 입문 코스이고, 16~100 스테이지는 징검다리 블록, 용암 징검다리, 흔들 발판, 앞뒤 발판, 엘리베이터 발판, 회전 막대 다리, 사라지는 블록, 점프대, 얼음길, 컨베이어 벨트, 나선 계단, 용암 미로, 쌍둥이 막대, 좁은 다리 14가지 장애물을 섞어 만든 코스입니다. 뒤로 갈수록 발판이 작아지고 간격이 넓어지며 장치가 빨라집니다. 10스테이지마다 새벽 하늘, 노을 하늘, 별빛 밤하늘, 오로라 빙하, 화산 하늘, 사탕 구름, 폭풍 구름, 우주 정거장, 무지개 정상으로 하늘이 바뀝니다. 용암이나 빨간 회전 막대에 닿거나 아래로 떨어지면 마지막 체크포인트에서 다시 시작합니다. WASD 또는 방향키로 달리고 Space로 점프, 마우스 드래그로 시점을 돌리고 휠로 확대합니다. 모바일에서는 조이스틱과 점프 버튼을 사용합니다. 체크포인트·기록·넘어진 횟수·최고 기록이 자동 저장되고, 기록 리셋 버튼으로 모두 지울 수 있습니다.",
-    "emoji": "🦘",
-    "thumbnail": "/images/games/sky-obby-thumb.png",
+    "slug": "pulse-rush",
+    "title": "펄스 러시 · PULSE RUSH",
+    "description": "10개의 오리지널 비트에 맞춰 D·F·J·K! 긴 HOLD 타일을 끝까지 누르고 퍼펙트와 풀 콤보에 도전해요.",
+    "longDescription": "100~174 BPM의 오리지널 전자음악 10곡을 직접 연주해 보세요. 멜로디·코드·베이스·드럼을 실시간 합성하며, 같은 악보에 맞춰 네 줄의 타일이 내려옵니다. 긴 HOLD 타일은 시작부터 끝까지 누르고 있어야 하며 중간에 놓으면 배드 판정이 납니다. 퍼펙트·그레잇·굿·배드·미스의 다섯 판정, 콤보와 점수, 곡별 최고 정확도 저장, 결과 등급, 재도전과 다음 곡, 음량 조절과 타이밍 보정, 일시정지와 전체 화면을 지원합니다. 키보드 D·F·J·K 또는 모바일 멀티터치로 플레이하세요.",
+    "emoji": "🎵",
+    "thumbnail": "/images/games/pulse-rush-thumb.png",
     "screenshots": [
-      "/images/games/sky-obby-thumb.png",
-      "/images/games/sky-obby-spiral.png",
-      "/images/games/sky-obby-lava-maze.png",
-      "/images/games/sky-obby-night.png",
-      "/images/games/sky-obby-volcano.png",
-      "/images/games/sky-obby-space.png",
-      "/images/games/sky-obby-final.png"
+      "/images/games/pulse-rush-1.png",
+      "/images/games/pulse-rush-2.png",
+      "/images/games/pulse-rush-3.png"
     ],
     "techStack": [
       "JavaScript",
-      "Babylon.js",
-      "WebGL",
+      "Canvas 2D",
       "Web Audio"
     ],
-    "category": "액션",
-    "playUrl": "/play/sky-obby",
+    "category": "리듬",
+    "playUrl": "https://pulse-rush-five.vercel.app",
     "createdAt": "2026-10",
     "featured": true,
-    "order": 44,
-    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/sky-obby"
+    "order": 49,
+    "githubUrl": "https://github.com/inhyk/pulse-rush"
+  },
+  {
+    "slug": "banner-war",
+    "title": "깃발 전쟁 · BANNER WAR",
+    "description": "치유사·얼음술사·광전사·공성포까지 병사 10종을 소환하세요! 12개 전장에서 적 성을 함락하는 유닛 전쟁 디펜스.",
+    "longDescription": "검병·궁수·기사·마법사·창병·치유사·얼음술사·광전사·명사수·공성포 등 병사 10종이 자동 진군하는 유닛 전쟁 게임입니다. 방어력 무시, 아군 치유, 감속, 흡혈, 장거리 사격, 범위 포격과 공성 공격을 조합해 적 성을 부수세요. 초원·노을·숲·설원·화산 배경의 12개 전장을 직접 선택할 수 있고 후반 적도 새 병종을 사용합니다. 마나 생산 강화, 천둥 필살기, 2배속, 일시정지, 효과음, 최고 클리어 기록과 모바일 터치를 지원합니다.",
+    "emoji": "⚔️",
+    "thumbnail": "/images/games/banner-war-thumb.png",
+    "screenshots": [
+      "/images/games/banner-war-1.png",
+      "/images/games/banner-war-2.png",
+      "/images/games/banner-war-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "디펜스",
+    "playUrl": "https://banner-war.vercel.app",
+    "githubUrl": "https://github.com/inhyk/banner-war",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 48
   },
   {
     "slug": "puyo-puyo",
@@ -84,6 +103,65 @@
     "featured": true,
     "order": 47,
     "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/puyo-puyo"
+  },
+  {
+    "slug": "keycap-tower",
+    "title": "키캡 타워 · KEYCAP TOWER",
+    "description": "키캡을 밟을 때마다 스피드 +1! 트로피로 아이템·스킨·트레일을 사고 50개 월드의 3D 키캡 타워를 올라가요.",
+    "longDescription": "로블록스 키보드 타워류 게임을 분석해서 새로 만든 3D 성장 점프맵입니다. 기둥을 감고 올라가는 나선 타워의 키캡을 밟을 때마다 스피드가 오르고, 스피드가 쌓이면 레벨이 올라 더 높은 스테이지의 문이 열립니다. 스테이지 끝의 노란 버튼을 밟으면 트로피를 받고, 트로피로 발걸음 힘·트로피 배수·러닝머신 효율·달리기·점프력 스탯을 올립니다. 아이템 상점에서는 초콜릿(1.5배), 키캡(3.0배), 큰 키캡(10.0배)을 사서 스피드 배수를 붙이고, 스킨 8가지와 트레일 5가지로 캐릭터를 꾸밉니다. 로비의 러닝머신 위에 서 있으면 스피드가 자동으로 오르며 월드마다 세 대씩 있습니다. 1월드 캔디 타워부터 50월드 전설의 키캡 타워까지 월드가 50개이고, 뒤로 갈수록 스테이지가 늘어 타워가 높아집니다. 1시간마다 10분 동안 트로피 2배 이벤트가 열립니다. 움직이는 키, 오르내리는 키, 사라지는 ? 키, 빨간 DEL 키, 회전 막대, 쫓아오는 ESC 괴물, 황금 키캡이 나옵니다. 환생하면 스피드가 0이 되는 대신 얻는 스피드가 영원히 2배가 됩니다. WASD 또는 방향키로 달리고 Space로 점프, 드래그로 시점을 돌립니다. 모바일은 조이스틱과 점프 버튼을 쓰고 진행은 자동 저장됩니다. 원작의 이미지·모델·음원 없이 만든 비공식 팬 게임입니다.",
+    "emoji": "⌨️",
+    "thumbnail": "/images/games/keycap-tower-thumb.png",
+    "screenshots": [
+      "/images/games/keycap-tower-thumb.png",
+      "/images/games/keycap-tower-items.png",
+      "/images/games/keycap-tower-treadmill.png",
+      "/images/games/keycap-tower-stats.png",
+      "/images/games/keycap-tower-neon.png",
+      "/images/games/keycap-tower-lava.png",
+      "/images/games/keycap-tower-galaxy.png",
+      "/images/games/keycap-tower-world27.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Babylon.js",
+      "WebGL",
+      "Web Audio"
+    ],
+    "category": "액션",
+    "playUrl": "/play/keycap-tower",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 45,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/keycap-tower"
+  },
+  {
+    "slug": "sky-obby",
+    "title": "하늘 점프맵 · SKY OBBY",
+    "description": "구름 위 100개 스테이지를 점프로 넘어 트로피까지! 10스테이지마다 하늘이 바뀌고 뒤로 갈수록 어려워져요.",
+    "longDescription": "구름 위에 떠 있는 3D 점프맵입니다. 100개 스테이지를 넘어 무지개 정상의 황금 트로피에 도착하세요. 1~15 스테이지는 손으로 만든 입문 코스이고, 16~100 스테이지는 징검다리 블록, 용암 징검다리, 흔들 발판, 앞뒤 발판, 엘리베이터 발판, 회전 막대 다리, 사라지는 블록, 점프대, 얼음길, 컨베이어 벨트, 나선 계단, 용암 미로, 쌍둥이 막대, 좁은 다리 14가지 장애물을 섞어 만든 코스입니다. 뒤로 갈수록 발판이 작아지고 간격이 넓어지며 장치가 빨라집니다. 10스테이지마다 새벽 하늘, 노을 하늘, 별빛 밤하늘, 오로라 빙하, 화산 하늘, 사탕 구름, 폭풍 구름, 우주 정거장, 무지개 정상으로 하늘이 바뀝니다. 용암이나 빨간 회전 막대에 닿거나 아래로 떨어지면 마지막 체크포인트에서 다시 시작합니다. WASD 또는 방향키로 달리고 Space로 점프, 마우스 드래그로 시점을 돌리고 휠로 확대합니다. 모바일에서는 조이스틱과 점프 버튼을 사용합니다. 체크포인트·기록·넘어진 횟수·최고 기록이 자동 저장되고, 기록 리셋 버튼으로 모두 지울 수 있습니다.",
+    "emoji": "🦘",
+    "thumbnail": "/images/games/sky-obby-thumb.png",
+    "screenshots": [
+      "/images/games/sky-obby-thumb.png",
+      "/images/games/sky-obby-spiral.png",
+      "/images/games/sky-obby-lava-maze.png",
+      "/images/games/sky-obby-night.png",
+      "/images/games/sky-obby-volcano.png",
+      "/images/games/sky-obby-space.png",
+      "/images/games/sky-obby-final.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Babylon.js",
+      "WebGL",
+      "Web Audio"
+    ],
+    "category": "액션",
+    "playUrl": "/play/sky-obby",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 44,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/sky-obby"
   },
   {
     "slug": "pad-shop",
@@ -238,248 +316,530 @@
     "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/deep-dig"
   },
   {
-    "slug": "ginginbam",
-    "title": "긴긴밤",
-    "description": "선택이 운명을 바꾸는 인터랙티브 비주얼 노벨",
-    "longDescription": "긴긴밤(The Long, Long Night)은 텍스트 기반의 인터랙티브 스토리 게임입니다. 플레이어의 선택에 따라 이야기가 달라지며, 희망 게이지를 관리하면서 긴 밤을 헤쳐 나가야 합니다. 5가지 테마 스킨(밤, 황혼, 겨울, 벚꽃, 오래된 책), 인벤토리 시스템, 숨겨진 이스터에그, 그리고 PeerJS 기반 멀티플레이어까지 지원합니다. 순수 HTML, CSS, JavaScript만으로 만들었습니다.",
-    "emoji": "🌙",
-    "thumbnail": "/images/games/ginginbam-thumb.jpg",
-    "screenshots": [],
+    "slug": "undertale-fan-game",
+    "title": "UNDERTALE · 세 갈래의 결말",
+    "description": "아무도 죽이지 않거나, 모두를 죽이거나. 선택이 결말을 바꾸는 언더테일 팬 게임",
+    "longDescription": "폐허에 떨어진 인간이 되어 설원, 폭포, 열지대를 지나 왕좌의 방까지 가는 언더테일 팬 게임입니다. 직접 그린 픽셀 스프라이트로 15종의 몬스터와 9명의 보스를 만나고, 공격·행동·아이템·자비 네 가지 선택으로 매 전투를 풀어 갑니다. 자유롭게 움직이는 빨간 영혼, 중력에 붙잡혀 점프하는 파란 영혼, 방패를 돌려 화살을 막는 초록 영혼으로 탄막을 피하세요. 아무도 죽이지 않으면 불살, 지역마다 아무도 오지 않을 때까지 죽이면 몰살, 그 사이는 중립 결말로 이어지며, 몰살 뒤에는 세계가 지워지고 영혼 계약으로만 되돌릴 수 있습니다. 떨어진 인간의 이름 짓기, 반짝이는 별에서의 세이브, 세 곳의 상점, 실시간 합성 음악과 모바일 터치 조작을 지원합니다. 지역마다 다른 빛과 날씨, 눈 위에 남는 발자국, 캐릭터별 대화 초상화와 말소리가 여정을 채웁니다. 22개의 이야기 소품을 조사하고, 선택과 재방문에 따라 달라지는 대사를 발견해 탐험 수첩에 간직해 보세요.",
+    "emoji": "❤️",
+    "thumbnail": "/images/games/undertale-fan-game-thumb.png",
+    "screenshots": [
+      "/images/games/undertale-fan-game-thumb.png",
+      "/images/games/undertale-fan-game-1.png",
+      "/images/games/undertale-fan-game-2.png"
+    ],
     "techStack": [
       "JavaScript",
-      "HTML",
-      "CSS",
-      "PeerJS"
+      "Canvas 2D",
+      "Web Audio"
     ],
-    "category": "비주얼 노벨",
-    "playUrl": "https://ginbamm.vercel.app",
-    "githubUrl": "https://github.com/inhyk/ginginbam-game-v2",
-    "createdAt": "2026-02",
+    "category": "액션",
+    "playUrl": "/play/undertale",
+    "createdAt": "2026-09",
     "featured": true,
-    "order": 1
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/undertale",
+    "order": 35
   },
   {
-    "slug": "rhythm-game",
-    "title": "Rhythm Game",
-    "description": "떨어지는 노트에 맞춰 키를 누르는 리듬 게임",
-    "longDescription": "4키 낙하형 리듬 게임입니다. 화면 위에서 떨어지는 노트에 맞춰 타이밍에 키를 눌러 점수를 얻으세요. EDM Demo, First Step(EASY)부터 EDM NIGHTMARE(Lv.12)까지 6개의 곡이 준비되어 있고, 롱노트도 지원합니다. 스페이스바로 시작/일시정지, 좌우 화살표로 곡을 변경할 수 있습니다. TypeScript와 PixiJS로 렌더링하고, Vite로 빌드했습니다.",
-    "emoji": "🎵",
-    "thumbnail": "/images/games/rhythm-game-thumb.jpg",
-    "screenshots": [],
+    "slug": "valorant-protocol",
+    "title": "VALORANT // PROTOCOL",
+    "description": "항구 전장에서 펼치는 1인칭 전술 슈팅. 한 발로 라운드를 바꾸세요.",
+    "longDescription": "발로란트에서 영감을 받은 1인칭 3D 전술 슈팅 팬 게임입니다. 직접 만든 항구 전장 HARBOR에서 AI 수비팀을 상대하며 3라운드를 먼저 가져오세요. 밴달과 팬텀 중 주 무기를 고르고, 헤드샷과 정밀 조준으로 적을 제압할 수 있습니다. 대시로 엄폐물을 넘나들고 연막으로 시야를 차단하며 회복으로 위기를 버티세요. 적을 모두 처치하거나 A 지점에 스파이크를 설치한 뒤 25초 동안 해체를 막으면 승리합니다. 연습·일반·도전 난이도, 권총 전환과 재장전, 미니맵, 마우스 감도 조절, 모바일 멀티터치와 난이도별 최고 처치 기록을 지원합니다. 원작의 이미지·음성·모델 없이 만든 비공식 싱글플레이 팬 게임입니다.",
+    "emoji": "🎯",
+    "thumbnail": "/images/games/valorant-protocol-thumb.png",
+    "screenshots": [
+      "/images/games/valorant-protocol-thumb.png",
+      "/images/games/valorant-protocol-arena.png",
+      "/images/games/valorant-protocol-smoke.png"
+    ],
     "techStack": [
-      "TypeScript",
-      "PixiJS",
+      "JavaScript",
+      "Babylon.js",
+      "WebGL",
+      "Web Audio",
       "Vite"
     ],
-    "category": "리듬",
-    "playUrl": "https://ih-music-game.vercel.app",
-    "githubUrl": "https://github.com/inhyk/rhythm-game",
-    "createdAt": "2026-01",
+    "category": "슈팅",
+    "playUrl": "/play/valorant",
+    "createdAt": "2026-09",
     "featured": true,
-    "order": 2
+    "order": 34
   },
   {
-    "slug": "diep-io",
-    "title": "diep.io",
-    "description": "탱크를 키워 살아남는 실시간 슈팅 게임",
-    "longDescription": "diep.io 스타일의 아레나 슈팅 게임입니다. 도형을 부숴 경험치를 모으고, 레벨이 오르면 탱크를 원하는 방향으로 강화합니다. 라이브러리 없이 Canvas만으로 직접 만들었습니다.",
-    "emoji": "🔺",
+    "slug": "orbit-breaker",
+    "title": "ORBIT BREAKER · 오비트 브레이커",
+    "description": "10웨이브와 두 보스에 도전하는 우주 슈팅, 같은 키보드로 2인 협동",
+    "longDescription": "총 10웨이브를 돌파하는 우주 슈팅게임입니다. 5웨이브에서 중간 보스 센티넬을 쓰러뜨린 뒤 계속 전진하고, 10웨이브에서 최종 보스 이클립스에 도전하세요. 시작 화면의 2인 협동을 선택하면 같은 키보드로 1P는 WASD, 2P는 방향키로 함께 싸울 수 있습니다. 체력·무기·노바는 독립적이고 점수는 공유합니다. 한 명이 격추되어도 동료가 다음 웨이브를 시작하면 체력 절반으로 복귀합니다. 초록 아이템으로 트리플 캐논까지 무기를 강화하고, 위험할 때 노바로 탄환과 레이저를 지우세요. 루키·파일럿·에이스 세 난이도, 연속 격추 보너스, 인원·난이도별 최고 기록, 합성 사운드와 모바일 멀티터치를 지원합니다.",
+    "emoji": "🚀",
+    "thumbnail": "/images/games/orbit-breaker-thumb.png",
+    "screenshots": [
+      "/images/games/orbit-breaker-thumb.png",
+      "/images/games/orbit-breaker-1.png",
+      "/images/games/orbit-breaker-coop.png",
+      "/images/games/orbit-breaker-midboss.png"
+    ],
     "techStack": [
       "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "슈팅",
+    "playUrl": "https://seonn.dev/play/orbit-breaker",
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/orbit-breaker",
+    "createdAt": "2026-09",
+    "featured": true,
+    "order": 33
+  },
+  {
+    "slug": "mettaton-ex-live",
+    "title": "메타톤 EX · GLAMOUR / LIVE",
+    "description": "스포트라이트 아래 펼쳐지는 9가지 탄막 패턴, 최고의 스타와 마지막 보스전",
+    "longDescription": "메타톤 EX의 생방송 무대에 도전하는 언더테일 팬 게임입니다. 직접 그린 픽셀 벡터 캐릭터가 춤추는 네온 무대에서 별빛 세례, 디스코, 레이저, 폭탄 등 9가지 탄막 패턴을 피하세요. 노란 영혼으로 변하면 코어와 작은 로봇을 쏠 수 있고, 파란 탄막은 멈추고 주황 탄막은 움직여야 합니다. 타이밍 공격으로 메타톤을 쓰러뜨리거나, 포즈와 춤으로 시청률 10,000을 모아 평화로운 피날레를 완성하세요. 리허설·라이브·앙코르 세 난이도, 실시간 합성 신스 음악, 모바일 터치 조작과 최고 기록 저장을 지원합니다. 앙코르에서 EX를 이기면 에너지 날개와 암 캐논을 갖춘 메타톤 NEO가 해금됩니다. NEO는 4가지 전용 탄막과 별도 시청률 목표로 도전할 수 있으며, 해금 기록은 브라우저에 저장됩니다.",
+    "emoji": "💖",
+    "thumbnail": "/images/games/mettaton-ex-live-thumb.png",
+    "screenshots": [
+      "/images/games/mettaton-ex-live-thumb.png",
+      "/images/games/mettaton-ex-live-1.png",
+      "/images/games/mettaton-ex-live-2.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "액션",
+    "playUrl": "https://seonn.dev/play/mettaton",
+    "createdAt": "2026-09",
+    "featured": true,
+    "order": 32,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/mettaton"
+  },
+  {
+    "slug": "wanna-die-game",
+    "title": "죽고 싶은 게임",
+    "description": "퀘스트와 스킨을 갖춘 레트로 종스크롤 우주 슈팅 게임",
+    "longDescription": "적의 탄막과 보스를 피하며 점수를 쌓는 레트로 종스크롤 우주 슈팅 게임입니다. 웨이브를 넘기고 퀘스트를 달성해 크레딧을 모은 뒤, 다양한 스킨과 업그레이드를 해금할 수 있습니다. 컴퓨터 키보드와 모바일 터치 조작을 모두 지원합니다.",
+    "emoji": "💀",
+    "thumbnail": "/images/games/wanna-die-game-thumb.png",
+    "screenshots": [
+      "/images/games/wanna-die-game-1.png",
+      "/images/games/wanna-die-game-2.png",
+      "/images/games/wanna-die-game-3.png"
+    ],
+    "techStack": [
+      "React",
+      "TypeScript",
+      "Vite"
+    ],
+    "category": "슈팅",
+    "playUrl": "https://wanna-die-game.vercel.app",
+    "githubUrl": "https://github.com/inhyk/wanna-die-game",
+    "createdAt": "2025-08",
+    "featured": false,
+    "order": 31
+  },
+  {
+    "slug": "snowflow",
+    "title": "SNOWFLOW",
+    "description": "눈싸움하고 서핑하며 물 마법을 쓰는 3D 설원, 최대 4인",
+    "longDescription": "WebGPU로 그린 3D 설원에서 눈을 서핑하고 아홉 가지 물 마법을 펼치는 게임입니다. 실제 10분이 게임 속 하루라서 5분마다 밤이 오고, 밤에는 얼음 그림자가, 새벽에는 빙빙 돌다 달려드는 서리 회오리가 나타나 체력을 깎습니다. 배경음악은 파일 없이 실시간으로 합성되어 시간대와 전투에 맞춰 변합니다. 체력이 다 닳으면 눈밭에 잠깐 쓰러졌다가 다시 일어나요. 시작 화면에서 방을 만들면 나오는 여섯 글자 코드로 친구를 부르면 최대 4명이 같은 밤을 함께 보냅니다. 몬스터와 시계는 방장이 계산해서 모두에게 나눠 주기 때문에 넷이서 같은 몬스터를 함께 물리칠 수 있고, 친구가 눈밭에 남긴 발자국과 서핑 자국도 그대로 보입니다. Q로 발밑의 눈을 퍼서 뭉쳐 던질 수 있고, 퍼낸 자리에는 진짜 구덩이가 남습니다. ☃️ 눈싸움 미니 게임도 있어서, 혼자면 눈허수아비 8개를 상대로 2분 동안 점수를 내고 친구와 있으면 서로를 맞히는 대결이 됩니다. 오른쪽 아래 미니맵에 몬스터와 친구들이 표시되고, M 키로 크기를 바꿀 수 있습니다. 지형, 하늘, 눈, 캐릭터, 옷까지 파일 하나 없이 전부 GPU에서 만들어 냅니다.",
+    "emoji": "❄️",
+    "thumbnail": "",
+    "screenshots": [],
+    "techStack": [
+      "Babylon.js",
+      "WebGPU",
+      "WGSL",
+      "Web Audio",
+      "WebSocket (@inhyuk/net)",
+      "Vite"
+    ],
+    "category": "액션",
+    "playUrl": "https://seonn.dev/play/snowflow",
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/snowflow",
+    "createdAt": "2026-09",
+    "featured": true,
+    "order": 31
+  },
+  {
+    "slug": "inh-minecraft",
+    "title": "Minecraft 2D",
+    "description": "친구들과 방 코드로 만나는 최대 4인 온라인 마인크래프트",
+    "longDescription": "블록을 캐고 설치하며 자유롭게 탐험하는 2D 샌드박스 게임입니다. 방을 만들면 생기는 6자리 코드를 친구들에게 보내 최대 4명이 같은 월드에 접속할 수 있습니다. 모든 플레이어의 이동과 블록, 몬스터, 동물, 주민 상태가 실시간으로 동기화됩니다.",
+    "emoji": "⛏️",
+    "thumbnail": "/images/games/inh-minecraft-thumb.png",
+    "screenshots": [
+      "/images/games/inh-minecraft-1.png",
+      "/images/games/inh-minecraft-2.png",
+      "/images/games/inh-minecraft-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "PeerJS WebRTC",
       "Canvas"
     ],
-    "category": "슈팅",
-    "playUrl": "https://diep-io-indol.vercel.app",
-    "githubUrl": "https://github.com/inhyk/diep.io",
-    "createdAt": "2026-04",
-    "thumbnail": "",
-    "screenshots": [],
-    "featured": false,
-    "order": 4
-  },
-  {
-    "slug": "bean-dash-arena",
-    "title": "Bean Dash Arena",
-    "description": "장애물을 뚫고 결승선까지 달리는 파티 게임",
-    "longDescription": "Fall Guys 감성의 장애물 코스 게임입니다. 코스를 다시 만들 때마다 다른 프리셋이 나오고, 랭킹 모드에서는 최고 기록이 저장됩니다. 라이브러리 없이 Canvas로 직접 만들었습니다.",
-    "emoji": "🫘",
-    "techStack": [
-      "JavaScript",
-      "Canvas",
-      "HTML",
-      "CSS"
-    ],
-    "category": "액션",
-    "playUrl": "https://bean-dash-arena.vercel.app",
-    "createdAt": "2026-03",
-    "thumbnail": "",
-    "screenshots": [],
-    "featured": false,
-    "order": 5
-  },
-  {
-    "slug": "sans-boss-fight",
-    "title": "Sans Boss Fight",
-    "description": "언더테일 산스와의 탄막 보스전",
-    "longDescription": "언더테일의 산스 보스전을 직접 만들어 본 탄막 회피 게임입니다. 쏟아지는 뼈 공격과 가스터 블래스터를 피하면서 하트를 조종해 살아남아야 합니다. 패턴을 외우고 타이밍을 잡는 것이 관건입니다.",
-    "emoji": "💀",
-    "techStack": [
-      "JavaScript",
-      "Canvas",
-      "Node.js"
-    ],
-    "category": "액션",
-    "playUrl": "https://sans-boss-fight.vercel.app",
-    "githubUrl": "https://github.com/inhyk/sans-boss-fight",
-    "createdAt": "2026-04",
-    "thumbnail": "",
-    "screenshots": [],
-    "featured": false,
-    "order": 6
-  },
-  {
-    "slug": "hotel-tycoon",
-    "title": "Hotel Tycoon",
-    "description": "층을 하나씩 올리며 키우는 호텔 경영 게임",
-    "longDescription": "호텔을 한 층씩 올려 가며 키우는 경영 게임입니다. 로비 위로 아파트, 카페, 레스토랑, 스파, 발전소 같은 시설을 원하는 순서로 쌓아 올리고, 전기와 물을 관리하면서 투숙객을 늘려 갑니다. 벌어들인 돈으로 시설을 업그레이드하거나 마케팅 캠페인을 돌려 점유율을 높일 수 있고, 층수와 명성은 상한 없이 계속 올라갑니다. Three.js로 화면을 그렸고 진행 상황은 자동으로 저장됩니다.",
-    "emoji": "🏨",
-    "thumbnail": "/images/games/hotel-tycoon-thumb.png",
-    "screenshots": [
-      "/images/games/hotel-tycoon-1.png",
-      "/images/games/hotel-tycoon-2.png",
-      "/images/games/hotel-tycoon-3.png"
-    ],
-    "techStack": [
-      "JavaScript",
-      "Three.js",
-      "Vite"
-    ],
-    "category": "시뮬레이션",
-    "playUrl": "https://inh-hotel-tycoon.vercel.app",
-    "githubUrl": "https://github.com/inhyk/hotel-tycoon",
+    "category": "샌드박스",
+    "playUrl": "https://minecraft-2d.vercel.app",
+    "githubUrl": "https://github.com/inhyk/minecraft",
     "createdAt": "2026-08",
     "featured": false,
-    "order": 7
+    "order": 30
   },
   {
-    "slug": "inh-defense-game",
-    "title": "디펜스 게임",
-    "description": "밀려오는 웨이브를 막아내는 타워 디펜스",
-    "longDescription": "끝없이 밀려오는 적의 웨이브를 막아내는 디펜스 게임입니다. 웨이브마다 적이 강해지기 때문에 자원을 모아 방어를 계속 키워 나가야 살아남을 수 있습니다. Phaser 3 게임 엔진에 TypeScript로 코드를 짜고 Vite로 빌드했습니다.",
-    "emoji": "🏰",
-    "thumbnail": "/images/games/inh-defense-game-thumb.png",
+    "slug": "pokemon-party-jamboree",
+    "title": "포켓몬 파티 잼버리",
+    "description": "주사위를 굴려 보드를 도는 파티 게임",
+    "longDescription": "마리오 파티처럼 주사위를 굴려 보드판을 돌면서 별을 모으는 파티 게임입니다. 칸마다 다른 사건이 일어나고 미니게임으로 승부가 갈립니다. 원래는 친구와 같이 하는 멀티플레이로 만들었습니다.",
+    "emoji": "🎲",
+    "thumbnail": "/images/games/pokemon-party-jamboree-thumb.png",
     "screenshots": [
-      "/images/games/inh-defense-game-1.png",
-      "/images/games/inh-defense-game-2.png",
-      "/images/games/inh-defense-game-3.png"
+      "/images/games/pokemon-party-jamboree-1.png",
+      "/images/games/pokemon-party-jamboree-2.png",
+      "/images/games/pokemon-party-jamboree-3.png"
     ],
     "techStack": [
+      "Vite",
+      "JavaScript",
+      "Node.js"
+    ],
+    "category": "시뮬레이션",
+    "playUrl": "https://pokemon-party-jamboree.vercel.app",
+    "githubUrl": "https://github.com/inhyk/pokemon-party-jamboree",
+    "createdAt": "2026-02",
+    "featured": false,
+    "order": 29
+  },
+  {
+    "slug": "neon-bastion",
+    "title": "NEON BASTION",
+    "description": "네온 빛 요새를 지키는 타워 디펜스",
+    "longDescription": "밀려오는 적을 타워를 세워 막아내는 싱글 맵 타워 디펜스 게임입니다. 외부 이미지나 게임 엔진 없이 React와 Canvas만으로 그려서 만들었습니다. 돈을 모아 타워를 짓고 업그레이드하면서 마지막 웨이브까지 요새를 지켜내세요.",
+    "emoji": "🛡️",
+    "thumbnail": "/images/games/neon-bastion-thumb.png",
+    "screenshots": [
+      "/images/games/neon-bastion-1.png",
+      "/images/games/neon-bastion-2.png",
+      "/images/games/neon-bastion-3.png"
+    ],
+    "techStack": [
+      "React",
+      "Next.js",
+      "Canvas",
+      "JavaScript"
+    ],
+    "category": "시뮬레이션",
+    "playUrl": "https://inh-neon-bastion.vercel.app",
+    "githubUrl": "https://github.com/inhyk/neon-bastion",
+    "createdAt": "2026-08",
+    "featured": false,
+    "order": 28
+  },
+  {
+    "slug": "undertale-web",
+    "title": "언더테일 웹 버전",
+    "description": "브라우저에서 즐기는 언더테일풍 턴제 전투",
+    "longDescription": "언더테일의 전투 방식을 웹으로 옮겨 만든 게임입니다. 싸우기·행동·아이템·자비 중에 고르고, 상대 차례에는 하트를 움직여 탄막을 피합니다. React로 상태를 관리해서 전투 흐름을 그대로 재현했습니다.",
+    "emoji": "❤️",
+    "thumbnail": "/images/games/undertale-web-thumb.png",
+    "screenshots": [
+      "/images/games/undertale-web-1.png",
+      "/images/games/undertale-web-2.png",
+      "/images/games/undertale-web-3.png"
+    ],
+    "techStack": [
+      "React",
       "TypeScript",
-      "Phaser",
-      "Vite"
+      "Vite",
+      "Immer"
     ],
     "category": "액션",
-    "playUrl": "https://inh-defense-game.vercel.app",
-    "githubUrl": "https://github.com/inhyk/inh-defense-game",
-    "createdAt": "2026-07",
+    "playUrl": "https://undertale-web.vercel.app",
+    "githubUrl": "https://github.com/inhyk/undertale-web",
+    "createdAt": "2025-09",
     "featured": false,
-    "order": 8
+    "order": 26
   },
   {
-    "slug": "inh-space-blaster",
-    "title": "스페이스 블래스터",
-    "description": "스테이지마다 보스가 기다리는 우주 슈팅 게임",
-    "longDescription": "우주선을 몰고 적들을 쓸어버리는 슈팅 게임입니다. 웨이브를 클리어하며 스테이지를 넘어가면 단계별 보스가 기다리고 있고, 중간중간 무기 강화 아이템을 골라 내 우주선을 키울 수 있습니다. 라이브러리 없이 Canvas만으로 만들었습니다.",
-    "emoji": "🚀",
-    "thumbnail": "/images/games/inh-space-blaster-thumb.png",
+    "slug": "super-react-brothers",
+    "title": "슈퍼 리액트 브라더스",
+    "description": "React로 만든 마리오풍 횡스크롤 플랫포머",
+    "longDescription": "점프해서 블록을 부수고 적을 밟으며 앞으로 나아가는 고전 횡스크롤 플랫포머입니다. React와 TypeScript로 처음부터 직접 만들었습니다. 익숙한 조작감으로 스테이지 끝의 깃발까지 달려보세요.",
+    "emoji": "🍄",
+    "thumbnail": "/images/games/super-react-brothers-thumb.png",
     "screenshots": [
-      "/images/games/inh-space-blaster-1.png",
-      "/images/games/inh-space-blaster-2.png",
-      "/images/games/inh-space-blaster-3.png"
+      "/images/games/super-react-brothers-1.png",
+      "/images/games/super-react-brothers-2.png",
+      "/images/games/super-react-brothers-3.png"
     ],
     "techStack": [
-      "JavaScript",
-      "Canvas",
-      "HTML"
+      "React",
+      "TypeScript",
+      "Vite"
     ],
-    "category": "슈팅",
-    "playUrl": "https://inh-space-blaster.vercel.app",
-    "githubUrl": "https://github.com/inhyk/inh-space-blaster",
+    "category": "플랫포머",
+    "playUrl": "https://super-react-brothers.vercel.app",
+    "githubUrl": "https://github.com/inhyk/super-react-brothers",
+    "createdAt": "2025-09",
+    "featured": false,
+    "order": 25
+  },
+  {
+    "slug": "soul-battle",
+    "title": "SOUL BATTLE",
+    "description": "직접 만든 음악으로 싸우는 언더테일풍 보스전",
+    "longDescription": "언더테일 스타일의 보스전인데, 배경음악을 Python으로 직접 작곡해서 넣었습니다. 잔잔한 테마가 보스전 음악으로 바뀌는 순간이 이 게임의 핵심입니다. 하트를 움직여 탄막을 피하면서 보스를 쓰러뜨려 보세요.",
+    "emoji": "🎼",
+    "thumbnail": "/images/games/soul-battle-thumb.png",
+    "screenshots": [
+      "/images/games/soul-battle-1.png",
+      "/images/games/soul-battle-2.png",
+      "/images/games/soul-battle-3.png"
+    ],
+    "techStack": [
+      "HTML Canvas",
+      "JavaScript",
+      "Python"
+    ],
+    "category": "액션",
+    "playUrl": "https://soul-battle.vercel.app",
+    "githubUrl": "https://github.com/inhyk/soul-battle",
     "createdAt": "2026-02",
     "featured": false,
-    "order": 9
+    "order": 24
   },
   {
-    "slug": "voxel-survival",
-    "title": "Voxel Survival",
-    "description": "체력과 배고픔을 관리하며 하루하루 버티는 복셀 생존기",
-    "longDescription": "블록으로 이루어진 세계에서 살아남는 생존 게임입니다. 체력과 배고픔 게이지를 관리하면서 자원을 모으고, 하루하루 날짜를 넘기며 더 오래 버티는 것이 목표입니다. 3D 라이브러리를 쓰지 않고 Canvas 2D만으로 입체감 있는 복셀 화면을 직접 그려 만들었습니다.",
-    "emoji": "🧱",
-    "thumbnail": "/images/games/voxel-survival-thumb.png",
+    "slug": "color-match",
+    "title": "색깔 맞추기 게임",
+    "description": "제일 처음 만든 색깔 맞히기 게임",
+    "longDescription": "화면에 나온 색과 같은 색을 골라내는 간단한 색깔 맞추기 게임입니다. 인혁이가 코딩을 시작하고 처음으로 완성한 게임이라 의미가 있습니다.",
+    "emoji": "🌈",
+    "thumbnail": "/images/games/color-match-thumb.png",
     "screenshots": [
-      "/images/games/voxel-survival-1.png",
-      "/images/games/voxel-survival-2.png",
-      "/images/games/voxel-survival-3.png"
+      "/images/games/color-match-1.png",
+      "/images/games/color-match-2.png",
+      "/images/games/color-match-3.png"
     ],
     "techStack": [
-      "JavaScript",
-      "Canvas",
-      "HTML"
-    ],
-    "category": "샌드박스",
-    "playUrl": "https://voxel-survival.vercel.app",
-    "githubUrl": "https://github.com/inhyk/voxel-survival",
-    "createdAt": "2026-04",
-    "featured": false,
-    "order": 10
-  },
-  {
-    "slug": "find-the-ending",
-    "title": "The Game to Find the Ending",
-    "description": "숨겨진 엔딩을 하나씩 찾아내는 탐험 게임",
-    "longDescription": "여러 개의 엔딩이 숨어 있고, 그것을 하나씩 찾아내는 것이 목표인 게임입니다. 스테이지를 돌아다니며 대화를 나누고 단서를 모으다 보면 생각지 못한 결말에 닿게 됩니다. 레벨과 대사, 엔딩 데이터를 따로 분리해서 관리하는 구조로 만들었습니다.",
-    "emoji": "🚪",
-    "thumbnail": "/images/games/find-the-ending-thumb.png",
-    "screenshots": [
-      "/images/games/find-the-ending-1.png",
-      "/images/games/find-the-ending-2.png",
-      "/images/games/find-the-ending-3.png"
-    ],
-    "techStack": [
-      "JavaScript",
-      "Canvas",
-      "HTML"
+      "HTML",
+      "CSS",
+      "JavaScript"
     ],
     "category": "퍼즐",
-    "playUrl": "https://find-the-ending.vercel.app",
-    "githubUrl": "https://github.com/inhyk/find-the-ending",
-    "createdAt": "2026-03",
+    "playUrl": "https://inh-color-match.vercel.app",
+    "githubUrl": "https://github.com/inhyk/color-match",
+    "createdAt": "2025-07",
     "featured": false,
-    "order": 11
+    "order": 23
   },
   {
-    "slug": "lucky-machine",
-    "title": "꽝 없는 뽑기 기계",
-    "description": "꽝이 없다는 뽑기 기계 앞에서 시작되는 이야기",
-    "longDescription": "골목에 서 있는 낡은 뽑기 기계 하나에서 시작되는 짧은 이야기 게임입니다. 꽝이 없다는 그 기계를 돌리면서 이야기가 조금씩 펼쳐지고, 플레이어의 선택에 따라 결말이 달라집니다. HTML 파일 하나 안에 이야기와 연출을 전부 담아 만들었습니다.",
-    "emoji": "🎰",
-    "thumbnail": "/images/games/lucky-machine-thumb.png",
+    "slug": "cookie-clicker",
+    "title": "Cookie Clicker",
+    "description": "쿠키를 눌러서 숫자를 불리는 방치형 게임",
+    "longDescription": "쿠키를 클릭할수록 쿠키가 쌓이고, 쌓인 쿠키로 자동 생산 시설을 사서 더 빨리 모으는 방치형 클리커 게임입니다. 숫자가 커지는 걸 보는 재미 하나로 계속 하게 됩니다.",
+    "emoji": "🍪",
+    "thumbnail": "/images/games/cookie-clicker-thumb.png",
     "screenshots": [
-      "/images/games/lucky-machine-1.png",
-      "/images/games/lucky-machine-2.png",
-      "/images/games/lucky-machine-3.png"
+      "/images/games/cookie-clicker-1.png",
+      "/images/games/cookie-clicker-2.png",
+      "/images/games/cookie-clicker-3.png"
     ],
     "techStack": [
-      "JavaScript",
       "HTML",
-      "CSS"
+      "CSS",
+      "JavaScript"
+    ],
+    "category": "시뮬레이션",
+    "playUrl": "https://inh-cookie-clicker.vercel.app",
+    "githubUrl": "https://github.com/inhyk/cookie-clicker",
+    "createdAt": "2025-05",
+    "featured": false,
+    "order": 22
+  },
+  {
+    "slug": "roblox-sandbox",
+    "title": "샌드박스 플랫폼",
+    "description": "놀면서 직접 맵도 만드는 샌드박스",
+    "longDescription": "여러 개의 게임을 골라 플레이하고, 그 자리에서 블록을 놓아 맵을 고칠 수도 있는 샌드박스 플랫폼입니다. 이동·점프·수집품·함정·체크포인트에 컨베이어 발판까지 들어 있고, 배경음악도 Web Audio로 즉석에서 만들어 냅니다.",
+    "emoji": "🧩",
+    "thumbnail": "/images/games/roblox-sandbox-thumb.png",
+    "screenshots": [
+      "/images/games/roblox-sandbox-1.png",
+      "/images/games/roblox-sandbox-2.png",
+      "/images/games/roblox-sandbox-3.png"
+    ],
+    "techStack": [
+      "HTML Canvas",
+      "JavaScript",
+      "Web Audio API"
+    ],
+    "category": "샌드박스",
+    "playUrl": "https://roblox-sandbox.vercel.app",
+    "githubUrl": "https://github.com/inhyk/roblox-sandbox",
+    "createdAt": "2025-05",
+    "featured": false,
+    "order": 21
+  },
+  {
+    "slug": "super-pokemon",
+    "title": "슈퍼 포켓몬",
+    "description": "포켓몬이 주인공인 마리오풍 플랫포머",
+    "longDescription": "마리오 대신 포켓몬이 달리고 점프하는 횡스크롤 플랫포머입니다. 블록을 부수고 적을 밟으며 스테이지를 클리어합니다. 좋아하는 두 게임을 하나로 섞어서 만들었습니다.",
+    "emoji": "⚡",
+    "thumbnail": "/images/games/super-pokemon-thumb.png",
+    "screenshots": [
+      "/images/games/super-pokemon-1.png",
+      "/images/games/super-pokemon-2.png",
+      "/images/games/super-pokemon-3.png"
+    ],
+    "techStack": [
+      "HTML Canvas",
+      "JavaScript"
+    ],
+    "category": "플랫포머",
+    "playUrl": "https://super-pokemon.vercel.app",
+    "githubUrl": "https://github.com/inhyk/super-pokemon",
+    "createdAt": "2025-05",
+    "featured": false,
+    "order": 20
+  },
+  {
+    "slug": "toriel-boss-fight",
+    "title": "Toriel Boss Fight",
+    "description": "토리엘의 불꽃 탄막을 피하는 보스전",
+    "longDescription": "언더테일의 토리엘과 싸우는 보스전입니다. 사방에서 날아오는 불꽃을 하트로 피하면서 버텨야 합니다. 싸울지 자비를 베풀지는 플레이어가 정합니다.",
+    "emoji": "🔥",
+    "thumbnail": "/images/games/toriel-boss-fight-thumb.png",
+    "screenshots": [
+      "/images/games/toriel-boss-fight-1.png",
+      "/images/games/toriel-boss-fight-2.png",
+      "/images/games/toriel-boss-fight-3.png"
+    ],
+    "techStack": [
+      "HTML Canvas",
+      "JavaScript"
+    ],
+    "category": "액션",
+    "playUrl": "https://toriel-boss-fight.vercel.app",
+    "githubUrl": "https://github.com/inhyk/toriel-boss-fight",
+    "createdAt": "2025-05",
+    "featured": false,
+    "order": 19
+  },
+  {
+    "slug": "asgore-boss-fight",
+    "title": "아스고어 보스전",
+    "description": "언더테일 최종 보스 아스고어와의 결전",
+    "longDescription": "언더테일의 마지막 보스인 아스고어와 싸우는 보스전입니다. 삼지창 탄막과 불꽃 공격을 피하면서 기회를 노려 반격해야 합니다. 패턴을 외울 때까지 몇 번이고 다시 도전하게 되는 게임입니다.",
+    "emoji": "🔱",
+    "thumbnail": "/images/games/asgore-boss-fight-thumb.png",
+    "screenshots": [
+      "/images/games/asgore-boss-fight-1.png",
+      "/images/games/asgore-boss-fight-2.png",
+      "/images/games/asgore-boss-fight-3.png"
+    ],
+    "techStack": [
+      "HTML Canvas",
+      "JavaScript"
+    ],
+    "category": "액션",
+    "playUrl": "https://asgore-boss-fight.vercel.app",
+    "githubUrl": "https://github.com/inhyk/asgore-boss-fight",
+    "createdAt": "2025-05",
+    "featured": false,
+    "order": 18
+  },
+  {
+    "slug": "jump-jump",
+    "title": "JUMP JUMP!",
+    "description": "위로 위로 계속 뛰어오르는 점프 게임",
+    "longDescription": "발판을 밟고 계속 위로 뛰어오르는 간단하고 중독성 있는 점프 게임입니다. 올라갈수록 발판이 좁아지고 간격이 벌어집니다. 얼마나 높이 올라갈 수 있는지 기록에 도전해 보세요.",
+    "emoji": "🦘",
+    "thumbnail": "/images/games/jump-jump-thumb.png",
+    "screenshots": [
+      "/images/games/jump-jump-1.png",
+      "/images/games/jump-jump-2.png",
+      "/images/games/jump-jump-3.png"
+    ],
+    "techStack": [
+      "HTML Canvas",
+      "JavaScript"
+    ],
+    "category": "플랫포머",
+    "playUrl": "https://inh-jump-jump.vercel.app",
+    "githubUrl": "https://github.com/inhyk/jump-jump",
+    "createdAt": "2025-05",
+    "featured": false,
+    "order": 17
+  },
+  {
+    "slug": "jump-map",
+    "title": "점프맵",
+    "description": "한 번만 실수해도 처음으로 돌아가는 리듬 점프 게임",
+    "longDescription": "지오메트리 대시처럼 자동으로 달리는 캐릭터를 타이밍 맞춰 점프시키는 게임입니다. 가시에 닿으면 바로 처음부터. 손가락이 기억할 때까지 반복하는 맛으로 하는 게임입니다.",
+    "emoji": "🔺",
+    "thumbnail": "/images/games/jump-map-thumb.png",
+    "screenshots": [
+      "/images/games/jump-map-1.png",
+      "/images/games/jump-map-2.png",
+      "/images/games/jump-map-3.png"
+    ],
+    "techStack": [
+      "HTML Canvas",
+      "JavaScript"
+    ],
+    "category": "플랫포머",
+    "playUrl": "https://inh-jump-map.vercel.app",
+    "githubUrl": "https://github.com/inhyk/jump-map",
+    "createdAt": "2025-07",
+    "featured": false,
+    "order": 16
+  },
+  {
+    "slug": "earthquake-drill-vn",
+    "title": "흔들리는 종소리",
+    "description": "지진이 난 교실에서 함께 대피하는 비주얼 노벨",
+    "longDescription": "수업 중에 갑자기 지진이 일어납니다. 히로인 이수민과 함께 교실을 빠져나가는 교육용 비주얼 노벨입니다. 고르는 선택지에 따라 안전·호감·침착 세 가지 수치가 바뀌고, 놀면서 진짜 지진 대피 요령을 익힐 수 있습니다.",
+    "emoji": "🔔",
+    "thumbnail": "/images/games/earthquake-drill-vn-thumb.png",
+    "screenshots": [
+      "/images/games/earthquake-drill-vn-1.png",
+      "/images/games/earthquake-drill-vn-2.png",
+      "/images/games/earthquake-drill-vn-3.png"
+    ],
+    "techStack": [
+      "HTML",
+      "CSS",
+      "JavaScript"
     ],
     "category": "비주얼 노벨",
-    "playUrl": "https://lucky-machine.vercel.app",
-    "githubUrl": "https://github.com/inhyk/lucky-machine",
-    "createdAt": "2026-02",
+    "playUrl": "https://earthquake-drill-vn.vercel.app",
+    "githubUrl": "https://github.com/inhyk/earthquake-drill-vn",
+    "createdAt": "2025-07",
     "featured": false,
-    "order": 12
+    "order": 15
+  },
+  {
+    "slug": "mtt-final-spotlight",
+    "title": "MTT: Final Spotlight",
+    "description": "화려한 무대 위에서 벌어지는 메타톤 보스전",
+    "longDescription": "메타톤의 쇼 무대를 다시 상상해서 만든 팬메이드 보스전입니다. 게임 엔진 없이 HTML Canvas와 Web Audio만으로 탄막, 연출, 배경음악까지 전부 직접 구현했습니다. 방향키로 피하고 Z로 공격하면서 무대를 끝까지 버텨보세요.",
+    "emoji": "🎭",
+    "thumbnail": "/images/games/mtt-final-spotlight-thumb.png",
+    "screenshots": [
+      "/images/games/mtt-final-spotlight-1.png",
+      "/images/games/mtt-final-spotlight-2.png",
+      "/images/games/mtt-final-spotlight-3.png"
+    ],
+    "techStack": [
+      "HTML Canvas",
+      "JavaScript",
+      "Web Audio API"
+    ],
+    "category": "액션",
+    "playUrl": "https://mtt-final-spotlight.vercel.app",
+    "githubUrl": "https://github.com/inhyk/mtt-final-spotlight",
+    "createdAt": "2026-01",
+    "featured": false,
+    "order": 14
   },
   {
     "slug": "modongsup",
@@ -508,559 +868,247 @@
     "order": 13
   },
   {
-    "slug": "mtt-final-spotlight",
-    "title": "MTT: Final Spotlight",
-    "description": "화려한 무대 위에서 벌어지는 메타톤 보스전",
-    "longDescription": "메타톤의 쇼 무대를 다시 상상해서 만든 팬메이드 보스전입니다. 게임 엔진 없이 HTML Canvas와 Web Audio만으로 탄막, 연출, 배경음악까지 전부 직접 구현했습니다. 방향키로 피하고 Z로 공격하면서 무대를 끝까지 버텨보세요.",
-    "emoji": "🎭",
-    "thumbnail": "/images/games/mtt-final-spotlight-thumb.png",
+    "slug": "lucky-machine",
+    "title": "꽝 없는 뽑기 기계",
+    "description": "꽝이 없다는 뽑기 기계 앞에서 시작되는 이야기",
+    "longDescription": "골목에 서 있는 낡은 뽑기 기계 하나에서 시작되는 짧은 이야기 게임입니다. 꽝이 없다는 그 기계를 돌리면서 이야기가 조금씩 펼쳐지고, 플레이어의 선택에 따라 결말이 달라집니다. HTML 파일 하나 안에 이야기와 연출을 전부 담아 만들었습니다.",
+    "emoji": "🎰",
+    "thumbnail": "/images/games/lucky-machine-thumb.png",
     "screenshots": [
-      "/images/games/mtt-final-spotlight-1.png",
-      "/images/games/mtt-final-spotlight-2.png",
-      "/images/games/mtt-final-spotlight-3.png"
+      "/images/games/lucky-machine-1.png",
+      "/images/games/lucky-machine-2.png",
+      "/images/games/lucky-machine-3.png"
     ],
     "techStack": [
-      "HTML Canvas",
       "JavaScript",
-      "Web Audio API"
-    ],
-    "category": "액션",
-    "playUrl": "https://mtt-final-spotlight.vercel.app",
-    "githubUrl": "https://github.com/inhyk/mtt-final-spotlight",
-    "createdAt": "2026-01",
-    "featured": false,
-    "order": 14
-  },
-  {
-    "slug": "earthquake-drill-vn",
-    "title": "흔들리는 종소리",
-    "description": "지진이 난 교실에서 함께 대피하는 비주얼 노벨",
-    "longDescription": "수업 중에 갑자기 지진이 일어납니다. 히로인 이수민과 함께 교실을 빠져나가는 교육용 비주얼 노벨입니다. 고르는 선택지에 따라 안전·호감·침착 세 가지 수치가 바뀌고, 놀면서 진짜 지진 대피 요령을 익힐 수 있습니다.",
-    "emoji": "🔔",
-    "thumbnail": "/images/games/earthquake-drill-vn-thumb.png",
-    "screenshots": [
-      "/images/games/earthquake-drill-vn-1.png",
-      "/images/games/earthquake-drill-vn-2.png",
-      "/images/games/earthquake-drill-vn-3.png"
-    ],
-    "techStack": [
       "HTML",
-      "CSS",
-      "JavaScript"
+      "CSS"
     ],
     "category": "비주얼 노벨",
-    "playUrl": "https://earthquake-drill-vn.vercel.app",
-    "githubUrl": "https://github.com/inhyk/earthquake-drill-vn",
-    "createdAt": "2025-07",
+    "playUrl": "https://lucky-machine.vercel.app",
+    "githubUrl": "https://github.com/inhyk/lucky-machine",
+    "createdAt": "2026-02",
     "featured": false,
-    "order": 15
+    "order": 12
   },
   {
-    "slug": "jump-map",
-    "title": "점프맵",
-    "description": "한 번만 실수해도 처음으로 돌아가는 리듬 점프 게임",
-    "longDescription": "지오메트리 대시처럼 자동으로 달리는 캐릭터를 타이밍 맞춰 점프시키는 게임입니다. 가시에 닿으면 바로 처음부터. 손가락이 기억할 때까지 반복하는 맛으로 하는 게임입니다.",
-    "emoji": "🔺",
-    "thumbnail": "/images/games/jump-map-thumb.png",
+    "slug": "find-the-ending",
+    "title": "The Game to Find the Ending",
+    "description": "숨겨진 엔딩을 하나씩 찾아내는 탐험 게임",
+    "longDescription": "여러 개의 엔딩이 숨어 있고, 그것을 하나씩 찾아내는 것이 목표인 게임입니다. 스테이지를 돌아다니며 대화를 나누고 단서를 모으다 보면 생각지 못한 결말에 닿게 됩니다. 레벨과 대사, 엔딩 데이터를 따로 분리해서 관리하는 구조로 만들었습니다.",
+    "emoji": "🚪",
+    "thumbnail": "/images/games/find-the-ending-thumb.png",
     "screenshots": [
-      "/images/games/jump-map-1.png",
-      "/images/games/jump-map-2.png",
-      "/images/games/jump-map-3.png"
+      "/images/games/find-the-ending-1.png",
+      "/images/games/find-the-ending-2.png",
+      "/images/games/find-the-ending-3.png"
     ],
     "techStack": [
-      "HTML Canvas",
-      "JavaScript"
-    ],
-    "category": "플랫포머",
-    "playUrl": "https://inh-jump-map.vercel.app",
-    "githubUrl": "https://github.com/inhyk/jump-map",
-    "createdAt": "2025-07",
-    "featured": false,
-    "order": 16
-  },
-  {
-    "slug": "jump-jump",
-    "title": "JUMP JUMP!",
-    "description": "위로 위로 계속 뛰어오르는 점프 게임",
-    "longDescription": "발판을 밟고 계속 위로 뛰어오르는 간단하고 중독성 있는 점프 게임입니다. 올라갈수록 발판이 좁아지고 간격이 벌어집니다. 얼마나 높이 올라갈 수 있는지 기록에 도전해 보세요.",
-    "emoji": "🦘",
-    "thumbnail": "/images/games/jump-jump-thumb.png",
-    "screenshots": [
-      "/images/games/jump-jump-1.png",
-      "/images/games/jump-jump-2.png",
-      "/images/games/jump-jump-3.png"
-    ],
-    "techStack": [
-      "HTML Canvas",
-      "JavaScript"
-    ],
-    "category": "플랫포머",
-    "playUrl": "https://inh-jump-jump.vercel.app",
-    "githubUrl": "https://github.com/inhyk/jump-jump",
-    "createdAt": "2025-05",
-    "featured": false,
-    "order": 17
-  },
-  {
-    "slug": "asgore-boss-fight",
-    "title": "아스고어 보스전",
-    "description": "언더테일 최종 보스 아스고어와의 결전",
-    "longDescription": "언더테일의 마지막 보스인 아스고어와 싸우는 보스전입니다. 삼지창 탄막과 불꽃 공격을 피하면서 기회를 노려 반격해야 합니다. 패턴을 외울 때까지 몇 번이고 다시 도전하게 되는 게임입니다.",
-    "emoji": "🔱",
-    "thumbnail": "/images/games/asgore-boss-fight-thumb.png",
-    "screenshots": [
-      "/images/games/asgore-boss-fight-1.png",
-      "/images/games/asgore-boss-fight-2.png",
-      "/images/games/asgore-boss-fight-3.png"
-    ],
-    "techStack": [
-      "HTML Canvas",
-      "JavaScript"
-    ],
-    "category": "액션",
-    "playUrl": "https://asgore-boss-fight.vercel.app",
-    "githubUrl": "https://github.com/inhyk/asgore-boss-fight",
-    "createdAt": "2025-05",
-    "featured": false,
-    "order": 18
-  },
-  {
-    "slug": "toriel-boss-fight",
-    "title": "Toriel Boss Fight",
-    "description": "토리엘의 불꽃 탄막을 피하는 보스전",
-    "longDescription": "언더테일의 토리엘과 싸우는 보스전입니다. 사방에서 날아오는 불꽃을 하트로 피하면서 버텨야 합니다. 싸울지 자비를 베풀지는 플레이어가 정합니다.",
-    "emoji": "🔥",
-    "thumbnail": "/images/games/toriel-boss-fight-thumb.png",
-    "screenshots": [
-      "/images/games/toriel-boss-fight-1.png",
-      "/images/games/toriel-boss-fight-2.png",
-      "/images/games/toriel-boss-fight-3.png"
-    ],
-    "techStack": [
-      "HTML Canvas",
-      "JavaScript"
-    ],
-    "category": "액션",
-    "playUrl": "https://toriel-boss-fight.vercel.app",
-    "githubUrl": "https://github.com/inhyk/toriel-boss-fight",
-    "createdAt": "2025-05",
-    "featured": false,
-    "order": 19
-  },
-  {
-    "slug": "super-pokemon",
-    "title": "슈퍼 포켓몬",
-    "description": "포켓몬이 주인공인 마리오풍 플랫포머",
-    "longDescription": "마리오 대신 포켓몬이 달리고 점프하는 횡스크롤 플랫포머입니다. 블록을 부수고 적을 밟으며 스테이지를 클리어합니다. 좋아하는 두 게임을 하나로 섞어서 만들었습니다.",
-    "emoji": "⚡",
-    "thumbnail": "/images/games/super-pokemon-thumb.png",
-    "screenshots": [
-      "/images/games/super-pokemon-1.png",
-      "/images/games/super-pokemon-2.png",
-      "/images/games/super-pokemon-3.png"
-    ],
-    "techStack": [
-      "HTML Canvas",
-      "JavaScript"
-    ],
-    "category": "플랫포머",
-    "playUrl": "https://super-pokemon.vercel.app",
-    "githubUrl": "https://github.com/inhyk/super-pokemon",
-    "createdAt": "2025-05",
-    "featured": false,
-    "order": 20
-  },
-  {
-    "slug": "roblox-sandbox",
-    "title": "샌드박스 플랫폼",
-    "description": "놀면서 직접 맵도 만드는 샌드박스",
-    "longDescription": "여러 개의 게임을 골라 플레이하고, 그 자리에서 블록을 놓아 맵을 고칠 수도 있는 샌드박스 플랫폼입니다. 이동·점프·수집품·함정·체크포인트에 컨베이어 발판까지 들어 있고, 배경음악도 Web Audio로 즉석에서 만들어 냅니다.",
-    "emoji": "🧩",
-    "thumbnail": "/images/games/roblox-sandbox-thumb.png",
-    "screenshots": [
-      "/images/games/roblox-sandbox-1.png",
-      "/images/games/roblox-sandbox-2.png",
-      "/images/games/roblox-sandbox-3.png"
-    ],
-    "techStack": [
-      "HTML Canvas",
       "JavaScript",
-      "Web Audio API"
-    ],
-    "category": "샌드박스",
-    "playUrl": "https://roblox-sandbox.vercel.app",
-    "githubUrl": "https://github.com/inhyk/roblox-sandbox",
-    "createdAt": "2025-05",
-    "featured": false,
-    "order": 21
-  },
-  {
-    "slug": "cookie-clicker",
-    "title": "Cookie Clicker",
-    "description": "쿠키를 눌러서 숫자를 불리는 방치형 게임",
-    "longDescription": "쿠키를 클릭할수록 쿠키가 쌓이고, 쌓인 쿠키로 자동 생산 시설을 사서 더 빨리 모으는 방치형 클리커 게임입니다. 숫자가 커지는 걸 보는 재미 하나로 계속 하게 됩니다.",
-    "emoji": "🍪",
-    "thumbnail": "/images/games/cookie-clicker-thumb.png",
-    "screenshots": [
-      "/images/games/cookie-clicker-1.png",
-      "/images/games/cookie-clicker-2.png",
-      "/images/games/cookie-clicker-3.png"
-    ],
-    "techStack": [
-      "HTML",
-      "CSS",
-      "JavaScript"
-    ],
-    "category": "시뮬레이션",
-    "playUrl": "https://inh-cookie-clicker.vercel.app",
-    "githubUrl": "https://github.com/inhyk/cookie-clicker",
-    "createdAt": "2025-05",
-    "featured": false,
-    "order": 22
-  },
-  {
-    "slug": "color-match",
-    "title": "색깔 맞추기 게임",
-    "description": "제일 처음 만든 색깔 맞히기 게임",
-    "longDescription": "화면에 나온 색과 같은 색을 골라내는 간단한 색깔 맞추기 게임입니다. 인혁이가 코딩을 시작하고 처음으로 완성한 게임이라 의미가 있습니다.",
-    "emoji": "🌈",
-    "thumbnail": "/images/games/color-match-thumb.png",
-    "screenshots": [
-      "/images/games/color-match-1.png",
-      "/images/games/color-match-2.png",
-      "/images/games/color-match-3.png"
-    ],
-    "techStack": [
-      "HTML",
-      "CSS",
-      "JavaScript"
+      "Canvas",
+      "HTML"
     ],
     "category": "퍼즐",
-    "playUrl": "https://inh-color-match.vercel.app",
-    "githubUrl": "https://github.com/inhyk/color-match",
-    "createdAt": "2025-07",
+    "playUrl": "https://find-the-ending.vercel.app",
+    "githubUrl": "https://github.com/inhyk/find-the-ending",
+    "createdAt": "2026-03",
     "featured": false,
-    "order": 23
+    "order": 11
   },
   {
-    "slug": "soul-battle",
-    "title": "SOUL BATTLE",
-    "description": "직접 만든 음악으로 싸우는 언더테일풍 보스전",
-    "longDescription": "언더테일 스타일의 보스전인데, 배경음악을 Python으로 직접 작곡해서 넣었습니다. 잔잔한 테마가 보스전 음악으로 바뀌는 순간이 이 게임의 핵심입니다. 하트를 움직여 탄막을 피하면서 보스를 쓰러뜨려 보세요.",
-    "emoji": "🎼",
-    "thumbnail": "/images/games/soul-battle-thumb.png",
+    "slug": "voxel-survival",
+    "title": "Voxel Survival",
+    "description": "체력과 배고픔을 관리하며 하루하루 버티는 복셀 생존기",
+    "longDescription": "블록으로 이루어진 세계에서 살아남는 생존 게임입니다. 체력과 배고픔 게이지를 관리하면서 자원을 모으고, 하루하루 날짜를 넘기며 더 오래 버티는 것이 목표입니다. 3D 라이브러리를 쓰지 않고 Canvas 2D만으로 입체감 있는 복셀 화면을 직접 그려 만들었습니다.",
+    "emoji": "🧱",
+    "thumbnail": "/images/games/voxel-survival-thumb.png",
     "screenshots": [
-      "/images/games/soul-battle-1.png",
-      "/images/games/soul-battle-2.png",
-      "/images/games/soul-battle-3.png"
+      "/images/games/voxel-survival-1.png",
+      "/images/games/voxel-survival-2.png",
+      "/images/games/voxel-survival-3.png"
     ],
     "techStack": [
-      "HTML Canvas",
       "JavaScript",
-      "Python"
-    ],
-    "category": "액션",
-    "playUrl": "https://soul-battle.vercel.app",
-    "githubUrl": "https://github.com/inhyk/soul-battle",
-    "createdAt": "2026-02",
-    "featured": false,
-    "order": 24
-  },
-  {
-    "slug": "super-react-brothers",
-    "title": "슈퍼 리액트 브라더스",
-    "description": "React로 만든 마리오풍 횡스크롤 플랫포머",
-    "longDescription": "점프해서 블록을 부수고 적을 밟으며 앞으로 나아가는 고전 횡스크롤 플랫포머입니다. React와 TypeScript로 처음부터 직접 만들었습니다. 익숙한 조작감으로 스테이지 끝의 깃발까지 달려보세요.",
-    "emoji": "🍄",
-    "thumbnail": "/images/games/super-react-brothers-thumb.png",
-    "screenshots": [
-      "/images/games/super-react-brothers-1.png",
-      "/images/games/super-react-brothers-2.png",
-      "/images/games/super-react-brothers-3.png"
-    ],
-    "techStack": [
-      "React",
-      "TypeScript",
-      "Vite"
-    ],
-    "category": "플랫포머",
-    "playUrl": "https://super-react-brothers.vercel.app",
-    "githubUrl": "https://github.com/inhyk/super-react-brothers",
-    "createdAt": "2025-09",
-    "featured": false,
-    "order": 25
-  },
-  {
-    "slug": "undertale-web",
-    "title": "언더테일 웹 버전",
-    "description": "브라우저에서 즐기는 언더테일풍 턴제 전투",
-    "longDescription": "언더테일의 전투 방식을 웹으로 옮겨 만든 게임입니다. 싸우기·행동·아이템·자비 중에 고르고, 상대 차례에는 하트를 움직여 탄막을 피합니다. React로 상태를 관리해서 전투 흐름을 그대로 재현했습니다.",
-    "emoji": "❤️",
-    "thumbnail": "/images/games/undertale-web-thumb.png",
-    "screenshots": [
-      "/images/games/undertale-web-1.png",
-      "/images/games/undertale-web-2.png",
-      "/images/games/undertale-web-3.png"
-    ],
-    "techStack": [
-      "React",
-      "TypeScript",
-      "Vite",
-      "Immer"
-    ],
-    "category": "액션",
-    "playUrl": "https://undertale-web.vercel.app",
-    "githubUrl": "https://github.com/inhyk/undertale-web",
-    "createdAt": "2025-09",
-    "featured": false,
-    "order": 26
-  },
-  {
-    "slug": "wanna-die-game",
-    "title": "죽고 싶은 게임",
-    "description": "퀘스트와 스킨을 갖춘 레트로 종스크롤 우주 슈팅 게임",
-    "longDescription": "적의 탄막과 보스를 피하며 점수를 쌓는 레트로 종스크롤 우주 슈팅 게임입니다. 웨이브를 넘기고 퀘스트를 달성해 크레딧을 모은 뒤, 다양한 스킨과 업그레이드를 해금할 수 있습니다. 컴퓨터 키보드와 모바일 터치 조작을 모두 지원합니다.",
-    "emoji": "💀",
-    "thumbnail": "/images/games/wanna-die-game-thumb.png",
-    "screenshots": [
-      "/images/games/wanna-die-game-1.png",
-      "/images/games/wanna-die-game-2.png",
-      "/images/games/wanna-die-game-3.png"
-    ],
-    "techStack": [
-      "React",
-      "TypeScript",
-      "Vite"
-    ],
-    "category": "슈팅",
-    "playUrl": "https://wanna-die-game.vercel.app",
-    "githubUrl": "https://github.com/inhyk/wanna-die-game",
-    "createdAt": "2025-08",
-    "featured": false,
-    "order": 31
-  },
-  {
-    "slug": "neon-bastion",
-    "title": "NEON BASTION",
-    "description": "네온 빛 요새를 지키는 타워 디펜스",
-    "longDescription": "밀려오는 적을 타워를 세워 막아내는 싱글 맵 타워 디펜스 게임입니다. 외부 이미지나 게임 엔진 없이 React와 Canvas만으로 그려서 만들었습니다. 돈을 모아 타워를 짓고 업그레이드하면서 마지막 웨이브까지 요새를 지켜내세요.",
-    "emoji": "🛡️",
-    "thumbnail": "/images/games/neon-bastion-thumb.png",
-    "screenshots": [
-      "/images/games/neon-bastion-1.png",
-      "/images/games/neon-bastion-2.png",
-      "/images/games/neon-bastion-3.png"
-    ],
-    "techStack": [
-      "React",
-      "Next.js",
       "Canvas",
-      "JavaScript"
-    ],
-    "category": "시뮬레이션",
-    "playUrl": "https://inh-neon-bastion.vercel.app",
-    "githubUrl": "https://github.com/inhyk/neon-bastion",
-    "createdAt": "2026-08",
-    "featured": false,
-    "order": 28
-  },
-  {
-    "slug": "pokemon-party-jamboree",
-    "title": "포켓몬 파티 잼버리",
-    "description": "주사위를 굴려 보드를 도는 파티 게임",
-    "longDescription": "마리오 파티처럼 주사위를 굴려 보드판을 돌면서 별을 모으는 파티 게임입니다. 칸마다 다른 사건이 일어나고 미니게임으로 승부가 갈립니다. 원래는 친구와 같이 하는 멀티플레이로 만들었습니다.",
-    "emoji": "🎲",
-    "thumbnail": "/images/games/pokemon-party-jamboree-thumb.png",
-    "screenshots": [
-      "/images/games/pokemon-party-jamboree-1.png",
-      "/images/games/pokemon-party-jamboree-2.png",
-      "/images/games/pokemon-party-jamboree-3.png"
-    ],
-    "techStack": [
-      "Vite",
-      "JavaScript",
-      "Node.js"
-    ],
-    "category": "시뮬레이션",
-    "playUrl": "https://pokemon-party-jamboree.vercel.app",
-    "githubUrl": "https://github.com/inhyk/pokemon-party-jamboree",
-    "createdAt": "2026-02",
-    "featured": false,
-    "order": 29
-  },
-  {
-    "slug": "inh-minecraft",
-    "title": "Minecraft 2D",
-    "description": "친구들과 방 코드로 만나는 최대 4인 온라인 마인크래프트",
-    "longDescription": "블록을 캐고 설치하며 자유롭게 탐험하는 2D 샌드박스 게임입니다. 방을 만들면 생기는 6자리 코드를 친구들에게 보내 최대 4명이 같은 월드에 접속할 수 있습니다. 모든 플레이어의 이동과 블록, 몬스터, 동물, 주민 상태가 실시간으로 동기화됩니다.",
-    "emoji": "⛏️",
-    "thumbnail": "/images/games/inh-minecraft-thumb.png",
-    "screenshots": [
-      "/images/games/inh-minecraft-1.png",
-      "/images/games/inh-minecraft-2.png",
-      "/images/games/inh-minecraft-3.png"
-    ],
-    "techStack": [
-      "JavaScript",
-      "PeerJS WebRTC",
-      "Canvas"
+      "HTML"
     ],
     "category": "샌드박스",
-    "playUrl": "https://minecraft-2d.vercel.app",
-    "githubUrl": "https://github.com/inhyk/minecraft",
+    "playUrl": "https://voxel-survival.vercel.app",
+    "githubUrl": "https://github.com/inhyk/voxel-survival",
+    "createdAt": "2026-04",
+    "featured": false,
+    "order": 10
+  },
+  {
+    "slug": "inh-space-blaster",
+    "title": "스페이스 블래스터",
+    "description": "스테이지마다 보스가 기다리는 우주 슈팅 게임",
+    "longDescription": "우주선을 몰고 적들을 쓸어버리는 슈팅 게임입니다. 웨이브를 클리어하며 스테이지를 넘어가면 단계별 보스가 기다리고 있고, 중간중간 무기 강화 아이템을 골라 내 우주선을 키울 수 있습니다. 라이브러리 없이 Canvas만으로 만들었습니다.",
+    "emoji": "🚀",
+    "thumbnail": "/images/games/inh-space-blaster-thumb.png",
+    "screenshots": [
+      "/images/games/inh-space-blaster-1.png",
+      "/images/games/inh-space-blaster-2.png",
+      "/images/games/inh-space-blaster-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas",
+      "HTML"
+    ],
+    "category": "슈팅",
+    "playUrl": "https://inh-space-blaster.vercel.app",
+    "githubUrl": "https://github.com/inhyk/inh-space-blaster",
+    "createdAt": "2026-02",
+    "featured": false,
+    "order": 9
+  },
+  {
+    "slug": "inh-defense-game",
+    "title": "디펜스 게임",
+    "description": "밀려오는 웨이브를 막아내는 타워 디펜스",
+    "longDescription": "끝없이 밀려오는 적의 웨이브를 막아내는 디펜스 게임입니다. 웨이브마다 적이 강해지기 때문에 자원을 모아 방어를 계속 키워 나가야 살아남을 수 있습니다. Phaser 3 게임 엔진에 TypeScript로 코드를 짜고 Vite로 빌드했습니다.",
+    "emoji": "🏰",
+    "thumbnail": "/images/games/inh-defense-game-thumb.png",
+    "screenshots": [
+      "/images/games/inh-defense-game-1.png",
+      "/images/games/inh-defense-game-2.png",
+      "/images/games/inh-defense-game-3.png"
+    ],
+    "techStack": [
+      "TypeScript",
+      "Phaser",
+      "Vite"
+    ],
+    "category": "액션",
+    "playUrl": "https://inh-defense-game.vercel.app",
+    "githubUrl": "https://github.com/inhyk/inh-defense-game",
+    "createdAt": "2026-07",
+    "featured": false,
+    "order": 8
+  },
+  {
+    "slug": "hotel-tycoon",
+    "title": "Hotel Tycoon",
+    "description": "층을 하나씩 올리며 키우는 호텔 경영 게임",
+    "longDescription": "호텔을 한 층씩 올려 가며 키우는 경영 게임입니다. 로비 위로 아파트, 카페, 레스토랑, 스파, 발전소 같은 시설을 원하는 순서로 쌓아 올리고, 전기와 물을 관리하면서 투숙객을 늘려 갑니다. 벌어들인 돈으로 시설을 업그레이드하거나 마케팅 캠페인을 돌려 점유율을 높일 수 있고, 층수와 명성은 상한 없이 계속 올라갑니다. Three.js로 화면을 그렸고 진행 상황은 자동으로 저장됩니다.",
+    "emoji": "🏨",
+    "thumbnail": "/images/games/hotel-tycoon-thumb.png",
+    "screenshots": [
+      "/images/games/hotel-tycoon-1.png",
+      "/images/games/hotel-tycoon-2.png",
+      "/images/games/hotel-tycoon-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Three.js",
+      "Vite"
+    ],
+    "category": "시뮬레이션",
+    "playUrl": "https://inh-hotel-tycoon.vercel.app",
+    "githubUrl": "https://github.com/inhyk/hotel-tycoon",
     "createdAt": "2026-08",
     "featured": false,
-    "order": 30
+    "order": 7
   },
   {
-    "slug": "snowflow",
-    "title": "SNOWFLOW",
-    "description": "눈싸움하고 서핑하며 물 마법을 쓰는 3D 설원, 최대 4인",
-    "longDescription": "WebGPU로 그린 3D 설원에서 눈을 서핑하고 아홉 가지 물 마법을 펼치는 게임입니다. 실제 10분이 게임 속 하루라서 5분마다 밤이 오고, 밤에는 얼음 그림자가, 새벽에는 빙빙 돌다 달려드는 서리 회오리가 나타나 체력을 깎습니다. 배경음악은 파일 없이 실시간으로 합성되어 시간대와 전투에 맞춰 변합니다. 체력이 다 닳으면 눈밭에 잠깐 쓰러졌다가 다시 일어나요. 시작 화면에서 방을 만들면 나오는 여섯 글자 코드로 친구를 부르면 최대 4명이 같은 밤을 함께 보냅니다. 몬스터와 시계는 방장이 계산해서 모두에게 나눠 주기 때문에 넷이서 같은 몬스터를 함께 물리칠 수 있고, 친구가 눈밭에 남긴 발자국과 서핑 자국도 그대로 보입니다. Q로 발밑의 눈을 퍼서 뭉쳐 던질 수 있고, 퍼낸 자리에는 진짜 구덩이가 남습니다. ☃️ 눈싸움 미니 게임도 있어서, 혼자면 눈허수아비 8개를 상대로 2분 동안 점수를 내고 친구와 있으면 서로를 맞히는 대결이 됩니다. 오른쪽 아래 미니맵에 몬스터와 친구들이 표시되고, M 키로 크기를 바꿀 수 있습니다. 지형, 하늘, 눈, 캐릭터, 옷까지 파일 하나 없이 전부 GPU에서 만들어 냅니다.",
-    "emoji": "❄️",
+    "slug": "sans-boss-fight",
+    "title": "Sans Boss Fight",
+    "description": "언더테일 산스와의 탄막 보스전",
+    "longDescription": "언더테일의 산스 보스전을 직접 만들어 본 탄막 회피 게임입니다. 쏟아지는 뼈 공격과 가스터 블래스터를 피하면서 하트를 조종해 살아남아야 합니다. 패턴을 외우고 타이밍을 잡는 것이 관건입니다.",
+    "emoji": "💀",
+    "techStack": [
+      "JavaScript",
+      "Canvas",
+      "Node.js"
+    ],
+    "category": "액션",
+    "playUrl": "https://sans-boss-fight.vercel.app",
+    "githubUrl": "https://github.com/inhyk/sans-boss-fight",
+    "createdAt": "2026-04",
     "thumbnail": "",
     "screenshots": [],
-    "techStack": [
-      "Babylon.js",
-      "WebGPU",
-      "WGSL",
-      "Web Audio",
-      "WebSocket (@inhyuk/net)",
-      "Vite"
-    ],
-    "category": "액션",
-    "playUrl": "https://seonn.dev/play/snowflow",
-    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/snowflow",
-    "createdAt": "2026-09",
-    "featured": true,
-    "order": 31
+    "featured": false,
+    "order": 6
   },
   {
-    "slug": "mettaton-ex-live",
-    "title": "메타톤 EX · GLAMOUR / LIVE",
-    "description": "스포트라이트 아래 펼쳐지는 9가지 탄막 패턴, 최고의 스타와 마지막 보스전",
-    "longDescription": "메타톤 EX의 생방송 무대에 도전하는 언더테일 팬 게임입니다. 직접 그린 픽셀 벡터 캐릭터가 춤추는 네온 무대에서 별빛 세례, 디스코, 레이저, 폭탄 등 9가지 탄막 패턴을 피하세요. 노란 영혼으로 변하면 코어와 작은 로봇을 쏠 수 있고, 파란 탄막은 멈추고 주황 탄막은 움직여야 합니다. 타이밍 공격으로 메타톤을 쓰러뜨리거나, 포즈와 춤으로 시청률 10,000을 모아 평화로운 피날레를 완성하세요. 리허설·라이브·앙코르 세 난이도, 실시간 합성 신스 음악, 모바일 터치 조작과 최고 기록 저장을 지원합니다. 앙코르에서 EX를 이기면 에너지 날개와 암 캐논을 갖춘 메타톤 NEO가 해금됩니다. NEO는 4가지 전용 탄막과 별도 시청률 목표로 도전할 수 있으며, 해금 기록은 브라우저에 저장됩니다.",
-    "emoji": "💖",
-    "thumbnail": "/images/games/mettaton-ex-live-thumb.png",
-    "screenshots": [
-      "/images/games/mettaton-ex-live-thumb.png",
-      "/images/games/mettaton-ex-live-1.png",
-      "/images/games/mettaton-ex-live-2.png"
-    ],
+    "slug": "bean-dash-arena",
+    "title": "Bean Dash Arena",
+    "description": "장애물을 뚫고 결승선까지 달리는 파티 게임",
+    "longDescription": "Fall Guys 감성의 장애물 코스 게임입니다. 코스를 다시 만들 때마다 다른 프리셋이 나오고, 랭킹 모드에서는 최고 기록이 저장됩니다. 라이브러리 없이 Canvas로 직접 만들었습니다.",
+    "emoji": "🫘",
     "techStack": [
       "JavaScript",
-      "Canvas 2D",
-      "Web Audio"
+      "Canvas",
+      "HTML",
+      "CSS"
     ],
     "category": "액션",
-    "playUrl": "https://seonn.dev/play/mettaton",
-    "createdAt": "2026-09",
-    "featured": true,
-    "order": 32,
-    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/mettaton"
+    "playUrl": "https://bean-dash-arena.vercel.app",
+    "createdAt": "2026-03",
+    "thumbnail": "",
+    "screenshots": [],
+    "featured": false,
+    "order": 5
   },
   {
-    "slug": "undertale-fan-game",
-    "title": "UNDERTALE · 세 갈래의 결말",
-    "description": "아무도 죽이지 않거나, 모두를 죽이거나. 선택이 결말을 바꾸는 언더테일 팬 게임",
-    "longDescription": "폐허에 떨어진 인간이 되어 설원, 폭포, 열지대를 지나 왕좌의 방까지 가는 언더테일 팬 게임입니다. 직접 그린 픽셀 스프라이트로 15종의 몬스터와 9명의 보스를 만나고, 공격·행동·아이템·자비 네 가지 선택으로 매 전투를 풀어 갑니다. 자유롭게 움직이는 빨간 영혼, 중력에 붙잡혀 점프하는 파란 영혼, 방패를 돌려 화살을 막는 초록 영혼으로 탄막을 피하세요. 아무도 죽이지 않으면 불살, 지역마다 아무도 오지 않을 때까지 죽이면 몰살, 그 사이는 중립 결말로 이어지며, 몰살 뒤에는 세계가 지워지고 영혼 계약으로만 되돌릴 수 있습니다. 떨어진 인간의 이름 짓기, 반짝이는 별에서의 세이브, 세 곳의 상점, 실시간 합성 음악과 모바일 터치 조작을 지원합니다. 지역마다 다른 빛과 날씨, 눈 위에 남는 발자국, 캐릭터별 대화 초상화와 말소리가 여정을 채웁니다. 22개의 이야기 소품을 조사하고, 선택과 재방문에 따라 달라지는 대사를 발견해 탐험 수첩에 간직해 보세요.",
-    "emoji": "❤️",
-    "thumbnail": "/images/games/undertale-fan-game-thumb.png",
-    "screenshots": [
-      "/images/games/undertale-fan-game-thumb.png",
-      "/images/games/undertale-fan-game-1.png",
-      "/images/games/undertale-fan-game-2.png"
-    ],
+    "slug": "diep-io",
+    "title": "diep.io",
+    "description": "탱크를 키워 살아남는 실시간 슈팅 게임",
+    "longDescription": "diep.io 스타일의 아레나 슈팅 게임입니다. 도형을 부숴 경험치를 모으고, 레벨이 오르면 탱크를 원하는 방향으로 강화합니다. 라이브러리 없이 Canvas만으로 직접 만들었습니다.",
+    "emoji": "🔺",
     "techStack": [
       "JavaScript",
-      "Canvas 2D",
-      "Web Audio"
-    ],
-    "category": "액션",
-    "playUrl": "/play/undertale",
-    "createdAt": "2026-09",
-    "featured": true,
-    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/undertale",
-    "order": 35
-  },
-  {
-    "slug": "orbit-breaker",
-    "title": "ORBIT BREAKER · 오비트 브레이커",
-    "description": "10웨이브와 두 보스에 도전하는 우주 슈팅, 같은 키보드로 2인 협동",
-    "longDescription": "총 10웨이브를 돌파하는 우주 슈팅게임입니다. 5웨이브에서 중간 보스 센티넬을 쓰러뜨린 뒤 계속 전진하고, 10웨이브에서 최종 보스 이클립스에 도전하세요. 시작 화면의 2인 협동을 선택하면 같은 키보드로 1P는 WASD, 2P는 방향키로 함께 싸울 수 있습니다. 체력·무기·노바는 독립적이고 점수는 공유합니다. 한 명이 격추되어도 동료가 다음 웨이브를 시작하면 체력 절반으로 복귀합니다. 초록 아이템으로 트리플 캐논까지 무기를 강화하고, 위험할 때 노바로 탄환과 레이저를 지우세요. 루키·파일럿·에이스 세 난이도, 연속 격추 보너스, 인원·난이도별 최고 기록, 합성 사운드와 모바일 멀티터치를 지원합니다.",
-    "emoji": "🚀",
-    "thumbnail": "/images/games/orbit-breaker-thumb.png",
-    "screenshots": [
-      "/images/games/orbit-breaker-thumb.png",
-      "/images/games/orbit-breaker-1.png",
-      "/images/games/orbit-breaker-coop.png",
-      "/images/games/orbit-breaker-midboss.png"
-    ],
-    "techStack": [
-      "JavaScript",
-      "Canvas 2D",
-      "Web Audio"
+      "Canvas"
     ],
     "category": "슈팅",
-    "playUrl": "https://seonn.dev/play/orbit-breaker",
-    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/orbit-breaker",
-    "createdAt": "2026-09",
-    "featured": true,
-    "order": 33
+    "playUrl": "https://diep-io-indol.vercel.app",
+    "githubUrl": "https://github.com/inhyk/diep.io",
+    "createdAt": "2026-04",
+    "thumbnail": "",
+    "screenshots": [],
+    "featured": false,
+    "order": 4
   },
   {
-    "slug": "valorant-protocol",
-    "title": "VALORANT // PROTOCOL",
-    "description": "항구 전장에서 펼치는 1인칭 전술 슈팅. 한 발로 라운드를 바꾸세요.",
-    "longDescription": "발로란트에서 영감을 받은 1인칭 3D 전술 슈팅 팬 게임입니다. 직접 만든 항구 전장 HARBOR에서 AI 수비팀을 상대하며 3라운드를 먼저 가져오세요. 밴달과 팬텀 중 주 무기를 고르고, 헤드샷과 정밀 조준으로 적을 제압할 수 있습니다. 대시로 엄폐물을 넘나들고 연막으로 시야를 차단하며 회복으로 위기를 버티세요. 적을 모두 처치하거나 A 지점에 스파이크를 설치한 뒤 25초 동안 해체를 막으면 승리합니다. 연습·일반·도전 난이도, 권총 전환과 재장전, 미니맵, 마우스 감도 조절, 모바일 멀티터치와 난이도별 최고 처치 기록을 지원합니다. 원작의 이미지·음성·모델 없이 만든 비공식 싱글플레이 팬 게임입니다.",
-    "emoji": "🎯",
-    "thumbnail": "/images/games/valorant-protocol-thumb.png",
-    "screenshots": [
-      "/images/games/valorant-protocol-thumb.png",
-      "/images/games/valorant-protocol-arena.png",
-      "/images/games/valorant-protocol-smoke.png"
-    ],
+    "slug": "rhythm-game",
+    "title": "Rhythm Game",
+    "description": "떨어지는 노트에 맞춰 키를 누르는 리듬 게임",
+    "longDescription": "4키 낙하형 리듬 게임입니다. 화면 위에서 떨어지는 노트에 맞춰 타이밍에 키를 눌러 점수를 얻으세요. EDM Demo, First Step(EASY)부터 EDM NIGHTMARE(Lv.12)까지 6개의 곡이 준비되어 있고, 롱노트도 지원합니다. 스페이스바로 시작/일시정지, 좌우 화살표로 곡을 변경할 수 있습니다. TypeScript와 PixiJS로 렌더링하고, Vite로 빌드했습니다.",
+    "emoji": "🎵",
+    "thumbnail": "/images/games/rhythm-game-thumb.jpg",
+    "screenshots": [],
     "techStack": [
-      "JavaScript",
-      "Babylon.js",
-      "WebGL",
-      "Web Audio",
+      "TypeScript",
+      "PixiJS",
       "Vite"
     ],
-    "category": "슈팅",
-    "playUrl": "/play/valorant",
-    "createdAt": "2026-09",
+    "category": "리듬",
+    "playUrl": "https://ih-music-game.vercel.app",
+    "githubUrl": "https://github.com/inhyk/rhythm-game",
+    "createdAt": "2026-01",
     "featured": true,
-    "order": 34
+    "order": 2
   },
   {
-    "slug": "keycap-tower",
-    "title": "키캡 타워 · KEYCAP TOWER",
-    "description": "키캡을 밟을 때마다 스피드 +1! 트로피로 아이템·스킨·트레일을 사고 50개 월드의 3D 키캡 타워를 올라가요.",
-    "longDescription": "로블록스 키보드 타워류 게임을 분석해서 새로 만든 3D 성장 점프맵입니다. 기둥을 감고 올라가는 나선 타워의 키캡을 밟을 때마다 스피드가 오르고, 스피드가 쌓이면 레벨이 올라 더 높은 스테이지의 문이 열립니다. 스테이지 끝의 노란 버튼을 밟으면 트로피를 받고, 트로피로 발걸음 힘·트로피 배수·러닝머신 효율·달리기·점프력 스탯을 올립니다. 아이템 상점에서는 초콜릿(1.5배), 키캡(3.0배), 큰 키캡(10.0배)을 사서 스피드 배수를 붙이고, 스킨 8가지와 트레일 5가지로 캐릭터를 꾸밉니다. 로비의 러닝머신 위에 서 있으면 스피드가 자동으로 오르며 월드마다 세 대씩 있습니다. 1월드 캔디 타워부터 50월드 전설의 키캡 타워까지 월드가 50개이고, 뒤로 갈수록 스테이지가 늘어 타워가 높아집니다. 1시간마다 10분 동안 트로피 2배 이벤트가 열립니다. 움직이는 키, 오르내리는 키, 사라지는 ? 키, 빨간 DEL 키, 회전 막대, 쫓아오는 ESC 괴물, 황금 키캡이 나옵니다. 환생하면 스피드가 0이 되는 대신 얻는 스피드가 영원히 2배가 됩니다. WASD 또는 방향키로 달리고 Space로 점프, 드래그로 시점을 돌립니다. 모바일은 조이스틱과 점프 버튼을 쓰고 진행은 자동 저장됩니다. 원작의 이미지·모델·음원 없이 만든 비공식 팬 게임입니다.",
-    "emoji": "⌨️",
-    "thumbnail": "/images/games/keycap-tower-thumb.png",
-    "screenshots": [
-      "/images/games/keycap-tower-thumb.png",
-      "/images/games/keycap-tower-items.png",
-      "/images/games/keycap-tower-treadmill.png",
-      "/images/games/keycap-tower-stats.png",
-      "/images/games/keycap-tower-neon.png",
-      "/images/games/keycap-tower-lava.png",
-      "/images/games/keycap-tower-galaxy.png",
-      "/images/games/keycap-tower-world27.png"
-    ],
+    "slug": "ginginbam",
+    "title": "긴긴밤",
+    "description": "선택이 운명을 바꾸는 인터랙티브 비주얼 노벨",
+    "longDescription": "긴긴밤(The Long, Long Night)은 텍스트 기반의 인터랙티브 스토리 게임입니다. 플레이어의 선택에 따라 이야기가 달라지며, 희망 게이지를 관리하면서 긴 밤을 헤쳐 나가야 합니다. 5가지 테마 스킨(밤, 황혼, 겨울, 벚꽃, 오래된 책), 인벤토리 시스템, 숨겨진 이스터에그, 그리고 PeerJS 기반 멀티플레이어까지 지원합니다. 순수 HTML, CSS, JavaScript만으로 만들었습니다.",
+    "emoji": "🌙",
+    "thumbnail": "/images/games/ginginbam-thumb.jpg",
+    "screenshots": [],
     "techStack": [
       "JavaScript",
-      "Babylon.js",
-      "WebGL",
-      "Web Audio"
+      "HTML",
+      "CSS",
+      "PeerJS"
     ],
-    "category": "액션",
-    "playUrl": "/play/keycap-tower",
-    "createdAt": "2026-10",
+    "category": "비주얼 노벨",
+    "playUrl": "https://ginbamm.vercel.app",
+    "githubUrl": "https://github.com/inhyk/ginginbam-game-v2",
+    "createdAt": "2026-02",
     "featured": true,
-    "order": 45,
-    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/keycap-tower"
+    "order": 1
   }
 ]
