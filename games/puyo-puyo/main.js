@@ -18,7 +18,7 @@ import { calendarBonus, todayKey } from './calendar.mjs';
 import { DAILY_REWARDS, SPIN_PRIZES, TIME_REWARDS, AD_SECONDS, rewardPreview, grantReward, rewardView, claimDaily, spin, addPlayTime, claimTime, adView, claimAd } from './rewards.mjs';
 import { createCreatorSession } from './creator.mjs';
 import { drawCharacter, drawGarbageIcon } from './characters.mjs';
-import { drawPreview } from './skins.mjs';
+import { drawPreview, drawSkinLayer, PALETTE } from './skins.mjs';
 import { Effects } from './effects.mjs';
 import { GARBAGE_ICONS } from './core.mjs';
 import { createOnline } from './online.mjs';
@@ -669,13 +669,13 @@ function startGame(cfg) {
   demo = null;
   game = { ...cfg, tracked: 0, started: performance.now(), warned: false };
   const seed = cfg.seed ?? ((Math.random() * 2 ** 31) | 0);
-  match = new Match({ seed, colors: cfg.colors, minGroup: cfg.minGroup, gravityScale: cfg.gravityScale, target: cfg.target, specs: cfg.specs, firstTo: cfg.firstTo || 1, solo: cfg.mode === 'solo' || cfg.mode === 'practice', online: cfg.online || null, makeRemote: cfg.makeRemote, brain });
+  match = new Match({ seed, colors: cfg.colors, minGroup: cfg.minGroup, gravityScale: cfg.gravityScale, target: cfg.target, specs: cfg.specs, firstTo: cfg.firstTo || 1, solo: cfg.mode === 'solo' || cfg.mode === 'practice', online: cfg.online || null, makeRemote: cfg.makeRemote, brain, timing: cfg.timing, steady: !!cfg.lab });
   if (cfg.slow && match.ai[1]) match.ai[1].slow = cfg.slow;
   renderer.setTheme(cfg.sky ? nowSky().id : cfg.theme || 'default');
   if (cfg.mode !== 'practice') endPractice();
   // 둘이 겨루는 판에는 맨 위에 방해 뿌요 힘겨루기 막대 (기획서 2번 그림 「나 ⚡ 상대」). 2인 플레이는 두 사람 이름으로.
   const clash = match.solo ? null : { names: cfg.mode === 'local' ? cfg.views.map((v, i) => v.name || `${i + 1}P`) : ['나', '상대'] };
-  renderer.setup(cfg.views, { solo: cfg.mode === 'solo' || cfg.mode === 'practice', ghost: P().settings.ghost !== false, insets: computeInsets(), clash, duel: cfg.mode === 'online' });
+  renderer.setup(cfg.views, { solo: cfg.mode === 'solo' || cfg.mode === 'practice', ghost: P().settings.ghost !== false, insets: computeInsets(), clash, duel: cfg.mode === 'online', lab: !!cfg.lab });
   if (cfg.sky) toast(skyText(nowSky()));
   hideScreens();
   $('hud').hidden = false;
@@ -750,6 +750,7 @@ $('solo-start').onclick = () => { sound.sfx('click'); startSolo(); };
 // ---------- 뿌요뿌요 배우기 (초급 = 처음 하는 사람의 연습하기, 그리고 중급 → 상급 → 최상급) ----------
 function startPractice(index = 0, grade = 0) {
   if (!GRADES[grade]?.lessons[index]) { grade = 0; index = 0; }
+  endLab();
   startGame({
     mode: 'practice', title: grade ? `🎓 ${GRADES[grade].name} 배우기` : '🐣 연습하기', theme: 'meadow', music: 'menu', firstTo: 1, gravityScale: 0.6,
     specs: [{ kind: 'human' }], views: [myView()],
@@ -813,6 +814,7 @@ function resetLessonField(p, lesson) {
   if (p.state !== 'ready') { p.state = 'spawn'; p.timer = 1; }
 }
 function practiceEvent(e) {
+  if (practice?.lab) return labEvent(e);
   if (!practice || practice.freeze) return;
   const lesson = lessonNow(), lessons = lessonsNow();
   const verdict = judge(lesson, practice.judge, e);
@@ -833,8 +835,169 @@ function practiceEvent(e) {
     setTimeout(() => { if (practice && game?.mode === 'practice') setLesson(practice.index, practice.grade, practice.fails + 1); }, 2200);
   }
 }
+// ---------- 직접 놓아 보는 배우기 (인혁이 기획서 2026-10-11 3번) ----------
+// "예를 들어 파랑뿌요랑 빨강 뿌요 등을 놓아 연쇄할 수 있게 놓고 실행하면 하나씩 터지며 연쇄가 되면서 배우는 거야!"
+// 색을 골라 마음대로 놓는 동안에는 터지지 않고(core.mjs 의 hold), ▶ 실행을 누르면 천천히 한 번씩 터진다.
+// 그림: 왼쪽에 큰 필드, 오른쪽 위에 놓을 뿌요 칸, 그 아래 칸들(▶ 실행, ↩ 무르기, 🧹 처음부터).
+const LAB_TIMING = { popFrames: 58, chainPause: 26 }; // 하나씩 터지는 것이 잘 보이게 보통보다 천천히
+const LAB_COLORS = [1, 2, 3, 4, 5], LAB_NAME = ['', '빨강', '초록', '파랑', '노랑', '보라'];
+let lab = null; // { colors: [아래, 위], history: [놓을 때마다 적어 둔 필드], running, chain: 지금까지 가장 긴 연쇄, ran: 방금 실행했는지 }
+let labColors = [1, 3], labPlace = '';
+function startLab() {
+  startGame({
+    mode: 'practice', lab: true, title: '🧪 직접 놓아 보는 배우기', theme: 'meadow', music: 'menu', firstTo: 1, gravityScale: 0.6, timing: LAB_TIMING,
+    specs: [{ kind: 'human' }], views: [myView()],
+  });
+  game.tracked = -1; // 마음대로 만든 연쇄는 챌린지와 기록에 세지 않는다
+  practice = { lab: true, grade: 1, index: 0, freeze: false }; // grade 1: 나가면 배우기 목록으로
+  lab = { colors: labColors, history: [], running: false, chain: 0, ran: false };
+  const p = match.players[0];
+  p.sandbox = true; p.hold = true;
+  match.phase = 'play'; match.timer = 0; p.start(); // 준비~ 3, 2, 1 없이 바로 놓는다
+  $('lab-panel').hidden = false;
+  labPlace = '';
+  labSay('마음대로 놓아 봐!', `오른쪽에서 뿌요 색을 고르고 ${coarse ? '아래 단추로' : '화살표 키로'} 놓아. 같은 색이 4개 붙어도 아직 안 터져! 다 놓았으면 ▶ 실행을 눌러 봐.`);
+  paintLab();
+}
+function endLab() {
+  if (!lab) return;
+  lab = null;
+  $('lab-panel').hidden = true;
+}
+function labSay(title, text, mood = 'idle') { showCoach({ step: '🧪 직접 놓아 보기', title, text, mood }); }
+// 필드 옆 칸을 그림처럼 필드 오른쪽에 둔다 (화면 크기나 말풍선 높이가 바뀌면 필드도 움직인다)
+function placeLab() {
+  const l = renderer.layout, f = l?.fields?.[0];
+  if (!f || !l.solo) return;
+  const c = f.cell, place = `${Math.round(f.x + c * 6.4)}|${Math.round(f.y - c * 0.3)}|${Math.round(c * 3.9)}|${c}`;
+  if (place === labPlace) return;
+  labPlace = place;
+  const s = $('lab-panel').style;
+  s.left = `${Math.round(f.x + c * 6.4)}px`; s.top = `${Math.round(f.y - c * 0.3)}px`; s.width = `${Math.round(c * 3.9)}px`;
+  s.setProperty('--c', `${c}px`);
+}
+function paintLab() {
+  if (!lab) return;
+  const p = match?.players[0], skin = P().equip.skin;
+  // 놓을 뿌요: 지금 쓰는 스킨으로 위·아래를 그린다
+  const cv = $('lab-pair'), ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  [[lab.colors[1], 52], [lab.colors[0], 148]].forEach(([color, y]) => {
+    for (const layer of ['body', 'face']) { ctx.save(); ctx.translate(60, y); drawSkinLayer(ctx, skin, color, 38, layer, 0); ctx.restore(); }
+  });
+  for (const [id, slot] of [['lab-top', 1], ['lab-bottom', 0]]) {
+    const box = $(id);
+    box.innerHTML = '';
+    for (const color of LAB_COLORS) {
+      const b = document.createElement('button');
+      b.className = lab.colors[slot] === color ? 'on' : '';
+      b.dataset.color = String(color);
+      b.style.setProperty('--dot', PALETTE[color].base);
+      b.setAttribute('aria-label', `${slot ? '위' : '아래'} ${LAB_NAME[color]}`);
+      b.setAttribute('aria-pressed', String(lab.colors[slot] === color));
+      b.onclick = () => { b.blur(); sound.sfx('click'); labPick(slot, color); };
+      box.append(b);
+    }
+  }
+  const ready = !!p && (p.state === 'control' || p.state === 'full') && !lab.running;
+  $('lab-run').disabled = !ready || !p.cells.some(Boolean);
+  $('lab-undo').disabled = lab.running || lab.history.length < 2;
+  $('lab-undo').textContent = lab.ran ? '⏪ 터지기 전으로' : '↩ 무르기';
+  $('lab-clear').disabled = lab.running || !p?.cells.some(Boolean);
+}
+// 색 고르기: 손에 든 짝도 바로 그 색으로 바뀐다
+function labPick(slot, color) {
+  if (!lab) return;
+  lab.colors[slot] = color;
+  const piece = match?.players[0]?.piece;
+  if (piece) { piece.a = lab.colors[0]; piece.c = lab.colors[1]; }
+  paintLab();
+}
+// 필드를 적어 둔 모양으로 되돌리고 새 짝부터
+function labLoad(cells) {
+  const p = match.players[0];
+  p.cells.fill(0);
+  if (cells) p.cells.set(cells);
+  p.refreshHeights();
+  Object.assign(p, { piece: null, falling: [], popping: null, chain: 0, chaining: false, incoming: 0, fired: false, hold: true });
+  p.land.clear();
+  if (p.state !== 'ready') { p.state = 'spawn'; p.timer = 1; }
+  renderer.effects.clear();
+}
+function labRun() {
+  if (!lab || lab.running || !match) return;
+  const p = match.players[0];
+  if (!p.fire()) return;
+  lab.running = true; lab.ran = false; lab.steps = 0;
+  sound.sfx('coin');
+  labSay('▶ 실행!', '같은 색이 4개 넘게 붙은 곳부터 하나씩 터져. 잘 봐!', 'attack');
+  paintLab();
+}
+function labUndo() {
+  if (!lab || lab.running || lab.history.length < 2) return;
+  lab.history.pop();
+  labLoad(lab.history.at(-1));
+  sound.sfx('rotate');
+  labSay(lab.ran ? '터지기 전으로 돌아왔어' : '하나 물렀어', lab.ran ? '모양을 조금 고쳐서 더 긴 연쇄를 만들어 봐. 다 고쳤으면 다시 ▶ 실행!' : '다시 놓아 봐. ↩ 무르기는 여러 번 누를 수 있어.');
+  lab.ran = false;
+  paintLab();
+}
+function labClear() {
+  if (!lab || lab.running) return;
+  lab.history = [];
+  lab.ran = false;
+  labLoad(null);
+  sound.sfx('rotate');
+  labSay('처음부터!', '빈 필드야. 계단처럼 쌓으면 연쇄가 길어져. 예를 들어 파랑 뿌요랑 빨강 뿌요를 번갈아 놓아 봐.');
+  paintLab();
+}
+function labEvent(e) {
+  if (!lab) return;
+  const p = match.players[0];
+  if (e.type === 'spawn') {
+    // 새 짝은 고른 색으로. 지금 필드를 적어 둔다 (무르기, 터지기 전으로)
+    p.piece.a = lab.colors[0]; p.piece.c = lab.colors[1];
+    const snap = p.cells.slice(), last = lab.history.at(-1);
+    if (!last || snap.some((v, i) => v !== last[i])) lab.history.push(snap);
+    if (lab.history.length > 300) lab.history.shift();
+    paintLab();
+  } else if (e.type === 'lock') {
+    lab.ran = false;
+  } else if (e.type === 'pop') {
+    lab.steps = e.chain;
+    const names = [...new Set(e.colors.map(c => LAB_NAME[c]).filter(Boolean))].join(', ');
+    labSay(`${e.chain}연쇄!`, `${names} 뿌요 ${e.puyos}개가 터졌어. 위에 있던 뿌요가 떨어져서 또 붙으면 다음 연쇄야!`, 'happy');
+  } else if (e.type === 'fireEnd') {
+    lab.running = false; lab.ran = e.chain > 0; // 터진 것이 있을 때만 "터지기 전으로"
+    if (!e.chain) labSay('아직 터질 게 없어', '같은 색 뿌요를 4개 넘게 붙여야 터져. 가로나 세로로 붙여 봐! (대각선은 안 붙어)', 'sad');
+    else {
+      const best = e.chain > lab.chain;
+      lab.chain = Math.max(lab.chain, e.chain);
+      sound.sfx('mission');
+      labSay(`${e.chain}연쇄 완성! ${e.chain >= 3 ? '🎉' : '✨'}`, `${best && e.chain > 1 ? '지금까지 가장 긴 연쇄야! ' : ''}${e.chain === 1 ? '한 번 터졌어. 터지고 나서 떨어진 뿌요가 또 붙게 놓으면 2연쇄가 돼.' : '터지고 떨어져서 또 터지는 게 연쇄야.'} ⏪ 터지기 전으로 돌아가서 고쳐 볼 수도 있어.`, 'happy');
+    }
+    paintLab();
+  } else if (e.type === 'full') {
+    // 꽉 찬 모양도 적어 둔다 (무르면 마지막에 놓은 짝 하나만 사라지게)
+    const snap = p.cells.slice(), last = lab.history.at(-1);
+    if (!last || snap.some((v, i) => v !== last[i])) lab.history.push(snap);
+    labSay('꽉 찼어!', '더 놓을 자리가 없어. ▶ 실행으로 터뜨리거나 ↩ 무르기, 🧹 처음부터를 눌러 줘.', 'sad');
+    paintLab();
+  }
+}
+// 단추를 누른 뒤에 스페이스·엔터가 그 단추를 또 누르지 않게 초점을 뗀다 (키보드는 뿌요를 움직이는 데 쓴다)
+for (const [id, fn] of [['lab-run', labRun], ['lab-undo', labUndo], ['lab-clear', labClear]]) $(id).onclick = e => { e.currentTarget.blur(); fn(); };
+// 놓을 뿌요 그림을 누르면 그 뿌요(위쪽 반은 위, 아래쪽 반은 아래)의 색이 다음 색으로 바뀐다. 손가락으로 누르기 쉽게.
+$('lab-pair').onclick = e => {
+  if (!lab) return;
+  const box = e.currentTarget.getBoundingClientRect(), slot = e.clientY - box.top < box.height / 2 ? 1 : 0;
+  sound.sfx('click');
+  labPick(slot, lab.colors[slot] % LAB_COLORS.length + 1);
+};
+$('lab-start').onclick = () => { sound.sfx('click'); startLab(); };
 // 연습 중에 쌓여서 지면 그 수업을 처음부터
 function practiceFail() {
+  if (practice?.lab) { setTimeout(() => { if (game?.mode === 'practice') startLab(); }, 900); return; }
   const index = practice?.index ?? 0, grade = practice?.grade ?? 0;
   setTimeout(() => { if (game?.mode === 'practice') startPractice(index, grade); }, 900);
 }
@@ -917,6 +1080,7 @@ function renderSchool() {
   if (now) list.scrollTop = Math.max(0, now.offsetTop - list.offsetTop - 12);
 }
 function endPractice() {
+  endLab();
   practice = null;
   $('coach').hidden = true;
   $('toasts').style.top = '';
@@ -1105,7 +1269,7 @@ function retry() {
   else if (g.mode === 'vs') startVs(g.level, g.firstTo, g.map);
   else if (g.mode === 'local') startLocal(g.firstTo, g.map);
   else if (g.mode === 'solo') startSolo(g.map);
-  else if (g.mode === 'practice') startPractice(practice?.index ?? 0, practice?.grade ?? 0);
+  else if (g.mode === 'practice') { if (practice?.lab) startLab(); else startPractice(practice?.index ?? 0, practice?.grade ?? 0); }
   else if (g.mode === 'online') roomNet().rematch();
 }
 
@@ -1117,6 +1281,7 @@ function loop(now) {
   last = now;
   const step = 1000 / 60;
   while (acc >= step) { acc -= step; tick(); }
+  if (lab) placeLab();
   // 대전하는 동안 아침 → 낮처럼 시간이 넘어가면 하늘도 바뀐다
   if (match && game?.sky && ++skyClock % 120 === 0) renderer.setTheme(nowSky().id);
   renderer.draw(match || demo, now / 1000);
@@ -3136,6 +3301,7 @@ window.render_game_to_text = () => JSON.stringify({
   clash: match && renderer.opts.clash ? { names: renderer.clashNames(), power: renderer.clash.power.slice(), lead: renderer.clash.lead, pos: Math.round(renderer.clash.pos * 1000) / 1000, fighting: renderer.clash.fighting, box: renderer.layout.clash } : null,
   chars: match ? renderer.views.map(v => v.char || null) : null,
   pets: P().pets, tickets: P().tickets, boostLeft: Math.ceil(boostLeft(P()) / 1000), friends: friendTotal(), bonus: { xp: currentBonus().xp, coins: currentBonus().coins },
+  lab: lab ? { colors: lab.colors.slice(), history: lab.history.length, running: lab.running, chain: lab.chain, hold: !!match?.players[0]?.hold, state: match?.players[0]?.state ?? null, cells: match ? Array.from(match.players[0].cells).filter(Boolean).length : 0 } : null,
   school: P().school, tutorial: P().tutorial, lesson: practice ? { grade: practice.grade, index: practice.index, freeze: practice.freeze } : null,
   net: account?.cloud ? { nickname: net.user?.nickname, cloud: cloud?.state ?? null, live: hub?.status ?? null } : null,
   online: online.state(),
@@ -3145,7 +3311,7 @@ window.render_game_to_text = () => JSON.stringify({
   } : null,
 });
 if (TEST) {
-  window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, get mailState() { return mailState; }, pollMail, friendNet, P, handleBack, store, startTower, startVs, startSolo, startLocal, startPractice, show, finishMatch, renderer, online, peerOnline, runEnding, recordPlayTime, pause, save,
+  window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, get mailState() { return mailState; }, pollMail, friendNet, P, handleBack, store, startTower, startVs, startSolo, startLocal, startPractice, startLab, show, finishMatch, renderer, online, peerOnline, runEnding, recordPlayTime, pause, save,
     get cloud() { return cloud; }, get social() { return hub; }, net, get watcher() { return watcher; }, sendStats,
     watchTalkOff, greetHi, get device() { return device; }, get roomLog() { return roomLog; }, sound,
     setSky(id) { skyForce = getSky(id); if (game?.sky) renderer.setTheme(nowSky().id); return nowSky().id; },
