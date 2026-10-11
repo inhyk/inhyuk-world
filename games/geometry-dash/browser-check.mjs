@@ -1,0 +1,46 @@
+import { chromium } from '../../tools/node_modules/playwright/index.mjs';
+import assert from 'node:assert/strict';
+const browser = await chromium.launch({channel:'chrome',headless:true});
+const url = process.env.DASH_TEST_URL || 'http://127.0.0.1:5194';
+const state = page => page.evaluate(() => JSON.parse(window.render_game_to_text()));
+const errors=[];
+try {
+  const page=await browser.newPage({viewport:{width:1440,height:1000}});
+  page.on('pageerror',e=>errors.push(e.message));
+  assert.equal((await page.goto(url)).status(),200);
+  await page.waitForFunction(()=>typeof window.render_game_to_text==='function');
+  await page.screenshot({path:'/tmp/geometry-desktop.png',fullPage:true});
+  await page.locator('#stage').screenshot({path:'public/images/games/geometry-dash-thumb.png'});
+  await page.locator('#start').click();assert.equal((await state(page)).mode,'playing');
+  await page.locator('#game').focus();await page.keyboard.press('Space');
+  await page.waitForTimeout(100);assert.ok((await state(page)).y>0);
+  await page.keyboard.press('KeyP');const paused=await state(page);assert.equal(paused.mode,'paused');
+  await page.waitForTimeout(250);assert.deepEqual(await state(page),paused);
+  await page.locator('#start').click();await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).mode==='dead');
+  assert.ok((await state(page)).best[0]>0);
+  await page.locator('#start').click();assert.equal((await state(page)).attempts,2);
+  await page.keyboard.press('KeyR');assert.equal((await state(page)).attempts,3);
+  await page.keyboard.press('KeyP');await page.locator('#sound').click();assert.equal(await page.locator('#sound').getAttribute('aria-pressed'),'true');
+  await page.locator('[data-level="1"]').click();assert.equal((await state(page)).level,1);
+  await page.locator('#practice').check();assert.equal((await state(page)).practice,true);
+  await page.locator('#start').click();await page.evaluate(()=>window.dispatchEvent(new Event('blur')));assert.equal((await state(page)).mode,'paused');
+  await page.reload();await page.waitForFunction(()=>typeof window.render_game_to_text==='function');assert.ok((await state(page)).best[0]>0);
+  const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  mobile.on('pageerror',e=>errors.push(e.message));await mobile.goto(url);await mobile.waitForFunction(()=>typeof window.render_game_to_text==='function');
+  assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await mobile.screenshot({path:'/tmp/geometry-mobile.png',fullPage:true});
+  assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  const bounds=await mobile.locator('#stage').boundingBox();assert.ok(bounds.x+bounds.width<=390);
+  await mobile.locator('#start').tap();await mobile.locator('#game').tap();await mobile.waitForTimeout(100);assert.ok((await state(mobile)).y>0);
+  await mobile.locator('#pause').tap();assert.equal((await state(mobile)).mode,'paused');
+  // Use response fixtures only for quick end-screen verification, never production cheats.
+  const ending=await browser.newPage();
+  await ending.route('**/core.mjs',async route=>{const response=await route.fetch();const body=(await response.text()).replace('length: 21000','length: 400');await route.fulfill({response,body});});
+  await ending.goto(url);await ending.waitForFunction(()=>typeof window.render_game_to_text==='function');await ending.locator('#start').click();
+  await ending.waitForFunction(()=>JSON.parse(window.render_game_to_text()).mode==='won');assert.equal((await state(ending)).progress,100);
+  assert.equal(await ending.locator('#title').innerText(),'LEVEL COMPLETE!');await ending.locator('#start').click();assert.equal((await state(ending)).level,1);
+  const blocked=await browser.newPage();await blocked.addInitScript(()=>{Object.defineProperty(window,'localStorage',{get(){throw new DOMException('blocked','SecurityError');}});});
+  await blocked.goto(url);await blocked.waitForFunction(()=>typeof window.render_game_to_text==='function');await blocked.locator('#start').click();assert.equal((await state(blocked)).mode,'playing');
+  assert.deepEqual(errors,[]);
+  console.log('PASS desktop: start, jump, pause, death, retry, restart, sound, stage selection, practice, blur, saved record; mobile: layout, touch, pause; victory, next track, blocked storage.');
+} finally {await browser.close();}
