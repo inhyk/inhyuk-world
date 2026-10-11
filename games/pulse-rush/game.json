@@ -1,0 +1,25 @@
+{
+  "slug": "pulse-rush",
+  "title": "펄스 러시 · PULSE RUSH",
+  "description": "10개의 오리지널 비트에 맞춰 D·F·J·K! 긴 HOLD 타일을 끝까지 누르고 퍼펙트와 풀 콤보에 도전해요.",
+  "longDescription": "100~174 BPM의 오리지널 전자음악 10곡을 직접 연주해 보세요. 멜로디·코드·베이스·드럼을 실시간 합성하며, 같은 악보에 맞춰 네 줄의 타일이 내려옵니다. 긴 HOLD 타일은 시작부터 끝까지 누르고 있어야 하며 중간에 놓으면 배드 판정이 납니다. 퍼펙트·그레잇·굿·배드·미스의 다섯 판정, 콤보와 점수, 곡별 최고 정확도 저장, 결과 등급, 재도전과 다음 곡, 음량 조절과 타이밍 보정, 일시정지와 전체 화면을 지원합니다. 키보드 D·F·J·K 또는 모바일 멀티터치로 플레이하세요.",
+  "emoji": "🎵",
+  "thumbnail": "/images/games/pulse-rush-thumb.png",
+  "screenshots": [
+    "/images/games/pulse-rush-1.png",
+    "/images/games/pulse-rush-2.png",
+    "/images/games/pulse-rush-3.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Canvas 2D",
+    "Web Audio"
+  ],
+  "category": "리듬",
+  "playUrl": "https://pulse-rush-five.vercel.app",
+  "createdAt": "2026-10",
+  "featured": true,
+  "order": 49,
+  "githubUrl": "https://github.com/inhyk/pulse-rush",
+  "repo": "inhyk/pulse-rush"
+}
