@@ -657,6 +657,7 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 .lab-dots { flex: 1; display: flex; justify-content: space-between; }
 .lab-dots button { width: calc(var(--c, 36px) * .44); height: calc(var(--c, 36px) * .44); min-width: 0; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55); background: var(--dot); box-shadow: none; }
 .lab-dots button.on { border-color: #fff; box-shadow: 0 0 0 2px #ffe45c; transform: scale(1.15); }
+.lab-maps-card { width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; }
 .lab-dots button.garbage { background: radial-gradient(circle at 35% 35%, #ffffff, #d3dbec 55%, #8e9ab6); } /* 방해 뿌요 */
 .lab-panel > button { padding: calc(var(--c, 36px) * .22) calc(var(--c, 36px) * .1); font-size: calc(var(--c, 36px) * .4); white-space: nowrap; }
 /* 뿌요 동영상 (기획서 2026-10-11 2번) */

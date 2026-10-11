@@ -847,10 +847,15 @@ const LAB_TIMING = { popFrames: 58, chainPause: 26 }; // 하나씩 터지는 것
 const LAB_COLORS = [1, 2, 3, 4, 5, 6], LAB_NAME = ['', '빨강', '초록', '파랑', '노랑', '보라', '방해'];
 let lab = null; // { colors: [아래, 위], history: [놓을 때마다 적어 둔 필드], running, chain: 지금까지 가장 긴 연쇄, ran: 방금 실행했는지 }
 let labColors = [1, 3], labPlace = '';
+// 맵 고르기 (2026-10-11 요청: "직접 놓아 보는 배우기에서 맵을 고를 수 있게 만들어줘"): 배경과, 몇 개가 붙어야 터지는지가 맵을 따른다.
+// 마음대로 놓아 보는 곳이라서 색은 어느 맵에서나 다섯 색과 방해 뿌요를 모두 고를 수 있고, 뿌요는 스스로 떨어지지 않는다.
+const labMap = () => getMap(P().settings.labMap);
+const labTitle = arena => (plainMap(arena) ? '🧪 직접 놓아 보는 배우기' : `🧪 직접 놓아 보기 · ${mapTitle(arena)}`);
 function startLab() {
+  const arena = labMap();
   startGame({
     // gravityScale 0: 뿌요가 스스로 떨어지지 않는다. 색을 고르는 동안 혼자 내려앉지 않게, 내릴 때(▼, 바로 떨어뜨리기)까지 기다린다.
-    mode: 'practice', lab: true, title: '🧪 직접 놓아 보는 배우기', theme: 'meadow', music: 'menu', firstTo: 1, gravityScale: 0, timing: LAB_TIMING,
+    mode: 'practice', lab: true, map: arena.id, title: labTitle(arena), theme: arena.theme, minGroup: arena.minGroup, music: 'menu', firstTo: 1, gravityScale: 0, timing: LAB_TIMING,
     specs: [{ kind: 'human' }], views: [myView()],
   });
   game.tracked = -1; // 마음대로 만든 연쇄는 챌린지와 기록에 세지 않는다
@@ -861,13 +866,14 @@ function startLab() {
   match.phase = 'play'; match.timer = 0; p.start(); // 준비~ 3, 2, 1 없이 바로 놓는다
   $('lab-panel').hidden = false;
   labPlace = '';
-  labSay('마음대로 놓아 봐!', `오른쪽에서 뿌요 색(회색은 방해 뿌요)을 고르고 ${coarse ? '◀ ▶ 로 옮겨서 ⤓ 로' : '← → 로 옮겨서 스페이스로'} 내려놓아. 뿌요는 네가 내릴 때까지 기다려! 같은 색이 4개 붙어도 아직 안 터져. 다 놓았으면 ▶ 실행!`);
+  labSay('마음대로 놓아 봐!', `오른쪽에서 뿌요 색(회색은 방해 뿌요)을 고르고 ${coarse ? '◀ ▶ 로 옮겨서 ⤓ 로' : '← → 로 옮겨서 스페이스로'} 내려놓아. 뿌요는 네가 내릴 때까지 기다려! 같은 색이 ${arena.minGroup}개 붙어도 아직 안 터져. 다 놓았으면 ▶ 실행!`);
   paintLab();
 }
 function endLab() {
   if (!lab) return;
   lab = null;
   $('lab-panel').hidden = true;
+  $('lab-maps-pop').hidden = true;
 }
 function labSay(title, text, mood = 'idle') { showCoach({ step: '🧪 직접 놓아 보기', title, text, mood }); }
 // 필드 옆 칸을 그림처럼 필드 오른쪽에 둔다 (화면 크기나 말풍선 높이가 바뀌면 필드도 움직인다)
@@ -905,6 +911,9 @@ function paintLab() {
       box.append(b);
     }
   }
+  const arena = labMap();
+  $('lab-map').textContent = `🗺️ ${arena.emoji} ${arena.name}`;
+  $('lab-map').disabled = lab.running;
   const ready = !!p && (p.state === 'control' || p.state === 'full') && !lab.running;
   $('lab-run').disabled = !ready || !p.cells.some(Boolean);
   $('lab-undo').disabled = lab.running || lab.history.length < 2;
@@ -977,8 +986,10 @@ function labEvent(e) {
     labSay(`${e.chain}연쇄!`, `${names} 뿌요 ${e.puyos}개가 터졌어.${swept} 위에 있던 뿌요가 떨어져서 또 붙으면 다음 연쇄야!`, 'happy');
   } else if (e.type === 'fireEnd') {
     lab.running = false; lab.ran = e.chain > 0; // 터진 것이 있을 때만 "터지기 전으로"
-    if (!e.chain && p.cells.includes(6)) labSay('아직 터질 게 없어', '방해 뿌요는 색이 없어서 저희끼리는 안 터져. 바로 옆에서 같은 색 뿌요 4개를 터뜨려야 같이 사라져!', 'sad');
-    else if (!e.chain) labSay('아직 터질 게 없어', '같은 색 뿌요를 4개 넘게 붙여야 터져. 가로나 세로로 붙여 봐! (대각선은 안 붙어)', 'sad');
+    const need = p.minGroup; // 이 맵에서 몇 개가 붙어야 터지는지 (쫀득 연구소는 6개)
+    const onlyGarbage = !p.cells.some(v => v && v !== 6);
+    if (!e.chain && onlyGarbage) labSay('아직 터질 게 없어', `방해 뿌요는 색이 없어서 저희끼리는 안 터져. 바로 옆에서 같은 색 뿌요 ${need}개를 터뜨려야 같이 사라져!`, 'sad');
+    else if (!e.chain) labSay('아직 터질 게 없어', `${need === 4 ? '' : `${labMap().name}에서는 `}같은 색 뿌요 ${need}개가 붙어야 터져. 가로나 세로로 붙여 봐! (대각선은 안 붙어)`, 'sad');
     else {
       const best = e.chain > lab.chain;
       lab.chain = Math.max(lab.chain, e.chain);
@@ -994,6 +1005,36 @@ function labEvent(e) {
     paintLab();
   }
 }
+// 맵 고르기 창: 고르면 바로 배경과 "몇 개가 붙어야 터지는지"가 바뀐다. 놓아 둔 뿌요는 그대로.
+function openLabMaps() {
+  if (!lab || lab.running) return;
+  const current = labMap();
+  $('lab-maps').innerHTML = MAPS.map(map => `<button class="map-card${map.id === current.id ? ' selected' : ''}" data-map="${map.id}" style="--map-color:${map.tint}" aria-pressed="${map.id === current.id}"><span>${map.emoji}</span><b>${map.name}</b><small>같은 색 ${map.minGroup}개가 붙으면 터져</small></button>`).join('');
+  $('lab-maps').querySelectorAll('button').forEach(button => { button.onclick = () => pickLabMap(button.dataset.map); });
+  $('lab-maps-pop').hidden = false;
+  controls.enabled = false; // 창이 떠 있는 동안에는 뿌요가 움직이지 않게
+}
+function closeLabMaps() {
+  if ($('lab-maps-pop').hidden) return;
+  $('lab-maps-pop').hidden = true;
+  if (lab && !paused) controls.enabled = true;
+}
+function pickLabMap(id) {
+  if (!lab || !match) return closeLabMaps();
+  const arena = getMap(id), p = match.players[0];
+  P().settings.labMap = arena.id; save();
+  sound.sfx('click');
+  renderer.setTheme(arena.theme);
+  p.minGroup = arena.minGroup; match.minGroup = arena.minGroup;
+  game.map = arena.id; game.theme = arena.theme; game.minGroup = arena.minGroup; game.title = labTitle(arena);
+  $('hud-title').textContent = game.title;
+  closeLabMaps();
+  labSay(`${arena.emoji} ${arena.name}!`, `맵을 ${arena.name}(으)로 바꿨어. 여기서는 같은 색 ${arena.minGroup}개가 붙으면 터져${arena.minGroup > 4 ? '. 4개나 5개는 안 터지니까 더 크게 모아 봐' : ''}! 놓아 둔 뿌요는 그대로야.`, 'happy');
+  paintLab();
+}
+$('lab-map').onclick = e => { e.currentTarget.blur(); sound.sfx('click'); openLabMaps(); };
+$('lab-maps-close').onclick = () => { sound.sfx('click'); closeLabMaps(); };
+$('lab-maps-pop').addEventListener('click', e => { if (e.target === e.currentTarget) closeLabMaps(); }); // 바깥을 누르면 닫는다
 // 단추를 누른 뒤에 스페이스·엔터가 그 단추를 또 누르지 않게 초점을 뗀다 (키보드는 뿌요를 움직이는 데 쓴다)
 for (const [id, fn] of [['lab-run', labRun], ['lab-undo', labUndo], ['lab-clear', labClear]]) $(id).onclick = e => { e.currentTarget.blur(); fn(); };
 // 놓을 뿌요 그림을 누르면 그 뿌요(위쪽 반은 위, 아래쪽 반은 아래)의 색이 다음 색으로 바뀐다. 손가락으로 누르기 쉽게.
@@ -1351,6 +1392,7 @@ function handleBack() {
   // 기록 고르기는 둘 중 하나를 골라야 끝난다 (뒤로 가기로 넘기지 않는다)
   if (!$('cloud-conflict').hidden) return true;
   if (!$('ask').hidden) { $('ask-cancel').click(); return true; }
+  if (!$('lab-maps-pop').hidden) { closeLabMaps(); return true; }
   if (!$('hi-pop').hidden) { $('hi-later').click(); return true; }
   if (!$('invite-pop').hidden) { $('invite-no').click(); return true; }
   if (!$('pet-pop').hidden) { $('pet-pop-ok').click(); return true; }
@@ -3438,7 +3480,7 @@ window.render_game_to_text = () => JSON.stringify({
   chars: match ? renderer.views.map(v => v.char || null) : null,
   pets: P().pets, tickets: P().tickets, boostLeft: Math.ceil(boostLeft(P()) / 1000), friends: friendTotal(), bonus: { xp: currentBonus().xp, coins: currentBonus().coins },
   video: video ? { id: VIDEOS[video.index].id, index: video.index, scene: video.run.index, caption: video.run.caption, frames: video.run.frames, done: video.run.done, paused: video.paused, seconds: videoSeconds(VIDEOS[video.index]) } : null,
-  lab: lab ? { colors: lab.colors.slice(), history: lab.history.length, running: lab.running, chain: lab.chain, hold: !!match?.players[0]?.hold, state: match?.players[0]?.state ?? null, cells: match ? Array.from(match.players[0].cells).filter(Boolean).length : 0 } : null,
+  lab: lab ? { map: labMap().id, minGroup: match?.players[0]?.minGroup ?? null, colors: lab.colors.slice(), history: lab.history.length, running: lab.running, chain: lab.chain, hold: !!match?.players[0]?.hold, state: match?.players[0]?.state ?? null, cells: match ? Array.from(match.players[0].cells).filter(Boolean).length : 0 } : null,
   school: P().school, tutorial: P().tutorial, lesson: practice ? { grade: practice.grade, index: practice.index, freeze: practice.freeze } : null,
   net: account?.cloud ? { nickname: net.user?.nickname, cloud: cloud?.state ?? null, live: hub?.status ?? null } : null,
   online: online.state(),

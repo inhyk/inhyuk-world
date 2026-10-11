@@ -28,7 +28,7 @@ test('새 스킨 12가지: 코인 스킨 10가지와 레벨 스킨 2가지가 �
   for (const id of NEW_COIN) { const item = SKINS.find(s => s.id === id); assert.ok(item.price >= 500 && item.price <= 4000 && item.level <= 20 && !item.noTicket, id); }
   assert.deepEqual(NEW_LEVEL.map(id => SKINS.find(s => s.id === id).level), [80, 90]);
   for (const item of SKINS) assert.ok(SKIN_IDS.includes(item.id), `${item.id} 그림 없음`);
-  assert.equal(EFFECTS.length, 21);
+  assert.equal(EFFECTS.length, 67); // 2026-10-11: 터짐 효과 21종 → 67종
 });
 
 test('레벨 스킨(다이아, 태양)은 그 레벨이 되어야 사고 교환권으로는 못 받는다. 코인 스킨은 교환권으로도 받는다', () => {

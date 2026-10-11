@@ -64,7 +64,7 @@ test('혜성을 깨야 노바 해제, 노바의 첫 보상·재도전 보상·�
 
 test('새 스킨은 실제 그림이 있고 교환권은 원하는 판매 상품만 한 번 해제한다', () => {
   for (const item of SKINS) assert.ok(SKIN_IDS.includes(item.id), item.id);
-  assert.equal(SKINS.length, 87); assert.equal(EFFECTS.length, 21); // 업그레이드 6: 스킨 33종 → 45종, 업그레이드 7: 57종
+  assert.equal(SKINS.length, 87); assert.equal(EFFECTS.length, 67); // 업그레이드 6: 스킨 33종 → 45종, 업그레이드 7: 57종, 2026-10-11: 효과 21종 → 67종
   const p = newProgress(); p.tickets.skin = 2; p.tickets.effect = 1;
   assert.equal(canRedeem(p, 'skin', 'aurora'), false);
   assert.equal(canRedeem(p, 'effect', 'nova'), false);
@@ -79,7 +79,7 @@ test('새 스킨은 실제 그림이 있고 교환권은 원하는 판매 상품
 test('고난이도 레벨 상품은 그 레벨이 되어야 코인으로 사고, 교환권으로는 받을 수 없다', () => {
   const hardSkins = SKINS.filter(s => s.noTicket), hardEffects = EFFECTS.filter(s => s.noTicket);
   assert.deepEqual(hardSkins.map(s => s.level), [30, 40, 50, 60, 70, 99, 80, 90, 85, 95, 45, 65]); // 업그레이드 6: 다이아(80), 태양(90), 업그레이드 7: 용암(85), 블랙홀(95), 업그레이드 8: 얼음(45), 무지개(65)
-  assert.deepEqual(hardEffects.map(s => s.level), [30, 50]);
+  assert.deepEqual(hardEffects.map(s => s.level), [30, 50, 40, 60, 70, 80, 90, 99]); // 2026-10-11: 눈보라(40), 천둥 구름(60), 빅뱅(70), 불사조 날개(80), 보물 폭발(90), 전설의 빛(99)
   const p = newProgress(); p.tickets.skin = 5; p.tickets.effect = 5; p.coins = 1e6;
   for (const item of hardSkins) {
     assert.equal(canRedeem(p, 'skin', item.id), false, item.id);
