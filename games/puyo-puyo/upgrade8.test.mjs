@@ -1,11 +1,20 @@
-// 인혁이 기획서 「뿌요뿌요 (업그레이드)」(2026-10-11) 3번 직접 놓아 보는 배우기의 규칙:
-// "예를 들어 파랑뿌요랑 빨강 뿌요 등을 놓아 연쇄할 수 있게 놓고 실행하면 하나씩 터지며 연쇄가 되면서 배우는 거야!"
-// 놓는 동안에는 터지지 않고(hold), 실행(fire)하면 그때 연쇄가 시작된다. 꽉 차도 지지 않는다(sandbox).
+// 인혁이 기획서 「뿌요뿌요 (업그레이드)」(2026-10-11)의 규칙.
+// 3번 직접 놓아 보는 배우기: "예를 들어 파랑뿌요랑 빨강 뿌요 등을 놓아 연쇄할 수 있게 놓고 실행하면 하나씩 터지며 연쇄가 되면서 배우는 거야!"
+//   놓는 동안에는 터지지 않고(hold), 실행(fire)하면 그때 연쇄가 시작된다. 꽉 차도 지지 않는다(sandbox).
+// 2번 뿌요 동영상: "빠르고 쉽게 배울 수 있는 뿌요 동영상을 넣어줘" (대본대로 진짜 필드에서 놓아 보인다)
+// 1번 스킨: "스킨 많~~~이 넣어줘야" (30가지)
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Player, parseField, fieldRows, idx, SPAWN_X, SPAWN_Y, TIMING } from './core.mjs';
 import { Match } from './match.mjs';
 import { computeLayout } from './render.mjs';
+import { VIDEOS, VideoRun, playVideo, videoSeconds, lengthText, clock, readFrames, getVideo, VIDEO_TIMING, VIDEO_GRAVITY, VIDEO_SEED } from './videos.mjs';
+import { SKINS, canBuy, canRedeem } from './shop.mjs';
+import { SKIN_IDS, SKIN_STYLE } from './skins.mjs';
+import { newProgress } from './profile.mjs';
+import { cloudPayload } from './cloud.mjs';
+import { maxProgress, bytes } from './save-size.fixture.mjs';
+import { SAVE_MAX_BYTES } from '../../services/net/src/saves.js';
 
 const seqOf = (...pairs) => ({ seed: 0, colors: 4, palette: [1, 2, 3, 4], puyos: pairs.flat() });
 function run(p, until, max = 4000, input = {}, ctx = {}) {
@@ -153,3 +162,138 @@ test('parseField 로 만든 모양도 실행하면 연쇄 수가 맞다 (3연쇄
   assert.deepEqual(events(p, 'pop').map(e => e.chain), [1, 2, 3]);
   assert.equal(events(p, 'allClear').length, 1);
 });
+
+// ---------- 2번: 뿌요 동영상 ----------
+test('동영상 여섯 편: 그림처럼 첫 편은 「연쇄 잘하는 법」, 목록에는 「연쇄 잘하는 법은?」과 「대전 방법」', () => {
+  assert.equal(VIDEOS.length, 6);
+  assert.equal(new Set(VIDEOS.map(v => v.id)).size, 6);
+  assert.deepEqual(VIDEOS.slice(0, 2).map(v => [v.title, v.ask]), [['연쇄 잘하는 법', '연쇄 잘하는 법은?'], ['대전 방법', '대전 방법']]);
+  for (const v of VIDEOS) {
+    assert.ok(v.title && v.ask && v.desc && v.emoji, v.id);
+    assert.ok(v.keep.length >= 3 && v.keep.length <= 4, `${v.id} 외울 것`);
+    assert.ok(v.scenes.length >= 5, v.id);
+    assert.ok(v.scenes[0].say && v.scenes.at(-1).say && !v.scenes.at(-1).put, `${v.id} 시작과 끝은 말로`);
+    for (const scene of v.scenes) {
+      if (scene.say) assert.ok([...scene.say].length <= 72, `${v.id} 자막이 너무 길다: ${scene.say}`);
+      if (scene.put) { assert.equal(scene.put.length, 2); assert.ok(scene.put.every(c => c >= 1 && c <= 5)); assert.ok(scene.at[0] >= 0 && scene.at[0] <= 5 && [0, 1, 2, 3].includes(scene.at[1])); }
+    }
+    assert.equal(getVideo(v.id), v);
+  }
+  assert.equal(getVideo('없는영상'), null);
+});
+
+test('동영상을 끝까지 틀면 대본에 적은 연쇄가 그대로 나온다 (빠르고 쉽게: 한 편에 30초~1분 30초)', () => {
+  const chains = {};
+  for (const v of VIDEOS) {
+    const r = playVideo(v);
+    const by = type => r.events.filter(e => e.type === type);
+    assert.equal(r.done, true, v.id);
+    assert.equal(by('full').length, 0, `${v.id} 꽉 차지 않는다`);
+    assert.equal(by('dead').length, 0);
+    assert.equal(r.incoming, 0, `${v.id} 예고된 방해 뿌요가 남지 않는다`);
+    chains[v.id] = by('chainEnd').map(e => e.chain);
+    assert.equal(Math.max(...chains[v.id]), v.chain, `${v.id} 가장 긴 연쇄`);
+    // 가장 긴 연쇄는 마지막으로 놓는 장면에서 일어난다
+    const lastPut = v.scenes.findLastIndex(scene => scene.put);
+    assert.equal(by('chainEnd').at(-1).scene, lastPut, `${v.id} 발화는 마지막 짝`);
+    const seconds = videoSeconds(v);
+    assert.equal(seconds, Math.ceil(r.frames / 60));
+    assert.ok(seconds >= 25 && seconds <= 90, `${v.id} ${seconds}초`);
+  }
+  assert.deepEqual(chains, { chain: [3], battle: [1, 3], move: [1], stairs: [6], sandwich: [3], allclear: [2] });
+});
+
+test('「대전 방법」: 방해 뿌요 6개가 떨어지고, 옆에서 터뜨리면 사라지고, 예고된 12개는 3연쇄로 모두 상쇄된다', () => {
+  const v = getVideo('battle'), r = playVideo(v);
+  const by = type => r.events.filter(e => e.type === type);
+  assert.deepEqual(by('garbage').map(e => e.count), [6]);           // 처음 예고한 6개만 떨어진다
+  assert.deepEqual(by('incoming').map(e => e.amount), [6, 12]);
+  const first = by('pop')[0];
+  assert.equal(first.garbage, 2);                                     // 빨강 4개 옆의 방해 뿌요 2개가 같이 사라진다
+  const offsets = by('offset').map(e => e.amount);
+  assert.equal(offsets.reduce((a, b) => a + b, 0), 12);               // 12개를 모두 상쇄
+  assert.ok(offsets.some(n => n >= 6), '화면에 「상쇄!」가 뜨는 크기');
+  assert.equal(r.cells.some(Boolean), false);                         // 끝나면 필드가 비어 있다
+});
+
+test('「전소를 노려 봐」는 전소로 끝나고, 「뿌요 움직이는 법」은 눕히기와 뒤집기를 보여 준다', () => {
+  const all = playVideo(getVideo('allclear'));
+  assert.equal(all.events.filter(e => e.type === 'allClear').length, 1);
+  assert.equal(all.cells.some(Boolean), false);
+  const move = getVideo('move');
+  assert.deepEqual(move.scenes.filter(s => s.put).map(s => s.at[1]), [0, 1, 2, 1]); // 세워서, 눕혀서, 뒤집어서, 눕혀서
+  const r = playVideo(move);
+  assert.equal(r.events.filter(e => e.type === 'rotate').length >= 4, true);
+  assert.equal(r.events.filter(e => e.type === 'move').length >= 4, true);
+});
+
+test('동영상은 볼 때마다 똑같고, 자막을 읽는 동안에는 손에 든 짝이 떨어지지 않는다', () => {
+  for (const v of VIDEOS.slice(0, 3)) {
+    const a = playVideo(v), b = playVideo(v);
+    assert.equal(a.frames, b.frames);
+    assert.deepEqual(a.events.map(e => `${e.frame}:${e.type}`), b.events.map(e => `${e.frame}:${e.type}`));
+  }
+  // 화면에서 트는 것과 같은 순서로 한 프레임씩
+  const match = new Match({ seed: VIDEO_SEED, specs: [{ kind: 'human' }], solo: true, steady: true, gravityScale: VIDEO_GRAVITY, timing: VIDEO_TIMING });
+  const p = match.players[0];
+  p.sandbox = true; match.phase = 'play'; match.timer = 0; p.start();
+  const run = new VideoRun(VIDEOS[0]);
+  let captions = 0, shown = 0, frozenFrames = 0;
+  while (!run.done && run.frames < 60 * 300) {
+    const input = run.step(p);
+    match.gravityScale = run.frozen ? 0 : VIDEO_GRAVITY;
+    const before = p.state === 'control' && p.piece ? p.piece.y : null;
+    match.step([input]);
+    match.events.length = 0;
+    if (run.frozen && before !== null && p.state === 'control' && p.piece) { assert.equal(p.piece.y, before); frozenFrames++; }
+    if (run.captionNo !== shown) { shown = run.captionNo; captions++; assert.equal(run.caption, VIDEOS[0].scenes[run.index].say); }
+  }
+  assert.equal(captions, VIDEOS[0].scenes.filter(s => s.say).length);
+  assert.ok(frozenFrames > 600);
+  assert.deepEqual(run.step(p), {}); // 끝난 뒤에는 아무것도 누르지 않는다
+});
+
+test('동영상 길이와 시계 글자', () => {
+  assert.equal(lengthText(82), '1분 22초'); // 그림의 길이 표시와 같은 모양
+  assert.equal(lengthText(60), '1분'); assert.equal(lengthText(48), '48초');
+  assert.equal(clock(0), '0:00'); assert.equal(clock(82.9), '1:22'); assert.equal(clock(9), '0:09');
+  assert.ok(readFrames('긴 자막은 더 오래 보여 준다') > readFrames('짧게'));
+  assert.equal(readFrames(''), 80);
+  assert.deepEqual(VIDEOS.map(v => lengthText(videoSeconds(v))).every(t => /^(\d분( \d+초)?|\d+초)$/.test(t)), true);
+});
+
+// ---------- 1번: 스킨 많이 ----------
+const NEW_COIN = ['balloon', 'hamster', 'mouse', 'duck', 'glasses', 'chef', 'onigiri', 'owl', 'monkey', 'cow', 'sheep', 'cowboy', 'clown', 'lion', 'elephant', 'present',
+  'deer', 'princess', 'hedgehog', 'headphone', 'turtle', 'santa', 'crab', 'vampire', 'jellyfish', 'mummy', 'hero', 'dice'];
+const NEW_LEVEL = ['ice', 'rainbow'];
+test('새 스킨 30가지: 코인 스킨 28가지와 레벨 스킨 2가지(45·65레벨)가 상점에 있고 그림도 있다 (모두 87종)', () => {
+  assert.equal(NEW_COIN.length + NEW_LEVEL.length, 30);
+  assert.equal(SKINS.length, 87);
+  assert.equal(new Set(SKINS.map(s => s.id)).size, SKINS.length);
+  assert.equal(new Set(SKINS.map(s => s.name)).size, SKINS.length);
+  for (const id of [...NEW_COIN, ...NEW_LEVEL]) {
+    const item = SKINS.find(s => s.id === id);
+    assert.ok(item, id);
+    assert.ok(SKIN_IDS.includes(id), `${id} 그림`);
+    assert.equal(SKIN_STYLE[id].connect, false);
+    assert.ok(item.name.endsWith('뿌요') && item.desc.length > 5, id);
+  }
+  for (const id of NEW_COIN) { const item = SKINS.find(s => s.id === id); assert.ok(item.price >= 500 && item.price <= 4000 && item.level <= 20 && !item.noTicket, id); }
+  assert.deepEqual(NEW_LEVEL.map(id => { const item = SKINS.find(s => s.id === id); return [item.level, item.noTicket]; }), [[45, true], [65, true]]);
+  for (const item of SKINS) assert.ok(SKIN_IDS.includes(item.id), `${item.id} 그림 없음`);
+});
+
+test('새 레벨 스킨(얼음, 무지개)은 그 레벨이 되어야 사고 교환권으로는 못 받는다. 스킨을 다 모아도 저장은 한도의 반 안쪽', () => {
+  const p = newProgress();
+  Object.assign(p, { level: 44, coins: 999999 }); p.tickets.skin = 5;
+  assert.equal(canBuy(p, 'skin', 'ice'), 'level');
+  p.level = 45;
+  assert.equal(canBuy(p, 'skin', 'ice'), 'ok');
+  assert.equal(canRedeem(p, 'skin', 'ice'), false);
+  assert.equal(canBuy(p, 'skin', 'rainbow'), 'level');
+  assert.equal(canRedeem(p, 'skin', 'lion'), true);
+  const full = maxProgress({ social: false });
+  for (const s of SKINS) assert.ok(full.owned.skin.includes(s.id), `${s.id} (save-size.fixture)`);
+  assert.ok(bytes(cloudPayload(full)) < SAVE_MAX_BYTES / 2, `저장 ${bytes(cloudPayload(full))}바이트`);
+});
+

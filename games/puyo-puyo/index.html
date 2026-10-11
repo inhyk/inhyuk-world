@@ -368,8 +368,17 @@
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🎓 뿌요뿌요 배우기</h2></div>
     <p class="lead" id="school-lead">꼬마 뿌요랑 직접 해 보면서 배워. <b>초급</b>부터 <b id="school-last">졸업5</b>까지 차례로, 앞 등급을 끝내면 다음 등급이 열려! <span id="school-total"></span></p>
     <!-- 직접 놓아 보는 배우기 (기획서 2026-10-11 3번) -->
+    <!-- 뿌요 동영상 (기획서 2026-10-11 2번) -->
+    <div id="video-card" class="lab-card video-card"><div class="em">🎬</div><div><h3>뿌요 동영상</h3><p>빠르고 쉽게 배울 수 있는 동영상. <b>보기만 하면 돼!</b></p></div><button id="videos-open" class="primary" data-go="videos">동영상 보기</button></div>
     <div id="lab-card" class="lab-card"><div class="em">🧪</div><div><h3>직접 놓아 보는 배우기</h3><p>뿌요 색을 골라 마음대로 놓고 <b>▶ 실행</b>! 하나씩 터지면서 연쇄가 되는 걸 보고 배워.</p></div><button id="lab-start" class="primary">놓아 보기!</button></div>
     <ol id="school-list" class="school-list"></ol>
+  </section>
+
+  <!-- 뿌요 동영상 목록 (기획서 2026-10-11 2번) -->
+  <section id="scr-videos" class="screen" hidden>
+    <div class="head"><button class="ghost back" data-go="school">← 배우기</button><h2>🎬 뿌요 동영상</h2></div>
+    <p class="lead">빠르고 쉽게 배울 수 있는 동영상이야. 꼬마 뿌요가 놓는 걸 <b>보기만 하면 돼!</b></p>
+    <ol id="videos-list" class="school-list videos-list"></ol>
   </section>
 
   <!-- 제작자 모드 -->
@@ -530,6 +539,23 @@
   <button id="lab-run" class="primary">▶ 실행</button>
   <button id="lab-undo" class="ghost">↩ 무르기</button>
   <button id="lab-clear" class="ghost">🧹 처음부터</button>
+</div>
+
+<!-- 뿌요 동영상을 트는 동안 (기획서 2026-10-11 2번 그림: 가운데 필드, 왼쪽에 제목·외울 것·길이, 오른쪽에 다른 동영상) -->
+<div id="video-info" class="video-info" hidden>
+  <b id="video-title"></b>
+  <small>📌 외울 것</small>
+  <ol id="video-keep"></ol>
+  <i id="video-length"></i>
+</div>
+<div id="video-panel" class="lab-panel video-panel" hidden>
+  <div class="lab-box">
+    <b id="video-time">0:00</b>
+    <div class="video-bar" role="progressbar" aria-label="동영상 진행"><i id="video-fill"></i></div>
+  </div>
+  <button id="video-pause" class="primary">⏸ 멈춤</button>
+  <button id="video-again" class="ghost">🔁 처음부터</button>
+  <div id="video-others" class="video-others" aria-label="다른 동영상"></div>
 </div>
 
 <!-- 채팅 창: 친구 채팅(가운데)과 온라인 대전 채팅(게임 중에는 오른쪽 위에 작게) -->

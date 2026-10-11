@@ -613,7 +613,7 @@ export class Renderer {
 
   drawTray(ctx, match, player, i, time) {
     const tray = this.layout.tray[i];
-    if (!tray || match.solo) return;
+    if (!tray || (match.solo && !this.opts.video)) return; // 혼자 하는 판에는 예고 칸이 없다 (동영상 「대전 방법」에서는 보여 준다)
     const n = player.incoming || 0;
     const icons = garbageIcons(n, 6);
     const opp = match.players[1 - i];

@@ -222,7 +222,7 @@ test('혜성 엔딩: 첫 그림의 시각이 시작 시각보다 앞서도 1장�
 const NEW_COIN = ['puppy', 'pig', 'fox', 'koala', 'ladybug', 'watermelon', 'tiger', 'cloud', 'devil', 'angel'];
 const NEW_LEVEL = ['lava', 'blackhole'];
 test('새 스킨 12가지: 코인 스킨 10가지와 레벨 스킨 2가지(85·95레벨)가 상점에 있고 그림도 있다', () => {
-  assert.equal(SKINS.length, 57);
+  assert.equal(SKINS.length, 87); // 업그레이드 8 에서 30가지를 더해 87종
   assert.equal(new Set(SKINS.map(s => s.id)).size, SKINS.length);
   for (const id of [...NEW_COIN, ...NEW_LEVEL]) {
     const item = SKINS.find(s => s.id === id);
