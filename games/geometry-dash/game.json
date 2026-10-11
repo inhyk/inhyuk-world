@@ -1,0 +1,24 @@
+{
+  "slug": "geometry-dash",
+  "title": "지오메트리 대쉬 · NEON RUN",
+  "description": "HELL EDITION! 천장과 바닥 가시 사이를 낮은 점프·높은 점프로 돌파하세요.",
+  "longDescription": "지오메트리 대쉬에서 영감을 받은 HELL EDITION입니다. HELL·ABYSS·NIGHTMARE 세 스테이지가 초당 500·590·680 속도로 질주합니다. 3~7연속 높은 가시와 넓은 블록, 변칙 간격과 낮은 천장 가시를 돌파하세요. 짧게 눌렀다 떼면 낮은 점프, 길게 누르면 높은 점프를 합니다. 천장 구간에서는 낮은 점프가 필수입니다. 스페이스·클릭·터치, 체크포인트 연습 모드, 버전별 최고 기록, 리듬 사운드, 일시정지와 전체 화면을 지원합니다.",
+  "emoji": "🔷",
+  "thumbnail": "/images/games/geometry-dash-thumb.png",
+  "screenshots": [
+    "/images/games/geometry-dash-thumb.png",
+    "/images/games/geometry-dash-play.png",
+    "/images/games/geometry-dash-mobile.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Canvas 2D",
+    "Web Audio"
+  ],
+  "category": "아케이드",
+  "playUrl": "/play/geometry-dash",
+  "createdAt": "2026-10",
+  "featured": true,
+  "order": 50,
+  "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/geometry-dash"
+}

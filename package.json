@@ -17,7 +17,7 @@
     "valorant:dev": "npm run dev --workspace=@inhyuk/valorant-protocol",
     "valorant:build": "npm run build --workspace=@inhyuk/valorant-protocol",
     "test:valorant": "npm run test --workspace=@inhyuk/valorant-protocol",
-    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\" \"games/orbit-breaker/*.test.mjs\" \"games/undertale/*.test.mjs\" \"games/valorant/tests/*.test.mjs\" \"games/deep-dig/*.test.mjs\" \"games/free-drive/*.test.mjs\" \"games/mineral-valley/*.test.mjs\" \"games/soccer/*.test.mjs\" \"games/puyo-puyo/*.test.mjs\" \"games/pad-shop/*.test.mjs\" \"games/sky-obby/*.test.mjs\" \"games/keycap-tower/*.test.mjs\" \"packages/net/*.test.mjs\"",
+    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\" \"games/orbit-breaker/*.test.mjs\" \"games/undertale/*.test.mjs\" \"games/valorant/tests/*.test.mjs\" \"games/deep-dig/*.test.mjs\" \"games/free-drive/*.test.mjs\" \"games/mineral-valley/*.test.mjs\" \"games/soccer/*.test.mjs\" \"games/puyo-puyo/*.test.mjs\" \"games/pad-shop/*.test.mjs\" \"games/sky-obby/*.test.mjs\" \"games/keycap-tower/*.test.mjs\" \"packages/net/*.test.mjs\" \"games/geometry-dash/*.test.mjs\"",
     "test:net": "node --test \"packages/net/*.test.mjs\" && npm test --prefix services/net",
     "test:orbit-breaker": "node --test \"games/orbit-breaker/*.test.mjs\"",
     "test:mettaton": "node --test \"games/mettaton/*.test.mjs\"",
@@ -48,7 +48,8 @@
     "test:sky-obby": "node --test games/sky-obby/core.test.mjs",
     "keycap-tower:dev": "vite --config games/keycap-tower/vite.config.js --host 0.0.0.0 --port 5191",
     "keycap-tower:build": "vite build --config games/keycap-tower/vite.config.js",
-    "test:keycap-tower": "node --test games/keycap-tower/core.test.mjs"
+    "test:keycap-tower": "node --test games/keycap-tower/core.test.mjs",
+    "test:geometry-dash": "node --test games/geometry-dash/core.test.mjs"
   },
   "dependencies": {
     "@babylonjs/loaders": "9.18.0",
