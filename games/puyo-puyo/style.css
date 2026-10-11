@@ -658,6 +658,24 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 .lab-dots button { width: calc(var(--c, 36px) * .5); height: calc(var(--c, 36px) * .5); min-width: 0; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55); background: var(--dot); box-shadow: none; }
 .lab-dots button.on { border-color: #fff; box-shadow: 0 0 0 2px #ffe45c; transform: scale(1.15); }
 .lab-panel > button { padding: calc(var(--c, 36px) * .22) calc(var(--c, 36px) * .1); font-size: calc(var(--c, 36px) * .4); white-space: nowrap; }
+/* 뿌요 동영상 (기획서 2026-10-11 2번) */
+.video-card { background: linear-gradient(120deg, #ffe9f3, #efe6ff); margin-bottom: 6px; }
+#scr-videos { display: flex; flex-direction: column; }
+#scr-videos[hidden] { display: none; }
+.videos-list { gap: 12px; }
+.videos-list .grade + .grade::before { content: none; }
+.video-info { position: fixed; z-index: 5; display: flex; flex-direction: column; gap: calc(var(--c, 36px) * .16); padding: calc(var(--c, 36px) * .3); border-radius: calc(var(--c, 36px) * .4); background: rgba(16, 10, 40, .62); color: #fff; font-size: calc(var(--c, 36px) * .36); }
+.video-info b { font-weight: 400; font-size: calc(var(--c, 36px) * .5); color: #ffe45c; line-height: 1.25; word-break: keep-all; }
+.video-info small { color: #9ff2ff; font-size: calc(var(--c, 36px) * .34); }
+.video-info ol { margin: 0; padding-left: 1.3em; font: calc(var(--c, 36px) * .32)/1.5 var(--body-font); word-break: keep-all; }
+.video-info i { margin-top: auto; font-style: normal; color: #d9ccff; }
+.video-panel .lab-box { align-items: stretch; text-align: center; }
+.video-panel .lab-box b { color: #fff; font-variant-numeric: tabular-nums; }
+.video-bar { height: calc(var(--c, 36px) * .22); border-radius: 99px; background: rgba(255, 255, 255, .25); overflow: hidden; }
+.video-bar i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #ffe45c, #ff7ac4); }
+.video-others { display: flex; flex-direction: column; gap: calc(var(--c, 36px) * .12); }
+.video-others button { padding: calc(var(--c, 36px) * .14) calc(var(--c, 36px) * .16); font-size: calc(var(--c, 36px) * .3); text-align: left; line-height: 1.25; word-break: keep-all; background: rgba(255, 255, 255, .88); box-shadow: none; }
+.video-others button.on { background: #ffe45c; }
 .school-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 22px; }
 .grade { position: relative; display: grid; grid-template-columns: 60px 1fr auto; gap: 12px; align-items: center; background: rgba(255, 255, 255, .93); border: 3px solid #fff; border-radius: 20px; padding: 12px 14px; }
 .grade + .grade::before { content: '▼'; position: absolute; top: -21px; left: 50%; transform: translateX(-50%); color: #5b3bb3; font-size: 15px; }

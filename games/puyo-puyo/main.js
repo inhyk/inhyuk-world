@@ -32,6 +32,7 @@ import { createSocialUI } from './social-ui.mjs';
 import { playEnding } from './ending.mjs';
 import { skyAt, getSky, skyText } from './sky.mjs';
 import { FIGHTERS, cleanFighter, fighterOpen, fighterHint, pickFighter } from './fighters.mjs';
+import { VIDEOS, VideoRun, VIDEO_TIMING, VIDEO_GRAVITY, VIDEO_SEED, videoSeconds, lengthText, clock } from './videos.mjs';
 import { GRADES, gradeDone, gradeOpen, finishGrade, lessonCells, lessonSeq, lessonStep, newJudge, judge } from './tutorial.mjs';
 import { PETS, PET_PRICE, drawPet, drawWith, equipPet, equippedPet, ownedCount, petName, petKinds, multText, chanceText, chanceTotal } from './pets.mjs';
 import { drawPet as paintPet, drawEgg } from './pet-art.mjs';
@@ -121,7 +122,7 @@ function toast(text, gold = false) {
 }
 
 // ---------- 화면 ----------
-const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'solo', 'online', 'watch', 'ranking', 'friends', 'dm', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards', 'pets', 'boost', 'school'];
+const SCREENS = ['login', 'menu', 'tower', 'vs', 'local', 'solo', 'online', 'watch', 'ranking', 'friends', 'dm', 'missions', 'shop', 'profile', 'help', 'creator', 'rewards', 'pets', 'boost', 'school', 'videos'];
 function show(name) {
   if ((chatWith?.kind === 'friend' || chatWith?.kind === 'legacy') && name !== 'friends') closeChat(); // 친구 화면을 떠나면 친구 채팅 창도 닫는다
   screen = name;
@@ -148,6 +149,7 @@ function renderScreen(name) {
   if (name === 'pets') renderPets();
   if (name === 'boost') renderBoost();
   if (name === 'school') renderSchool();
+  if (name === 'videos') renderVideos();
   if (name === 'missions') renderMissions();
   if (name === 'shop') renderShop();
   if (name === 'profile') renderProfile();
@@ -669,13 +671,13 @@ function startGame(cfg) {
   demo = null;
   game = { ...cfg, tracked: 0, started: performance.now(), warned: false };
   const seed = cfg.seed ?? ((Math.random() * 2 ** 31) | 0);
-  match = new Match({ seed, colors: cfg.colors, minGroup: cfg.minGroup, gravityScale: cfg.gravityScale, target: cfg.target, specs: cfg.specs, firstTo: cfg.firstTo || 1, solo: cfg.mode === 'solo' || cfg.mode === 'practice', online: cfg.online || null, makeRemote: cfg.makeRemote, brain, timing: cfg.timing, steady: !!cfg.lab });
+  match = new Match({ seed, colors: cfg.colors, minGroup: cfg.minGroup, gravityScale: cfg.gravityScale, target: cfg.target, specs: cfg.specs, firstTo: cfg.firstTo || 1, solo: cfg.mode === 'solo' || cfg.mode === 'practice', online: cfg.online || null, makeRemote: cfg.makeRemote, brain, timing: cfg.timing, steady: !!(cfg.lab || cfg.video) });
   if (cfg.slow && match.ai[1]) match.ai[1].slow = cfg.slow;
   renderer.setTheme(cfg.sky ? nowSky().id : cfg.theme || 'default');
   if (cfg.mode !== 'practice') endPractice();
   // 둘이 겨루는 판에는 맨 위에 방해 뿌요 힘겨루기 막대 (기획서 2번 그림 「나 ⚡ 상대」). 2인 플레이는 두 사람 이름으로.
   const clash = match.solo ? null : { names: cfg.mode === 'local' ? cfg.views.map((v, i) => v.name || `${i + 1}P`) : ['나', '상대'] };
-  renderer.setup(cfg.views, { solo: cfg.mode === 'solo' || cfg.mode === 'practice', ghost: P().settings.ghost !== false, insets: computeInsets(), clash, duel: cfg.mode === 'online', lab: !!cfg.lab });
+  renderer.setup(cfg.views, { solo: cfg.mode === 'solo' || cfg.mode === 'practice', ghost: P().settings.ghost !== false, insets: computeInsets(), clash, duel: cfg.mode === 'online', lab: !!(cfg.lab || cfg.video), video: !!cfg.video });
   if (cfg.sky) toast(skyText(nowSky()));
   hideScreens();
   $('hud').hidden = false;
@@ -750,7 +752,7 @@ $('solo-start').onclick = () => { sound.sfx('click'); startSolo(); };
 // ---------- 뿌요뿌요 배우기 (초급 = 처음 하는 사람의 연습하기, 그리고 중급 → 상급 → 최상급) ----------
 function startPractice(index = 0, grade = 0) {
   if (!GRADES[grade]?.lessons[index]) { grade = 0; index = 0; }
-  endLab();
+  endLab(); endVideo();
   startGame({
     mode: 'practice', title: grade ? `🎓 ${GRADES[grade].name} 배우기` : '🐣 연습하기', theme: 'meadow', music: 'menu', firstTo: 1, gravityScale: 0.6,
     specs: [{ kind: 'human' }], views: [myView()],
@@ -814,6 +816,7 @@ function resetLessonField(p, lesson) {
   if (p.state !== 'ready') { p.state = 'spawn'; p.timer = 1; }
 }
 function practiceEvent(e) {
+  if (practice?.video) return;
   if (practice?.lab) return labEvent(e);
   if (!practice || practice.freeze) return;
   const lesson = lessonNow(), lessons = lessonsNow();
@@ -995,8 +998,130 @@ $('lab-pair').onclick = e => {
   labPick(slot, lab.colors[slot] % LAB_COLORS.length + 1);
 };
 $('lab-start').onclick = () => { sound.sfx('click'); startLab(); };
+// ---------- 뿌요 동영상 (인혁이 기획서 2026-10-11 2번) ----------
+// "빠르고 쉽게 배울 수 있는 뿌요 동영상을 넣어줘 이렇게" + 그림(가운데 필드, 왼쪽에 "1. 연쇄 잘하는 법!"과 길이, 오른쪽에 다른 동영상).
+// 찍어 둔 영상이 아니라 대본(videos.mjs)대로 진짜 필드에서 뿌요를 놓아 보인다. 보는 사람은 손대지 않는다.
+let video = null; // { index, run: VideoRun, shown: 화면에 띄운 자막 번호, paused, ended }
+let videoPlace = '', videoClock = '';
+const videoName = i => `${i + 1}. ${VIDEOS[i].title}`;
+function renderVideos() {
+  const list = $('videos-list');
+  list.innerHTML = '';
+  VIDEOS.forEach((v, i) => {
+    const li = document.createElement('li');
+    li.className = 'grade open';
+    li.dataset.video = v.id;
+    li.innerHTML = `<div class="em">${v.emoji}</div><div><h3>${esc(videoName(i))} <span class="count">${lengthText(videoSeconds(v))}</span></h3><p>${esc(v.desc)}</p></div>`;
+    const b = document.createElement('button');
+    b.className = 'primary';
+    b.textContent = '▶ 보기';
+    b.onclick = () => { sound.sfx('click'); startVideo(i); };
+    li.append(b);
+    list.append(li);
+  });
+}
+function startVideo(index = 0) {
+  const v = VIDEOS[index] || VIDEOS[0];
+  index = VIDEOS.indexOf(v);
+  startGame({
+    mode: 'practice', video: true, seed: VIDEO_SEED, title: `🎬 ${videoName(index)}`, theme: 'meadow', music: 'menu', firstTo: 1, gravityScale: VIDEO_GRAVITY, timing: VIDEO_TIMING,
+    specs: [{ kind: 'human' }], views: [myView()],
+  });
+  game.tracked = -1; // 동영상 속 연쇄는 챌린지와 기록에 세지 않는다
+  practice = { video: true, grade: 1, index: 0, freeze: false };
+  video = { index, run: new VideoRun(v), shown: 0, paused: false, ended: false };
+  const p = match.players[0];
+  p.sandbox = true;
+  match.phase = 'play'; match.timer = 0; p.start(); // 준비~ 3, 2, 1 없이 바로
+  controls.enabled = false; // 보는 사람은 손대지 않는다
+  $('touch').hidden = true;
+  $('video-panel').hidden = false;
+  $('video-title').textContent = `${videoName(index)}!`;
+  $('video-keep').innerHTML = v.keep.map(k => `<li>${esc(k)}</li>`).join('');
+  $('video-length').textContent = `⏱ ${lengthText(videoSeconds(v))}`;
+  $('video-pause').textContent = '⏸ 멈춤';
+  const others = $('video-others');
+  others.innerHTML = '';
+  VIDEOS.forEach((o, i) => {
+    const b = document.createElement('button');
+    b.className = i === index ? 'on' : '';
+    b.dataset.video = o.id;
+    b.textContent = `${o.emoji} ${o.ask}`;
+    b.onclick = () => { b.blur(); sound.sfx('click'); startVideo(i); };
+    others.append(b);
+  });
+  videoPlace = ''; videoClock = '';
+  videoSay('곧 시작해!');
+  placeVideo();
+}
+function endVideo() {
+  if (!video) return;
+  video = null;
+  $('video-panel').hidden = true;
+  $('video-info').hidden = true;
+}
+// 자막은 꼬마 뿌요 말풍선으로
+function videoSay(text, buttons = []) {
+  showCoach({ step: `🎬 뿌요 동영상 ${video.index + 1} / ${VIDEOS.length}`, title: `${videoName(video.index)}!`, text, mood: 'happy', buttons });
+}
+// 이번 프레임에 대본이 누르는 단추. 뿌요를 놓는 중이 아니면 손에 든 짝은 떨어지지 않고 떠 있는다.
+function videoInput(m) {
+  const input = video.run.step(m.players[0]);
+  m.gravityScale = video.run.frozen ? 0 : VIDEO_GRAVITY;
+  return input;
+}
+function videoAfter() {
+  const run = video.run;
+  if (run.captionNo !== video.shown) { video.shown = run.captionNo; videoSay(run.caption); }
+  if (run.done && !video.ended) {
+    video.ended = true;
+    const i = video.index, next = i + 1 < VIDEOS.length ? i + 1 : null;
+    sound.sfx('mission');
+    videoSay(next === null ? '동영상을 끝까지 다 봤어! 🎉 이제 🧪 직접 놓아 보는 배우기에서 따라 해 봐.' : `끝! 다음 동영상은 「${VIDEOS[next].title}」이야.`, [
+      ...(next === null ? [] : [['primary', '다음 동영상 ▶', () => { sound.sfx('click'); startVideo(next); }]]),
+      ['ghost', '🔁 다시 보기', () => { sound.sfx('click'); startVideo(i); }],
+      ['ghost', '목록으로', () => { sound.sfx('click'); quitGame(); }],
+    ]);
+  }
+}
+// 필드 왼쪽에 제목·외울 것·길이, 오른쪽에 시간과 다른 동영상 (그림과 같은 자리). 왼쪽에 자리가 없으면(휴대폰) 왼쪽 칸은 접는다.
+function placeVideo() {
+  const l = renderer.layout, f = l?.fields?.[0];
+  if (!f || !l.solo) return;
+  const c = f.cell, place = `${Math.round(f.x)}|${Math.round(f.y)}|${c}|${renderer.w}`;
+  if (place === videoPlace) return;
+  videoPlace = place;
+  const right = $('video-panel').style;
+  right.left = `${Math.round(f.x + c * 6.4)}px`; right.top = `${Math.round(f.y - c * 0.3)}px`; right.width = `${Math.round(c * 3.9)}px`;
+  right.setProperty('--c', `${c}px`);
+  const info = $('video-info'), width = c * 4.6, room = f.x - c * 0.5 - width >= 6;
+  info.hidden = !room;
+  if (room) {
+    info.style.left = `${Math.round(f.x - c * 0.5 - width)}px`; info.style.top = `${Math.round(f.y - c * 0.3)}px`;
+    info.style.width = `${Math.round(width)}px`; info.style.minHeight = `${Math.round(c * 7)}px`;
+    info.style.setProperty('--c', `${c}px`);
+  }
+}
+function paintVideoClock() {
+  placeVideo();
+  const total = videoSeconds(VIDEOS[video.index]), now = Math.min(total, video.run.frames / 60);
+  const text = `${clock(now)} / ${clock(total)}`;
+  if (text === videoClock) return;
+  videoClock = text;
+  $('video-time').textContent = text;
+  $('video-fill').style.width = `${Math.round(100 * now / total)}%`;
+}
+$('video-pause').onclick = e => {
+  e.currentTarget.blur();
+  if (!video || video.ended) return;
+  video.paused = !video.paused;
+  sound.sfx('click');
+  e.currentTarget.textContent = video.paused ? '▶ 재생' : '⏸ 멈춤';
+};
+$('video-again').onclick = e => { e.currentTarget.blur(); if (video) { sound.sfx('click'); startVideo(video.index); } };
 // 연습 중에 쌓여서 지면 그 수업을 처음부터
 function practiceFail() {
+  if (practice?.video) { const n = video?.index ?? 0; setTimeout(() => { if (game?.mode === 'practice') startVideo(n); }, 900); return; }
   if (practice?.lab) { setTimeout(() => { if (game?.mode === 'practice') startLab(); }, 900); return; }
   const index = practice?.index ?? 0, grade = practice?.grade ?? 0;
   setTimeout(() => { if (game?.mode === 'practice') startPractice(index, grade); }, 900);
@@ -1080,7 +1205,7 @@ function renderSchool() {
   if (now) list.scrollTop = Math.max(0, now.offsetTop - list.offsetTop - 12);
 }
 function endPractice() {
-  endLab();
+  endLab(); endVideo();
   practice = null;
   $('coach').hidden = true;
   $('toasts').style.top = '';
@@ -1252,9 +1377,10 @@ function quitGame() {
   paintWatchers(0);
   if (chatWith?.kind === 'room' || chatWith?.kind === 'watch') closeChat();
   const school = game?.mode === 'practice' && (practice?.grade ?? 0) > 0; // 중급부터는 배우기 목록으로 돌아간다
+  const watching = !!practice?.video; // 동영상을 보다 나가면 동영상 목록으로
   endPractice();
   match = null;
-  const back = game?.mode === 'tower' ? 'tower' : game?.mode === 'online' ? 'online' : game?.mode === 'watch' ? 'watch' : school ? 'school' : 'menu';
+  const back = game?.mode === 'tower' ? 'tower' : game?.mode === 'online' ? 'online' : game?.mode === 'watch' ? 'watch' : watching ? 'videos' : school ? 'school' : 'menu';
   game = null;
   $('result').hidden = true;
   startDemo();
@@ -1269,7 +1395,7 @@ function retry() {
   else if (g.mode === 'vs') startVs(g.level, g.firstTo, g.map);
   else if (g.mode === 'local') startLocal(g.firstTo, g.map);
   else if (g.mode === 'solo') startSolo(g.map);
-  else if (g.mode === 'practice') { if (practice?.lab) startLab(); else startPractice(practice?.index ?? 0, practice?.grade ?? 0); }
+  else if (g.mode === 'practice') { if (practice?.video) startVideo(video?.index ?? 0); else if (practice?.lab) startLab(); else startPractice(practice?.index ?? 0, practice?.grade ?? 0); }
   else if (g.mode === 'online') roomNet().rematch();
 }
 
@@ -1282,6 +1408,7 @@ function loop(now) {
   const step = 1000 / 60;
   while (acc >= step) { acc -= step; tick(); }
   if (lab) placeLab();
+  if (video) paintVideoClock();
   // 대전하는 동안 아침 → 낮처럼 시간이 넘어가면 하늘도 바뀐다
   if (match && game?.sky && ++skyClock % 120 === 0) renderer.setTheme(nowSky().id);
   renderer.draw(match || demo, now / 1000);
@@ -1291,11 +1418,14 @@ function tick() {
   const m = match || demo;
   if (!m || (match && (paused || talking))) return;
   if (match && practice?.freeze) { renderer.step(m); return; } // 연습 칭찬 중: 뿌요는 멈추고 반짝이 효과만 움직인다
-  const inputs = match ? controls.frame(2, m.players.map(p => p.state === 'control')) : [];
+  if (match && video?.paused) { renderer.step(m); return; } // 동영상 멈춤
+  // 동영상은 보는 사람 대신 대본(VideoRun)이 뿌요를 움직인다
+  const inputs = !match ? [] : video ? [videoInput(m)] : controls.frame(2, m.players.map(p => p.state === 'control'));
   m.step(inputs);
   for (const e of m.events) handle(e, m);
   m.events.length = 0;
   renderer.step(m);
+  if (match && video) videoAfter();
   if (match && game?.mode === 'online') roomNet().tick(match);
   if (match && game && game.mode !== 'watch') watchDanger(m);
 }
@@ -3301,6 +3431,7 @@ window.render_game_to_text = () => JSON.stringify({
   clash: match && renderer.opts.clash ? { names: renderer.clashNames(), power: renderer.clash.power.slice(), lead: renderer.clash.lead, pos: Math.round(renderer.clash.pos * 1000) / 1000, fighting: renderer.clash.fighting, box: renderer.layout.clash } : null,
   chars: match ? renderer.views.map(v => v.char || null) : null,
   pets: P().pets, tickets: P().tickets, boostLeft: Math.ceil(boostLeft(P()) / 1000), friends: friendTotal(), bonus: { xp: currentBonus().xp, coins: currentBonus().coins },
+  video: video ? { id: VIDEOS[video.index].id, index: video.index, scene: video.run.index, caption: video.run.caption, frames: video.run.frames, done: video.run.done, paused: video.paused, seconds: videoSeconds(VIDEOS[video.index]) } : null,
   lab: lab ? { colors: lab.colors.slice(), history: lab.history.length, running: lab.running, chain: lab.chain, hold: !!match?.players[0]?.hold, state: match?.players[0]?.state ?? null, cells: match ? Array.from(match.players[0].cells).filter(Boolean).length : 0 } : null,
   school: P().school, tutorial: P().tutorial, lesson: practice ? { grade: practice.grade, index: practice.index, freeze: practice.freeze } : null,
   net: account?.cloud ? { nickname: net.user?.nickname, cloud: cloud?.state ?? null, live: hub?.status ?? null } : null,
@@ -3311,7 +3442,7 @@ window.render_game_to_text = () => JSON.stringify({
   } : null,
 });
 if (TEST) {
-  window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, get mailState() { return mailState; }, pollMail, friendNet, P, handleBack, store, startTower, startVs, startSolo, startLocal, startPractice, startLab, show, finishMatch, renderer, online, peerOnline, runEnding, recordPlayTime, pause, save,
+  window.__puyo = { get match() { return match; }, get game() { return game; }, get practice() { return practice; }, get mailState() { return mailState; }, pollMail, friendNet, P, handleBack, store, startTower, startVs, startSolo, startLocal, startPractice, startLab, startVideo, show, finishMatch, renderer, online, peerOnline, runEnding, recordPlayTime, pause, save,
     get cloud() { return cloud; }, get social() { return hub; }, net, get watcher() { return watcher; }, sendStats,
     watchTalkOff, greetHi, get device() { return device; }, get roomLog() { return roomLog; }, sound,
     setSky(id) { skyForce = getSky(id); if (game?.sky) renderer.setTheme(nowSky().id); return nowSky().id; },

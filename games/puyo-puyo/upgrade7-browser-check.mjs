@@ -216,7 +216,7 @@ try {
   await g.evaluate(() => window.__puyo.show('menu')); await screenIs(g, 'menu');
   await hideToasts(g);
   await g.click('[data-go="shop"]'); await screenIs(g, 'shop');
-  assert.equal(await g.locator('#shop-grid .item').count(), 57);
+  assert.equal(await g.locator('#shop-grid .item').count(), 87);
   const names = await g.evaluate(() => [...document.querySelectorAll('#shop-grid .item > b')].map(b => b.textContent));
   for (const [name] of NEW_SKINS) assert.ok(names.includes(name), name);
   await g.evaluate(() => { const p = window.__puyo.P(); p.level = 20; p.coins = 50000; window.__puyo.show('shop'); });

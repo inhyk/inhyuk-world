@@ -416,7 +416,7 @@ for (const kind of ['bunny', 'bear', 'robot', 'donut', 'flower', 'dragon', 'astr
       }
       if (kind === 'robot') {
         ctx.fillStyle = pal.base; ctx.strokeStyle = pal.deep; ctx.lineWidth = r * .08;
-        ctx.beginPath(); ctx.roundRect(-r * .87, -r * .8, r * 1.74, r * 1.65, r * .25); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); rrect(ctx, -r * .87, -r * .8, r * 1.74, r * 1.65, r * .25); ctx.fill(); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, -r * .8); ctx.lineTo(0, -r * 1.12); ctx.stroke();
         ctx.fillStyle = '#ffec85'; ellipse(ctx, 0, -r * 1.12, r * .12, r * .12); ctx.fill();
       } else if (kind === 'donut') {
@@ -427,7 +427,7 @@ for (const kind of ['bunny', 'bear', 'robot', 'donut', 'flower', 'dragon', 'astr
           const a = i * 2.4 + .5, d = r * (.5 + (i * 7 % 5) * .07);
           ctx.save(); ctx.translate(Math.cos(a) * d, Math.sin(a) * d); ctx.rotate(i * 1.9);
           ctx.fillStyle = ['#fff6c9', '#ffffff', pal.light][i % 3];
-          ctx.beginPath(); ctx.roundRect(-r * .1, -r * .035, r * .2, r * .07, r * .035); ctx.fill(); ctx.restore();
+          ctx.beginPath(); rrect(ctx, -r * .1, -r * .035, r * .2, r * .07, r * .035); ctx.fill(); ctx.restore();
         }
         ctx.strokeStyle = pal.dark; ctx.lineWidth = r * .05; ctx.beginPath(); ctx.arc(0, 0, r * .37, 0, TAU); ctx.stroke();
         ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = r * .09; ctx.lineCap = 'round';
@@ -445,7 +445,7 @@ for (const kind of ['bunny', 'bear', 'robot', 'donut', 'flower', 'dragon', 'astr
     }
     if (kind === 'donut') { eyes(ctx, r, v, { spread: .52, y: -.2, size: .5 }); return; }
     if (kind === 'robot') {
-      ctx.fillStyle = '#19394a'; ctx.beginPath(); ctx.roundRect(-r * .68, -r * .4, r * 1.36, r * .65, r * .13); ctx.fill();
+      ctx.fillStyle = '#19394a'; ctx.beginPath(); rrect(ctx, -r * .68, -r * .4, r * 1.36, r * .65, r * .13); ctx.fill();
       ctx.fillStyle = '#b4fff1'; for (const sign of [-1, 1]) ctx.fillRect(sign * r * .31 - r * .1, -r * .22, r * .2, r * (v === 1 ? .07 : .22));
       ctx.strokeStyle = pal.deep; ctx.lineWidth = r * .06; ctx.beginPath(); ctx.moveTo(-r * .3, r * .52); ctx.lineTo(r * .3, r * .52); ctx.stroke(); return;
     }
@@ -1213,7 +1213,551 @@ const SKINS_7 = {
     },
   },
 };
-for (const [kind, art] of Object.entries({ ...MORE_SKINS, ...SKINS_6, ...SKINS_7 })) {
+// 업그레이드 8 (인혁이 기획서 2026-10-11 1번, "스킨 많~~~이 넣어줘야"): 새 스킨 30가지.
+// 코인으로 사는 스킨 28가지와 레벨 스킨 2가지(45·65레벨). 몸은 다섯 기본 색을 그대로 써서 색 구별이 쉽다.
+const inBody = (ctx, r, k, draw) => { ctx.save(); ellipse(ctx, 0, 0, r * k, r * (k - 0.03)); ctx.clip(); draw(); ctx.restore(); }; // 몸 안쪽에만 무늬 그리기
+const outline = (ctx, pal, r, w = 0.06) => { ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * w); ctx.lineJoin = 'round'; ctx.lineCap = 'round'; };
+const tri = (ctx, pts) => { ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); };
+const star = (ctx, x, y, size, fill) => { // 별 하나
+  ctx.save(); ctx.translate(x, y); ctx.fillStyle = fill; ctx.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, k = i % 2 ? size * 0.45 : size; ctx.lineTo(Math.cos(a) * k, Math.sin(a) * k); }
+  ctx.closePath(); ctx.fill(); ctx.restore();
+};
+const rrect = (ctx, x, y, w, h, k) => { // 모서리가 둥근 네모 (오래된 브라우저에는 ctx.roundRect 가 없다)
+  ctx.moveTo(x + k, y); ctx.arcTo(x + w, y, x + w, y + h, k); ctx.arcTo(x + w, y + h, x, y + h, k); ctx.arcTo(x, y + h, x, y, k); ctx.arcTo(x, y, x + w, y, k); ctx.closePath();
+};
+const SKINS_8 = {
+  hamster: {
+    body(ctx, pal, r) {
+      outline(ctx, pal, r);
+      for (const s of [-1, 1]) { ctx.fillStyle = pal.base; ellipse(ctx, s * r * 0.5, -r * 0.78, r * 0.21, r * 0.21); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#ffb3c8'; ellipse(ctx, s * r * 0.5, -r * 0.76, r * 0.1, r * 0.1); ctx.fill(); }
+      roundBody(ctx, pal, r * 0.92);
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.4, r * 0.32, r * 0.36, r * 0.3); ctx.fill(); }
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.62, spread: 0.3, y: -0.2 });
+      ctx.fillStyle = '#ff7a9a'; ellipse(ctx, 0, r * 0.1, r * 0.07, r * 0.05); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = INK; ctx.lineWidth = Math.max(0.8, r * 0.035);
+      ctx.fillRect(-r * 0.07, r * 0.2, r * 0.14, r * 0.14); ctx.strokeRect(-r * 0.07, r * 0.2, r * 0.14, r * 0.14);
+    },
+  },
+  mouse: {
+    body(ctx, pal, r) {
+      outline(ctx, pal, r);
+      for (const s of [-1, 1]) { ctx.fillStyle = pal.base; ellipse(ctx, s * r * 0.7, -r * 0.72, r * 0.42, r * 0.42); ctx.fill(); ctx.stroke(); ctx.fillStyle = pal.light; ellipse(ctx, s * r * 0.7, -r * 0.72, r * 0.25, r * 0.25); ctx.fill(); }
+      roundBody(ctx, pal, r * 0.86);
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.8, 0.5);
+      eyes(ctx, r, v, { size: 0.62, spread: 0.27, y: -0.1 });
+      ctx.fillStyle = '#ff7a9a'; ellipse(ctx, 0, r * 0.18, r * 0.08, r * 0.06); ctx.fill();
+      ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(0.8, r * 0.04); ctx.lineCap = 'round';
+      for (const s of [-1, 1]) for (const dy of [-0.06, 0.08]) { ctx.beginPath(); ctx.moveTo(s * r * 0.3, r * 0.22); ctx.lineTo(s * r * 0.74, r * (0.22 + dy)); ctx.stroke(); }
+      smile(ctx, r, pal.deep, 0.26, 0.1);
+    },
+  },
+  duck: {
+    body(ctx, pal, r) {
+      outline(ctx, pal, r);
+      ctx.fillStyle = pal.light;
+      for (const [x, y, a] of [[-0.12, -0.98, -0.5], [0.06, -1.06, 0.1], [0.24, -0.96, 0.7]]) { ellipse(ctx, x * r, y * r, r * 0.1, r * 0.24, a); ctx.fill(); ctx.stroke(); }
+      roundBody(ctx, pal, r * 0.92);
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.86, 0.55);
+      eyes(ctx, r, v, { size: 0.64, spread: 0.3, y: -0.2 });
+      ctx.fillStyle = '#ffa52e'; ctx.strokeStyle = '#b45f00'; ctx.lineWidth = Math.max(0.8, r * 0.045);
+      ellipse(ctx, 0, r * 0.2, r * 0.36, r * 0.15); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-r * 0.3, r * 0.2); ctx.quadraticCurveTo(0, r * 0.28, r * 0.3, r * 0.2); ctx.stroke();
+      cheeks(ctx, r, 0.12, 0.62);
+    },
+  },
+  owl: {
+    body(ctx, pal, r) {
+      outline(ctx, pal, r);
+      ctx.fillStyle = pal.dark;
+      for (const s of [-1, 1]) { tri(ctx, [[s * r * 0.3, -r * 0.8], [s * r * 0.78, -r * 1.14], [s * r * 0.82, -r * 0.5]]); ctx.fill(); ctx.stroke(); }
+      roundBody(ctx, pal, r * 0.92);
+      inBody(ctx, r, 0.92, () => {
+        ctx.fillStyle = 'rgba(255,255,255,.3)'; ellipse(ctx, 0, r * 0.62, r * 0.5, r * 0.42); ctx.fill();
+        ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.05);
+        for (const [x, y] of [[-0.2, 0.5], [0.2, 0.5], [0, 0.68]]) { ctx.beginPath(); ctx.moveTo((x - 0.09) * r, y * r); ctx.lineTo(x * r, (y + 0.08) * r); ctx.lineTo((x + 0.09) * r, y * r); ctx.stroke(); }
+      });
+    },
+    face(ctx, pal, r, v) {
+      ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.05);
+      for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.32, -r * 0.14, r * 0.3, r * 0.3); ctx.fill(); ctx.stroke(); }
+      eyes(ctx, r, v, { size: 0.86, spread: 0.32, y: -0.14 });
+      beak(ctx, r, 0.1, 0.11, 0.18);
+    },
+  },
+  monkey: {
+    body(ctx, pal, r) {
+      outline(ctx, pal, r);
+      for (const s of [-1, 1]) { ctx.fillStyle = pal.base; ellipse(ctx, s * r * 0.92, -r * 0.08, r * 0.24, r * 0.28); ctx.fill(); ctx.stroke(); ctx.fillStyle = pal.light; ellipse(ctx, s * r * 0.94, -r * 0.08, r * 0.12, r * 0.15); ctx.fill(); }
+      roundBody(ctx, pal, r * 0.88);
+      ctx.fillStyle = 'rgba(255,236,214,.94)';
+      for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.25, -r * 0.12, r * 0.3, r * 0.3); ctx.fill(); }
+      ellipse(ctx, 0, r * 0.3, r * 0.5, r * 0.36); ctx.fill();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.62, spread: 0.25, y: -0.12 });
+      ctx.fillStyle = pal.deep; for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.06, r * 0.18, r * 0.03, r * 0.04); ctx.fill(); }
+      ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.07); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(0, r * 0.26, r * 0.26, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
+    },
+  },
+  cow: {
+    body(ctx, pal, r) {
+      outline(ctx, pal, r);
+      ctx.fillStyle = '#fff3d6';
+      for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * r * 0.3, -r * 0.84); ctx.quadraticCurveTo(s * r * 0.36, -r * 1.2, s * r * 0.66, -r * 1.22); ctx.quadraticCurveTo(s * r * 0.56, -r * 0.96, s * r * 0.56, -r * 0.7); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+      ctx.fillStyle = pal.base;
+      for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.92, -r * 0.42, r * 0.26, r * 0.15, s * 0.5); ctx.fill(); ctx.stroke(); }
+      roundBody(ctx, pal, r * 0.9);
+      inBody(ctx, r, 0.9, () => {
+        ctx.fillStyle = 'rgba(30,20,45,.72)';
+        ellipse(ctx, -r * 0.62, -r * 0.5, r * 0.34, r * 0.28, 0.4); ctx.fill();
+        ellipse(ctx, r * 0.7, r * 0.1, r * 0.3, r * 0.36, -0.3); ctx.fill();
+      });
+      ctx.fillStyle = '#ffd0dc'; ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.05);
+      ellipse(ctx, 0, r * 0.4, r * 0.44, r * 0.28); ctx.fill(); ctx.stroke();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.64, spread: 0.3, y: -0.2 });
+      ctx.fillStyle = pal.deep; for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.16, r * 0.38, r * 0.05, r * 0.08); ctx.fill(); }
+    },
+  },
+  sheep: {
+    body(ctx, pal, r) {
+      outline(ctx, pal, r);
+      ctx.fillStyle = pal.dark;
+      for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.94, -r * 0.1, r * 0.24, r * 0.13, s * 0.5); ctx.fill(); ctx.stroke(); }
+      roundBody(ctx, pal, r * 0.88);
+      const wool = [[-0.62, -0.5, 0.3], [-0.3, -0.78, 0.32], [0.08, -0.86, 0.33], [0.44, -0.72, 0.3], [0.7, -0.42, 0.27], [-0.78, -0.16, 0.24]];
+      ctx.strokeStyle = 'rgba(120,130,170,.9)'; ctx.lineWidth = Math.max(1.5, r * 0.1);
+      for (const [x, y, k] of wool) { ellipse(ctx, x * r, y * r, r * k, r * k); ctx.stroke(); }
+      ctx.fillStyle = '#ffffff';
+      for (const [x, y, k] of wool) { ellipse(ctx, x * r, y * r, r * k, r * k); ctx.fill(); }
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.64, spread: 0.28, y: 0.04 });
+      smile(ctx, r, pal.deep, 0.3, 0.12);
+      cheeks(ctx, r, 0.3, 0.54);
+    },
+  },
+  lion: {
+    body(ctx, pal, r) {
+      ctx.fillStyle = pal.dark; ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.05); ctx.lineJoin = 'round';
+      for (let i = 0; i < 16; i++) { // 뾰족뾰족한 갈기
+        ctx.save(); ctx.rotate(i * TAU / 16);
+        tri(ctx, [[-r * 0.24, -r * 0.74], [0, -r * (i % 2 ? 1.16 : 1.3)], [r * 0.24, -r * 0.74]]); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+      ellipse(ctx, 0, 0, r * 0.94, r * 0.92); ctx.fill();
+      for (const s of [-1, 1]) { ctx.fillStyle = pal.base; ellipse(ctx, s * r * 0.56, -r * 0.7, r * 0.2, r * 0.2); ctx.fill(); ctx.stroke(); ctx.fillStyle = pal.light; ellipse(ctx, s * r * 0.56, -r * 0.68, r * 0.1, r * 0.1); ctx.fill(); }
+      roundBody(ctx, pal, r * 0.74);
+      ctx.fillStyle = 'rgba(255,255,255,.85)'; ellipse(ctx, 0, r * 0.26, r * 0.32, r * 0.22); ctx.fill();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.58, spread: 0.24, y: -0.14 });
+      ctx.fillStyle = pal.deep; tri(ctx, [[-r * 0.1, r * 0.12], [r * 0.1, r * 0.12], [0, r * 0.24]]); ctx.fill();
+      noseMouth(ctx, r, 0.28, pal.deep);
+      for (const s of [-1, 1]) for (const [x, y] of [[0.2, 0.2], [0.26, 0.3]]) { ellipse(ctx, s * x * r, y * r, r * 0.022, r * 0.022); ctx.fill(); }
+    },
+  },
+  elephant: {
+    body(ctx, pal, r) {
+      outline(ctx, pal, r);
+      for (const s of [-1, 1]) { ctx.fillStyle = pal.base; ellipse(ctx, s * r * 0.98, -r * 0.2, r * 0.42, r * 0.58, s * 0.2); ctx.fill(); ctx.stroke(); ctx.fillStyle = pal.light; ellipse(ctx, s * r * 1.02, -r * 0.18, r * 0.24, r * 0.38, s * 0.2); ctx.fill(); }
+      roundBody(ctx, pal, r * 0.84);
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.6, spread: 0.34, y: -0.24 });
+      ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(3, r * 0.34); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(0, -r * 0.04); ctx.quadraticCurveTo(0, r * 0.5, r * 0.3, r * 0.56); ctx.stroke();
+      ctx.strokeStyle = pal.base; ctx.lineWidth = Math.max(2, r * 0.24);
+      ctx.beginPath(); ctx.moveTo(0, -r * 0.04); ctx.quadraticCurveTo(0, r * 0.5, r * 0.3, r * 0.56); ctx.stroke();
+      cheeks(ctx, r, 0.02, 0.56);
+    },
+  },
+  deer: {
+    body(ctx, pal, r) {
+      ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = Math.max(1.5, r * 0.11); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (const s of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(s * r * 0.3, -r * 0.8); ctx.lineTo(s * r * 0.44, -r * 1.34);
+        ctx.moveTo(s * r * 0.37, -r * 1.06); ctx.lineTo(s * r * 0.68, -r * 1.2);
+        ctx.moveTo(s * r * 0.34, -r * 0.94); ctx.lineTo(s * r * 0.12, -r * 1.14); ctx.stroke();
+      }
+      outline(ctx, pal, r); ctx.fillStyle = pal.base;
+      for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.86, -r * 0.5, r * 0.26, r * 0.14, s * -0.5); ctx.fill(); ctx.stroke(); }
+      roundBody(ctx, pal, r * 0.9);
+      ctx.fillStyle = 'rgba(255,255,255,.75)';
+      for (const [x, y] of [[-0.3, -0.56], [0.06, -0.66], [0.38, -0.5]]) { ellipse(ctx, x * r, y * r, r * 0.07, r * 0.07); ctx.fill(); }
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.66, spread: 0.3, y: -0.08 });
+      ctx.fillStyle = '#e8243c'; ellipse(ctx, 0, r * 0.26, r * 0.13, r * 0.11); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.8)'; ellipse(ctx, -r * 0.04, r * 0.22, r * 0.04, r * 0.03); ctx.fill();
+      smile(ctx, r, pal.deep, 0.36, 0.1);
+    },
+  },
+  hedgehog: {
+    body(ctx, pal, r) {
+      ctx.fillStyle = pal.deep; ctx.strokeStyle = pal.light; ctx.lineWidth = Math.max(0.8, r * 0.035); ctx.lineJoin = 'round';
+      for (let i = 0; i < 9; i++) {
+        const a = Math.PI * (1.02 + i * 0.12);
+        ctx.save(); ctx.rotate(a - Math.PI * 1.5);
+        tri(ctx, [[-r * 0.2, -r * 0.7], [0, -r * 1.34], [r * 0.2, -r * 0.7]]); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+      roundBody(ctx, pal, r * 0.9);
+      inBody(ctx, r, 0.9, () => {
+        ctx.fillStyle = 'rgba(30,20,45,.5)'; ctx.fillRect(-r, -r, r * 2, r * 0.62);
+        for (let i = 0; i < 6; i++) { tri(ctx, [[(-0.9 + i * 0.36) * r, -r * 0.4], [(-0.72 + i * 0.36) * r, -r * 0.2], [(-0.54 + i * 0.36) * r, -r * 0.4]]); ctx.fill(); }
+      });
+      ctx.fillStyle = 'rgba(255,240,220,.9)'; ellipse(ctx, 0, r * 0.34, r * 0.6, r * 0.46); ctx.fill();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.6, spread: 0.26, y: 0.12 });
+      ctx.fillStyle = INK; ellipse(ctx, 0, r * 0.36, r * 0.08, r * 0.06); ctx.fill();
+      smile(ctx, r, INK, 0.42, 0.09);
+    },
+  },
+  turtle: {
+    body(ctx, pal, r) {
+      outline(ctx, pal, r); ctx.fillStyle = pal.light;
+      for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.72, r * 0.72, r * 0.22, r * 0.15, s * 0.5); ctx.fill(); ctx.stroke(); }
+      roundBody(ctx, pal, r * 0.92);
+      inBody(ctx, r, 0.92, () => {
+        ctx.strokeStyle = 'rgba(30,20,45,.5)'; ctx.lineWidth = Math.max(1, r * 0.06);
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + 0.52, x = Math.cos(a) * r * 0.42, y = -r * 0.34 + Math.sin(a) * r * 0.36; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+        ctx.closePath(); ctx.stroke();
+        for (let i = 0; i < 6; i++) { const a = i * TAU / 6 + 0.52; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 0.42, -r * 0.34 + Math.sin(a) * r * 0.36); ctx.lineTo(Math.cos(a) * r * 1.1, -r * 0.34 + Math.sin(a) * r * 0.96); ctx.stroke(); }
+        ctx.fillStyle = 'rgba(255,255,255,.26)'; ctx.fillRect(-r, r * 0.26, r * 2, r);
+      });
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.62, spread: 0.26, y: 0.3 });
+      smile(ctx, r, pal.deep, 0.5, 0.11);
+      cheeks(ctx, r, 0.5, 0.5);
+    },
+  },
+  crab: {
+    body(ctx, pal, r) {
+      outline(ctx, pal, r);
+      for (const s of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(s * r * 0.3, -r * 0.8); ctx.lineTo(s * r * 0.4, -r * 1.12); ctx.stroke();
+        ctx.fillStyle = '#fff'; ellipse(ctx, s * r * 0.42, -r * 1.16, r * 0.17, r * 0.17); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = pal.base;
+        ctx.beginPath(); ctx.arc(s * r * 1.06, -r * 0.3, r * 0.3, (s > 0 ? 1.25 : 0.35) * Math.PI, (s > 0 ? 2.65 : 1.75) * Math.PI); ctx.lineTo(s * r * 1.06, -r * 0.3); ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+      roundBody(ctx, pal, r * 0.88);
+    },
+    face(ctx, pal, r, v) {
+      ctx.save(); ctx.translate(0, -r * 1.14); eyes(ctx, r * 0.56, v, { size: 0.9, spread: 0.75, y: 0 }); ctx.restore();
+      ctx.strokeStyle = pal.deep; ctx.lineWidth = Math.max(1, r * 0.08); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(0, -r * 0.06, r * 0.44, 0.22 * Math.PI, 0.78 * Math.PI); ctx.stroke();
+      cheeks(ctx, r, 0.12, 0.6);
+    },
+  },
+  jellyfish: {
+    body(ctx, pal, r) {
+      ctx.strokeStyle = pal.base; ctx.lineWidth = Math.max(1.5, r * 0.11); ctx.lineCap = 'round';
+      for (const x of [-0.56, -0.2, 0.2, 0.56]) {
+        ctx.beginPath(); ctx.moveTo(x * r, r * 0.5);
+        ctx.bezierCurveTo((x - 0.16) * r, r * 0.8, (x + 0.16) * r, r * 0.96, x * r, r * 1.3); ctx.stroke();
+      }
+      roundBody(ctx, pal, r * 0.9);
+      inBody(ctx, r, 0.9, () => {
+        ctx.fillStyle = 'rgba(255,255,255,.3)';
+        for (const [x, y, k] of [[-0.4, -0.5, 0.12], [0.3, -0.6, 0.09], [0.52, -0.2, 0.07], [-0.1, -0.72, 0.06]]) { ellipse(ctx, x * r, y * r, r * k, r * k); ctx.fill(); }
+        ctx.fillStyle = 'rgba(255,255,255,.22)';
+        for (let i = 0; i < 5; i++) { ellipse(ctx, (-0.72 + i * 0.36) * r, r * 0.86, r * 0.2, r * 0.2); ctx.fill(); }
+      });
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.66, spread: 0.28, y: 0.02 });
+      smile(ctx, r, pal.deep, 0.24, 0.11);
+      cheeks(ctx, r, 0.24, 0.54);
+    },
+  },
+  chef: {
+    body(ctx, pal, r) {
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(120,130,170,.95)'; ctx.lineWidth = Math.max(1, r * 0.06);
+      for (const [x, y, k] of [[-0.36, -1.02, 0.3], [0, -1.14, 0.34], [0.36, -1.02, 0.3]]) { ellipse(ctx, x * r, y * r, r * k, r * k); ctx.fill(); ctx.stroke(); }
+      ctx.beginPath(); ctx.rect(-r * 0.46, -r * 0.98, r * 0.92, r * 0.32); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-r * 0.42, -r * 1.2, r * 0.84, r * 0.3);
+      roundBody(ctx, pal, r * 0.9);
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.84, 0.5);
+      eyes(ctx, r, v, { size: 0.66, spread: 0.28, y: -0.06 });
+      ctx.strokeStyle = INK; ctx.lineWidth = Math.max(1.5, r * 0.1); ctx.lineCap = 'round';
+      for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(0, r * 0.22); ctx.quadraticCurveTo(s * r * 0.2, r * 0.34, s * r * 0.4, r * 0.18); ctx.stroke(); }
+      cheeks(ctx, r, 0.2, 0.6);
+    },
+  },
+  cowboy: {
+    body(ctx, pal, r) {
+      roundBody(ctx, pal, r * 0.9);
+      ctx.fillStyle = '#9a6a3a'; ctx.strokeStyle = '#5a3a1c'; ctx.lineWidth = Math.max(1, r * 0.06); ctx.lineJoin = 'round';
+      ellipse(ctx, 0, -r * 0.66, r * 1.2, r * 0.22); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-r * 0.52, -r * 0.7); ctx.quadraticCurveTo(-r * 0.5, -r * 1.34, -r * 0.14, -r * 1.22); ctx.quadraticCurveTo(0, -r * 1.1, r * 0.14, -r * 1.22); ctx.quadraticCurveTo(r * 0.5, -r * 1.34, r * 0.52, -r * 0.7); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e8243c'; ctx.fillRect(-r * 0.52, -r * 0.84, r * 1.04, r * 0.12);
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.66, spread: 0.28, y: -0.04 });
+      smile(ctx, r, pal.deep, 0.2, 0.14);
+      star(ctx, r * 0.52, r * 0.5, r * 0.2, '#ffe066');
+    },
+  },
+  clown: {
+    body(ctx, pal, r) {
+      for (const s of [-1, 1]) for (const [x, y, k, col] of [[0.86, -0.34, 0.26, '#ff9f2e'], [0.78, -0.66, 0.24, '#3fd972'], [0.98, -0.04, 0.2, '#9b5cff']]) { ctx.fillStyle = col; ellipse(ctx, s * x * r, y * r, r * k, r * k); ctx.fill(); }
+      roundBody(ctx, pal, r * 0.88);
+      ctx.fillStyle = '#ffe066'; ctx.strokeStyle = '#b07a00'; ctx.lineWidth = Math.max(1, r * 0.05); ctx.lineJoin = 'round';
+      tri(ctx, [[-r * 0.3, -r * 0.78], [0, -r * 1.42], [r * 0.3, -r * 0.78]]); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#e8243c'; ellipse(ctx, 0, -r * 1.42, r * 0.1, r * 0.1); ctx.fill();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.64, spread: 0.3, y: -0.14 });
+      ctx.fillStyle = '#e8243c'; ellipse(ctx, 0, r * 0.1, r * 0.15, r * 0.15); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.8)'; ellipse(ctx, -r * 0.05, r * 0.05, r * 0.05, r * 0.04); ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(2, r * 0.14); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(0, r * 0.14, r * 0.42, 0.22 * Math.PI, 0.78 * Math.PI); ctx.stroke();
+      ctx.strokeStyle = '#e8243c'; ctx.lineWidth = Math.max(1, r * 0.06);
+      ctx.beginPath(); ctx.arc(0, r * 0.14, r * 0.42, 0.22 * Math.PI, 0.78 * Math.PI); ctx.stroke();
+    },
+  },
+  princess: {
+    body(ctx, pal, r) {
+      roundBody(ctx, pal, r * 0.92);
+      ctx.fillStyle = '#ffe066'; ctx.strokeStyle = '#b07a00'; ctx.lineWidth = Math.max(1, r * 0.05); ctx.lineJoin = 'round';
+      tri(ctx, [[-r * 0.44, -r * 0.76], [-r * 0.4, -r * 1.08], [-r * 0.2, -r * 0.92], [0, -r * 1.26], [r * 0.2, -r * 0.92], [r * 0.4, -r * 1.08], [r * 0.44, -r * 0.76]]); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ff5fa2'; ellipse(ctx, 0, -r * 0.94, r * 0.09, r * 0.11); ctx.fill();
+      ctx.fillStyle = '#7fd6ff'; for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.3, -r * 0.86, r * 0.05, r * 0.06); ctx.fill(); }
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.86, 0.6);
+      eyes(ctx, r, v, { size: 0.72, spread: 0.29, y: -0.04 });
+      if (!v) { ctx.strokeStyle = INK; ctx.lineWidth = Math.max(1, r * 0.05); ctx.lineCap = 'round'; for (const s of [-1, 1]) for (const k of [0, 1]) { ctx.beginPath(); ctx.moveTo(s * r * (0.42 + k * 0.05), -r * (0.16 - k * 0.07)); ctx.lineTo(s * r * (0.56 + k * 0.03), -r * (0.26 - k * 0.1)); ctx.stroke(); } }
+      ctx.fillStyle = '#ff5f8a'; ellipse(ctx, 0, r * 0.26, r * 0.09, r * 0.06); ctx.fill();
+      cheeks(ctx, r, 0.2, 0.56);
+    },
+  },
+  santa: {
+    body(ctx, pal, r) {
+      roundBody(ctx, pal, r * 0.9);
+      ctx.fillStyle = '#e8243c'; ctx.strokeStyle = '#8a0f1f'; ctx.lineWidth = Math.max(1, r * 0.05); ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(-r * 0.6, -r * 0.7); ctx.quadraticCurveTo(-r * 0.2, -r * 1.5, r * 0.78, -r * 1.02); ctx.quadraticCurveTo(r * 0.3, -r * 1.0, r * 0.6, -r * 0.7); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(120,130,170,.9)';
+      ctx.beginPath(); rrect(ctx, -r * 0.7, -r * 0.82, r * 1.4, r * 0.24, r * 0.12); ctx.fill(); ctx.stroke();
+      ellipse(ctx, r * 0.8, -r * 1.0, r * 0.15, r * 0.15); ctx.fill(); ctx.stroke();
+      inBody(ctx, r, 0.9, () => {
+        ctx.fillStyle = 'rgba(255,255,255,.95)';
+        for (let i = 0; i < 5; i++) { ellipse(ctx, (-0.6 + i * 0.3) * r, r * (0.56 + (i % 2) * 0.08), r * 0.24, r * 0.3); ctx.fill(); }
+      });
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.62, spread: 0.28, y: -0.12 });
+      ctx.fillStyle = '#ff8fa8'; ellipse(ctx, 0, r * 0.12, r * 0.09, r * 0.07); ctx.fill();
+      cheeks(ctx, r, 0.1, 0.56);
+    },
+  },
+  vampire: {
+    body(ctx, pal, r) {
+      ctx.fillStyle = '#2a2238'; ctx.strokeStyle = '#e8243c'; ctx.lineWidth = Math.max(1, r * 0.06); ctx.lineJoin = 'round';
+      for (const s of [-1, 1]) { tri(ctx, [[s * r * 0.3, r * 0.5], [s * r * 1.22, -r * 0.5], [s * r * 0.96, r * 0.7]]); ctx.fill(); ctx.stroke(); }
+      roundBody(ctx, pal, r * 0.9);
+      inBody(ctx, r, 0.9, () => {
+        ctx.fillStyle = '#2a2238';
+        ctx.beginPath(); ctx.moveTo(-r, -r); ctx.lineTo(r, -r); ctx.lineTo(r, -r * 0.4); ctx.quadraticCurveTo(r * 0.4, -r * 0.74, 0, -r * 0.3); ctx.quadraticCurveTo(-r * 0.4, -r * 0.74, -r, -r * 0.4); ctx.closePath(); ctx.fill();
+      });
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.66, spread: 0.28, y: 0 });
+      ctx.fillStyle = pal.deep; ctx.beginPath(); ctx.arc(0, r * 0.28, r * 0.2, 0, Math.PI); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff';
+      for (const s of [-1, 1]) { tri(ctx, [[s * r * 0.16, r * 0.28], [s * r * 0.06, r * 0.28], [s * r * 0.11, r * 0.42]]); ctx.fill(); }
+    },
+  },
+  mummy: {
+    body(ctx, pal, r) {
+      roundBody(ctx, pal, r * 0.92);
+      inBody(ctx, r, 0.92, () => {
+        ctx.fillStyle = 'rgba(250,246,232,.93)'; ctx.strokeStyle = 'rgba(120,110,90,.7)'; ctx.lineWidth = Math.max(0.8, r * 0.035);
+        for (const [y, tilt, h] of [[-0.86, 0.08, 0.3], [-0.42, -0.1, 0.2], [0.36, 0.1, 0.24], [0.7, -0.06, 0.34]]) {
+          ctx.save(); ctx.translate(0, y * r); ctx.rotate(tilt); ctx.fillRect(-r * 1.2, 0, r * 2.4, h * r); ctx.strokeRect(-r * 1.2, 0, r * 2.4, h * r); ctx.restore();
+        }
+      });
+      ctx.strokeStyle = 'rgba(250,246,232,.95)'; ctx.lineWidth = Math.max(1.5, r * 0.1); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(r * 0.74, r * 0.52); ctx.quadraticCurveTo(r * 1.06, r * 0.66, r * 1.0, r * 0.98); ctx.stroke();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.7, spread: 0.3, y: 0.04 });
+    },
+  },
+  glasses: {
+    body(ctx, pal, r) {
+      roundBody(ctx, pal, r * 0.94);
+      ctx.fillStyle = '#e8243c'; ctx.strokeStyle = '#8a0f1f'; ctx.lineWidth = Math.max(0.8, r * 0.04); ctx.lineJoin = 'round';
+      for (const s of [-1, 1]) { tri(ctx, [[0, r * 0.62], [s * r * 0.3, r * 0.48], [s * r * 0.3, r * 0.78]]); ctx.fill(); ctx.stroke(); }
+      ellipse(ctx, 0, r * 0.63, r * 0.07, r * 0.07); ctx.fill(); ctx.stroke();
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.88, 0.5);
+      eyes(ctx, r, v, { size: 0.62, spread: 0.32, y: -0.06 });
+      ctx.strokeStyle = INK; ctx.lineWidth = Math.max(1.5, r * 0.08);
+      for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.32, -r * 0.04, r * 0.26, r * 0.26); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(-r * 0.06, -r * 0.06); ctx.lineTo(r * 0.06, -r * 0.06); ctx.moveTo(-r * 0.58, -r * 0.08); ctx.lineTo(-r * 0.86, -r * 0.18); ctx.moveTo(r * 0.58, -r * 0.08); ctx.lineTo(r * 0.86, -r * 0.18); ctx.stroke();
+      smile(ctx, r, pal.deep, 0.24, 0.1);
+    },
+  },
+  headphone: {
+    body(ctx, pal, r) {
+      ctx.strokeStyle = '#2a2238'; ctx.lineWidth = Math.max(2, r * 0.16); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(0, -r * 0.1, r * 1.0, 1.08 * Math.PI, 1.92 * Math.PI); ctx.stroke();
+      roundBody(ctx, pal, r * 0.88);
+      for (const s of [-1, 1]) {
+        ctx.fillStyle = '#2a2238'; ctx.strokeStyle = pal.light; ctx.lineWidth = Math.max(1, r * 0.05);
+        ctx.beginPath(); rrect(ctx, s * r * 0.96 - r * 0.17, -r * 0.4, r * 0.34, r * 0.66, r * 0.14); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = pal.glow; ellipse(ctx, s * r * 0.96, -r * 0.07, r * 0.07, r * 0.07); ctx.fill();
+      }
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.82, 0.5);
+      eyes(ctx, r, v, { size: 0.66, spread: 0.27, y: -0.06 });
+      smile(ctx, r, pal.deep, 0.18, 0.14);
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1, r * 0.05);
+      ellipse(ctx, r * 0.42, r * 0.56, r * 0.08, r * 0.06, -0.4); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(r * 0.49, r * 0.54); ctx.lineTo(r * 0.49, r * 0.3); ctx.lineTo(r * 0.62, r * 0.36); ctx.stroke();
+    },
+  },
+  hero: {
+    body(ctx, pal, r) {
+      ctx.fillStyle = '#e8243c'; ctx.strokeStyle = '#8a0f1f'; ctx.lineWidth = Math.max(1, r * 0.05); ctx.lineJoin = 'round';
+      for (const s of [-1, 1]) { tri(ctx, [[s * r * 0.4, -r * 0.5], [s * r * 1.34, r * 0.2], [s * r * 0.86, r * 0.9], [s * r * 0.3, r * 0.6]]); ctx.fill(); ctx.stroke(); }
+      roundBody(ctx, pal, r * 0.9);
+      star(ctx, 0, r * 0.56, r * 0.24, '#ffe066');
+    },
+    face(ctx, pal, r, v) {
+      ctx.fillStyle = '#2a2238';
+      ctx.beginPath(); ctx.moveTo(-r * 0.78, -r * 0.2); ctx.quadraticCurveTo(-r * 0.4, -r * 0.5, 0, -r * 0.26); ctx.quadraticCurveTo(r * 0.4, -r * 0.5, r * 0.78, -r * 0.2);
+      ctx.quadraticCurveTo(r * 0.5, r * 0.26, 0, r * 0.06); ctx.quadraticCurveTo(-r * 0.5, r * 0.26, -r * 0.78, -r * 0.2); ctx.closePath(); ctx.fill();
+      eyes(ctx, r, v, { size: 0.62, spread: 0.32, y: -0.1, dark: v ? '#ffffff' : INK });
+      smile(ctx, r, pal.deep, 0.22, 0.14);
+    },
+  },
+  balloon: {
+    body(ctx, pal, r) {
+      ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = Math.max(1, r * 0.05); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(0, r * 1.04); ctx.bezierCurveTo(r * 0.3, r * 1.14, -r * 0.24, r * 1.26, r * 0.1, r * 1.42); ctx.stroke();
+      outline(ctx, pal, r); ctx.fillStyle = pal.dark;
+      tri(ctx, [[-r * 0.14, r * 1.08], [0, r * 0.86], [r * 0.14, r * 1.08]]); ctx.fill(); ctx.stroke();
+      ctx.save(); ctx.scale(0.96, 1.04); roundBody(ctx, pal, r * 0.9); ctx.restore();
+      ctx.fillStyle = 'rgba(255,255,255,.75)'; ellipse(ctx, -r * 0.4, -r * 0.5, r * 0.2, r * 0.32, 0.5); ctx.fill();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.66, spread: 0.26, y: 0.04 });
+      smile(ctx, r, pal.deep, 0.26, 0.12);
+      cheeks(ctx, r, 0.26, 0.5);
+    },
+  },
+  present: {
+    body(ctx, pal, r) {
+      roundBody(ctx, pal, r * 0.92);
+      inBody(ctx, r, 0.92, () => {
+        ctx.fillStyle = 'rgba(255,255,255,.85)';
+        ctx.fillRect(-r * 0.12, -r, r * 0.24, r * 2); ctx.fillRect(-r, r * 0.38, r * 2, r * 0.22);
+      });
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(120,130,170,.95)'; ctx.lineWidth = Math.max(1, r * 0.05);
+      for (const s of [-1, 1]) { ellipse(ctx, s * r * 0.3, -r * 1.0, r * 0.3, r * 0.19, s * -0.5); ctx.fill(); ctx.stroke(); }
+      ellipse(ctx, 0, -r * 0.9, r * 0.13, r * 0.13); ctx.fill(); ctx.stroke();
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.62, spread: 0.34, y: -0.08 });
+      smile(ctx, r, pal.deep, 0.14, 0.1);
+    },
+  },
+  onigiri: {
+    body(ctx, pal, r) {
+      roundBody(ctx, pal, r * 0.94);
+      inBody(ctx, r, 0.94, () => {
+        ctx.fillStyle = 'rgba(255,255,255,.16)'; ctx.fillRect(-r, -r, r * 2, r * 1.3);
+        ctx.fillStyle = 'rgba(27,19,48,.88)';
+        ctx.beginPath(); rrect(ctx, -r * 0.5, r * 0.34, r * 1.0, r * 0.8, r * 0.1); ctx.fill();
+      });
+      ctx.fillStyle = 'rgba(255,255,255,.85)';
+      for (const [x, y] of [[-0.5, -0.6], [0.3, -0.72], [0.6, -0.3], [-0.72, -0.1]]) { ellipse(ctx, x * r, y * r, r * 0.05, r * 0.03, x); ctx.fill(); }
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.64, spread: 0.28, y: -0.16 });
+      smile(ctx, r, pal.deep, 0.02, 0.12);
+      cheeks(ctx, r, 0.04, 0.54);
+    },
+  },
+  dice: {
+    body(ctx, pal, r) {
+      const g = ctx.createLinearGradient(-r, -r, r, r);
+      g.addColorStop(0, pal.light); g.addColorStop(0.45, pal.base); g.addColorStop(1, pal.dark);
+      ctx.fillStyle = g; outline(ctx, pal, r, 0.07);
+      ctx.beginPath(); rrect(ctx, -r * 0.86, -r * 0.86, r * 1.72, r * 1.72, r * 0.36); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      for (const [x, y] of [[-0.56, -0.58], [0.56, -0.58], [-0.56, 0.6], [0.56, 0.6]]) { ellipse(ctx, x * r, y * r, r * 0.11, r * 0.11); ctx.fill(); }
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.68, spread: 0.26, y: -0.04 });
+      smile(ctx, r, pal.deep, 0.2, 0.12);
+    },
+  },
+  ice: { // 45레벨
+    body(ctx, pal, r) {
+      ctx.strokeStyle = '#7fb8e6'; ctx.lineWidth = Math.max(0.8, r * 0.04); ctx.lineJoin = 'round';
+      for (const [x, w, h, a] of [[-0.52, 0.2, 0.62, -0.4], [-0.2, 0.22, 0.8, -0.12], [0.16, 0.22, 0.86, 0.1], [0.5, 0.2, 0.6, 0.42]]) {
+        ctx.save(); ctx.translate(x * r, -r * 0.62); ctx.rotate(a);
+        const g = ctx.createLinearGradient(0, 0, 0, -h * r); g.addColorStop(0, '#bfe6ff'); g.addColorStop(1, '#ffffff');
+        ctx.fillStyle = g; tri(ctx, [[-w * r, 0], [0, -h * r], [w * r, 0]]); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+      roundBody(ctx, pal, r * 0.9);
+      inBody(ctx, r, 0.9, () => {
+        ctx.fillStyle = 'rgba(255,255,255,.34)';
+        tri(ctx, [[-r, -r], [r * 0.1, -r], [-r * 0.5, r * 0.2], [-r, r * 0.3]]); ctx.fill();
+        tri(ctx, [[r * 0.4, r], [r, r * 0.1], [r, r]]); ctx.fill();
+      });
+      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = Math.max(1, r * 0.05); ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; ctx.beginPath(); ctx.moveTo(r * 0.52 - Math.cos(a) * r * 0.16, r * 0.5 - Math.sin(a) * r * 0.16); ctx.lineTo(r * 0.52 + Math.cos(a) * r * 0.16, r * 0.5 + Math.sin(a) * r * 0.16); ctx.stroke(); }
+    },
+    face(ctx, pal, r, v) {
+      eyes(ctx, r, v, { size: 0.7, spread: 0.28, y: -0.06 });
+      smile(ctx, r, pal.deep, 0.18, 0.12);
+      cheeks(ctx, r, 0.18, 0.54);
+    },
+  },
+  rainbow: { // 65레벨
+    body(ctx, pal, r) {
+      ctx.lineCap = 'butt';
+      RAINBOW6.forEach((col, i) => {
+        ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.2, r * 0.075);
+        ctx.beginPath(); ctx.arc(0, r * 0.12, r * (1.24 - i * 0.07), 1.1 * Math.PI, 1.9 * Math.PI); ctx.stroke();
+      });
+      ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(120,130,170,.9)'; ctx.lineWidth = Math.max(0.8, r * 0.04);
+      for (const s of [-1, 1]) for (const [x, y, k] of [[1.0, 0.0, 0.2], [0.84, 0.1, 0.17], [1.14, 0.1, 0.15]]) { ellipse(ctx, s * x * r, y * r, r * k, r * k); ctx.fill(); }
+      roundBody(ctx, pal, r * 0.82);
+      star(ctx, -r * 0.5, -r * 0.5, r * 0.14, '#ffffff'); star(ctx, r * 0.56, r * 0.44, r * 0.1, '#ffffff');
+    },
+    face(ctx, pal, r, v) {
+      shine(ctx, r * 0.78, 0.6);
+      eyes(ctx, r, v, { size: 0.68, spread: 0.26, y: -0.06 });
+      ctx.fillStyle = pal.deep; ctx.beginPath(); ctx.arc(0, r * 0.16, r * 0.16, 0, Math.PI); ctx.closePath(); ctx.fill();
+      cheeks(ctx, r, 0.14, 0.5);
+    },
+  },
+};
+for (const [kind, art] of Object.entries({ ...MORE_SKINS, ...SKINS_6, ...SKINS_7, ...SKINS_8 })) {
   SKIN_STYLE[kind] = { connect: false };
   SKINS[kind] = (ctx, c, r, layer, v) => (layer === 'body' ? art.body(ctx, PALETTE[c], r) : art.face(ctx, PALETTE[c], r, v));
 }
