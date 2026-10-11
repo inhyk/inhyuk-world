@@ -11,7 +11,8 @@ import { computeLayout } from './render.mjs';
 import { VIDEOS, VideoRun, playVideo, videoSeconds, lengthText, clock, readFrames, getVideo, VIDEO_TIMING, VIDEO_GRAVITY, VIDEO_SEED } from './videos.mjs';
 import { SKINS, canBuy, canRedeem } from './shop.mjs';
 import { SKIN_IDS, SKIN_STYLE } from './skins.mjs';
-import { newProgress } from './profile.mjs';
+import { newProgress, sanitize, MAP_SETTINGS } from './profile.mjs';
+import { MAPS, getMap } from './maps.mjs';
 import { cloudPayload } from './cloud.mjs';
 import { maxProgress, bytes } from './save-size.fixture.mjs';
 import { SAVE_MAX_BYTES } from '../../services/net/src/saves.js';
@@ -141,6 +142,44 @@ test('방해 뿌요도 놓을 수 있다: 저희끼리는 안 터지고, 옆에�
   assert.deepEqual(events(p, 'pop').map(e => [e.chain, e.colors, e.puyos, e.garbage]), [[1, [R], 4, 2]]);
   assert.deepEqual(events(p, 'fireEnd'), [{ type: 'fireEnd', chain: 1 }]);
   assert.deepEqual(fieldRows(p.cells, 3), ['....OO', '....OO', '....OO', '....OO']); // 멀리 있는 방해 뿌요는 그대로
+});
+
+test('맵을 고를 수 있다: 고른 맵은 저장되고, 쫀득 연구소에서는 같은 색 6개가 붙어야 터진다', () => {
+  assert.ok(MAP_SETTINGS.includes('labMap'));
+  assert.equal(newProgress().settings.labMap, 'garden');
+  const old = newProgress(); delete old.settings.labMap;
+  assert.equal(sanitize(old).settings.labMap, 'garden');            // 예전 저장
+  const odd = newProgress(); odd.settings.labMap = '없는맵';
+  assert.equal(sanitize(odd).settings.labMap, 'garden');
+  const mine = newProgress(); mine.settings.labMap = 'six';
+  assert.equal(sanitize(JSON.parse(JSON.stringify(mine))).settings.labMap, 'six');
+  assert.deepEqual(MAPS.map(map => map.minGroup), [4, 4, 4, 4, 4, 6]);
+  assert.equal(getMap('six').name, '쫀득 연구소');
+  // 쫀득 연구소: 빨강 4개, 5개로는 실행해도 터지지 않고 6개가 되면 터진다
+  const p = lab();
+  p.minGroup = getMap('six').minGroup;
+  place(p, 0, R, R); place(p, 0, R, R);
+  assert.equal(p.fire(), true);
+  run(p, q => events(q, 'fireEnd').length > 0);
+  assert.deepEqual(events(p, 'fireEnd'), [{ type: 'fireEnd', chain: 0 }]);
+  place(p, 1, R, G);
+  p.events.length = 0;
+  assert.equal(p.fire(), true);
+  run(p, q => events(q, 'fireEnd').length > 0);
+  assert.deepEqual(events(p, 'fireEnd'), [{ type: 'fireEnd', chain: 0 }]); // 5개
+  place(p, 1, G, R); // 둘째 줄이 아래부터 빨강, 초록, 초록, 빨강: 맨 위 빨강이 맨 왼쪽 줄의 빨강과 붙어서 6개
+  p.events.length = 0;
+  assert.equal(p.fire(), true);
+  run(p, q => events(q, 'fireEnd').length > 0);
+  assert.deepEqual(events(p, 'pop').map(e => [e.chain, e.puyos]), [[1, 6]]);
+  // 맵을 뿌요 정원으로 바꾸면(4개) 놓아 둔 것이 그대로 4개 규칙으로 터진다
+  const q = lab();
+  q.minGroup = 6;
+  place(q, 3, B, B); place(q, 3, B, B);
+  q.minGroup = getMap('garden').minGroup;
+  assert.equal(q.fire(), true);
+  run(q, x => events(x, 'fireEnd').length > 0);
+  assert.deepEqual(events(q, 'fireEnd'), [{ type: 'fireEnd', chain: 1 }]);
 });
 
 test('보통 판은 그대로: hold 가 아니면 놓자마자 터진다', () => {

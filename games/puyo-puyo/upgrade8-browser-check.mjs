@@ -1,6 +1,6 @@
 // 인혁이 기획서 「뿌요뿌요 (업그레이드)」(2026-10-11)를 실제 Chrome 으로 끝까지 확인한다 (서버 없이 손님으로).
 // 3번 직접 놓아 보는 배우기 → 2번 뿌요 동영상(목록, 틀기, 멈춤, 처음부터, 다른 동영상, 끝) → 1번 새 스킨 30가지.
-// 배우기 목록의 칸 → 색(다섯 색과 방해 뿌요)을 골라(색 점, 뿌요 그림 누르기) 놓아도 터지지 않음 → ▶ 실행하면 하나씩 터지며 연쇄, 꼬마 뿌요가 알려 줌
+// 배우기 목록의 칸 → 색(다섯 색과 방해 뿌요)을 골라(색 점, 뿌요 그림 누르기) 놓아도 터지지 않음 → 맵 고르기(쫀득 연구소는 6개) → ▶ 실행하면 하나씩 터지며 연쇄, 꼬마 뿌요가 알려 줌
 // → ⏪ 터지기 전으로, ↩ 무르기, 🧹 처음부터 → 꽉 차도 지지 않음 → 챌린지에 세지 않음 → 나가면 배우기 목록, 보통 배우기는 그대로.
 //
 // 사용법: npm run puyo-puyo:dev 후 PUYO_URL=http://127.0.0.1:5190/ node games/puyo-puyo/upgrade8-browser-check.mjs
@@ -183,8 +183,76 @@ async function check(name, viewport) {
   await holding(page);
   assert.equal(await column(page, 0), '66');
 
-  // 꽉 차도 지지 않는다: 뿌요가 나오는 셋째 줄을 꼭대기까지 채운다
+  // 맵 고르기 ("직접 놓아 보는 배우기에서 맵을 고를 수 있게 만들어줘"): 🗺️ 단추 → 여섯 맵 → 고르면 배경과 "몇 개가 붙어야 터지는지"가 바뀐다
   await page.click('#lab-clear'); await holding(page);
+  s = await read(page);
+  assert.deepEqual([s.lab.map, s.lab.minGroup, s.theme], ['garden', 4, 'meadow']);
+  assert.equal(await page.textContent('#lab-map'), '🗺️ 🌳 뿌요 정원');
+  await pick(R, R); await dropLeft(); await dropLeft(); // 빨강 4개를 놓아 둔다
+  await page.click('#lab-map');
+  await page.waitForSelector('#lab-maps-pop:not([hidden])');
+  assert.deepEqual(await page.locator('#lab-maps .map-card b').allTextContents(), ['뿌요 정원', '느긋한 빙하', '불꽃 화산', '무지개 섬', '별빛 우주', '쫀득 연구소']);
+  assert.equal(await page.getAttribute('#lab-maps .map-card.selected', 'data-map'), 'garden');
+  assert.equal(await page.textContent('#lab-maps [data-map="six"] small'), '같은 색 6개가 붙으면 터져');
+  await page.waitForTimeout(300); await page.screenshot({ path: `${shots}/lab-maps-${name}.png` });
+  if (!phone) { // 창이 떠 있는 동안 스페이스를 눌러도 뿌요가 떨어지지 않는다
+    await page.keyboard.press('Space'); await page.waitForTimeout(300);
+    assert.equal(await column(page, 0), '1111');
+    assert.equal((await read(page)).lab.cells, 4);
+  }
+  await page.click('#lab-maps [data-map="six"]');
+  await page.waitForSelector('#lab-maps-pop', { state: 'hidden' });
+  s = await read(page);
+  assert.deepEqual([s.lab.map, s.lab.minGroup, s.theme, s.map], ['six', 6, 'lab', 'six']);
+  assert.equal(await page.textContent('#lab-map'), '🗺️ 🧪 쫀득 연구소');
+  assert.equal(await page.textContent('#hud-title'), '🧪 직접 놓아 보기 · 🧪 쫀득 연구소');
+  assert.deepEqual(await coach(page), ['🧪 쫀득 연구소!', '맵을 쫀득 연구소(으)로 바꿨어. 여기서는 같은 색 6개가 붙으면 터져. 4개나 5개는 안 터지니까 더 크게 모아 봐! 놓아 둔 뿌요는 그대로야.']);
+  assert.equal(await column(page, 0), '1111'); // 놓아 둔 뿌요는 그대로
+  assert.equal(await page.evaluate(() => window.__puyo.P().settings.labMap), 'six');
+  // 쫀득 연구소: 빨강 4개로는 터지지 않고, 6개가 되면 터진다
+  await page.click('#lab-run');
+  await page.waitForFunction(() => document.getElementById('coach-title').textContent === '아직 터질 게 없어', null, T);
+  assert.match((await coach(page))[1], /쫀득 연구소에서는 같은 색 뿌요 6개가 붙어야 터져/);
+  await holding(page);
+  await dropLeft();
+  assert.equal(await column(page, 0), '111111');
+  await page.screenshot({ path: `${shots}/lab-six-${name}.png` });
+  await page.click('#lab-run');
+  await page.waitForFunction(() => document.getElementById('coach-title').textContent === '1연쇄!', null, T);
+  assert.match((await coach(page))[1], /^빨강 뿌요 6개가 터졌어\./);
+  await page.waitForFunction(() => { const l = JSON.parse(window.render_game_to_text()).lab; return !l.running && l.cells === 0; }, null, T);
+  await holding(page);
+  // 고른 맵은 다음에 들어와도 그대로. 바깥을 누르거나 닫기를 누르면 창만 닫힌다
+  await page.click('#hud-pause'); await page.click('#pause-retry');
+  await holding(page);
+  s = await read(page);
+  assert.deepEqual([s.lab.map, s.lab.minGroup, s.theme], ['six', 6, 'lab']);
+  await page.evaluate(() => { document.getElementById('toasts').style.visibility = 'hidden'; });
+  await page.click('#lab-map'); await page.waitForSelector('#lab-maps-pop:not([hidden])');
+  assert.equal(await page.getAttribute('#lab-maps .map-card.selected', 'data-map'), 'six');
+  await page.click('#lab-maps-close');
+  await page.waitForSelector('#lab-maps-pop', { state: 'hidden' });
+  assert.equal((await read(page)).lab.map, 'six');
+  // 별빛 우주(3색 맵)에서도 다섯 색과 방해 뿌요를 모두 고를 수 있다. 다시 뿌요 정원으로
+  await page.click('#lab-map'); await page.click('#lab-maps [data-map="space"]');
+  s = await read(page);
+  assert.deepEqual([s.lab.map, s.lab.minGroup, s.theme], ['space', 4, 'space']);
+  assert.deepEqual(await page.locator('#lab-top button').evaluateAll(bs => bs.map(b => b.dataset.color)), ['1', '2', '3', '4', '5', '6']);
+  await page.click('#lab-map'); await page.click('#lab-maps [data-map="garden"]');
+  s = await read(page);
+  assert.deepEqual([s.lab.map, s.lab.minGroup, s.theme], ['garden', 4, 'meadow']);
+  assert.equal(await page.textContent('#hud-title'), '🧪 직접 놓아 보는 배우기');
+  // pause-retry 로 새 판이 됐으니 터진 것을 적는 장치를 다시 단다
+  await page.evaluate(() => {
+    window.__pops = [];
+    const handle = window.__puyo.renderer.onEvent.bind(window.__puyo.renderer);
+    if (!window.__puyo.renderer.__popsHooked) { window.__puyo.renderer.__popsHooked = true; window.__puyo.renderer.onEvent = (e, m) => { if (e.type === 'pop') window.__pops.push([e.chain, e.colors.join(''), e.puyos]); return handle(e, m); }; }
+  });
+
+  // 꽉 차도 지지 않는다: 뿌요가 나오는 셋째 줄을 꼭대기까지 채운다 (필드는 방금 새 판이라 비어 있고, 빈 필드에서는 「처음부터」 단추가 꺼져 있다)
+  assert.equal((await read(page)).lab.cells, 0);
+  assert.equal(await page.locator('#lab-clear').isDisabled(), true);
+  await holding(page);
   for (let i = 0; i < 6; i++) {
     await pick(i % 2 ? G : R, i % 2 ? G : R);
     await page.evaluate(() => window.__puyo.match.players[0].hardDrop());

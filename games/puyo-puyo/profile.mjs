@@ -16,8 +16,8 @@ export const TIME_IDS = ['5m', '10m', '15m', '20m', '30m', '45m', '60m'];
 export const AD_IDS = ['coins', 'boost', 'spin', 'pet'];
 // 뿌요뿌요 배우기의 등급 이름 (tutorial.mjs 의 GRADES 와 같아야 한다). 초급은 tutorial 칸에 적는다. 중급, 상급, 최상급, 초초상급, 마지막, 찐 마지막, 졸업, 졸업2, 졸업3.
 export const SCHOOL_IDS = ['middle', 'high', 'master', 'ultra', 'final', 'real', 'grad1', 'grad2', 'grad3', 'grad4', 'grad5', 'grad6', 'grad7', 'grad8', 'grad9', 'grad10'];
-// 맵을 고르는 설정 칸: 2인 플레이, AI 대전, 혼자 하기, 온라인 대전(내 표)
-export const MAP_SETTINGS = ['localMap', 'vsMap', 'soloMap', 'onlineMap'];
+// 맵을 고르는 설정 칸: 2인 플레이, AI 대전, 혼자 하기, 온라인 대전(내 표), 직접 놓아 보는 배우기
+export const MAP_SETTINGS = ['localMap', 'vsMap', 'soloMap', 'onlineMap', 'labMap'];
 export const emptyGifts = () => ({ seen: {}, day: '', dayCoins: 0, sent: 0, got: 0 });
 export const GIFT_SEEN_MAX = 100; // 선물 받은 번호를 적어 두는 친구 수
 
@@ -46,7 +46,7 @@ export function newProgress() {
       games: 0, wins: 0, losses: 0, maxChain: 0, maxScore: 0, popped: 0, allClears: 0, offsets: 0,
       garbageSent: 0, onlineGames: 0, onlineWins: 0, localGames: 0, endlessBest: 0, playSeconds: 0,
     },
-    settings: { ghost: true, shake: true, localMap: 'garden', vsMap: 'garden', soloMap: 'garden', onlineMap: 'garden', onlineChar: 'hero', chat: true },
+    settings: { ghost: true, shake: true, localMap: 'garden', vsMap: 'garden', soloMap: 'garden', onlineMap: 'garden', labMap: 'garden', onlineChar: 'hero', chat: true },
   };
 }
 
