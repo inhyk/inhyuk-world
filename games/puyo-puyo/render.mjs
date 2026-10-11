@@ -412,7 +412,7 @@ export class Renderer {
     ctx.translate(sx, sy);
     match.players.forEach((p, i) => this.drawSide(ctx, match, p, i, time));
     if (!this.layout.solo && this.layout.center) this.drawCenter(ctx, match, time);
-    if (this.layout.solo) this.drawSoloSide(ctx, match, time);
+    if (this.layout.solo && !this.opts.lab) this.drawSoloSide(ctx, match, time);
     if (this.layout.clash && this.opts.clash) this.drawClash(ctx, time);
     this.effects.draw(ctx);
     ctx.restore();
@@ -490,7 +490,8 @@ export class Renderer {
     this.drawTray(ctx, match, player, i, time);
     this.drawScore(ctx, player, i);
     if (this.layout.label) this.drawLabel(ctx, i);
-    if (!this.layout.next[i]?.hidden) this.drawNext(ctx, player, i, v);
+    // 직접 놓아 보는 배우기는 다음 뿌요가 없다 (고른 색이 나온다. 옆 칸은 색 고르기와 단추 자리)
+    if (!this.layout.next[i]?.hidden && !this.opts.lab) this.drawNext(ctx, player, i, v);
     ctx.restore();
   }
 

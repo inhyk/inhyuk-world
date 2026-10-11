@@ -367,6 +367,8 @@
   <section id="scr-school" class="screen" hidden>
     <div class="head"><button class="ghost back" data-go="menu">← 메뉴</button><h2>🎓 뿌요뿌요 배우기</h2></div>
     <p class="lead" id="school-lead">꼬마 뿌요랑 직접 해 보면서 배워. <b>초급</b>부터 <b id="school-last">졸업5</b>까지 차례로, 앞 등급을 끝내면 다음 등급이 열려! <span id="school-total"></span></p>
+    <!-- 직접 놓아 보는 배우기 (기획서 2026-10-11 3번) -->
+    <div id="lab-card" class="lab-card"><div class="em">🧪</div><div><h3>직접 놓아 보는 배우기</h3><p>뿌요 색을 골라 마음대로 놓고 <b>▶ 실행</b>! 하나씩 터지면서 연쇄가 되는 걸 보고 배워.</p></div><button id="lab-start" class="primary">놓아 보기!</button></div>
     <ol id="school-list" class="school-list"></ol>
   </section>
 
@@ -514,6 +516,20 @@
   <canvas id="coach-face" width="120" height="120" aria-hidden="true"></canvas>
   <div class="coach-body"><small id="coach-step"></small><b id="coach-title"></b><p id="coach-text"></p></div>
   <div id="coach-buttons" class="coach-buttons"></div>
+</div>
+
+<!-- 직접 놓아 보는 배우기: 필드 오른쪽 칸 (기획서 2026-10-11 3번 그림: 위에 놓을 뿌요 칸, 그 아래 칸들) -->
+<div id="lab-panel" class="lab-panel" hidden>
+  <div class="lab-box">
+    <canvas id="lab-pair" width="120" height="200" aria-hidden="true"></canvas>
+    <b>놓을 뿌요</b>
+    <small class="lab-tip">눌러서 색 바꾸기</small>
+    <div class="lab-row"><small>위</small><span id="lab-top" class="lab-dots" role="group" aria-label="위쪽 뿌요 색"></span></div>
+    <div class="lab-row"><small>아래</small><span id="lab-bottom" class="lab-dots" role="group" aria-label="아래쪽 뿌요 색"></span></div>
+  </div>
+  <button id="lab-run" class="primary">▶ 실행</button>
+  <button id="lab-undo" class="ghost">↩ 무르기</button>
+  <button id="lab-clear" class="ghost">🧹 처음부터</button>
 </div>
 
 <!-- 채팅 창: 친구 채팅(가운데)과 온라인 대전 채팅(게임 중에는 오른쪽 위에 작게) -->

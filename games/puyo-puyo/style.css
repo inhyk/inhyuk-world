@@ -640,6 +640,24 @@ body.app .back-site { display: none; } /* 앱에는 돌아갈 인혁 월드 사�
 @media (prefers-reduced-motion: reduce) { .boost-card.on .boost-icon { animation: none; } }
 
 /* 뿌요뿌요 배우기: 초급 → 중급 → 상급 → 최상급 */
+/* 직접 놓아 보는 배우기 (기획서 2026-10-11 3번) */
+.lab-card { flex: 0 0 auto; display: grid; grid-template-columns: 60px 1fr auto; gap: 12px; align-items: center; margin: 4px 0 10px; padding: 10px 14px; border: 3px solid #fff; border-radius: 20px; background: linear-gradient(120deg, #fff7d6, #e7f6ff); }
+.lab-card .em { font-size: 38px; text-align: center; }
+.lab-card h3 { font-size: 20px; }
+.lab-card p { margin: 2px 0 0; font: 12px/1.6 var(--body-font); color: var(--soft); }
+@media (max-width: 480px) { .lab-card { grid-template-columns: 40px 1fr auto; gap: 8px; padding: 8px 10px; } .lab-card .em { font-size: 28px; } .lab-card h3 { font-size: 17px; } }
+.lab-panel { position: fixed; z-index: 5; display: flex; flex-direction: column; gap: calc(var(--c, 36px) * .22); font-size: calc(var(--c, 36px) * .38); }
+.lab-box { display: flex; flex-direction: column; align-items: center; gap: calc(var(--c, 36px) * .1); padding: calc(var(--c, 36px) * .2) calc(var(--c, 36px) * .12); border-radius: calc(var(--c, 36px) * .4); background: rgba(16, 10, 40, .62); color: #fff; }
+.lab-box canvas { width: calc(var(--c, 36px) * 1.5); height: calc(var(--c, 36px) * 2.5); }
+.lab-box canvas { cursor: pointer; }
+.lab-box b { font-weight: 400; color: #ffe45c; }
+.lab-tip { font: calc(var(--c, 36px) * .26)/1.2 var(--body-font); color: #d9ccff; }
+.lab-row { display: flex; align-items: center; gap: calc(var(--c, 36px) * .1); width: 100%; }
+.lab-row small { flex: 0 0 auto; width: calc(var(--c, 36px) * .72); font-size: calc(var(--c, 36px) * .3); text-align: center; }
+.lab-dots { flex: 1; display: flex; justify-content: space-between; }
+.lab-dots button { width: calc(var(--c, 36px) * .5); height: calc(var(--c, 36px) * .5); min-width: 0; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55); background: var(--dot); box-shadow: none; }
+.lab-dots button.on { border-color: #fff; box-shadow: 0 0 0 2px #ffe45c; transform: scale(1.15); }
+.lab-panel > button { padding: calc(var(--c, 36px) * .22) calc(var(--c, 36px) * .1); font-size: calc(var(--c, 36px) * .4); white-space: nowrap; }
 .school-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 22px; }
 .grade { position: relative; display: grid; grid-template-columns: 60px 1fr auto; gap: 12px; align-items: center; background: rgba(255, 255, 255, .93); border: 3px solid #fff; border-radius: 20px; padding: 12px 14px; }
 .grade + .grade::before { content: '▼'; position: absolute; top: -21px; left: 50%; transform: translateX(-50%); color: #5b3bb3; font-size: 15px; }

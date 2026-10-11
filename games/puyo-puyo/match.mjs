@@ -12,7 +12,8 @@ export const ROUND_PAUSE = 180; // 한 판이 끝나고 다음 판까지
 
 // spec: { kind: 'human' | 'ai' | 'remote', level, name }
 export class Match {
-  constructor({ seed = 1, colors = 4, minGroup = 4, gravityScale = 1, target = 70, specs, firstTo = 1, solo = false, timing = {}, random = Math.random, online = null, makeRemote = null, brain = null } = {}) {
+  constructor({ seed = 1, colors = 4, minGroup = 4, gravityScale = 1, target = 70, specs, firstTo = 1, solo = false, timing = {}, random = Math.random, online = null, makeRemote = null, brain = null, steady = false } = {}) {
+    this.steady = steady;         // 혼자 하는 판에서도 빨라지지 않는다 (직접 놓아 보는 배우기)
     this.online = online;         // 'host' | 'guest' | null
     this.makeRemote = makeRemote; // 온라인 상대 화면을 만드는 함수
     this.seed = seed >>> 0;
@@ -53,7 +54,7 @@ export class Match {
   // 끝없이 모드는 시간이 갈수록 빨라진다
   gravity() {
     if (!this.solo) return (this.timing.gravity ?? TIMING.gravity) * this.gravityScale * (this.frame > 180 * 60 ? 1.6 : this.frame > 120 * 60 ? 1.3 : 1);
-    const level = Math.min(15, Math.floor(this.players[0].stats.pieces / 25));
+    const level = this.steady ? 0 : Math.min(15, Math.floor(this.players[0].stats.pieces / 25));
     return (this.timing.gravity ?? TIMING.gravity) * this.gravityScale * (1 + level * 0.28);
   }
 

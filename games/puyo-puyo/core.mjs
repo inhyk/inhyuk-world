@@ -260,6 +260,11 @@ export class Player {
     this.lastChain = 0;
     this.chainTotal = 0;   // 이번 연쇄에서 만든 방해뿌요 (상쇄 포함)
     this.chainSent = 0;
+    // 직접 놓아 보는 배우기 (인혁이 기획서 2026-10-11 3번): hold 인 동안에는 같은 색이 모여도 터지지 않고,
+    // fire() 를 부르면 그때 연쇄가 시작된다. sandbox 면 필드가 꽉 차도 지지 않는다.
+    this.hold = false;
+    this.fired = false;
+    this.sandbox = false;
     this.stats = {
       pieces: 0, maxChain: 0, popped: 0, garbageSent: 0, maxAttack: 0, allClears: 0,
       offsets: 0, offsetAmount: 0, maxColors: 0, maxGroup: 0, garbageTaken: 0, chains: {},
@@ -293,8 +298,9 @@ export class Player {
   spawn() {
     this.refreshHeights();
     if (this.cells[idx(SPAWN_X, SPAWN_Y)] !== EMPTY) {
-      this.state = 'dead';
       this.piece = null;
+      if (this.sandbox) { this.state = 'full'; this.emit('full'); return; } // 지지 않고 기다린다 (되돌리거나 터뜨릴 때까지)
+      this.state = 'dead';
       this.emit('dead');
       return;
     }
@@ -451,8 +457,17 @@ export class Player {
     return !moving;
   }
 
+  // 잡아 둔(hold) 뿌요를 이제 터뜨린다. 손에 든 짝은 내려놓지 않고 치운다. 연쇄가 다 끝나면 fireEnd 를 알리고 다시 잡아 둔다.
+  fire() {
+    if (this.state !== 'control' && this.state !== 'full') return false;
+    this.piece = null;
+    this.hold = false; this.fired = true;
+    this.state = 'check'; this.timer = 1; this.after = 'chain';
+    return true;
+  }
+
   check(ctx) {
-    const groups = findGroups(this.cells, this.minGroup);
+    const groups = this.hold ? [] : findGroups(this.cells, this.minGroup);
     if (groups.length) {
       this.chain++;
       if (this.chain === 1) { this.chaining = true; this.chainTotal = 0; this.chainSent = 0; this.emit('chainStart'); }
@@ -489,6 +504,7 @@ export class Player {
       if (offset > 0) this.emit('offset', { amount: offset });
       return;
     }
+    const ended = this.chain;
     if (this.chain > 0) {
       const chain = this.chain;
       this.lastChain = chain;
@@ -503,6 +519,7 @@ export class Player {
       this.emit('chainEnd', { chain, made: this.chainTotal, sent: this.chainSent, allClear });
       if (allClear) this.emit('allClear');
     }
+    if (this.fired) { this.fired = false; this.hold = true; this.emit('fireEnd', { chain: ended }); }
     // 방해뿌요는 조각을 놓고 내 연쇄가 끝난 뒤, 상대 연쇄도 끝났을 때만 떨어진다
     if (this.incoming > 0 && ctx.canReceive !== false) {
       this.dropGarbage(Math.min(this.incoming, MAX_GARBAGE_DROP));
