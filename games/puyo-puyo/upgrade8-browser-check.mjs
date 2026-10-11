@@ -1,6 +1,6 @@
 // 인혁이 기획서 「뿌요뿌요 (업그레이드)」(2026-10-11)를 실제 Chrome 으로 끝까지 확인한다 (서버 없이 손님으로).
 // 3번 직접 놓아 보는 배우기 → 2번 뿌요 동영상(목록, 틀기, 멈춤, 처음부터, 다른 동영상, 끝) → 1번 새 스킨 30가지.
-// 배우기 목록의 칸 → 색을 골라(색 점, 뿌요 그림 누르기) 놓아도 터지지 않음 → ▶ 실행하면 하나씩 터지며 연쇄, 꼬마 뿌요가 알려 줌
+// 배우기 목록의 칸 → 색(다섯 색과 방해 뿌요)을 골라(색 점, 뿌요 그림 누르기) 놓아도 터지지 않음 → ▶ 실행하면 하나씩 터지며 연쇄, 꼬마 뿌요가 알려 줌
 // → ⏪ 터지기 전으로, ↩ 무르기, 🧹 처음부터 → 꽉 차도 지지 않음 → 챌린지에 세지 않음 → 나가면 배우기 목록, 보통 배우기는 그대로.
 //
 // 사용법: npm run puyo-puyo:dev 후 PUYO_URL=http://127.0.0.1:5190/ node games/puyo-puyo/upgrade8-browser-check.mjs
@@ -17,7 +17,7 @@ const url = `${base}${base.includes('?') ? '&' : '?'}test`;
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const errors = [];
 const T = { timeout: 20000 };
-const R = 1, G = 2, B = 3;
+const R = 1, G = 2, B = 3, O = 6; // O: 방해 뿌요
 async function open(name, viewport) {
   const context = await browser.newContext({ viewport, isMobile: viewport.width < 500, hasTouch: viewport.width < 500 });
   const page = await context.newPage();
@@ -56,7 +56,11 @@ async function check(name, viewport) {
   assert.equal(s.mode, 'practice');
   assert.deepEqual([s.lab.colors, s.lab.running, s.lab.hold, s.lab.cells], [[1, 3], false, true, 0]);
   assert.equal(await page.textContent('#hud-title'), '🧪 직접 놓아 보는 배우기');
-  assert.match((await coach(page))[1], /같은 색이 4개 붙어도 아직 안 터져!.*▶ 실행/);
+  assert.match((await coach(page))[1], /회색은 방해 뿌요.*네가 내릴 때까지 기다려!.*같은 색이 4개 붙어도 아직 안 터져.*▶ 실행/);
+  // 뿌요는 스스로 떨어지지 않는다 (색을 고르는 동안 혼자 내려앉지 않게)
+  const spawnY = await page.evaluate(() => window.__puyo.match.players[0].piece.y);
+  await page.waitForTimeout(1500);
+  assert.equal(await page.evaluate(() => window.__puyo.match.players[0].piece.y), spawnY);
   await page.waitForTimeout(300);
   const boxes = await page.evaluate(() => {
     const r = id => { const b = document.getElementById(id).getBoundingClientRect(); return { x: b.left, y: b.top, r: b.right, b: b.bottom }; };
@@ -79,8 +83,13 @@ async function check(name, viewport) {
   await page.mouse.click(pair.x + pair.width / 2, pair.y + pair.height * 0.75); // 아래: 초록 → 파랑
   assert.deepEqual((await read(page)).lab.colors, [B, G]);
   assert.equal(await page.getAttribute('#lab-top button.on', 'data-color'), String(G));
-  for (let i = 0; i < 4; i++) await page.mouse.click(pair.x + pair.width / 2, pair.y + pair.height * 0.25); // 초록 → 파랑 → 노랑 → 보라 → 빨강
+  for (let i = 0; i < 4; i++) await page.mouse.click(pair.x + pair.width / 2, pair.y + pair.height * 0.25); // 초록 → 파랑 → 노랑 → 보라 → 방해 뿌요
+  assert.deepEqual((await read(page)).lab.colors, [B, O]);
+  assert.equal(await page.getAttribute('#lab-top button.on', 'aria-label'), '위 방해 뿌요');
+  assert.deepEqual(await page.evaluate(() => { const q = window.__puyo.match.players[0].piece; return [q.a, q.c]; }), [B, O]); // 손에 든 짝의 위쪽이 방해 뿌요로
+  await page.mouse.click(pair.x + pair.width / 2, pair.y + pair.height * 0.25); // 방해 뿌요 다음은 다시 빨강
   assert.deepEqual((await read(page)).lab.colors, [B, R]);
+  for (const id of ['lab-top', 'lab-bottom']) assert.deepEqual(await page.locator(`#${id} button`).evaluateAll(bs => bs.map(b => b.dataset.color)), ['1', '2', '3', '4', '5', '6']);
 
   // 놓기: 컴퓨터는 화살표와 스페이스, 휴대폰은 아래 단추
   const dropLeft = async () => {
@@ -154,6 +163,25 @@ async function check(name, viewport) {
   await holding(page);
   assert.equal(await column(page, 0), '12');
   assert.equal(await page.textContent('#lab-undo'), '↩ 무르기');
+
+  // 방해 뿌요도 놓는다 ("방해뿌요도 놓을 수 있게 만들어줘"): 맨 왼쪽 줄에 아래부터 방해, 빨강 넷, 방해
+  await page.click('#lab-clear'); await holding(page);
+  for (const [bottom, top] of [[O, R], [R, R], [R, O]]) { await pick(bottom, top); await dropLeft(); }
+  assert.equal(await column(page, 0), '611116');
+  await page.screenshot({ path: `${shots}/lab-garbage-${name}.png` });
+  // 방해 뿌요만 있을 때는 터지지 않는다는 것을 알려 주고(다른 줄에 방해 뿌요 둘), 빨강 4개를 터뜨리면 옆의 방해 뿌요가 같이 사라진다
+  await page.click('#lab-run');
+  await page.waitForFunction(() => document.getElementById('coach-title').textContent === '1연쇄!', null, T);
+  assert.equal((await coach(page))[1], '빨강 뿌요 4개가 터졌어. 옆에 있던 방해 뿌요 2개도 같이 사라졌어! 위에 있던 뿌요가 떨어져서 또 붙으면 다음 연쇄야!');
+  await page.waitForFunction(() => { const l = JSON.parse(window.render_game_to_text()).lab; return !l.running && l.cells === 0; }, null, T);
+  await holding(page);
+  await pick(O, O); await dropLeft();
+  assert.equal(await column(page, 0), '66');
+  await page.click('#lab-run');
+  await page.waitForFunction(() => document.getElementById('coach-title').textContent === '아직 터질 게 없어', null, T);
+  assert.match((await coach(page))[1], /방해 뿌요는 색이 없어서 저희끼리는 안 터져/);
+  await holding(page);
+  assert.equal(await column(page, 0), '66');
 
   // 꽉 차도 지지 않는다: 뿌요가 나오는 셋째 줄을 꼭대기까지 채운다
   await page.click('#lab-clear'); await holding(page);
