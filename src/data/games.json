@@ -1,5 +1,29 @@
 [
   {
+    "slug": "keycap-clicker",
+    "title": "키캡 누르기 · KEYCAP CLUB",
+    "description": "100종 키캡을 모으고 콤보·크리티컬·슈퍼 피버를 터뜨려요! 보스 격파, 미션, 업적과 능력 강화까지.",
+    "longDescription": "오리지널·디저트·숲·바다·보석·네온·우주·판타지·드래곤·신화의 10개 컬렉션에서 100종의 키캡을 모으세요. 색상·무늬·타건음이 달라지며 수집한 키캡을 다시 장착할 수 있습니다. 콤보와 보너스 코인, 크리티컬, 3배 피버와 5배 슈퍼 피버를 즐기고 75클릭마다 등장하는 보스에 도전하세요. 체력 90~600의 보스는 반피부터 갑옷을 두르며, 18초 안에 격파하면 큰 보상을 받습니다. 반복 미션 3종, 업적 12개, 능력 6종·30단계 강화와 자동 저장을 지원합니다. 클릭·터치·스페이스로 플레이하세요.",
+    "emoji": "⌨️",
+    "thumbnail": "/images/games/keycap-clicker-thumb.png",
+    "screenshots": [
+      "/images/games/keycap-clicker-thumb.png",
+      "/images/games/keycap-clicker-mobile.png",
+      "/images/games/keycap-clicker-boss.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "CSS",
+      "Web Audio"
+    ],
+    "category": "클리커",
+    "playUrl": "/play/keycap-clicker",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 52,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/keycap-clicker"
+  },
+  {
     "slug": "jump-map-2d",
     "title": "구름 점프 · 2D 점프맵",
     "description": "구름 위 10개 코스를 점프로 넘어 하늘 끝까지! 별 50개와 체크포인트가 있는 2D 모험.",
