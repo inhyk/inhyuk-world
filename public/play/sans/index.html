@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07070c">
+  <title>SANS · 심판의 회랑</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%231c4cff' d='M2 3h4v2h4V3h4v7l-6 5-6-5z'/%3E%3C/svg%3E">
+  <link rel="preload" href="../undertale/fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main>
+    <header><a href="/games" target="_top">← 게임 목록</a><span>ONE HALL. ONE SKELETON. ONE LAST CHOICE.</span><button id="sound" aria-pressed="false">소리 OFF</button></header>
+    <section class="heading"><div><p class="eyebrow">SANS / BOSS ENCOUNTER</p><h1>심판의 <span>회랑</span></h1><p>제일 약한 몬스터가, 제일 오래 막아선다.</p></div><div class="badge"><i></i> 단독 보스전 <small>14 ATTACKS · 2 ENDINGS</small></div></section>
+    <section class="machine" aria-label="샌즈 보스전">
+      <div class="machine-top"><span>☠ SANS</span><span id="phase">THE LAST CORRIDOR</span><span class="live">● KARMA</span></div>
+      <div class="screen"><canvas id="game" width="640" height="480" tabindex="0" aria-label="샌즈 보스전 화면. 방향키로 움직이고 Z로 확인, X로 취소합니다."></canvas></div>
+      <div class="status"><span id="message" role="status" aria-live="polite">난이도를 고르고 Z로 시작하세요.</span><button id="pause">잠깐 쉬기</button></div>
+    </section>
+    <div class="touch" aria-label="터치 조작"><div class="dpad"><button data-key="ArrowUp" aria-label="위">↑</button><button data-key="ArrowLeft" aria-label="왼쪽">←</button><button data-key="ArrowDown" aria-label="아래">↓</button><button data-key="ArrowRight" aria-label="오른쪽">→</button></div><div class="touch-buttons"><button data-key="KeyX">X<small>취소 · 천천히</small></button><button data-key="KeyZ">Z<small>확인</small></button></div></div>
+    <section class="instructions"><span><kbd>↑ ↓ ← →</kbd> 이동 · 점프</span><span><kbd>Z / ENTER</kbd> 확인</span><span><kbd>X</kbd> 취소</span><span><kbd>SHIFT</kbd> 천천히</span><span><kbd>ESC</kbd> 잠깐 쉬기</span><span><kbd>M</kbd> 소리</span></section>
+    <footer><span>공격은 전부 빗나갑니다. 그래도 계속 공격해야 이야기가 나아갑니다.</span><span>비공식 팬 게임 · 캐릭터 원작 TOBY FOX</span></footer>
+  </main>
+  <script type="module" src="./game.mjs"></script>
+</body>
+</html>
