@@ -20,6 +20,10 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 `npm run dev` 후 http://localhost:3000/play/mettaton 에서 플레이합니다. 9가지 탄막 패턴, 세 난이도, 노란 영혼 슈팅과 두 가지 결말을 갖춘 팬 게임입니다. 모바일 터치 조작을 지원하며, 창 전환 시 별도 메뉴 없이 멈췄다가 돌아오면 이어집니다. 조작법은 [게임 README](games/mettaton/README.md), 전투 검증은 `npm run test:mettaton`을 참고하세요.
 
+## SANS · 심판의 회랑
+
+`npm run dev` 후 http://localhost:3000/play/sans 에서 플레이합니다. 샌즈하고만 싸우는 단독 보스전으로, 14가지 공격과 업보(KR), 네 방향 중력의 파란 영혼, 가스터 블래스터, 두 가지 결말을 갖추고 있습니다. 세 난이도와 HP 1로 시작하는 하드모드, 이어하기 지점, 모바일 터치를 지원하며 샌즈는 몇 번 졌는지 기억합니다. 이 게임만 바로 보려면 `node games/sans/dev-server.mjs` 후 http://127.0.0.1:3030/play/sans/ 를 엽니다. 조작법은 [게임 README](games/sans/README.md), 검증은 `npm run test:sans`를 참고하세요.
+
 ## SNOWFLOW · 눈과 물의 흐름
 
 Reddit에서 소개된 눈 서핑·물 마법 데모의 한국어 버전을 추가했습니다. 루트에서 `npm install` 후 `npm run snowflow:dev`를 실행하면 http://127.0.0.1:5173 에서 플레이할 수 있습니다. WebGPU를 지원하는 데스크톱 브라우저가 필요합니다.

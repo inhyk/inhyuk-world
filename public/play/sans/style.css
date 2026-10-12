@@ -1,0 +1,57 @@
+@font-face { font-family: Galmuri11; src: url('../undertale/fonts/Galmuri11.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: Galmuri11; src: url('../undertale/fonts/Galmuri11-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+:root { color-scheme: dark; font-family: Galmuri11, 'Apple SD Gothic Neo', sans-serif; color: #ece7dc; background: #07070c; --gold: #e8c170; --blue: #58b6ff; --line: #2a2733; --game-width: min(880px, calc((100dvh - 250px) * 4 / 3)); }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: radial-gradient(ellipse at 50% 22%, #3a2a1244, transparent 62%), #07070c; -webkit-font-smoothing: antialiased; }
+button, a { color: inherit; font: inherit; -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible, canvas:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+button:disabled { cursor: default; opacity: .35; }
+main { width: min(100% - 40px, 960px); margin: auto; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 64px; border-bottom: 1px solid var(--line); font-size: 11px; color: #958f9e; }
+header a { text-decoration: none; }
+header a:hover { color: var(--gold); }
+header > span { letter-spacing: 2px; font-size: 9px; }
+header button, #pause { border: 1px solid #3a3644; background: transparent; padding: 9px 12px; border-radius: 5px; font-size: 11px; white-space: nowrap; }
+header button[aria-pressed='true'] { border-color: var(--gold); color: var(--gold); }
+.heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 0 16px; }
+.eyebrow { margin: 0; color: var(--blue); font-size: 10px; letter-spacing: 2px; }
+h1 { margin: 10px 0 8px; font-size: 32px; letter-spacing: -1px; font-weight: 700; }
+h1 span { color: var(--gold); }
+.heading p:last-child { margin: 0; color: #958f9e; font-size: 12px; }
+.badge { color: #dcd6c8; font-size: 12px; text-align: right; white-space: nowrap; }
+.badge small { display: block; font-size: 9px; letter-spacing: 1px; color: #7d778a; margin-top: 10px; }
+.badge i { display: inline-block; width: 6px; height: 6px; background: var(--blue); margin-right: 8px; transform: rotate(45deg); }
+.machine { width: min(100%, var(--game-width)); margin: auto; border: 1px solid #4a3f2c; border-radius: 10px; overflow: hidden; background: #000; box-shadow: 0 0 0 5px #100e14, 0 0 0 6px #2c2733, 0 24px 80px #000a; }
+.machine-top { display: flex; justify-content: space-between; gap: 8px; padding: 12px 18px; font-size: 9px; letter-spacing: 1px; background: #121017; color: #b9b2a2; }
+.machine-top #phase { color: var(--gold); }
+.live { color: #c77dff; }
+.screen { position: relative; background: #000; }
+canvas { display: block; width: 100%; aspect-ratio: 4 / 3; touch-action: none; outline-offset: -2px; }
+.status { padding: 10px 18px 12px; min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #aaa49a; font-size: 11px; line-height: 1.7; background: #0c0b10; border-top: 1px solid #1d1a23; }
+.instructions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 20px; margin: 20px 0; font-size: 10px; color: #8a8494; }
+kbd { font: inherit; color: #d3ccbd; }
+footer { display: flex; justify-content: space-between; gap: 18px; padding: 18px 0 28px; border-top: 1px solid var(--line); font-size: 9px; color: #6a6474; }
+.touch { display: none; width: min(100%, var(--game-width)); margin: 12px auto 0; justify-content: space-between; align-items: center; gap: 12px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.touch button { border: 1px solid #4b4556; border-radius: 8px; background: #17151d; font-size: 20px; touch-action: none; box-shadow: 0 3px 0 #030304; }
+.touch button.pressed { background: #3c3020; color: var(--gold); transform: translateY(2px); box-shadow: none; }
+.dpad { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(2, 48px); gap: 5px; }
+.dpad button:nth-child(1) { grid-column: 2; }
+.dpad button:nth-child(2) { grid-column: 1; grid-row: 2; }
+.dpad button:nth-child(3) { grid-column: 2; grid-row: 2; }
+.dpad button:nth-child(4) { grid-column: 3; grid-row: 2; }
+.touch-buttons { display: flex; gap: 10px; }
+.touch-buttons button { width: 68px; height: 68px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; line-height: 1; }
+.touch-buttons small { font-size: 8px; color: #a59f90; }
+@media (pointer: coarse), (max-width: 700px) {
+  :root { --game-width: 100%; }
+  main { width: min(100% - 16px, 880px); }
+  header { height: 50px; } header > span { display: none; }
+  .heading { padding: 12px 0 10px; } h1 { font-size: 24px; margin: 6px 0; } .badge { display: none; }
+  .machine-top { padding: 9px 12px; font-size: 8px; } .live { display: none; }
+  .status { padding: 8px 12px; font-size: 10px; min-height: 46px; }
+  .touch { display: flex; }
+  .instructions { display: none; }
+  footer { flex-direction: column; gap: 6px; font-size: 8px; padding: 14px 0 20px; margin-top: 16px; }
+}
