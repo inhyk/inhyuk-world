@@ -201,7 +201,8 @@ function drawButtons(ctx, g, t) {
   const asleepTarget = g.phase === 'asleep' && g.mode === 'dodge' ? g.push : null;
   C.BUTTONS.forEach((button, i) => {
     const picked = g.mode === 'menu' ? g.menu === i : ['submenu', 'fightbar', 'strike'].includes(g.mode) ? g.menu === i : asleepTarget === button.id;
-    const pulse = asleepTarget === button.id && !reduced ? .8 + .2 * Math.sin(t * 9) : 1, color = picked ? '#ffff3a' : '#ff8a1e', x = button.x, y = C.BUTTON.y;
+    const unavailable = button.id === 'item' && C.diff(g).noItems;
+    const pulse = asleepTarget === button.id && !reduced ? .8 + .2 * Math.sin(t * 9) : 1, color = unavailable ? '#615b64' : picked ? '#ffff3a' : '#ff8a1e', x = button.x, y = C.BUTTON.y;
     ctx.save(); ctx.globalAlpha = picked ? pulse : g.mode === 'dodge' || g.mode === 'talk' || g.mode === 'cine' ? .7 : 1;
     ctx.fillStyle = '#000'; ctx.fillRect(x, y, C.BUTTON.w, C.BUTTON.h); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, C.BUTTON.w - 2, C.BUTTON.h - 2);
     if (picked && g.mode === 'menu') heart(ctx, x + 17, y + 21, '#ff1a1a');
@@ -250,6 +251,20 @@ function drawBox(ctx, g, t) {
     ctx.fillStyle = '#000'; ctx.fillRect(x - 6, bt - 6, 12, bh + 12); ctx.fillStyle = flash ? '#ffee00' : '#fff'; ctx.fillRect(x - 3, bt - 4, 6, bh + 8);
   } else if (g.mode === 'dodge') {
     const B = C.targetBounds(g);
+    // 중력이 향하는 벽을 파랗게 표시해서 암전 뒤에도 바닥을 바로 찾을 수 있다.
+    if (g.soul.mode === 'blue') {
+      ctx.strokeStyle = '#3b8dff'; ctx.lineWidth = 3;
+      const side = g.soul.gravity;
+      ctx.beginPath();
+      if (side === 'up' || side === 'down') {
+        const y = side === 'up' ? top - 2 : top + h + 2;
+        ctx.moveTo(l + w * .2, y); ctx.lineTo(l + w * .8, y);
+      } else {
+        const x = side === 'left' ? l - 2 : l + w + 2;
+        ctx.moveTo(x, top + h * .2); ctx.lineTo(x, top + h * .8);
+      }
+      ctx.stroke();
+    }
     ctx.save(); ctx.beginPath(); ctx.rect(l, top, w, h); ctx.clip();
     for (const b of g.bullets) if (b.kind !== 'gb') drawBullet(ctx, b, B, t);
     drawSoul(ctx, g, t);
@@ -306,7 +321,6 @@ function drawBattle(ctx, g, t) {
       if (k > .3 && k < 1.5) { const fall = clamp((k - .3) / .5); ctx.save(); ctx.globalAlpha = clamp((1.5 - k) / .4); ctx.translate(352, 300 + fall * fall * 44); ctx.rotate(fall * 1.4); ctx.fillStyle = '#e8e8f0'; ctx.fillRect(-2, -14, 4, 20); ctx.fillStyle = '#8a6a3c'; ctx.fillRect(-4, 6, 8, 3); ctx.fillRect(-2, 9, 4, 6); ctx.restore(); }
     }
   }
-  if (g.blackout > 0) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
   if (g.hurtT > 0 && !reduced) { ctx.fillStyle = `rgba(255,0,30,${.055 * clamp(g.hurtT / .2)})`; ctx.fillRect(0, 0, W, H); }
 }
 
@@ -389,6 +403,10 @@ export function draw(ctx, g) {
   else drawBattle(ctx, g, t);
   ctx.restore();
   if (g.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${clamp(g.flash) * (reduced ? .4 : 1)})`; ctx.fillRect(0, 0, W, H); }
+  if (g.blackout > 0) {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.restore();
+  }
   if (g.paused) {
     ctx.fillStyle = 'rgba(0,0,0,.68)'; ctx.fillRect(0, 0, W, H);
     text(ctx, '잠깐 쉬는 중', 320, 206, { size: 28, align: 'center', bold: true }); text(ctx, 'ESC 또는 계속하기 버튼', 320, 248, { size: 12, align: 'center', color: '#b9b2a2' });

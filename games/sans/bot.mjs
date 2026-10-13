@@ -38,7 +38,7 @@ function score(g, plan) {
 export function playAttack(g, { horizon = 60, every = 3, samples = 40, seed = 1, onHit = null } = {}) {
   const attack = g.attack.name, before = { ticks: g.stats.ticks, hits: g.stats.hits }, random = makeRandom(seed);
   let plan = null, age = 0, frame = 0;
-  while (g.mode === 'dodge' && g.attack?.name === attack && frame < 60 * 40) {
+  while (g.mode === 'dodge' && g.attack?.name === attack && frame < 60 * 120) {
     if (g.phase === 'asleep' || (g.phase === 'nothing' && frame > 60)) break;
     if (frame % every === 0) {
       const candidates = CONSTANT.map(action => Array(horizon).fill(action));

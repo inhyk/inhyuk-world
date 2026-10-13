@@ -27,3 +27,10 @@ test('하드모드: HP 1로도 첫 공격을 한 번도 스치지 않고 넘길 
   const survived = [7, 21, 3].some(seed => { const g = gameAt('opening', level, seed); assert.equal(g.hp, 1); const result = playAttack(g, { seed }); return !result.dead && result.ticks === 0; });
   assert.ok(survived, '세 번의 시도 중 한 번은 무사히 넘겨야 한다');
 });
+
+test('새 암전 패턴 다섯 가지도 세 난이도 모두에서 피할 길이 있다', () => {
+  for (const level of [0, 1, 2]) for (const name of ['verticalTunnel', 'blueCross', 'cornerBeams', 'ceilingHops', 'finalSpiral']) {
+    const result = run(name, level);
+    assert.ok(!result.dead && result.ticks <= 1, `${name} L${level}: ${result.ticks}번 스침`);
+  }
+});

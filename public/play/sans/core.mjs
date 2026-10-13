@@ -19,10 +19,10 @@ export const CINE_TIME = { enter: 1.5, blackout: .9, final: 3.9, leave: 4.6, low
 // 난이도: 탄막이 흐르는 빠르기(tempo), 한 번 스칠 때의 무적 시간(grace), 업보가 쌓이는 양, 샌즈가 잠들기까지의 시간, 이어하기 지점
 export const DIFFICULTIES = [
   { id: 'easy', name: '연습', note: '탄막이 느리다 · 쓰러져도 가까운 곳에서 다시 · 아이템이 돌아온다', tempo: .8, grace: .075, krGain: 1, sleep: 12, checkpoints: ['p2', 'special'], refill: true, menuBones: false },
-  { id: 'normal', name: '보통', note: '제 속도 · 쓰러지면 2막부터 이어서 도전', tempo: 1, grace: .05, krGain: 1, sleep: 17, checkpoints: ['p2'], refill: false, menuBones: true },
-  { id: 'hard', name: '최악의 시간', note: '더 빠르고 더 아프다 · 쓰러지면 처음부터', tempo: 1.15, grace: .04, krGain: 2, sleep: 22, checkpoints: [], refill: false, menuBones: true },
-  // 하드모드: 속도는 보통과 같고 HP 1 에서 시작한다. 아이템으로 회복하기 전에는 한 번만 스쳐도 끝난다.
-  { id: 'hp1', name: '하드모드', note: 'HP 1로 시작 · 회복하기 전에는 한 번만 스쳐도 끝 · 쓰러지면 2막부터', tempo: 1, grace: .05, krGain: 1, sleep: 17, checkpoints: ['p2'], refill: false, menuBones: true, startHp: 1 },
+  { id: 'normal', name: '보통', note: '빠르고 빈틈없는 심판 · 쓰러지면 2막부터', tempo: 1.18, grace: .05, krGain: 1, sleep: 17, checkpoints: ['p2'], refill: false, menuBones: true },
+  { id: 'hard', name: '최악의 시간', note: '더 빠르고 더 아프다 · 쓰러지면 처음부터', tempo: 1.36, grace: .04, krGain: 2, sleep: 22, checkpoints: [], refill: false, menuBones: true },
+  // HP 1, 아이템 없음. 이어하기 때도 가방을 채우지 않는다.
+  { id: 'hp1', name: '하드모드', note: 'HP 1 · 아이템 없음 · 한 번만 스쳐도 끝 · 쓰러지면 2막부터', tempo: 1.18, grace: .05, krGain: 1, sleep: 17, checkpoints: ['p2'], refill: false, menuBones: true, startHp: 1, noItems: true },
 ];
 const SPEED = 150, SLOW = 75, JUMP_SPEED = 390, JUMP_CUT = 80, GRAVITY = 1000, FALL_MAX = 1000;
 const STAB_OUT = .06, STAB_IN = .1, GB_ENTER = .3;
@@ -30,6 +30,7 @@ const STAB_OUT = .06, STAB_IN = .1, GB_ENTER = .3;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const emit = (g, type, name, extra) => g.events.push({ type, name, ...extra });
 export const diff = g => DIFFICULTIES[g.level];
+export const attackTempo = g => diff(g).tempo * (g.attack?.name === 'special' ? (diff(g).id === 'easy' ? 1.08 : 1.18) : 1);
 export function rand(g) {
   g.seed = (g.seed + 0x6D2B79F5) >>> 0; let t = g.seed;
   t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
@@ -78,9 +79,10 @@ export function begin(g, from = 'title') {
   if (from === 'title') g.session = { deaths: 0, hits: 0, time: 0 };
   reset(g); g.level = level; g.meta.level = level; g.seed = (g.seed + 977) >>> 0;
   g.hp = diff(g).startHp ?? g.maxHp;
+  if (diff(g).noItems) g.items = [];
   emit(g, 'music', 'hall');
   if (checkpoint) {
-    g.checkpoint = checkpoint; g.items = diff(g).refill ? [...L.BAG] : [...checkpoint.items];
+    g.checkpoint = checkpoint; g.items = diff(g).noItems ? [] : diff(g).refill ? [...L.BAG] : [...checkpoint.items];
     const special = checkpoint.at === 'special';
     g.phase = 'p2'; g.story = special ? ORDER.p2.length : 0; g.sans.sweat = special ? 3 : 1;
     startCine(g, 'enter', special ? 'resumeSpecial' : 'resumeP2');
@@ -174,7 +176,7 @@ function choose(g) {
   const id = BUTTONS[g.menu].id; emit(g, 'sfx', 'select'); g.menuBones = [];
   if (id === 'fight') openSub(g, 'target', [{ id: 'sans', name: '샌즈' }]);
   else if (id === 'act') openSub(g, 'act', [{ id: 'check', name: '조사' }, { id: 'joke', name: '농담하기' }]);
-  else if (id === 'item') { if (g.items.length) openSub(g, 'item', g.items.map((item, index) => ({ id: item, index, name: L.ITEMS[item].name }))); else say(g, ['* 가방이 비어 있다.'], 'menu'); }
+  else if (id === 'item') { if (diff(g).noItems) say(g, ['* 하드모드에서는 아이템을 쓸 수 없다.'], 'menu'); else if (g.items.length) openSub(g, 'item', g.items.map((item, index) => ({ id: item, index, name: L.ITEMS[item].name }))); else say(g, ['* 가방이 비어 있다.'], 'menu'); }
   else openSub(g, 'mercy', [{ id: 'spare', name: '살려주기', glow: g.phase === 'offer' }]);
 }
 function confirmSub(g) {
@@ -263,7 +265,28 @@ function startAttack(g, name, story = false) {
   const B = targetBounds(g);
   Object.assign(g.soul, { mode: def.soul, gravity: 'down', va: 0, grounded: false, slam: false, inv: 0, plat: 0, moving: false, velX: 0, velY: 0, x: B.cx, y: def.soul === 'blue' ? B.b - SOUL_HALF : B.cy });
   g.stats.turns++;
-  if (def.setup) def.setup(context(g, 0));
+  if (def.sequence) switchPattern(g, 0, false);
+  else if (def.setup) def.setup(context(g, 0));
+  if (g.phase === 'p2' || g.phase === 'special') startBlackout(g, .38);
+}
+// 차례와 이야기 진행은 유지하고, 암전 속에서 탄막·상자·영혼을 새 패턴으로 교체한다.
+function switchPattern(g, index, blackout = true) {
+  const attack = g.attack, sequence = PATTERNS[attack.name].sequence;
+  const [, name] = sequence[index], def = PATTERNS[name];
+  const segment = { index, name, t: 0, memo: {}, dur: def.dur };
+  attack.segment = segment;
+  g.bullets = []; g.sans.arm = null; g.sans.eye = 0; g.hurtT = 0;
+  setBox(g, def.box.w, def.box.h, true);
+  const B = targetBounds(g);
+  Object.assign(g.soul, { mode: def.soul, gravity: 'down', va: 0, grounded: false, slam: false, inv: .18, plat: 0, moving: false, velX: 0, velY: 0, x: B.cx, y: def.soul === 'blue' ? B.b - SOUL_HALF : B.cy });
+  if (def.setup) def.setup(context(g, 0, segment));
+  if (blackout) startBlackout(g);
+}
+// 검은 화면 동안 공격 시간도 멈추고, 다시 보인 직후에도 반응할 시간을 준다.
+function startBlackout(g, seconds = .28) {
+  g.blackout = seconds;
+  g.soul.inv = Math.max(g.soul.inv, .18);
+  emit(g, 'sfx', 'teleport');
 }
 function endAttack(g) {
   const attack = g.attack;
@@ -274,8 +297,8 @@ function endAttack(g) {
   if (attack.story) { g.story++; if (g.phase === 'p2') g.sans.sweat = Math.min(3, 1 + Math.floor(g.story / 2)); }
   toMenu(g);
 }
-function context(g, dt) {
-  const attack = g.attack, s = g.soul;
+function context(g, dt, active = g.attack) {
+  const attack = active, s = g.soul;
   return {
     g, t: attack.t, dt, dur: attack.dur, memo: attack.memo, soul: s, B: targetBounds(g), level: g.level,
     rand: () => rand(g),
@@ -289,7 +312,7 @@ function context(g, dt) {
     },
     soulMode: mode => { if (s.mode !== mode) emit(g, 'sfx', 'ding'); Object.assign(s, { mode, gravity: 'down', va: 0, grounded: false, slam: false, plat: 0 }); },
     place: (x, y) => Object.assign(s, { x, y, va: 0, plat: 0 }),
-    cut: () => { g.bullets = []; g.blackout = .13; g.sans.arm = null; emit(g, 'sfx', 'cut'); },
+    cut: () => { g.bullets = []; startBlackout(g); g.sans.arm = null; },
     box: (w, h) => setBox(g, w, h, true),
   };
 }
@@ -413,7 +436,9 @@ export function tick(g, dt, held = {}) {
   if (g.paused) return;
   g.time += dt; g.modeT += dt;
   tickSans(g, dt); typeOut(g, dt);
-  if (g.blackout > 0) g.blackout = Math.max(0, g.blackout - dt);
+  const wasBlackout = g.blackout > 0;
+  if (wasBlackout) g.blackout = Math.max(0, g.blackout - dt);
+  if (wasBlackout && g.blackout === 0) emit(g, 'sfx', 'materialize');
   if (g.shake > 0) g.shake = Math.max(0, g.shake - dt * 26);
   if (g.flash > 0) g.flash = Math.max(0, g.flash - dt * 1.6);
   if (g.hurtT > 0) g.hurtT -= dt;
@@ -432,13 +457,25 @@ export function tick(g, dt, held = {}) {
       if (strikeState.t >= STRIKE_TIME) afterStrike(g);
       return;
     }
-    case 'dodge': g.stats.time += dt; return tickDodge(g, dt, held);
+    case 'dodge': g.stats.time += dt; if (wasBlackout) return; return tickDodge(g, dt, held);
   }
 }
 function tickDodge(g, dt, held) {
-  const attack = g.attack, def = PATTERNS[attack.name], pdt = dt * diff(g).tempo;
+  const attack = g.attack, def = PATTERNS[attack.name], pdt = dt * attackTempo(g);
   attack.t += pdt;
-  if (attack.t < attack.dur) def.tick(context(g, pdt));
+  if (def.sequence) {
+    const next = attack.segment.index + 1;
+    if (def.sequence[next] && attack.t >= def.sequence[next][0]) {
+      switchPattern(g, next);
+      return;
+    }
+    const segment = attack.segment;
+    segment.t += pdt;
+    if (attack.t < attack.dur) PATTERNS[segment.name].tick(context(g, pdt, segment));
+  } else {
+    if (attack.t < attack.dur) def.tick(context(g, pdt));
+  }
+  if (g.blackout > 0) return;
   for (const b of g.bullets) stepBullet(g, b, pdt);
   g.bullets = g.bullets.filter(b => !b.dead && b.age < b.ttl);
   moveSoul(g, dt, held);
@@ -544,8 +581,8 @@ function tickCine(g, dt) {
 export function summarize(g) {
   const line = box => box ? (Array.isArray(box.lines[box.index]) ? box.lines[box.index][0] : box.lines[box.index]) : null;
   return { mode: g.mode, phase: g.phase, story: g.story, level: diff(g).id, hp: g.hp, kr: g.kr, items: g.items.length, deaths: g.meta.deaths,
-    attack: g.attack ? { name: g.attack.name, t: Math.round(g.attack.t * 100) / 100, dur: g.attack.dur } : null,
+    attack: g.attack ? { name: g.attack.name, pattern: g.attack.segment?.name || g.attack.name, t: Math.round(g.attack.t * 100) / 100, dur: g.attack.dur } : null,
     soul: { x: Math.round(g.soul.x), y: Math.round(g.soul.y), mode: g.soul.mode, gravity: g.soul.gravity }, bullets: g.bullets.length,
     menu: BUTTONS[g.menu].id, submenu: g.submenu ? g.submenu.kind : null, talk: line(g.talk), text: line(g.text), bubble: g.bubble?.text || null,
-    cine: g.cine?.kind || null, face: g.sans.face, push: g.push, checkpoint: g.checkpoint?.at || null, ended: g.ended, result: g.result };
+    cine: g.cine?.kind || null, blackout: g.blackout, face: g.sans.face, push: g.push, checkpoint: g.checkpoint?.at || null, ended: g.ended, result: g.result };
 }
