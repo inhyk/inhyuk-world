@@ -328,3 +328,41 @@ test('하드모드는 보통 또는 최악의 시간의 실제 클리어 기록�
   g.meta.hiddenHeart = true; C.begin(g); assert.equal(g.mode, 'title', '히든도 해금 조건을 우회하지 않는다');
   g.meta.best.normal = { ending: 'kill' }; C.begin(g); assert.equal(g.mode, 'cine'); assert.equal(g.hp, 3);
 });
+
+test('배리하드: 하드코어 클리어로만 해금, HP 1/히든 3, 빈 가방과 처음부터 재도전', () => {
+  const level = C.DIFFICULTIES.findIndex(d => d.id === 'veryhard');
+  for (const cleared of ['easy', 'normal', 'hard', 'hp1']) {
+    const meta = C.createMeta(); meta.level = level; meta.best[cleared] = { ending: 'mercy' };
+    const g = C.createGame(meta); C.begin(g);
+    assert.equal(C.veryHardUnlocked(g), cleared === 'hp1');
+    assert.equal(g.mode, cleared === 'hp1' ? 'cine' : 'title');
+  }
+  for (const hidden of [false, true]) {
+    const meta = C.createMeta(); meta.level = level; meta.hiddenHeart = hidden;
+    const g = C.createGame(meta); C.begin(g); assert.equal(g.mode, 'title', '히든은 잠금을 풀지 않는다');
+    meta.best.hp1 = { ending: 'kill', deaths: 0, hits: 0, time: 100 };
+    C.begin(g); assert.equal(g.hp, hidden ? 3 : 1); assert.equal(g.maxHp, hidden ? 3 : 1); assert.deepEqual(g.items, []);
+    assert.deepEqual(C.diff(g).checkpoints, []);
+    C.begin(g, 'start'); assert.equal(g.hp, hidden ? 3 : 1);
+    const restored = C.createGame(JSON.parse(JSON.stringify(meta))); C.begin(restored);
+    assert.equal(C.veryHardUnlocked(restored), true); assert.equal(restored.hp, hidden ? 3 : 1);
+  }
+});
+
+test('배리하드는 최악의 시간과 같은 공격 속도·피격·특별구간 규칙을 쓴다', () => {
+  const hard = C.DIFFICULTIES.find(d => d.id === 'hard'), very = C.DIFFICULTIES.find(d => d.id === 'veryhard');
+  for (const key of ['tempo', 'grace', 'krGain', 'sleep', 'checkpoints', 'refill', 'menuBones']) assert.deepEqual(very[key], hard[key], key);
+  for (const name of Object.keys(C.PATTERNS)) {
+    const hardGame = gameAt(name, 2), veryGame = structuredClone(hardGame); veryGame.level = 4;
+    assert.equal(C.attackTempo(veryGame), C.attackTempo(hardGame));
+    step(hardGame, .8); step(veryGame, .8);
+    assert.deepEqual(veryGame.bullets, hardGame.bullets, name); assert.deepEqual(veryGame.soul, hardGame.soul, name);
+  }
+});
+
+test('하드코어 실제 결말에서 배리하드가 열리고 해금 알림이 한 번 나온다', () => {
+  const g = gameAt('nothing', 3); g.phase = 'nothing'; step(g, C.diff(g).sleep + .5);
+  step(g, 6, { right: true }); C.press(g, 'confirm'); step(g, 2.4);
+  settle(g); assert.equal(g.mode, 'won'); assert.equal(g.result.unlockedVeryHard, true);
+  assert.equal(C.veryHardUnlocked(C.createGame(JSON.parse(JSON.stringify(g.meta)))), true);
+});
