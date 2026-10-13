@@ -146,6 +146,9 @@ window.render_game_to_text = () => JSON.stringify({ ...C.summarize(g), paused: g
 window.advanceTime = milliseconds => { for (let left = milliseconds / 1000; left > 1e-9; left -= 1 / 60) C.tick(g, Math.min(left, 1 / 60), heldState()); drain(); sync(); paint(); };
 window.__sans = { g, C, sound, held };
 
+// 시작 화면부터 음악을 준비한다. 자동 재생이 막혀도 첫 입력에서 바로 켜진다.
+sound.music('title');
+wantSound();
 fit(); showSound(); sync();
 (document.fonts?.load ? Promise.all([document.fonts.load('16px Galmuri11'), document.fonts.load('bold 16px Galmuri11')]).catch(() => {}) : Promise.resolve()).then(() => requestAnimationFrame(frame));
 

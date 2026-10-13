@@ -35,8 +35,11 @@ export class Sound {
         this.musicBus = c.createGain(); this.musicBus.gain.value = .85; const soften = c.createBiquadFilter(); soften.type = 'lowpass'; soften.frequency.value = 5200; this.musicBus.connect(soften); soften.connect(this.master);
         this.fxBus = c.createGain(); this.fxBus.gain.value = 1; this.fxBus.connect(this.master);
       }
-      await this.context.resume(); this.enabled = true; this.next = this.context.currentTime + .06;
+      await this.context.resume();
+      if (this.context.state !== 'running') return false;
+      this.enabled = true; this.next = this.context.currentTime + .06;
       this.master.gain.setTargetAtTime(.9, this.context.currentTime, .03);
+      this.schedule();
       if (!this.timer) this.timer = setInterval(() => this.schedule(), 40);
       return true;
     } catch { this.enabled = false; return false; }
