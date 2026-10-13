@@ -270,32 +270,35 @@ canvas.addEventListener('click', () => { if (state.mode === 'intro' || state.mod
 pause.addEventListener('click', togglePause);
 actions.forEach((button, index) => button.addEventListener('click', () => { state.selected = index; activate(button.dataset.action); }));
 document.querySelector('#confirm').addEventListener('click', confirm);
+// 키보드와 화면 방향 버튼이 같은 메뉴 명령을 사용한다.
+function press(code) {
+  const direction = ({ ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' })[code];
+  if (code === 'Escape') togglePause();
+  else if (code === 'KeyZ' || code === 'Enter') confirm();
+  else if (state.mode === 'act' || state.mode === 'friends') {
+    const buttons = [...choices.querySelectorAll('button')];
+    if (code === 'KeyX') state.mode = 'menu';
+    if (direction) {
+      const delta = direction === 'up' || direction === 'left' ? -1 : 1;
+      do { choiceIndex = (choiceIndex + delta + buttons.length) % buttons.length; } while (buttons[choiceIndex].disabled);
+      buttons.forEach((button, index) => button.classList.toggle('selected', index === choiceIndex));
+    }
+  } else if (state.mode === 'menu') {
+    if (direction === 'left' || direction === 'up') state.selected = (state.selected + 3) % 4;
+    if (direction === 'right' || direction === 'down') state.selected = (state.selected + 1) % 4;
+    if (code.startsWith('Digit')) { state.selected = Number(code.slice(-1)) - 1; activate(actions[state.selected].dataset.action); }
+  }
+  sync();
+}
 window.addEventListener('keydown', event => {
   if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyZ', 'KeyX', 'Enter', 'Escape', 'ShiftLeft', 'ShiftRight', 'Digit1', 'Digit2', 'Digit3', 'Digit4'].includes(event.code)) return;
   if (event.code === 'Enter' && event.target instanceof HTMLButtonElement) return;
   event.preventDefault(); sources.set('key:' + event.code, event.code); refreshKeys();
-  if (event.repeat) return;
-  if (event.code === 'Escape') togglePause();
-  else if (event.code === 'KeyZ' || event.code === 'Enter') confirm();
-  else if (state.mode === 'act' || state.mode === 'friends') {
-    const buttons = [...choices.querySelectorAll('button')];
-    if (event.code === 'KeyX') state.mode = 'menu';
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
-      const direction = event.code === 'ArrowUp' || event.code === 'ArrowLeft' ? -1 : 1;
-      do { choiceIndex = (choiceIndex + direction + buttons.length) % buttons.length; } while (buttons[choiceIndex].disabled);
-      buttons.forEach((button, index) => button.classList.toggle('selected', index === choiceIndex));
-    }
-  }
-  else if (state.mode === 'menu') {
-    if (event.code === 'ArrowLeft') state.selected = (state.selected + 3) % 4;
-    if (event.code === 'ArrowRight') state.selected = (state.selected + 1) % 4;
-    if (event.code.startsWith('Digit')) { state.selected = Number(event.code.slice(-1)) - 1; activate(actions[state.selected].dataset.action); }
-  }
-  sync();
+  if (!event.repeat) press(event.code);
 });
 window.addEventListener('keyup', event => { sources.delete('key:' + event.code); refreshKeys(); });
 document.querySelectorAll('[data-key]').forEach(button => {
-  button.addEventListener('pointerdown', event => { event.preventDefault(); try { button.setPointerCapture(event.pointerId); } catch {} sources.set('touch:' + event.pointerId, button.dataset.key); refreshKeys(); button.classList.add('pressed'); });
+  button.addEventListener('pointerdown', event => { event.preventDefault(); try { button.setPointerCapture(event.pointerId); } catch {} sources.set('touch:' + event.pointerId, button.dataset.key); refreshKeys(); button.classList.add('pressed'); canvas.focus({ preventScroll: true }); press(button.dataset.key); });
   const release = event => { sources.delete('touch:' + event.pointerId); refreshKeys(); if (!keys[button.dataset.key]) button.classList.remove('pressed'); };
   button.addEventListener('pointerup', release); button.addEventListener('pointercancel', release); button.addEventListener('lostpointercapture', release);
 });
@@ -327,4 +330,4 @@ function frame(now) {
   soundtrack.update(state.musicTime, !['title', 'paused', 'dead', 'won'].includes(state.mode));
   sync(); draw(); requestAnimationFrame(frame);
 }
-sync(); requestAnimationFrame(frame);
+sync(); canvas.focus({ preventScroll: true }); requestAnimationFrame(frame);
