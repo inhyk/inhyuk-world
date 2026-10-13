@@ -99,7 +99,7 @@ const PHASE_LABEL = { intro: 'THE LAST CORRIDOR', opening: 'FIRST STRIKE', p1: '
 function hint() {
   if (g.paused) return '잠깐 쉬는 중. 준비되면 계속하세요.';
   switch (g.mode) {
-    case 'title': return (C.diff(g).id === 'hp1' && !C.hardUnlocked(g)) ? '하드모드 잠김 · 보통 또는 최악의 시간을 끝까지 클리어하면 열립니다.' : g.meta.hiddenHeart === true ? `히든 발견! HP ${C.hiddenHp(g)} · 이 기기에 저장되었습니다. Z로 시작하세요.` : g.secretTaps ? ['','…한 번 더 말을 걸어 볼까?','…세 번째에는 대답할지도.'][g.secretTaps] : '난이도를 고르고 Z로 시작하세요. …샌즈에게도 말을 걸 수 있을까?';
+    case 'title': return !C.difficultyUnlocked(g) ? `${C.diff(g).name} 잠김 · ${C.unlockHint(g)}` : g.meta.hiddenHeart === true ? `히든 발견! HP ${C.hiddenHp(g)} · 이 기기에 저장되었습니다. Z로 시작하세요.` : g.secretTaps ? ['','…한 번 더 말을 걸어 볼까?','…세 번째에는 대답할지도.'][g.secretTaps] : '난이도를 고르고 Z로 시작하세요. …샌즈에게도 말을 걸 수 있을까?';
     case 'talk': return 'Z 다음 말 · X 한 번에 보기';
     case 'text': return 'Z 다음';
     case 'menu': return g.menuBones.length ? '뼈가 버튼 위를 지나간다! ← → 로 옆 버튼으로 피하세요.' : g.phase === 'offer' ? '공격하면 싸움이 이어지고, 자비를 고르면…' : '← → 고르기 · Z 확인. 공격해야 이야기가 나아갑니다. 아이템은 한 차례를 씁니다.';

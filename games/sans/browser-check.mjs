@@ -51,7 +51,16 @@ try {
   await page.keyboard.press('KeyZ'); assert.equal((await snap()).mode, 'title'); assert.equal((await snap()).hardUnlocked, false);
   await page.evaluate(() => { window.__sans.g.meta.best.normal = { ending: 'kill', deaths: 0, hits: 0, time: 120 }; });
   await page.keyboard.press('KeyZ'); await advance(1700); s = await snap(); assert.equal(s.hp, 1); assert.equal(s.items, 0); await shot('02b-hardmode-hp1');
-  await page.evaluate(() => { const { g, C } = window.__sans; C.toTitle(g); g.level = 1; });
+  // 배리하드: 하드코어 클리어 전에는 잠김, 클리어 뒤 HP 1 / 히든 HP 3.
+  await page.evaluate(() => { const { g, C } = window.__sans; C.toTitle(g); g.level = 3; });
+  await page.keyboard.press('ArrowRight'); assert.equal((await snap()).level, 'veryhard'); await shot('02c-veryhard-locked');
+  await page.keyboard.press('KeyZ'); assert.equal((await snap()).mode, 'title');
+  await page.evaluate(() => { window.__sans.g.meta.best.hp1 = { ending: 'kill', deaths: 0, hits: 0, time: 120 }; });
+  await page.keyboard.press('KeyZ'); s = await snap(); assert.equal(s.hp, 1); assert.equal(s.maxHp, 1); assert.equal(s.items, 0); assert.equal(s.veryHardUnlocked, true);
+  await page.evaluate(() => { const { g, C } = window.__sans; C.toTitle(g); });
+  for (let i = 0; i < 3; i++) await page.keyboard.press('KeyX');
+  await page.keyboard.press('KeyZ'); s = await snap(); assert.equal(s.hp, 3); assert.equal(s.maxHp, 3); assert.equal(s.items, 0); await shot('02d-veryhard-hidden-hp3');
+  await page.evaluate(() => { const { g, C } = window.__sans; g.meta.hiddenHeart = false; C.toTitle(g); g.level = 1; });
   // 시작 → 첫 대사
   await page.keyboard.press('KeyZ'); await advance(1700); s = await snap(); assert.equal(s.mode, 'talk'); assert.equal(s.talk, '어이, 꼬마.'); await shot('02-intro');
   for (let i = 0; i < 5; i++) { await page.keyboard.press('KeyZ'); await page.keyboard.press('KeyZ'); }

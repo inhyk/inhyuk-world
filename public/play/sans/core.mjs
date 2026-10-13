@@ -23,6 +23,7 @@ export const DIFFICULTIES = [
   { id: 'hard', name: '최악의 시간', note: '더 빠르고 더 아프다 · 쓰러지면 처음부터', tempo: 1.36, grace: .04, krGain: 2, sleep: 22, checkpoints: [], refill: false, menuBones: true },
   // HP 1, 아이템 없음. 이어하기 때도 가방을 채우지 않는다.
   { id: 'hp1', name: '하드모드', note: 'HP 1 · 아이템 없음 · 한 번만 스쳐도 끝 · 쓰러지면 2막부터', tempo: 1.18, grace: .05, krGain: 1, sleep: 17, checkpoints: ['p2'], refill: false, menuBones: true, startHp: 1, noItems: true },
+  { id: 'veryhard', name: '배리하드', note: '최악의 시간 탄막 · HP 1 (히든 3) · 아이템 없음 · 처음부터 재도전', tempo: 1.36, grace: .04, krGain: 2, sleep: 22, checkpoints: [], refill: false, menuBones: true, startHp: 1, noItems: true },
 ];
 const SPEED = 150, SLOW = 75, JUMP_SPEED = 390, JUMP_CUT = 80, GRAVITY = 1000, FALL_MAX = 1000;
 const STAB_OUT = .06, STAB_IN = .1, GB_ENTER = .3;
@@ -40,7 +41,10 @@ export function rand(g) {
 // ---------- 상태 ----------
 export function createMeta() { return { deaths: 0, dunked: false, level: 1, best: {}, endings: {}, sound: true, hiddenHeart: false }; }
 export const hardUnlocked = g => ['normal', 'hard'].some(id => ['kill', 'mercy'].includes(g.meta.best[id]?.ending));
-export const hiddenHp = g => diff(g).id === 'hp1' ? 3 : 180;
+export const veryHardUnlocked = g => ['kill', 'mercy'].includes(g.meta.best.hp1?.ending);
+export const difficultyUnlocked = (g, id = diff(g).id) => id === 'veryhard' ? veryHardUnlocked(g) : id === 'hp1' ? hardUnlocked(g) : true;
+export const unlockHint = g => diff(g).id === 'veryhard' ? '하드모드(하드코어) 클리어로 해금' : '보통 또는 최악의 시간 클리어로 해금';
+export const hiddenHp = g => diff(g).startHp ? 3 : 180;
 function applyHiddenHeart(g) {
   if (g.meta.hiddenHeart === true) g.hp = g.maxHp = hiddenHp(g);
 }
@@ -81,10 +85,11 @@ export const sansFloor = g => Math.min(238, g.box.y - g.box.h / 2 - 8);
 // ---------- 시작과 끝 ----------
 // from: 'title'(새 도전) | 'start'(쓰러진 뒤 처음부터) | 'checkpoint'(이어서)
 export function begin(g, from = 'title') {
-  if (diff(g).id === 'hp1' && !hardUnlocked(g)) { g.lockedNotice = true; g.mode = 'title'; return false; }
+  if (!difficultyUnlocked(g)) { g.lockedNotice = true; g.mode = 'title'; return false; }
   const checkpoint = from === 'checkpoint' ? g.checkpoint : null, level = g.level;
   if (from === 'title') g.session = { deaths: 0, hits: 0, time: 0 };
   reset(g); g.level = level; g.meta.level = level; g.seed = (g.seed + 977) >>> 0;
+  if (diff(g).id === 'veryhard') g.maxHp = 1;
   g.hp = diff(g).startHp ?? g.maxHp;
   applyHiddenHeart(g);
   if (diff(g).noItems) g.items = [];
@@ -110,11 +115,12 @@ function die(g) {
   emit(g, 'music', null); emit(g, 'sfx', 'break'); emit(g, 'save');
 }
 function finish(g, ending) {
-  const wasUnlocked = hardUnlocked(g);
+  const wasUnlocked = hardUnlocked(g), wasVeryHardUnlocked = veryHardUnlocked(g);
   const run = { ending, deaths: g.session.deaths, hits: g.session.hits + g.stats.hits, time: Math.round(g.session.time + g.stats.time), record: false };
   const id = diff(g).id, best = g.meta.best[id];
   if (!best || run.deaths < best.deaths || (run.deaths === best.deaths && run.hits < best.hits)) { g.meta.best[id] = { ending, deaths: run.deaths, hits: run.hits, time: run.time }; run.record = true; }
   run.unlockedHard = !wasUnlocked && hardUnlocked(g);
+  run.unlockedVeryHard = !wasVeryHardUnlocked && veryHardUnlocked(g);
   g.meta.endings[ending] = true; g.meta.deaths = 0; g.meta.dunked = false;
   Object.assign(g, { mode: 'won', modeT: 0, ended: ending, result: run, text: null, talk: null });
   emit(g, 'music', ending === 'kill' ? 'dust' : 'warm'); emit(g, 'save');
@@ -598,7 +604,7 @@ function tickCine(g, dt) {
 // 자동화·디버그용 요약
 export function summarize(g) {
   const line = box => box ? (Array.isArray(box.lines[box.index]) ? box.lines[box.index][0] : box.lines[box.index]) : null;
-  return { mode: g.mode, phase: g.phase, story: g.story, level: diff(g).id, hardUnlocked: hardUnlocked(g), hp: g.hp, maxHp: g.maxHp, hiddenHeart: g.meta.hiddenHeart === true, kr: g.kr, items: g.items.length, deaths: g.meta.deaths,
+  return { mode: g.mode, phase: g.phase, story: g.story, level: diff(g).id, hardUnlocked: hardUnlocked(g), veryHardUnlocked: veryHardUnlocked(g), hp: g.hp, maxHp: g.maxHp, hiddenHeart: g.meta.hiddenHeart === true, kr: g.kr, items: g.items.length, deaths: g.meta.deaths,
     attack: g.attack ? { name: g.attack.name, pattern: g.attack.segment?.name || g.attack.name, t: Math.round(g.attack.t * 100) / 100, dur: g.attack.dur } : null,
     soul: { x: Math.round(g.soul.x), y: Math.round(g.soul.y), mode: g.soul.mode, gravity: g.soul.gravity }, bullets: g.bullets.length,
     menu: BUTTONS[g.menu].id, submenu: g.submenu ? g.submenu.kind : null, talk: line(g.talk), text: line(g.text), bubble: g.bubble?.text || null,
