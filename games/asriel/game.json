@@ -1,0 +1,23 @@
+{
+  "slug": "asriel",
+  "title": "ASRIEL · 마지막 별빛",
+  "description": "무지개 날개의 아스리엘과 맞서는 보스전. 12개 공격을 버티고 마지막 기억을 되찾으세요.",
+  "longDescription": "움직이는 픽셀 아트와 세 가지 모습, 12개 전용 탄막으로 펼쳐지는 아스리엘 단독 보스전입니다. 검·번개·별똥별·프리즘의 경고를 읽고 공격을 피하며, 희망과 꿈으로 버티세요. 최종 형태의 날개와 여섯 영혼이 빛나고, 쓰러져도 한 번은 결의로 다시 일어납니다. 친구 세 쌍의 기억을 되찾고 마지막 구원 연출과 결말을 만나세요. 독자 합성 음악과 전용 효과음, 키보드·모바일 터치 조작을 지원합니다.",
+  "emoji": "🌟",
+  "thumbnail": "/images/games/asriel-thumb.png",
+  "screenshots": [
+    "/images/games/asriel-1.png",
+    "/images/games/asriel-2.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Canvas 2D",
+    "Web Audio"
+  ],
+  "category": "액션",
+  "playUrl": "/play/asriel",
+  "createdAt": "2026-09",
+  "featured": true,
+  "order": 56,
+  "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/asriel"
+}

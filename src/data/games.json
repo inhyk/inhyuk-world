@@ -27,7 +27,7 @@
     "slug": "sans",
     "title": "SANS · 심판의 회랑",
     "description": "암전마다 바뀌는 공격과 무자비한 특별 공격. HP 1·아이템 없는 하드모드에 도전하세요.",
-    "longDescription": "심판의 회랑에서 샌즈와 맞서는 단독 보스전입니다. 보통 난이도부터 더 빨라진 뼈와 블래스터가 몰아치며, 2막에서는 암전과 전자음 뒤에 영혼 색·중력·상자와 공격 패턴이 바뀝니다. 특별 공격은 빠른 4방향 내리꽂기, 양쪽 연속 블래스터, 좁은 뼈 통로 등 아홉 구간을 쉬지 않고 이어 가고, 마지막에는 가속하는 회전 빔과 바닥 뼈가 함께 나옵니다. 연습·보통·최악의 시간·HP 1 하드모드를 지원하며, 하드모드에는 회복 아이템이 없습니다. 샌즈의 제안과 잠든 뒤의 선택에 따라 두 결말이 갈리고, 이어하기·실시간 합성 음악·PC와 모바일 조작·난이도별 기록을 지원합니다.",
+    "longDescription": "심판의 회랑에서 샌즈와 맞서는 단독 보스전입니다. 보통 난이도부터 더 빨라진 뼈와 블래스터가 몰아치며, 2막에서는 암전과 전자음 뒤에 영혼 색·중력·상자와 공격 패턴이 바뀝니다. 특별 공격은 빠른 4방향 내리꽂기, 양쪽 연속 블래스터, 좁은 뼈 통로 등 아홉 구간을 쉬지 않고 이어 가고, 마지막에는 가속하는 회전 빔과 바닥 뼈가 함께 나옵니다. 연습·보통·최악의 시간·HP 1 하드모드를 지원하며, 하드모드에는 회복 아이템이 없습니다. 샌즈의 제안과 잠든 뒤의 선택에 따라 두 결말이 갈리고, 이어하기·실시간 합성 음악·PC와 모바일 조작·난이도별 기록을 지원합니다. 보통이나 최악의 시간을 클리어하면 HP 1 하드모드가 열리고, 보스 선택에서 아스리엘 전투로 이동할 수 있습니다.",
     "emoji": "💀",
     "thumbnail": "/images/games/sans-thumb.png",
     "screenshots": [
@@ -44,7 +44,7 @@
     "playUrl": "/play/sans",
     "createdAt": "2026-10",
     "featured": true,
-    "order": 54,
+    "order": 57,
     "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/sans"
   },
   {
@@ -1205,5 +1205,28 @@
     "createdAt": "2026-02",
     "featured": true,
     "order": 1
+  },
+  {
+    "slug": "asriel",
+    "title": "ASRIEL · 마지막 별빛",
+    "description": "무지개 날개의 아스리엘과 맞서는 보스전. 12개 공격을 버티고 마지막 기억을 되찾으세요.",
+    "longDescription": "움직이는 픽셀 아트와 세 가지 모습, 12개 전용 탄막으로 펼쳐지는 아스리엘 단독 보스전입니다. 검·번개·별똥별·프리즘의 경고를 읽고 공격을 피하며, 희망과 꿈으로 버티세요. 최종 형태의 날개와 여섯 영혼이 빛나고, 쓰러져도 한 번은 결의로 다시 일어납니다. 친구 세 쌍의 기억을 되찾고 마지막 구원 연출과 결말을 만나세요. 독자 합성 음악과 전용 효과음, 키보드·모바일 터치 조작을 지원합니다.",
+    "emoji": "🌟",
+    "thumbnail": "/images/games/asriel-thumb.png",
+    "screenshots": [
+      "/images/games/asriel-1.png",
+      "/images/games/asriel-2.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "액션",
+    "playUrl": "/play/asriel",
+    "createdAt": "2026-09",
+    "featured": true,
+    "order": 56,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/asriel"
   }
 ]

@@ -39,6 +39,7 @@ export function rand(g) {
 
 // ---------- 상태 ----------
 export function createMeta() { return { deaths: 0, dunked: false, level: 1, best: {}, endings: {}, sound: true, hiddenHeart: false }; }
+export const hardUnlocked = g => ['normal', 'hard'].some(id => ['kill', 'mercy'].includes(g.meta.best[id]?.ending));
 export const hiddenHp = g => diff(g).id === 'hp1' ? 3 : 180;
 function applyHiddenHeart(g) {
   if (g.meta.hiddenHeart === true) g.hp = g.maxHp = hiddenHp(g);
@@ -60,7 +61,7 @@ function reset(g) {
     menu: 0, submenu: null, text: null, talk: null, bubble: null, bar: null, strike: null, cine: null, flavor: '', flavorShown: 0,
     sans: { face: 'idle', dx: 0, dodgeT: -1, arm: null, armT: 0, eye: 0, sweat: 0, asleep: false, gash: false, walk: 0, hidden: false, hpShown: 0 },
     menuBones: [], menuBoneClock: 0, menuBoneNext: 1.3, sleepT: 0, asleepT: 0, bubbleIndex: 0, push: null, pushed: false,
-    checkpoint: null, ended: null, over: null, result: null, blackout: 0, shake: 0, flash: 0, secretTaps: 0,
+    checkpoint: null, ended: null, over: null, result: null, blackout: 0, shake: 0, flash: 0, secretTaps: 0, lockedNotice: false,
     stats: { hits: 0, ticks: 0, heals: 0, turns: 0, time: 0 },
   });
   applyHiddenHeart(g);
@@ -80,6 +81,7 @@ export const sansFloor = g => Math.min(238, g.box.y - g.box.h / 2 - 8);
 // ---------- 시작과 끝 ----------
 // from: 'title'(새 도전) | 'start'(쓰러진 뒤 처음부터) | 'checkpoint'(이어서)
 export function begin(g, from = 'title') {
+  if (diff(g).id === 'hp1' && !hardUnlocked(g)) { g.lockedNotice = true; g.mode = 'title'; return false; }
   const checkpoint = from === 'checkpoint' ? g.checkpoint : null, level = g.level;
   if (from === 'title') g.session = { deaths: 0, hits: 0, time: 0 };
   reset(g); g.level = level; g.meta.level = level; g.seed = (g.seed + 977) >>> 0;
@@ -108,9 +110,11 @@ function die(g) {
   emit(g, 'music', null); emit(g, 'sfx', 'break'); emit(g, 'save');
 }
 function finish(g, ending) {
+  const wasUnlocked = hardUnlocked(g);
   const run = { ending, deaths: g.session.deaths, hits: g.session.hits + g.stats.hits, time: Math.round(g.session.time + g.stats.time), record: false };
   const id = diff(g).id, best = g.meta.best[id];
   if (!best || run.deaths < best.deaths || (run.deaths === best.deaths && run.hits < best.hits)) { g.meta.best[id] = { ending, deaths: run.deaths, hits: run.hits, time: run.time }; run.record = true; }
+  run.unlockedHard = !wasUnlocked && hardUnlocked(g);
   g.meta.endings[ending] = true; g.meta.deaths = 0; g.meta.dunked = false;
   Object.assign(g, { mode: 'won', modeT: 0, ended: ending, result: run, text: null, talk: null });
   emit(g, 'music', ending === 'kill' ? 'dust' : 'warm'); emit(g, 'save');
@@ -239,7 +243,7 @@ export function press(g, key) {
           emit(g, 'sfx', 'materialize'); emit(g, 'save');
         } else emit(g, 'sfx', 'move');
       }
-      else if (step) { g.level = clamp(g.level + step, 0, DIFFICULTIES.length - 1); applyHiddenHeart(g); emit(g, 'sfx', 'move'); }
+      else if (step) { g.level = clamp(g.level + step, 0, DIFFICULTIES.length - 1); g.lockedNotice = false; applyHiddenHeart(g); emit(g, 'sfx', 'move'); }
       else if (key === 'confirm') { emit(g, 'sfx', 'select'); begin(g, 'title'); }
       return;
     case 'talk': if (key === 'confirm' || key === 'cancel') advance(g, g.talk); return;
@@ -594,7 +598,7 @@ function tickCine(g, dt) {
 // 자동화·디버그용 요약
 export function summarize(g) {
   const line = box => box ? (Array.isArray(box.lines[box.index]) ? box.lines[box.index][0] : box.lines[box.index]) : null;
-  return { mode: g.mode, phase: g.phase, story: g.story, level: diff(g).id, hp: g.hp, maxHp: g.maxHp, hiddenHeart: g.meta.hiddenHeart === true, kr: g.kr, items: g.items.length, deaths: g.meta.deaths,
+  return { mode: g.mode, phase: g.phase, story: g.story, level: diff(g).id, hardUnlocked: hardUnlocked(g), hp: g.hp, maxHp: g.maxHp, hiddenHeart: g.meta.hiddenHeart === true, kr: g.kr, items: g.items.length, deaths: g.meta.deaths,
     attack: g.attack ? { name: g.attack.name, pattern: g.attack.segment?.name || g.attack.name, t: Math.round(g.attack.t * 100) / 100, dur: g.attack.dur } : null,
     soul: { x: Math.round(g.soul.x), y: Math.round(g.soul.y), mode: g.soul.mode, gravity: g.soul.gravity }, bullets: g.bullets.length,
     menu: BUTTONS[g.menu].id, submenu: g.submenu ? g.submenu.kind : null, talk: line(g.talk), text: line(g.text), bubble: g.bubble?.text || null,

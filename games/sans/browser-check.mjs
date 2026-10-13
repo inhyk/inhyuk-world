@@ -48,6 +48,8 @@ try {
   await page.keyboard.press('ArrowLeft'); s = await snap(); assert.equal(s.level, 'easy'); await page.keyboard.press('ArrowRight');
   // 하드모드: HP 1로 시작한다
   await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight'); s = await snap(); assert.equal(s.level, 'hp1'); await shot('01b-title-hardmode');
+  await page.keyboard.press('KeyZ'); assert.equal((await snap()).mode, 'title'); assert.equal((await snap()).hardUnlocked, false);
+  await page.evaluate(() => { window.__sans.g.meta.best.normal = { ending: 'kill', deaths: 0, hits: 0, time: 120 }; });
   await page.keyboard.press('KeyZ'); await advance(1700); s = await snap(); assert.equal(s.hp, 1); assert.equal(s.items, 0); await shot('02b-hardmode-hp1');
   await page.evaluate(() => { const { g, C } = window.__sans; C.toTitle(g); g.level = 1; });
   // 시작 → 첫 대사
@@ -206,6 +208,7 @@ try {
   await page.evaluate(() => localStorage.removeItem('sans-judgement-hall'));
   await page.reload(); await page.waitForFunction(() => typeof window.render_game_to_text === 'function');
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => { window.__sans.g.meta.best.normal = { ending: 'kill', deaths: 0, hits: 0, time: 120 }; });
   await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
   const sansBounds = await page.locator('#game').boundingBox();
   for (let i = 0; i < 3; i++) await page.mouse.click(sansBounds.x + sansBounds.width / 2, sansBounds.y + sansBounds.height * 175 / 480);

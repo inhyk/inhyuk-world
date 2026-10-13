@@ -5,7 +5,7 @@ import * as C from '../../public/play/sans/core.mjs';
 import * as L from '../../public/play/sans/lines.mjs';
 import { gameAt } from './bot.mjs';
 
-const newGame = (level = 1, seed = 5, meta = C.createMeta()) => { meta.level = level; return C.createGame(meta, seed); };
+const newGame = (level = 1, seed = 5, meta = C.createMeta()) => { meta.level = level; if (level === 3) meta.best.normal ??= { ending: 'kill' }; return C.createGame(meta, seed); };
 const step = (g, seconds, held = {}) => { for (let i = 0; i < Math.ceil(seconds * 60); i++) C.tick(g, 1 / 60, held); };
 const settle = g => { for (let i = 0; i < 600 && ['talk', 'text', 'cine'].includes(g.mode); i++) { if (g.mode === 'cine') step(g, .1); else C.press(g, 'confirm'); } };
 // 샌즈의 차례를 버틴다: HP를 채워 가며 끝날 때까지 흘려보낸다.
@@ -226,6 +226,8 @@ test('특별 공격 뒤: 아무 일도 없는 차례 → 잠 → 상자를 공�
   step(g, 6, { left: true }); assert.equal(g.push, 'fight'); assert.equal(g.box.x, C.PUSH_MIN);
   C.press(g, 'confirm'); assert.equal(g.cine.kind, 'final'); step(g, 1.5); assert.equal(g.bubble.text, L.WAKE_LINE); assert.equal(g.sans.gash, false, '첫 칼은 피한다');
   step(g, 1); assert.equal(g.sans.gash, true); step(g, 1.6); assert.equal(g.talk.lines, L.DEATH); settle(g);
+  assert.equal(C.hardUnlocked(g), true); assert.equal(g.result.unlockedHard, true);
+  assert.equal(C.hardUnlocked(C.createGame(JSON.parse(JSON.stringify(g.meta)))), true);
   assert.equal(g.mode, 'won'); assert.equal(g.ended, 'kill'); assert.equal(g.sans.hidden, true);
   assert.equal(g.meta.endings.kill, true); assert.equal(g.meta.deaths, 0, '끝까지 가면 샌즈의 셈이 처음으로 돌아간다'); assert.equal(g.result.record, true); assert.equal(g.meta.best.normal.ending, 'kill');
   step(g, 3); C.press(g, 'confirm'); assert.equal(g.mode, 'title');
@@ -310,4 +312,19 @@ test('히든 하드모드: HP 3, 빈 가방, 난이도 변경·새로고침·이
   restored.checkpoint = { at: 'p2', items: ['pie'] };
   C.begin(restored, 'checkpoint'); assert.equal(restored.hp, 3); assert.equal(restored.maxHp, 3); assert.deepEqual(restored.items, []);
   C.begin(restored, 'start'); assert.equal(restored.hp, 3);
+});
+
+
+test('하드모드는 보통 또는 최악의 시간의 실제 클리어 기록으로만 열린다', () => {
+  for (const id of ['easy', 'normal', 'hard']) {
+    const meta = C.createMeta(); meta.level = 3; meta.best[id] = { ending: 'mercy' };
+    const g = C.createGame(meta); C.press(g, 'confirm');
+    assert.equal(C.hardUnlocked(g), id !== 'easy');
+    assert.equal(g.mode, id === 'easy' ? 'title' : 'cine');
+  }
+  const g = C.createGame(); g.level = 3; C.press(g, 'confirm');
+  assert.equal(g.mode, 'title'); assert.equal(g.lockedNotice, true);
+  C.begin(g, 'checkpoint'); assert.equal(g.mode, 'title');
+  g.meta.hiddenHeart = true; C.begin(g); assert.equal(g.mode, 'title', '히든도 해금 조건을 우회하지 않는다');
+  g.meta.best.normal = { ending: 'kill' }; C.begin(g); assert.equal(g.mode, 'cine'); assert.equal(g.hp, 3);
 });

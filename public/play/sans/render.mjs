@@ -335,12 +335,13 @@ function drawTitle(ctx, g, t) {
   ctx.fillStyle = 'rgba(0,0,0,.72)'; ctx.fillRect(0, 246, W, 234);
   C.DIFFICULTIES.forEach((d, i) => {
     // 하드모드 칸은 붉게 표시한다
+    const locked = d.id === 'hp1' && !C.hardUnlocked(g);
     const x = 320 + (i - (C.DIFFICULTIES.length - 1) / 2) * 150, on = i === g.level, danger = !!d.startHp;
     ctx.strokeStyle = on ? (danger ? '#ff4a4a' : '#ffff3a') : danger ? '#6b3a3a' : '#5b5648'; ctx.lineWidth = 2; ctx.strokeRect(x - 70, 268, 140, 44);
-    text(ctx, d.name, x + (on ? 10 : 0), 282, { size: 16, align: 'center', bold: true, color: on ? (danger ? '#ff6a6a' : '#ffff3a') : danger ? '#a06060' : '#a59f90' });
-    if (on) { ctx.font = `bold 16px ${FONT}`; heart(ctx, x + 10 - ctx.measureText(d.name).width / 2 - 15, 291, '#ff1a1a'); }
+    text(ctx, locked ? '하드모드 · 잠김' : d.name, x + (on ? 10 : 0), 282, { size: locked ? 11 : 16, align: 'center', bold: true, color: on ? (danger ? '#ff6a6a' : '#ffff3a') : danger ? '#a06060' : '#a59f90' });
+    if (on) { ctx.font = `bold ${locked ? 11 : 16}px ${FONT}`; heart(ctx, x + 10 - ctx.measureText(locked ? '하드모드 · 잠김' : d.name).width / 2 - 15, 291, '#ff1a1a'); }
   });
-  text(ctx, g.meta.hiddenHeart === true ? `히든 하트 · HP ${C.hiddenHp(g)}${level.noItems ? ' · 아이템 없음' : ''}` : level.note, 320, 326, { size: 11, align: 'center', color: g.meta.hiddenHeart === true ? '#74f3ce' : '#cfc8b6' });
+  text(ctx, level.id === 'hp1' && !C.hardUnlocked(g) ? '보통 또는 최악의 시간 클리어로 해금' : g.meta.hiddenHeart === true ? `히든 하트 · HP ${C.hiddenHp(g)}${level.noItems ? ' · 아이템 없음' : ''}` : level.note, 320, 326, { size: 11, align: 'center', color: g.meta.hiddenHeart === true ? '#74f3ce' : '#cfc8b6' });
   if (g.meta.hiddenHeart === true) {
     heart(ctx, 320, 252, '#74f3ce');
     text(ctx, '…비밀은 우리끼리만.', 320, 386, { size: 11, align: 'center', color: '#74f3ce' });
@@ -392,7 +393,7 @@ function drawWon(ctx, g, t) {
     const minutes = Math.floor(run.time / 60), seconds = String(run.time % 60).padStart(2, '0');
     text(ctx, `${C.diff(g).name}   ·   쓰러짐 ${run.deaths}번   ·   스침 ${run.hits}번   ·   ${minutes}분 ${seconds}초`, 320, 362, { size: 12, align: 'center', alpha: clamp((k - 2) / .6) });
     if (run.record) text(ctx, '★ 새 기록', 320, 384, { size: 11, align: 'center', color: '#ffff3a', alpha: clamp((k - 2.3) / .6) });
-    text(ctx, kill ? '잠든 샌즈 앞에서, 다른 버튼 쪽으로 상자를 밀어 볼 수도 있었다.' : '다른 끝도 있다. 하지만 꼭 봐야 하는 건 아니다.', 320, 408, { size: 10, align: 'center', color: '#8f8a80', alpha: clamp((k - 2.6) / .6) });
+    text(ctx, run.unlockedHard ? '하드모드가 열렸습니다! 처음 화면에서 선택하세요.' : kill ? '잠든 샌즈 앞에서, 다른 버튼 쪽으로 상자를 밀어 볼 수도 있었다.' : '다른 끝도 있다. 하지만 꼭 봐야 하는 건 아니다.', 320, 408, { size: 10, align: 'center', color: '#8f8a80', alpha: clamp((k - 2.6) / .6) });
     if (k > 2.5 && (reduced || Math.floor(t * 2) % 2)) text(ctx, 'Z 로 처음 화면', 320, 440, { size: 14, align: 'center', bold: true });
   }
 }

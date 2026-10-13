@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080910">
+  <title>ASRIEL · 마지막 별빛</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23c4a4ff' d='M8 0l2 5 6 3-6 2-2 6-2-6-6-2 6-3z'/%3E%3C/svg%3E">
+  <link rel="preload" href="../undertale/fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main>
+    <header><a href="/games" target="_top">← 게임 목록</a><span>ONE SOUL. ONE FINAL BATTLE.</span><button id="sound" aria-pressed="false">소리 OFF</button></header>
+    <nav class="boss-modes" aria-label="보스 선택"><a href="/play/sans" target="_top">☠ 샌즈와 싸우기</a><a href="/play/asriel" target="_top" aria-current="page">✦ 아스리엘과 싸우기</a></nav>
+    <section class="heading"><div><p class="eyebrow">ASRIEL DREEMURR / BOSS ENCOUNTER</p><h1>마지막 <span>별빛</span></h1><p>세상이 사라져도, 너의 결의는 남아 있다.</p></div><div class="badge"><i></i> 단독 보스전 <small>12 ATTACKS · 03 FORMS</small></div></section>
+    <section class="machine" aria-label="아스리엘 보스전">
+      <div class="machine-top"><span>✦ ASRIEL</span><span id="phase">THE LAST STARLIGHT</span><span class="live">● DETERMINATION</span></div>
+      <div class="screen"><canvas id="game" width="800" height="620" tabindex="0" aria-label="방향키로 붉은 하트를 움직여 탄막을 피하세요. Z 확인, Shift 정밀 이동, Escape 일시정지."></canvas>
+        <div id="overlay"><p class="eyebrow" id="overlay-kicker">THE ABSOLUTE GOD OF HYPERDEATH</p><h2 id="overlay-title">아스리엘<br>드리무르</h2><p id="overlay-copy">별빛이 부서지는 곳에서<br>우리 둘만의 마지막 싸움이 시작된다.</p><button id="start">보스전 시작 <span>→</span></button><p class="small" id="record">방향키 이동 · Z 확인 · Shift 정밀 이동</p></div>
+      </div>
+      <div class="actions"><button data-action="fight"><b>⚔</b> 싸우기 <small>1</small></button><button data-action="act"><b>)))</b> 행동 <small>2</small></button><button data-action="heal"><b>♥</b> 꿈 <small>3</small></button><button data-action="save"><b>☀</b> 구하기 <small>4</small></button></div>
+      <div id="choices" aria-label="행동 선택" hidden></div>
+      <div class="status"><span id="message" role="status" aria-live="polite">준비됐다면 보스전을 시작하세요.</span><button id="pause">일시정지</button></div>
+    </section>
+    <div class="touch" aria-label="터치 조작"><div class="dpad"><button data-key="ArrowUp" aria-label="위">↑</button><button data-key="ArrowLeft" aria-label="왼쪽">←</button><button data-key="ArrowDown" aria-label="아래">↓</button><button data-key="ArrowRight" aria-label="오른쪽">→</button></div><button data-key="ShiftLeft">정밀<br>이동</button><button id="confirm">Z<br>확인</button></div>
+    <section class="instructions"><span><kbd>↑ ↓ ← →</kbd> 이동</span><span><kbd>Z / ENTER</kbd> 확인</span><span><kbd>SHIFT</kbd> 정밀 이동</span><span><kbd>ESC</kbd> 일시정지</span></section>
+    <footer><span>끝까지 버티고, 마지막에 아스리엘을 구하세요.</span><span>비공식 팬 게임 · 캐릭터 원작 TOBY FOX</span></footer>
+  </main>
+  <script type="module" src="./game.mjs"></script>
+</body>
+</html>
