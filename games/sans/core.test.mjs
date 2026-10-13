@@ -28,6 +28,91 @@ const toSpecial = (level = 1, meta) => {
 };
 const bone = (g, extra = {}) => g.bullets.push({ id: 900 + g.bullets.length, kind: 'bone', x: g.soul.x, y: g.soul.y, w: 10, h: 30, vx: 0, vy: 0, age: 0, ttl: 99, color: 'white', ...extra });
 
+test('2막부터 공격 시작과 중간마다 암전하고, 가려진 동안 이동·탄막·업보가 멈춘다', () => {
+  for (const name of [...C.ORDER.p2, ...C.ORDER.fill2, 'special']) {
+    const g = gameAt(name);
+    assert.ok(g.blackout > 0, name);
+    g.hp = 50; g.kr = 10; g.krClock = .1;
+    bone(g, { vx: 80 });
+    const frozen = { t: g.attack.t, soul: structuredClone(g.soul), bullets: structuredClone(g.bullets) };
+    step(g, .2, { left: true, up: true });
+    assert.equal(g.attack.t, frozen.t, name);
+    assert.deepEqual(g.soul, frozen.soul, name);
+    assert.deepEqual(g.bullets, frozen.bullets, name);
+    assert.equal(g.hp, 50); assert.equal(g.kr, 10);
+    assert.equal(g.krClock, .1); assert.equal(g.stats.ticks, 0);
+    g.bullets = []; g.kr = 0;
+    let cuts = 0, wasBlack = true;
+    while (g.mode === 'dodge') {
+      g.hp = 92; g.kr = 0; C.tick(g, 1 / 60);
+      if (g.blackout > 0 && !wasBlack) cuts++;
+      wasBlack = g.blackout > 0;
+    }
+    assert.ok(cuts >= 2, `${name}: 중간 암전 ${cuts}회`);
+  }
+  for (const name of ['opening', ...C.ORDER.p1, ...C.ORDER.fill1, 'nothing']) {
+    const g = gameAt(name); assert.equal(g.blackout, 0, name);
+  }
+});
+
+test('암전에서 다시 보인 직후에는 HP 1이어도 반응할 여유가 있다', () => {
+  const g = gameAt('chase', 3);
+  g.hp = 1; bone(g);
+  while (g.blackout > 0) C.tick(g, 1 / 60);
+  step(g, .1);
+  assert.equal(g.hp, 1); assert.equal(g.stats.ticks, 0);
+  step(g, .15);
+  assert.equal(g.mode, 'gameover');
+});
+
+test('암전과 새 패턴 등장에 효과음이 한 번씩 나오며, 멈춘 동안에는 나오지 않는다', () => {
+  const g = gameAt('chase'); g.events = [];
+  while (g.blackout > 0) C.tick(g, 1 / 60);
+  assert.equal(g.events.filter(e => e.name === 'materialize').length, 1);
+  g.events = []; g.attack.t = 1.95;
+  C.tick(g, 1 / 60); assert.ok(g.blackout > 0);
+  assert.equal(g.events.filter(e => e.name === 'teleport').length, 1);
+  g.paused = true; step(g, 1);
+  assert.equal(g.events.filter(e => e.name === 'materialize').length, 0);
+  g.paused = false; step(g, .6);
+  assert.equal(g.events.filter(e => e.name === 'materialize').length, 1);
+});
+
+test('암전마다 실제 공격 패턴을 교체하고, 이전 탄막과 발판은 남지 않는다', () => {
+  for (const name of [...C.ORDER.p2, ...C.ORDER.fill2, 'special'].filter(n => C.PATTERNS[n].sequence)) {
+    const g = gameAt(name), sequence = C.PATTERNS[name].sequence;
+    let previous = g.attack.segment.name, switches = 0;
+    while (g.mode === 'dodge') {
+      g.hp = 92; g.kr = 0;
+      const oldIds = g.bullets.map(b => b.id), story = g.story;
+      C.tick(g, 1 / 60);
+      if (g.attack && g.attack.segment.name !== previous) {
+        assert.ok(g.blackout > 0, name);
+        assert.equal(g.story, story, '패턴만 바뀌고 이야기 차례는 그대로');
+        assert.ok(g.bullets.every(b => !oldIds.includes(b.id)), '이전 탄막 제거');
+        assert.equal(g.attack.segment.t, 0);
+        if (!C.PATTERNS[g.attack.segment.name].setup) assert.deepEqual(g.attack.segment.memo, {});
+        previous = g.attack.segment.name; switches++;
+      }
+    }
+    assert.equal(switches, sequence.length - 1, name);
+    assert.equal(g.story, name === 'special' ? 0 : 1, name);
+  }
+});
+
+test('새 암전 패턴은 실제 탄막을 내보내고, 천장 중력은 아래로 점프한다', () => {
+  for (const name of ['verticalTunnel', 'blueCross', 'cornerBeams', 'ceilingHops', 'finalSpiral']) {
+    const g = gameAt(name); step(g, .7);
+    assert.ok(g.bullets.length > 0, `${name}: 탄막이 보인다`);
+    if (name === 'blueCross') assert.ok(g.bullets.every(b => b.color === 'blue'));
+    if (name === 'cornerBeams') assert.equal(g.bullets[0].kind, 'gb');
+    if (name === 'ceilingHops') {
+      assert.equal(g.soul.gravity, 'up');
+      const y = g.soul.y; step(g, .1, { down: true }); assert.ok(g.soul.y > y);
+    }
+  }
+});
+
 test('시작하면 대사 뒤에 플레이어 차례 없이 첫 공격이 날아온다', () => {
   const g = newGame(); assert.equal(g.mode, 'title');
   C.press(g, 'right'); assert.equal(C.diff(g).id, 'hard'); C.press(g, 'left'); C.press(g, 'left'); assert.equal(C.diff(g).id, 'easy'); C.press(g, 'right');
@@ -109,12 +194,12 @@ test('제안: 기다려 주는 동안은 공격이 없고, 자비를 고르면 �
 test('제안을 거절하면 2막. 보통은 2막부터 이어서, 어려움은 처음부터', () => {
   const g = toOffer(1); g.items = ['pie', 'bunny'];
   fight(g); assert.equal(g.talk.lines, L.P2[0]); settle(g); assert.equal(g.phase, 'p2'); assert.equal(g.attack.name, C.ORDER.p2[0]); assert.deepEqual(g.checkpoint, { at: 'p2', items: ['pie', 'bunny'] });
-  g.hp = 1; g.kr = 0; bone(g); step(g, 1 / 60); assert.equal(g.mode, 'gameover'); assert.deepEqual(g.over.options.map(o => o.id), ['checkpoint', 'start', 'title']);
+  step(g, .6); g.soul.inv = 0; g.hp = 1; g.kr = 0; bone(g); step(g, 1 / 60); assert.equal(g.mode, 'gameover'); assert.deepEqual(g.over.options.map(o => o.id), ['checkpoint', 'start', 'title']);
   step(g, 2); C.press(g, 'confirm'); step(g, 1.6); assert.equal(g.talk.lines, L.RESUME.p2); settle(g);
   assert.equal(g.phase, 'p2'); assert.equal(g.attack.name, C.ORDER.p2[0]); assert.equal(g.hp, 92); assert.deepEqual(g.items, ['pie', 'bunny']); assert.equal(g.session.deaths, 1);
   // 연습: 아이템이 돌아오고 특별 공격 앞에도 이어하기 지점이 있다
   const easy = toSpecial(0); assert.equal(easy.checkpoint.at, 'special'); easy.items = [];
-  easy.hp = 1; easy.kr = 0; bone(easy); step(easy, 1 / 60); step(easy, 2); assert.equal(easy.over.options[0].label, '특별 공격부터'); C.press(easy, 'confirm'); step(easy, 1.6); settle(easy);
+  step(easy, .6); easy.soul.inv = 0; easy.hp = 1; easy.kr = 0; bone(easy); step(easy, 1 / 60); step(easy, 2); assert.equal(easy.over.options[0].label, '특별 공격부터'); C.press(easy, 'confirm'); step(easy, 1.6); settle(easy);
   assert.equal(easy.attack.name, 'special'); assert.equal(easy.items.length, L.BAG.length);
   // 어려움: 이어하기 없음
   const hard = toOffer(2); fight(hard); settle(hard); assert.equal(hard.checkpoint, null);
@@ -154,18 +239,20 @@ test('잠든 샌즈 앞에서 자비 쪽으로 밀면 다른 결말', () => {
   settle(g); assert.equal(g.ended, 'mercy'); assert.equal(g.meta.endings.mercy, true); assert.equal(g.sans.gash, false);
 });
 
-test('하드모드: HP 1로 시작하고, 한 번만 스쳐도 끝나며, 아이템으로는 회복할 수 있다', () => {
-  const level = C.DIFFICULTIES.findIndex(d => d.id === 'hp1'); assert.equal(C.DIFFICULTIES[level].name, '하드모드'); assert.equal(C.DIFFICULTIES[level].tempo, 1);
-  const g = newGame(level); C.press(g, 'confirm'); assert.equal(g.hp, 1); assert.equal(g.maxHp, 92);
+test('하드모드: HP 1, 아이템 없음, 이어하기에서도 회복 아이템이 돌아오지 않는다', () => {
+  const level = C.DIFFICULTIES.findIndex(d => d.id === 'hp1'); assert.equal(C.DIFFICULTIES[level].name, '하드모드'); assert.equal(C.DIFFICULTIES[level].tempo, C.DIFFICULTIES[1].tempo);
+  const g = newGame(level); C.press(g, 'confirm'); assert.equal(g.hp, 1); assert.equal(g.maxHp, 92); assert.deepEqual(g.items, []);
   step(g, 1.6); assert.deepEqual(g.talk.lines.slice(-3, -1), L.ONE_HP, '샌즈가 HP 1을 알아본다'); assert.equal(g.talk.lines.length, L.INTRO.length + L.ONE_HP.length);
   settle(g); assert.equal(g.attack.name, 'opening'); assert.equal(g.hp, 1);
   // 첫 공격의 가시에 스치면 바로 끝
   step(g, 1); assert.equal(g.mode, 'gameover'); assert.equal(g.meta.deaths, 1);
-  // 버텨 내면 아이템으로 회복할 수 있다
-  const h = toMenu(level); h.hp = 1; h.kr = 0; pick(h, 'item', h.items.indexOf('pie')); assert.equal(h.hp, 92);
+  // 아이템 메뉴에는 회복할 수 있는 선택지가 없다.
+  const h = toMenu(level); h.hp = 1; h.kr = 0; assert.deepEqual(h.items, []);
+  h.menu = 2; C.press(h, 'confirm'); assert.equal(h.mode, 'text'); assert.match(h.text.lines[0], /아이템을 쓸 수 없다/); assert.equal(h.hp, 1);
   // 2막부터 이어서 도전할 때도 HP 1에서 시작한다
-  const p = toOffer(level); fight(p); settle(p); assert.equal(p.checkpoint.at, 'p2'); p.hp = 1; p.kr = 0; bone(p); step(p, 1 / 60); assert.equal(p.mode, 'gameover');
-  step(p, 2); C.press(p, 'confirm'); assert.equal(p.hp, 1); step(p, 1.6); settle(p); assert.equal(p.attack.name, C.ORDER.p2[0]); assert.equal(p.hp, 1);
+  const p = toOffer(level); fight(p); settle(p); assert.equal(p.checkpoint.at, 'p2'); step(p, .6); p.soul.inv = 0; p.hp = 1; p.kr = 0; bone(p); step(p, 1 / 60); assert.equal(p.mode, 'gameover');
+  p.checkpoint.items = ['pie']; // 예전 버전의 가방이 남아 있어도 비운다.
+  step(p, 2); C.press(p, 'confirm'); assert.equal(p.hp, 1); assert.deepEqual(p.items, []); step(p, 1.6); settle(p); assert.equal(p.attack.name, C.ORDER.p2[0]); assert.equal(p.hp, 1);
 });
 
 test('샌즈는 몇 번 졌는지 기억한다', () => {
@@ -178,12 +265,13 @@ test('모든 공격은 세 난이도에서 예외 없이 돌고, 상태는 언�
   const names = ['opening', ...C.ORDER.p1, ...C.ORDER.p2, 'special', ...C.ORDER.fill1, ...C.ORDER.fill2];
   for (const name of names) assert.ok(C.PATTERNS[name], name);
   for (const level of [0, 1, 2]) for (const name of names) {
-    const g = gameAt(name, level, 11); let spawned = 0, frames = 0;
-    while (g.mode === 'dodge' && g.attack?.name === name && frames++ < 60 * 40) {
+    const g = gameAt(name, level, 11); let spawned = 0, frames = 0, darkFrames = 0;
+    while (g.mode === 'dodge' && g.attack?.name === name && frames++ < 60 * 120) {
+      if (g.blackout > 0) darkFrames++;
       g.hp = g.maxHp; g.kr = 0; C.tick(g, 1 / 60, { left: frames % 90 < 40, up: frames % 50 < 20, right: frames % 90 > 60 }); spawned = Math.max(spawned, g.bullets.length);
       if (frames % 120 === 0) structuredClone(g);
     }
     assert.ok(spawned > 0, `${name} 탄막`); assert.notEqual(g.mode, 'dodge', `${name} 은 끝난다`);
-    const expected = C.PATTERNS[name].dur / C.DIFFICULTIES[level].tempo; assert.ok(Math.abs(frames / 60 - expected) < .3, `${name} L${level}: ${frames / 60}초, 기대 ${expected}초`);
+    const expected = C.PATTERNS[name].dur / (C.DIFFICULTIES[level].tempo * (name === 'special' ? (level === 0 ? 1.08 : 1.18) : 1)); assert.ok(Math.abs((frames - darkFrames) / 60 - expected) < .3, `${name} L${level}: ${frames / 60}초, 기대 ${expected}초`);
   }
 });

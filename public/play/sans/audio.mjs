@@ -114,6 +114,17 @@ export class Sound {
       case 'gbFire': noise(t, .42, { volume: .22, freq: 2400, to: 260, type: 'lowpass' }); tone(150, t, .4, { type: 'sawtooth', volume: .1, to: 55 }); tone(1500, t, .22, { type: 'sine', volume: .04, to: 380 }); break;
       case 'gbFireBig': noise(t, .6, { volume: .3, freq: 1900, to: 160, type: 'lowpass' }); tone(110, t, .6, { type: 'sawtooth', volume: .16, to: 40 }); tone(1100, t, .3, { type: 'sine', volume: .05, to: 240 }); break;
       case 'cut': noise(t, .035, { volume: .2, freq: 3000 }); break;
+      case 'teleport':
+        // 암전의 낮은 충격음 → 올라가는 전자음 → 짧은 잔향.
+        noise(t, .11, { volume: .18, freq: 900, to: 5200, type: 'bandpass' });
+        tone(95, t, .18, { type: 'triangle', volume: .18, to: 38 });
+        tone(320, t + .025, .16, { type: 'square', volume: .07, to: 1680 });
+        tone(1260, t + .16, .12, { type: 'sine', volume: .045, to: 540 });
+        break;
+      case 'materialize':
+        tone(660, t, .1, { type: 'triangle', volume: .09, to: 1320 });
+        noise(t, .045, { volume: .08, freq: 4600, type: 'highpass' });
+        break;
       case 'dunk': tone(90, t, .5, { type: 'sawtooth', volume: .3, to: 30 }); noise(t, .4, { volume: .3, freq: 900, type: 'lowpass' }); break;
       case 'break': tone(1900, t + .5, .05, { volume: .08, to: 800 }); noise(t + .5, .07, { volume: .12, freq: 6000 }); noise(t + 1.15, .35, { volume: .2, freq: 3600 }); [84, 79, 72, 65].forEach((m, i) => tone(hz(m), t + 1.15 + i * .1, .22, { volume: .06 })); break;
       case 'snore': tone(84, t, 1.1, { type: 'sine', volume: .16, to: 62 }); noise(t, .9, { volume: .03, freq: 700, type: 'bandpass' }); break;

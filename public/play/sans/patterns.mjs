@@ -162,13 +162,13 @@ export const PATTERNS = {
       at(c, 'e1', 8.1, () => gbH(c, B.b - 14, { delay: .62, hold: .28 }));
     } },
   // 블래스터가 시곗바늘처럼 돌아가며 한가운데를 쏜다. 중간에 도는 방향이 바뀐다.
-  spiral: { dur: 8.4, box: { w: 190, h: 190 }, soul: 'red',
+  spiral: { sequence: [[0, 'spiral'], [2.4, 'ceilingHops'], [4.4, 'cornerBeams'], [6.2, 'verticalTunnel']], dur: 8.4, box: { w: 190, h: 190 }, soul: 'red',
     setup(c) { c.memo.a0 = c.rand() * TAU; c.place(c.B.cx, c.B.cy + 55); },
     tick(c) {
       every(c, 's', .34, n => ring(c, c.memo.a0 + (n < 12 ? n : 24 - n) * .56, { size: n % 5 === 4 ? 2 : 1, delay: .64, hold: .22 }), .4, .4 + .34 * 20 - .01);
     } },
   // 발판 두 줄이 서로 반대로 흐르고, 블래스터가 한 줄씩 쓸어 버린다.
-  platformsHard: { dur: 9, box: { w: 360, h: 160 }, soul: 'blue',
+  platformsHard: { sequence: [[0, 'platformsHard'], [2.2, 'cornerBeams'], [4.3, 'slamBox'], [6.4, 'platforms']], dur: 9, box: { w: 360, h: 160 }, soul: 'blue',
     setup(c) {
       const B = c.B, low = B.b - 46, high = B.b - 94;
       for (let k = -1; k < 10; k++) c.spawn({ kind: 'plat', x: B.cx + k * 124, y: low, w: 62, vx: -95, ttl: 99 });
@@ -181,20 +181,20 @@ export const PATTERNS = {
       every(c, 'beam', 2.1, n => gbH(c, rows[n % 2], { left: n % 2 === 0, delay: .95, hold: .3 }), 2.2, c.dur - 2.4);
     } },
   // 점점 빨라지는 내리꽂기 여덟 번. 방향은 매번 다르다.
-  juggle: { dur: 8.2, box: { w: 200, h: 200 }, soul: 'blue',
+  juggle: { sequence: [[0, 'juggle'], [1.45, 'blueCross'], [3.5, 'verticalTunnel'], [5.35, 'ceilingHops'], [7, 'chase']], dur: 8.2, box: { w: 200, h: 200 }, soul: 'blue',
     setup(c) { c.memo.order = slamOrder(c, 8); },
     tick(c) {
       [.35, 1.45, 2.5, 3.5, 4.45, 5.35, 6.2, 7].forEach((when, i) => at(c, 'j' + i, when, () => slamStab(c, c.memo.order[i], { warn: .46, hold: .18 })));
     } },
   // 빠른 뼈 통로. 한 번은 오른쪽에서, 한 번은 왼쪽에서.
-  storm: { dur: 8.9, box: { w: 300, h: 150 }, soul: 'red',
+  storm: { sequence: [[0, 'storm'], [2, 'slamBox'], [4.85, 'blueCross'], [6.5, 'verticalTunnel']], dur: 8.9, box: { w: 300, h: 150 }, soul: 'red',
     tick(c) {
       const amp = c.B.h / 2 - 34;
       corridor(c, 'a', { from: .4, to: 3.7, speed: 300, step: .085, gap: 46, wave: t => tri(t / 1.5) * amp });
       corridor(c, 'b', { from: 4.85, to: 7.6, right: false, speed: 300, step: .085, gap: 44, wave: t => tri(t / 1.3) * amp });
     } },
   // 블래스터가 영혼을 겨누고, 가끔은 가려는 곳까지 미리 겨눈다.
-  chase: { dur: 8, box: { w: 240, h: 170 }, soul: 'red',
+  chase: { sequence: [[0, 'chase'], [1.96, 'hops'], [3.52, 'cornerBeams'], [5.08, 'platformsHard'], [6.64, 'blueCross']], dur: 8, box: { w: 240, h: 170 }, soul: 'red',
     setup(c) { c.memo.a0 = c.rand() * TAU; },
     tick(c) {
       const B = c.B, s = c.soul, spot = a => [B.cx + Math.cos(a) * (B.w / 2 + 48), B.cy + Math.sin(a) * (B.h / 2 + 48)];
@@ -206,28 +206,92 @@ export const PATTERNS = {
     } },
 
   // ---------- 특별 공격 ----------
-  // 내리꽂기 연타 → 빠른 통로 → 점점 빨라지는 블래스터 소용돌이 → 힘이 빠진 내리꽂기.
-  special: { dur: 22.6, box: { w: 200, h: 200 }, soul: 'blue',
+  // 아홉 가지 구간을 암전으로 이어 붙인다. 마지막까지 한 차례다.
+  special: { sequence: [[0, 'specialSlam'], [3.6, 'specialBlasters'], [7, 'specialTunnel'], [11.2, 'platformsHard'], [14.6, 'blueCross'], [17.8, 'spiral'], [22.1, 'ceilingHops'], [25.3, 'specialSlam'], [28.9, 'specialFinale']], dur: 39.2, box: { w: 180, h: 180 }, soul: 'blue',
+  },
+
+  // ---------- 암전 뒤에 이어지는 새 공격 ----------
+  // 위에서 아래로 흐르는 뼈의 틈. 좌우로 움직이며 통과한다.
+  verticalTunnel: { dur: 6.2, box: { w: 240, h: 190 }, soul: 'red',
+    tick(c) {
+      const B = c.B;
+      every(c, 'v', .5, (n, when) => {
+        const gapX = B.cx + Math.sin((when - .45) * 2.6) * 55, gap = 62;
+        const left = gapX - gap / 2, right = gapX + gap / 2;
+        c.spawn({ kind: 'bone', x: (B.l + left) / 2, y: B.t - 14, w: left - B.l, h: 10, vy: 155 });
+        c.spawn({ kind: 'bone', x: (right + B.r) / 2, y: B.t - 14, w: B.r - right, h: 10, vy: 155 });
+      }, .45, c.dur - 1.4);
+    } },
+  // 파란 십자가가 지나갈 때는 멈추고, 흰 뼈 통로가 올 때는 움직인다.
+  blueCross: { dur: 6.1, box: { w: 260, h: 160 }, soul: 'red',
+    tick(c) {
+      const B = c.B;
+      every(c, 'blue', 2.2, () => {
+        c.spawn({ kind: 'bone', x: B.l - 14, y: B.cy, w: 10, h: B.h, vx: 210, color: 'blue' });
+        c.spawn({ kind: 'bone', x: B.cx, y: B.t - 14, w: B.w, h: 10, vy: 160, color: 'blue' });
+      }, .4, c.dur - 1.4);
+      every(c, 'white', 2.2, n => gapBones(c, { x: B.r + 14, gapY: B.cy + (n % 2 ? -26 : 26), gap: 62, vx: -190 }), 1.55, c.dur - 1.4);
+    } },
+  // 네 모서리의 블래스터가 번갈아 겨눈다. 쏘기 전 조준선이 보인다.
+  cornerBeams: { dur: 6.4, box: { w: 220, h: 180 }, soul: 'red',
+    tick(c) {
+      const B = c.B;
+      every(c, 'corners', .95, n => {
+        const x = n % 2 ? B.r + 32 : B.l - 32, y = n % 4 < 2 ? B.t - 32 : B.b + 32;
+        aim(c, x, y, c.soul.x, c.soul.y, { delay: .82, hold: .24 });
+      }, .35, c.dur - 1.4);
+    } },
+  // 중력이 천장 쪽이다. 아래 방향키로 천장의 뼈를 뛰어넘는다.
+  ceilingHops: { dur: 6, box: { w: 320, h: 145 }, soul: 'blue',
+    setup(c) { c.slam('up', 0); c.place(c.B.cx, c.B.t + 8); },
+    tick(c) {
+      every(c, 'ceiling', .8, n => vbone(c, { x: c.B.r + 12, len: [24, 38, 28, 46][n % 4], from: 'top', vx: -185 }), .5, c.dur - 1.5);
+    } },
+  // 마지막 회전 탄막: 간격이 점점 짧아지며 큰 블래스터가 섞인다.
+  finalSpiral: { dur: 8.3, box: { w: 200, h: 200 }, soul: 'red',
     setup(c) {
-      c.memo.order = slamOrder(c, 8); c.memo.a0 = c.rand() * TAU;
-      const times = []; let when = 13.15; for (let i = 0; i < 20; i++) { times.push(when); when += .34 - i * .006; }
-      c.memo.times = times;
+      c.memo.a0 = c.rand() * TAU; c.place(c.B.cx, c.B.cy + 55);
+      c.memo.times = []; let when = .45;
+      for (let i = 0; i < 24; i++) { c.memo.times.push(when); when += .34 - i * .006; }
     },
     tick(c) {
-      const B = c.B, m = c.memo;
-      for (let i = 0; i < 8; i++) at(c, 's' + i, .35 + i * .78, () => slamStab(c, m.order[i], { warn: .42, hold: .16 }));
-      at(c, 'cut2', 6.75, () => { c.cut(); c.box(300, 150); c.soulMode('red'); c.place(320, 315); });
-      if (c.t >= 7 && c.t < 12.9) {
-        const amp = B.h / 2 - 34;
-        corridor(c, 'c1', { from: 7, to: 9.5, speed: 320, step: .08, gap: 44, wave: t => tri(t / 1.3) * amp });
-        corridor(c, 'c2', { from: 10.6, to: 11.8, right: false, speed: 320, step: .08, gap: 44, wave: t => tri(t / 1.3) * amp });
-      }
-      at(c, 'cut3', 12.9, () => { c.cut(); c.box(200, 200); c.soulMode('red'); c.place(320, 345); });
-      if (c.t >= 13.1) m.times.forEach((when, i) => at(c, 'g' + i, when, () => ring(c, m.a0 + i * PI / 6, { size: i % 6 === 5 ? 2 : 1, delay: .64, hold: .22 })));
-      at(c, 'cut4', 19.9, () => { c.cut(); c.place(320, 290); c.slam('down', 700); });
-      at(c, 'w1', 20.7, () => c.slam('left', 500));
-      at(c, 'w2', 21.3, () => c.slam('right', 350));
-      at(c, 'w3', 21.9, () => c.slam('down', 220));
+      c.memo.times.forEach((when, i) => at(c, 'final' + i, when, () => ring(c, c.memo.a0 + i * PI / 6, { size: i % 6 === 5 ? 2 : 1, delay: .64, hold: .22 })));
+    } },
+  // 특별 공격 전용: 좁은 상자에서 중력이 빠르게 네 벽으로 바뀐다.
+  specialSlam: { dur: 5, box: { w: 180, h: 180 }, soul: 'blue',
+    setup(c) { c.memo.order = slamOrder(c, 7); },
+    tick(c) { every(c, 'ss', .66, n => slamStab(c, c.memo.order[n], { depth: 32, warn: .48, hold: .12 }), .18, 4.2); } },
+  // 양쪽 블래스터가 영혼을 따라 연속으로 겨눈다.
+  specialBlasters: { dur: 5, box: { w: 220, h: 170 }, soul: 'red',
+    tick(c) {
+      const B = c.B;
+      every(c, 'sb', .46, n => {
+        const y = n % 2 ? B.t - 32 : B.b + 32;
+        aim(c, B.l - 34, y, c.soul.x, c.soul.y, { delay: .64, hold: .22, size: n % 4 === 3 ? 2 : 1 });
+        aim(c, B.r + 34, B.t + B.b - y, c.soul.x, c.soul.y, { delay: .64, hold: .22 });
+      }, .24, 3.8);
+    } },
+  // 더 좁고 촘촘한 뼈 통로. 뒤쪽에 반대편 뼈도 섞인다.
+  specialTunnel: { dur: 6, box: { w: 280, h: 160 }, soul: 'red',
+    tick(c) {
+      const B = c.B;
+      corridor(c, 'st', { from: .2, to: 4.8, speed: 320, step: .085, gap: 42, wave: t => Math.sin(t * 1.7) * 43 });
+      every(c, 'floor', 1.2, () => vbone(c, { x: B.l - 12, len: 22, vx: 240 }), .7, 4.4);
+    } },
+  // 마지막까지 쉬지 않는다: 가속 회전 + 직각으로 교차하는 추가 빔 + 바닥 뼈.
+  specialFinale: { dur: 10.3, box: { w: 200, h: 200 }, soul: 'red',
+    setup(c) {
+      c.memo.a0 = c.rand() * TAU; c.place(c.B.cx, c.B.cy + 55);
+      c.memo.times = []; let when = .3;
+      for (let i = 0; i < 34; i++) { c.memo.times.push(when); when += Math.max(.18, .31 - i * .004); }
+    },
+    tick(c) {
+      c.memo.times.forEach((when, i) => at(c, 'sf' + i, when, () => {
+        const a = c.memo.a0 + i * PI / 6;
+        ring(c, a, { size: i % 5 === 4 ? 2 : 1, delay: .64, hold: .24 });
+        if (i % 4 === 3) ring(c, a + PI / 2, { delay: .72, hold: .2 });
+      }));
+      every(c, 'feet', 1.35, n => vbone(c, { x: n % 2 ? c.B.l - 12 : c.B.r + 12, len: 24, vx: n % 2 ? 170 : -170 }), 1.1, 8.5);
     } },
   // 아무것도 하지 않는다. 그게 전부다. (끝나지 않는 차례)
   nothing: { dur: Infinity, endless: true, box: { w: 120, h: 110 }, soul: 'red', tick() {} },
@@ -253,12 +317,12 @@ export const PATTERNS = {
       at(c, 'v1', 1.5, () => { gbH(c, B.cy - 40); gbH(c, B.cy + 40, { left: false }); });
       at(c, 'v2', 2.6, () => { gbV(c, B.cx); gbH(c, B.cy); });
     } },
-  fillSlam: { dur: 4.1, box: { w: 200, h: 200 }, soul: 'blue',
+  fillSlam: { sequence: [[0, 'fillSlam'], [1.5, 'fillAim'], [2.65, 'fillRush']], dur: 4.1, box: { w: 200, h: 200 }, soul: 'blue',
     setup(c) { c.memo.order = slamOrder(c, 3); },
     tick(c) { [.35, 1.5, 2.65].forEach((when, i) => at(c, 'f' + i, when, () => slamStab(c, c.memo.order[i], { warn: .5 }))); } },
-  fillRush: { dur: 4.2, box: { w: 300, h: 150 }, soul: 'red',
+  fillRush: { sequence: [[0, 'fillRush'], [1.5, 'fillSlam'], [2.7, 'fillAim']], dur: 4.2, box: { w: 300, h: 150 }, soul: 'red',
     tick(c) { const amp = c.B.h / 2 - 36; corridor(c, 'r', { from: .4, to: 2.8, speed: 290, step: .09, gap: 48, wave: t => tri(t / 1.5) * amp }); } },
-  fillAim: { dur: 4.1, box: { w: 240, h: 170 }, soul: 'red',
+  fillAim: { sequence: [[0, 'fillAim'], [1.5, 'fillRush'], [2.6, 'fillSlam']], dur: 4.1, box: { w: 240, h: 170 }, soul: 'red',
     setup(c) { c.memo.a0 = c.rand() * TAU; },
     tick(c) {
       const B = c.B, s = c.soul;

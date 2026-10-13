@@ -16,6 +16,7 @@ const meta = { ...C.createMeta(), ...load() };
 const g = C.createGame(meta, (Date.now() % 2147483647) || 1);
 const sound = new Sound();
 const held = {};
+const pressedInputs = new Map();
 
 // ---------- 화면 맞춤: 기기 픽셀에 맞춰 그려서 글자가 번지지 않게 한다 ----------
 function fit() {
@@ -39,29 +40,39 @@ soundButton.addEventListener('click', async () => {
 const DIRECTION = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' };
 const CONFIRM = ['KeyZ', 'Enter', 'Space'], CANCEL = ['KeyX'], SLOW = ['ShiftLeft', 'ShiftRight', 'KeyX'];
 const heldState = () => ({ left: held.left, right: held.right, up: held.up, down: held.down, slow: held.slow });
-function keyDown(code, repeat = false) {
+function refreshHeld() {
+  for (const key of ['left', 'right', 'up', 'down', 'slow']) held[key] = false;
+  for (const code of pressedInputs.values()) {
+    if (DIRECTION[code]) held[DIRECTION[code]] = true;
+    if (SLOW.includes(code)) held.slow = true;
+  }
+}
+function keyDown(code, repeat = false, source = 'key:' + code) {
+  pressedInputs.set(source, code); refreshHeld();
   wantSound();
   if (code === 'Escape' || code === 'KeyP') { if (!repeat) togglePause(); return; }
   if (code === 'KeyM') { if (!repeat) soundButton.click(); return; }
-  if (DIRECTION[code]) { held[DIRECTION[code]] = true; if (!repeat || ['title', 'submenu', 'gameover'].includes(g.mode)) C.press(g, DIRECTION[code]); }
-  if (SLOW.includes(code)) held.slow = true;
+  if (DIRECTION[code]) { if (!repeat || ['title', 'submenu', 'gameover'].includes(g.mode)) C.press(g, DIRECTION[code]); }
   if (repeat) return;
   if (g.paused) { if (CONFIRM.includes(code)) togglePause(); return; }
   if (CONFIRM.includes(code)) C.press(g, 'confirm');
   else if (CANCEL.includes(code)) C.press(g, 'cancel');
 }
-function keyUp(code) { if (DIRECTION[code]) held[DIRECTION[code]] = false; if (SLOW.includes(code)) held.slow = false; }
+function keyUp(code, source = 'key:' + code) { pressedInputs.delete(source); refreshHeld(); }
 addEventListener('keydown', event => {
   if (![...Object.keys(DIRECTION), ...CONFIRM, ...CANCEL, ...SLOW, 'Escape', 'KeyP', 'KeyM'].includes(event.code)) return;
   if ((event.code === 'Enter' || event.code === 'Space') && event.target instanceof HTMLElement && event.target.closest('button, a')) return;
   event.preventDefault(); keyDown(event.code, event.repeat);
 });
 addEventListener('keyup', event => keyUp(event.code));
-function clearHeld() { for (const key of Object.keys(held)) held[key] = false; }
+function clearHeld() { pressedInputs.clear(); refreshHeld(); for (const button of document.querySelectorAll('[data-key]')) button.classList.remove('pressed'); }
 for (const button of document.querySelectorAll('[data-key]')) {
   const code = button.dataset.key;
-  const down = event => { event.preventDefault(); try { button.setPointerCapture(event.pointerId); } catch { /* 합성 입력에는 포인터가 없다 */ } button.classList.add('pressed'); keyDown(code); };
-  const up = () => { button.classList.remove('pressed'); keyUp(code); };
+  const down = event => { event.preventDefault(); try { button.setPointerCapture(event.pointerId); } catch { /* 합성 입력에는 포인터가 없다 */ } button.classList.add('pressed'); keyDown(code, false, 'pointer:' + event.pointerId); };
+  const up = event => {
+    keyUp(code, 'pointer:' + event.pointerId);
+    if (![...pressedInputs.values()].includes(code)) button.classList.remove('pressed');
+  };
   button.addEventListener('pointerdown', down); button.addEventListener('pointerup', up); button.addEventListener('pointercancel', up); button.addEventListener('lostpointercapture', up);
 }
 // 화면을 누르면 확인. 피하는 중에는 실수로 눌리지 않게 막는다. (잠든 샌즈 앞에서는 된다)
@@ -93,7 +104,8 @@ function hint() {
     case 'dodge':
       if (g.phase === 'asleep') return g.push ? 'Z를 누르면… 되돌릴 수 없다.' : '샌즈가 잠들었다. 벽에 붙어 ← 나 → 를 계속 누르면 상자가 밀린다.';
       if (g.phase === 'nothing') return '아무 일도 일어나지 않는다. …기다려 보자.';
-      return g.soul.mode === 'blue' ? '파란 영혼 · 바닥 반대쪽 방향키로 점프(길게 누르면 높이) · 파란 뼈는 멈추면 안 맞는다' : '빨간 영혼 · 방향키로 피하기 · Shift 천천히';
+      if (g.blackout > 0) return '암전! 화면이 돌아오면 다른 공격입니다. 영혼 색과 중력 방향을 확인하세요.';
+      return g.soul.mode === 'blue' ? `파란 영혼 · ${{ down: '↑ 위', up: '↓ 아래', left: '→ 오른쪽', right: '← 왼쪽' }[g.soul.gravity]} 키로 점프 · 길게 누르면 높이 · 파란 뼈는 멈추기` : '빨간 영혼 · 방향키로 피하기 · 파란 뼈는 멈추기 · Shift 천천히';
     case 'gameover': return '괜찮아요. 몇 번이든 다시 할 수 있어요.';
     case 'won': return '끝까지 와 줘서 고마워요.';
     default: return '…';
