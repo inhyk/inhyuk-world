@@ -1,5 +1,29 @@
 [
   {
+    "slug": "sword-forge",
+    "title": "검 강화하기 · 불멸의 대장간",
+    "description": "한 번의 두드림, 전설에 한 걸음 더. 30단계 검 강화와 사냥, 판매, 도감 수집에 도전하세요.",
+    "longDescription": "낡은 철검에서 +30 창세의 검까지 벼려내는 오리지널 검 강화 게임입니다. 강철·서리·홍련·뇌전·공허·천상 여섯 등급으로 모습이 바뀌는 31종 검을 수집하세요. 성공·하락·파괴와 실패 확률 보너스, 보호·축복 주문서가 강화의 긴장감을 더합니다. 여섯 사냥터에서 베기·필살기·회복을 조합해 강화 자금을 모으고, 검 판매와 공방 영구 성장, 일곱 여정 보상을 즐기세요. 불씨 파티클, 강화 연출, 합성 효과음, 자동 저장과 모바일 터치를 지원합니다.",
+    "emoji": "⚔️",
+    "thumbnail": "/images/games/sword-forge-thumb.png",
+    "screenshots": [
+      "/images/games/sword-forge-thumb.png",
+      "/images/games/sword-forge-hunt.png",
+      "/images/games/sword-forge-mobile.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "SVG",
+      "Web Audio"
+    ],
+    "category": "클리커",
+    "playUrl": "/play/sword-forge",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 58,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/sword-forge"
+  },
+  {
     "slug": "undertale-echo",
     "title": "UNDERTALE: ECHO · 잊힌 별의 역",
     "description": "다섯 신호와 마지막 열차. 새 이야기·20개 방·영혼 탄막 전투·세 가지 결말의 언더테일 팬게임.",
