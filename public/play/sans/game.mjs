@@ -148,3 +148,6 @@ window.__sans = { g, C, sound, held };
 
 fit(); showSound(); sync();
 (document.fonts?.load ? Promise.all([document.fonts.load('16px Galmuri11'), document.fonts.load('bold 16px Galmuri11')]).catch(() => {}) : Promise.resolve()).then(() => requestAnimationFrame(frame));
+
+// iframe으로 처음 열어도 클릭 없이 방향키로 난이도를 고를 수 있다.
+canvas.focus({ preventScroll: true });
