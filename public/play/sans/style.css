@@ -68,3 +68,8 @@ footer { display: flex; justify-content: space-between; gap: 18px; padding: 18px
   #pause { padding: 7px 9px; font-size: 10px; }
   .touch { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; width: 100%; gap: 20px; margin: 0; }
 }
+
+.boss-modes { display: flex; justify-content: center; gap: 8px; padding: 12px 0 0; }
+.boss-modes a { padding: 10px 14px; border: 1px solid #443d58; border-radius: 6px; font-size: 11px; color: #a69fb9; text-decoration: none; background: #121019; }
+.boss-modes a[aria-current="page"] { color: #eadfff; border-color: #b49be5; background: #282037; }
+@media (orientation: landscape) and (max-height: 540px) { .boss-modes { display: none; } }

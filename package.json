@@ -21,7 +21,7 @@
     "test:net": "node --test \"packages/net/*.test.mjs\" && npm test --prefix services/net",
     "test:orbit-breaker": "node --test \"games/orbit-breaker/*.test.mjs\"",
     "test:mettaton": "node --test \"games/mettaton/*.test.mjs\"",
-    "test:sans": "node --test \"games/sans/*.test.mjs\"",
+    "test:sans": "node --test games/sans/*.test.mjs",
     "test:undertale": "node --test \"games/undertale/*.test.mjs\"",
     "deep-dig:build": "vite build --config games/deep-dig/vite.config.js",
     "deep-dig:dev": "vite --config games/deep-dig/vite.config.js --host 127.0.0.1",
@@ -52,7 +52,8 @@
     "test:keycap-tower": "node --test games/keycap-tower/core.test.mjs",
     "test:geometry-dash": "node --test games/geometry-dash/core.test.mjs",
     "test:undertale-echo": "node --test games/undertale-echo/*.test.mjs",
-    "test:undertale-echo:browser": "node games/undertale-echo/browser-check.mjs"
+    "test:undertale-echo:browser": "node games/undertale-echo/browser-check.mjs",
+    "test:asriel": "node --test games/asriel/*.test.mjs"
   },
   "dependencies": {
     "@babylonjs/loaders": "9.18.0",

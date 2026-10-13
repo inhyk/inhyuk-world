@@ -57,7 +57,7 @@ export function playAttack(g, { horizon = 60, every = 3, samples = 40, seed = 1,
 
 // 전투를 원하는 공격 직전까지 건너뛴 상태로 만든다.
 export function gameAt(name, level = 1, seed = 7) {
-  const meta = C.createMeta(); meta.level = level;
+  const meta = C.createMeta(); meta.level = level; if (level === 3) meta.best.normal = { ending: 'kill' };
   const g = C.createGame(meta, seed);
   C.press(g, 'confirm');
   for (let i = 0; i < 600 && g.mode !== 'dodge'; i++) { if (g.mode === 'cine') C.tick(g, .1); else C.press(g, 'confirm'); }
