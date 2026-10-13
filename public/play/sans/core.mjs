@@ -38,7 +38,11 @@ export function rand(g) {
 }
 
 // ---------- 상태 ----------
-export function createMeta() { return { deaths: 0, dunked: false, level: 1, best: {}, endings: {}, sound: true }; }
+export function createMeta() { return { deaths: 0, dunked: false, level: 1, best: {}, endings: {}, sound: true, hiddenHeart: false }; }
+export const hiddenHp = g => diff(g).id === 'hp1' ? 3 : 180;
+function applyHiddenHeart(g) {
+  if (g.meta.hiddenHeart === true) g.hp = g.maxHp = hiddenHp(g);
+}
 export function createGame(meta = createMeta(), seed = 20261012) {
   const g = { meta, seed: seed >>> 0, events: [], session: { deaths: 0, hits: 0, time: 0 } };
   reset(g);
@@ -56,9 +60,10 @@ function reset(g) {
     menu: 0, submenu: null, text: null, talk: null, bubble: null, bar: null, strike: null, cine: null, flavor: '', flavorShown: 0,
     sans: { face: 'idle', dx: 0, dodgeT: -1, arm: null, armT: 0, eye: 0, sweat: 0, asleep: false, gash: false, walk: 0, hidden: false, hpShown: 0 },
     menuBones: [], menuBoneClock: 0, menuBoneNext: 1.3, sleepT: 0, asleepT: 0, bubbleIndex: 0, push: null, pushed: false,
-    checkpoint: null, ended: null, over: null, result: null, blackout: 0, shake: 0, flash: 0,
+    checkpoint: null, ended: null, over: null, result: null, blackout: 0, shake: 0, flash: 0, secretTaps: 0,
     stats: { hits: 0, ticks: 0, heals: 0, turns: 0, time: 0 },
   });
+  applyHiddenHeart(g);
 }
 export function targetBounds(g) {
   const b = g.box;
@@ -79,6 +84,7 @@ export function begin(g, from = 'title') {
   if (from === 'title') g.session = { deaths: 0, hits: 0, time: 0 };
   reset(g); g.level = level; g.meta.level = level; g.seed = (g.seed + 977) >>> 0;
   g.hp = diff(g).startHp ?? g.maxHp;
+  applyHiddenHeart(g);
   if (diff(g).noItems) g.items = [];
   emit(g, 'music', 'hall');
   if (checkpoint) {
@@ -116,7 +122,8 @@ function run(g, op) {
     case 'intro': {
       let lines = L.retryIntro(g.meta.deaths, g.meta.dunked); g.meta.dunked = false;
       // 하드모드로 처음 만나면 샌즈가 HP 1 을 알아본다
-      if (diff(g).startHp && lines === L.INTRO) lines = [...L.INTRO.slice(0, -1), ...L.ONE_HP, L.INTRO[L.INTRO.length - 1]];
+      if (lines === L.INTRO && g.meta.hiddenHeart === true) lines = [...L.INTRO.slice(0, -1), [`…그 하트, 찾았구나. HP가 ${g.maxHp}이라니.`, 'wink'], ['우리끼리 비밀로 하자.', 'closed'], L.INTRO[L.INTRO.length - 1]];
+      else if (diff(g).startHp && lines === L.INTRO) lines = [...L.INTRO.slice(0, -1), ...L.ONE_HP, L.INTRO[L.INTRO.length - 1]];
       return startTalk(g, lines, 'blackout');
     }
     case 'resumeP2': return startTalk(g, L.RESUME.p2, 'p2start');
@@ -225,7 +232,14 @@ export function press(g, key) {
   const step = key === 'left' || key === 'up' ? -1 : key === 'right' || key === 'down' ? 1 : 0;
   switch (g.mode) {
     case 'title':
-      if (step) { g.level = clamp(g.level + step, 0, DIFFICULTIES.length - 1); emit(g, 'sfx', 'move'); }
+      if (key === 'cancel' && g.meta.hiddenHeart !== true) {
+        g.secretTaps++;
+        if (g.secretTaps === 3) {
+          g.meta.hiddenHeart = true; applyHiddenHeart(g);
+          emit(g, 'sfx', 'materialize'); emit(g, 'save');
+        } else emit(g, 'sfx', 'move');
+      }
+      else if (step) { g.level = clamp(g.level + step, 0, DIFFICULTIES.length - 1); applyHiddenHeart(g); emit(g, 'sfx', 'move'); }
       else if (key === 'confirm') { emit(g, 'sfx', 'select'); begin(g, 'title'); }
       return;
     case 'talk': if (key === 'confirm' || key === 'cancel') advance(g, g.talk); return;
@@ -580,7 +594,7 @@ function tickCine(g, dt) {
 // 자동화·디버그용 요약
 export function summarize(g) {
   const line = box => box ? (Array.isArray(box.lines[box.index]) ? box.lines[box.index][0] : box.lines[box.index]) : null;
-  return { mode: g.mode, phase: g.phase, story: g.story, level: diff(g).id, hp: g.hp, kr: g.kr, items: g.items.length, deaths: g.meta.deaths,
+  return { mode: g.mode, phase: g.phase, story: g.story, level: diff(g).id, hp: g.hp, maxHp: g.maxHp, hiddenHeart: g.meta.hiddenHeart === true, kr: g.kr, items: g.items.length, deaths: g.meta.deaths,
     attack: g.attack ? { name: g.attack.name, pattern: g.attack.segment?.name || g.attack.name, t: Math.round(g.attack.t * 100) / 100, dur: g.attack.dur } : null,
     soul: { x: Math.round(g.soul.x), y: Math.round(g.soul.y), mode: g.soul.mode, gravity: g.soul.gravity }, bullets: g.bullets.length,
     menu: BUTTONS[g.menu].id, submenu: g.submenu ? g.submenu.kind : null, talk: line(g.talk), text: line(g.text), bubble: g.bubble?.text || null,

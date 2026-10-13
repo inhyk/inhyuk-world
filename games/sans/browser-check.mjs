@@ -190,6 +190,28 @@ try {
     assert.ok(bounds && bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= 844 && bounds.y + bounds.height <= 390, `${selector}: 가로 화면 안에 표시`);
   }
   if (outDir) await page.screenshot({ path: path.join(outDir, '91-mobile-landscape.png') });
+  // 히든: 키보드로 찾고 새로고침해도 보존되며, 터치로도 같은 보상을 받는다.
+  await page.setViewportSize({ width: 1100, height: 980 });
+  await page.evaluate(() => window.__sans.C.toTitle(window.__sans.g));
+  await page.keyboard.press('KeyX'); await page.keyboard.press('KeyX');
+  assert.equal((await snap()).hiddenHeart, false);
+  await page.keyboard.press('KeyX'); await advance(0);
+  assert.equal((await snap()).hiddenHeart, true); assert.equal((await snap()).hp, 180);
+  await shot('92-hidden-heart');
+  await page.reload(); await page.waitForFunction(() => typeof window.render_game_to_text === 'function');
+  assert.equal((await snap()).hiddenHeart, true); assert.equal((await snap()).maxHp, 180);
+  await page.keyboard.press('KeyZ'); assert.equal((await snap()).hp, 180);
+  await advance(1700); await shot('93-hidden-hp180');
+  // 별도 테스트 저장 공간에서 모바일 발견 경로를 확인한다.
+  await page.evaluate(() => localStorage.removeItem('sans-judgement-hall'));
+  await page.reload(); await page.waitForFunction(() => typeof window.render_game_to_text === 'function');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight');
+  const sansBounds = await page.locator('#game').boundingBox();
+  for (let i = 0; i < 3; i++) await page.mouse.click(sansBounds.x + sansBounds.width / 2, sansBounds.y + sansBounds.height * 175 / 480);
+  s = await snap(); assert.equal(s.mode, 'title'); assert.equal(s.hiddenHeart, true); assert.equal(s.hp, 3);
+  await page.keyboard.press('KeyZ'); s = await snap(); assert.equal(s.hp, 3); assert.equal(s.maxHp, 3); assert.equal(s.items, 0);
+  await advance(1700); if (outDir) await page.screenshot({ path: path.join(outDir, '94-hidden-hardmode-mobile.png') });
   assert.deepEqual(errors, []);
   console.log('SANS 브라우저 검증 통과' + (outDir ? ` · 스크린샷: ${outDir}` : ''));
 } finally {
