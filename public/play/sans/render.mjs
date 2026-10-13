@@ -214,7 +214,7 @@ function drawButtons(ctx, g, t) {
   for (const menuBone of g.menuBones) bone(ctx, menuBone.x, C.BUTTON.y + 21, 10, 50, '#fff');
 }
 function drawHud(ctx, g) {
-  const y = 400, barX = 276, barW = Math.round(g.maxHp * 1.2), hp = Math.max(0, g.hp), kr = Math.min(g.kr, Math.max(0, hp - 1));
+  const y = 400, barX = 276, barW = 110, hp = Math.max(0, g.hp), kr = Math.min(g.kr, Math.max(0, hp - 1));
   text(ctx, g.name, 32, y + 1, { size: 16, bold: true }); text(ctx, 'LV ' + g.lv, 130, y + 1, { size: 16, bold: true });
   text(ctx, 'HP', 246, y + 5, { size: 10, bold: true });
   ctx.fillStyle = '#b8101e'; ctx.fillRect(barX, y, barW, 20);
@@ -340,7 +340,11 @@ function drawTitle(ctx, g, t) {
     text(ctx, d.name, x + (on ? 10 : 0), 282, { size: 16, align: 'center', bold: true, color: on ? (danger ? '#ff6a6a' : '#ffff3a') : danger ? '#a06060' : '#a59f90' });
     if (on) { ctx.font = `bold 16px ${FONT}`; heart(ctx, x + 10 - ctx.measureText(d.name).width / 2 - 15, 291, '#ff1a1a'); }
   });
-  text(ctx, level.note, 320, 326, { size: 11, align: 'center', color: '#cfc8b6' });
+  text(ctx, g.meta.hiddenHeart === true ? `히든 하트 · HP ${C.hiddenHp(g)}${level.noItems ? ' · 아이템 없음' : ''}` : level.note, 320, 326, { size: 11, align: 'center', color: g.meta.hiddenHeart === true ? '#74f3ce' : '#cfc8b6' });
+  if (g.meta.hiddenHeart === true) {
+    heart(ctx, 320, 252, '#74f3ce');
+    text(ctx, '…비밀은 우리끼리만.', 320, 386, { size: 11, align: 'center', color: '#74f3ce' });
+  } else if (g.secretTaps || t > 12) text(ctx, g.secretTaps ? ['','…응?','…한 번만 더.'][g.secretTaps] : '…X로 말을 걸거나, 나를 톡 건드려 봐.', 320, 250, { size: 10, align: 'center', color: '#8f8a80' });
   text(ctx, best ? `최고 기록 · 쓰러짐 ${best.deaths}번 · 스침 ${best.hits}번 · ${L.ENDINGS[best.ending].sub}` : '아직 이 난이도를 끝까지 간 적이 없다.', 320, 352, { size: 10, align: 'center', color: '#8f8a80' });
   if (g.meta.deaths > 0) text(ctx, `샌즈가 기억하는 횟수 · ${g.meta.deaths}`, 320, 370, { size: 10, align: 'center', color: '#b06a6a' });
   if (reduced || Math.floor(t * 2) % 2) text(ctx, 'Z 또는 화면을 눌러 시작', 320, 408, { size: 16, align: 'center', bold: true });

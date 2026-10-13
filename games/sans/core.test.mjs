@@ -275,3 +275,39 @@ test('모든 공격은 세 난이도에서 예외 없이 돌고, 상태는 언�
     const expected = C.PATTERNS[name].dur / (C.DIFFICULTIES[level].tempo * (name === 'special' ? (level === 0 ? 1.08 : 1.18) : 1)); assert.ok(Math.abs((frames - darkFrames) / 60 - expected) < .3, `${name} L${level}: ${frames / 60}초, 기대 ${expected}초`);
   }
 });
+
+
+test('히든 하트: 타이틀에서 세 번 말을 걸어야 열리고 모든 일반 난이도는 HP 180', () => {
+  for (let level = 0; level < 3; level++) {
+    const g = newGame(level);
+    C.press(g, 'cancel'); C.press(g, 'cancel');
+    assert.equal(g.meta.hiddenHeart, false); assert.equal(g.hp, 92);
+    C.press(g, 'cancel');
+    assert.equal(g.mode, 'title'); assert.equal(g.meta.hiddenHeart, true);
+    assert.equal(g.hp, 180); assert.equal(g.maxHp, 180);
+    assert.equal(g.events.filter(e => e.type === 'save').length, 1);
+    C.press(g, 'cancel'); assert.equal(g.events.filter(e => e.type === 'save').length, 1);
+    C.press(g, 'confirm'); assert.equal(g.hp, 180); assert.equal(g.maxHp, 180);
+    step(g, 1.6); assert.ok(g.talk.lines.some(([line]) => line.includes('180')));
+    const restored = newGame(level, 5, JSON.parse(JSON.stringify(g.meta)));
+    C.begin(restored); assert.equal(restored.hp, 180); assert.equal(restored.maxHp, 180);
+    restored.checkpoint = { at: 'p2', items: ['pie'] }; restored.hp = 12;
+    C.begin(restored, 'checkpoint'); assert.equal(restored.hp, 180); assert.equal(restored.maxHp, 180);
+    C.begin(restored, 'start'); assert.equal(restored.hp, 180);
+  }
+});
+
+test('히든 하드모드: HP 3, 빈 가방, 난이도 변경·새로고침·이어하기에도 올바른 최대 HP', () => {
+  const g = newGame(3);
+  for (let i = 0; i < 3; i++) C.press(g, 'cancel');
+  assert.equal(g.hp, 3); assert.equal(g.maxHp, 3);
+  C.press(g, 'left'); assert.equal(g.hp, 180); assert.equal(g.maxHp, 180);
+  C.press(g, 'right'); assert.equal(g.hp, 3); assert.equal(g.maxHp, 3);
+  C.press(g, 'confirm'); assert.equal(g.hp, 3); assert.deepEqual(g.items, []);
+  step(g, 1.6); assert.ok(g.talk.lines.some(([line]) => line.includes('HP가 3')));
+  const restored = newGame(3, 5, JSON.parse(JSON.stringify(g.meta)));
+  C.begin(restored); assert.equal(restored.hp, 3); assert.equal(restored.maxHp, 3);
+  restored.checkpoint = { at: 'p2', items: ['pie'] };
+  C.begin(restored, 'checkpoint'); assert.equal(restored.hp, 3); assert.equal(restored.maxHp, 3); assert.deepEqual(restored.items, []);
+  C.begin(restored, 'start'); assert.equal(restored.hp, 3);
+});

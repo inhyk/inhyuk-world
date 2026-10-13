@@ -76,9 +76,14 @@ for (const button of document.querySelectorAll('[data-key]')) {
   button.addEventListener('pointerdown', down); button.addEventListener('pointerup', up); button.addEventListener('pointercancel', up); button.addEventListener('lostpointercapture', up);
 }
 // 화면을 누르면 확인. 피하는 중에는 실수로 눌리지 않게 막는다. (잠든 샌즈 앞에서는 된다)
-canvas.addEventListener('pointerdown', () => {
+canvas.addEventListener('pointerdown', event => {
   wantSound(); canvas.focus({ preventScroll: true });
   if (g.paused) return togglePause();
+  if (g.mode === 'title') {
+    const rect = canvas.getBoundingClientRect();
+    const x = (event.clientX - rect.left) * C.W / rect.width, y = (event.clientY - rect.top) * C.H / rect.height;
+    if (x >= 260 && x <= 380 && y >= 105 && y <= 242) { C.press(g, 'cancel'); return; }
+  }
   if (['title', 'talk', 'text', 'gameover', 'won', 'cine', 'fightbar'].includes(g.mode) || (g.mode === 'dodge' && g.push)) C.press(g, 'confirm');
 });
 function togglePause() {
@@ -94,7 +99,7 @@ const PHASE_LABEL = { intro: 'THE LAST CORRIDOR', opening: 'FIRST STRIKE', p1: '
 function hint() {
   if (g.paused) return '잠깐 쉬는 중. 준비되면 계속하세요.';
   switch (g.mode) {
-    case 'title': return '난이도를 고르고 Z로 시작하세요. 처음이라면 연습을 추천해요.';
+    case 'title': return g.meta.hiddenHeart === true ? `히든 발견! HP ${C.hiddenHp(g)} · 이 기기에 저장되었습니다. Z로 시작하세요.` : g.secretTaps ? ['','…한 번 더 말을 걸어 볼까?','…세 번째에는 대답할지도.'][g.secretTaps] : '난이도를 고르고 Z로 시작하세요. …샌즈에게도 말을 걸 수 있을까?';
     case 'talk': return 'Z 다음 말 · X 한 번에 보기';
     case 'text': return 'Z 다음';
     case 'menu': return g.menuBones.length ? '뼈가 버튼 위를 지나간다! ← → 로 옆 버튼으로 피하세요.' : g.phase === 'offer' ? '공격하면 싸움이 이어지고, 자비를 고르면…' : '← → 고르기 · Z 확인. 공격해야 이야기가 나아갑니다. 아이템은 한 차례를 씁니다.';
