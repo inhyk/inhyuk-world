@@ -50,7 +50,9 @@
     "keycap-tower:dev": "vite --config games/keycap-tower/vite.config.js --host 0.0.0.0 --port 5191",
     "keycap-tower:build": "vite build --config games/keycap-tower/vite.config.js",
     "test:keycap-tower": "node --test games/keycap-tower/core.test.mjs",
-    "test:geometry-dash": "node --test games/geometry-dash/core.test.mjs"
+    "test:geometry-dash": "node --test games/geometry-dash/core.test.mjs",
+    "test:undertale-echo": "node --test games/undertale-echo/*.test.mjs",
+    "test:undertale-echo:browser": "node games/undertale-echo/browser-check.mjs"
   },
   "dependencies": {
     "@babylonjs/loaders": "9.18.0",

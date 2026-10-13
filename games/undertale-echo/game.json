@@ -1,0 +1,24 @@
+{
+  "slug": "undertale-echo",
+  "title": "UNDERTALE: ECHO · 잊힌 별의 역",
+  "description": "다섯 신호와 마지막 열차. 새 이야기·20개 방·영혼 탄막 전투·세 가지 결말의 언더테일 팬게임.",
+  "longDescription": "멈춘 지하 열차를 다시 움직이는 새로운 비공식 팬게임입니다. 별가루 정원, 눈 내리는 승강장, 메아리 저수지, 자정의 방송국과 마지막 신호까지 5장·20개 방을 탐험하세요. 토리엘, 파피루스, 언다인, 메타톤과 만나 공격·행동·아이템·자비로 전투를 해결하고, 유령의 노래와 작은 친절이 마지막 열차의 목적지를 바꿉니다. 스위치 퍼즐, 세 곳의 상점, 조사할 기억 20개, 별 세이브, 모바일 터치와 합성 음악을 지원하며, 별도 보스 연습에서 아스고어·플라위·샌즈·아스리엘 등을 포함한 10개 전투를 즐길 수 있습니다.",
+  "emoji": "🚂",
+  "thumbnail": "/images/games/undertale-echo-thumb.png",
+  "screenshots": [
+    "/images/games/undertale-echo-thumb.png",
+    "/images/games/undertale-echo-1.png",
+    "/images/games/undertale-echo-2.png"
+  ],
+  "techStack": [
+    "JavaScript",
+    "Canvas 2D",
+    "Web Audio"
+  ],
+  "category": "액션",
+  "playUrl": "/play/undertale-echo",
+  "createdAt": "2026-10",
+  "featured": true,
+  "order": 55,
+  "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/undertale-echo"
+}
