@@ -1,5 +1,31 @@
 [
   {
+    "slug": "crabcraft",
+    "title": "Crabcraft",
+    "description": "아빠의 게 로봇 게임에 친구와 함께 탐험하고 채팅하는 멀티플레이를 더했어요.",
+    "longDescription": "아빠(kubony)의 World of Crabcraft를 바탕으로 만든 멀티플레이 확장 버전입니다. Jumper 게 로봇으로 판타지 마을을 탐험하며 최대 8명이 방 코드와 초대 링크로 만날 수 있습니다. 친구의 캐릭터, 움직임과 인사·춤을 보고 실시간 채팅을 나눌 수 있습니다. 퀘스트와 몬스터 전투는 각자 진행하며, 원작과 Jumper의 제작자·Apache-2.0 라이선스를 보존했습니다. 소개 사진은 원작 저장소의 게임 화면을 사용했습니다.",
+    "emoji": "🦀",
+    "thumbnail": "/images/games/crabcraft-thumb.png",
+    "screenshots": [
+      "/images/games/crabcraft-1.png",
+      "/images/games/crabcraft-2.png",
+      "/images/games/crabcraft-3.png"
+    ],
+    "techStack": [
+      "Three.js",
+      "TypeScript",
+      "Vite",
+      "Cloudflare Durable Objects",
+      "WebSocket"
+    ],
+    "category": "액션",
+    "playUrl": "https://inh-crabcraft-multiplayer.vercel.app",
+    "githubUrl": "https://github.com/inhyk/inh-crabcraft-multiplayer",
+    "createdAt": "2026-10",
+    "featured": false,
+    "order": 59
+  },
+  {
     "slug": "sword-forge",
     "title": "검 강화하기 · 불멸의 대장간",
     "description": "한 번의 두드림, 전설에 한 걸음 더. 30단계 검 강화와 사냥, 판매, 도감 수집에 도전하세요.",
