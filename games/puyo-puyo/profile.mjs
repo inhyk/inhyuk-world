@@ -7,7 +7,8 @@ import { emptyPets, sanitizePets } from './pets.mjs';
 import { MAPS } from './maps.mjs';
 
 export const STORE_KEY = 'puyo-tower-v1';
-export const NAME_MAX = 10, PASS_MIN = 4, PASS_MAX = 16, LEVEL_MAX = 99;
+// 레벨은 1000까지 (2026-10-17 요청 "1000레벨 까지 올릴 수 있게 해줘", 그전에는 99). 레벨마다 필요한 경험치 셈(xpToNext)은 그대로다.
+export const NAME_MAX = 10, PASS_MIN = 4, PASS_MAX = 16, LEVEL_MAX = 1000;
 // 선물 주머니에 담기는 것: 스킨·효과 교환권, 추가 스핀, 펫 뽑기권, 2배 부스트
 export const TICKET_KINDS = ['skin', 'effect', 'spin', 'pet', 'boost'];
 // 시간 선물 이름 (rewards.mjs 의 TIME_REWARDS 와 같아야 한다)
@@ -135,6 +136,19 @@ export function addXp(p, amount, coinMultiplier = 1) {
   }
   if (p.level >= LEVEL_MAX) p.xp = Math.min(p.xp, xpToNext(LEVEL_MAX));
   return { levels, coins };
+}
+
+// 온라인 랭킹에 레벨·경험치·트로피를 올린다. 랭킹 서버(services/net 의 LIMITS)는 예전에 레벨을 99까지만 받았고,
+// 새 서버로 다시 배포되기 전에는 100레벨부터 400 bad-stats 로 거절한다. 그때는 99레벨(경험치는 99레벨의 끝)로 다시 올려서
+// 트로피 랭킹과 5등 보상이 끊기지 않게 한다. 새 서버는 1000레벨까지 그대로 받는다.
+export const OLD_SERVER_LEVEL_MAX = 99;
+export async function putStatsCompat(social, game, body) {
+  try {
+    return await social.putStats(game, body);
+  } catch (e) {
+    if (e?.code !== 'bad-stats' || body.level <= OLD_SERVER_LEVEL_MAX) throw e;
+    return social.putStats(game, { ...body, level: OLD_SERVER_LEVEL_MAX, xp: xpToNext(OLD_SERVER_LEVEL_MAX) });
+  }
 }
 
 // ---------- 계정 저장소 ----------

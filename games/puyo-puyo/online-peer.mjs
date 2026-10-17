@@ -11,6 +11,7 @@ import { W, H, heights } from './core.mjs';
 import { emptyTotals } from './match.mjs';
 import { MAPS, cleanMapIndex, voteResult } from './maps.mjs';
 import { cleanFighter } from './fighters.mjs';
+import { LEVEL_MAX } from './profile.mjs';
 import { setPiece, setFalling, tickView } from './remote-smooth.mjs';
 
 const SEND_EVERY = 3;   // 3프레임마다 (초당 20번)
@@ -71,7 +72,7 @@ function snapshot(p) {
 
 const cleanPeer = m => ({
   name: String(m?.name || '친구').replace(/[<>]/g, '').slice(0, 10),
-  level: Math.max(1, Math.min(99, Number(m?.level) | 0)),
+  level: Math.max(1, Math.min(LEVEL_MAX, Number(m?.level) | 0)),
   skin: typeof m?.skin === 'string' ? m.skin.slice(0, 20) : 'classic',
   effect: typeof m?.effect === 'string' ? m.effect.slice(0, 20) : 'sparkle',
   char: cleanFighter(m?.ch),
