@@ -541,64 +541,150 @@
   .spotlight-heading > span:last-child svg {
     color: var(--color-brand);
   }
-  .spotlight-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
+  /* Coverflow: the newest games on a ring, dragged or stepped into the centre. */
+  .coverflow {
+    --cf-card: clamp(220px, 27vw, 380px);
   }
-  .spotlight-card {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 12px;
-    border: 1px solid var(--color-border);
-    background: #1b1e1666;
-    border-radius: 10px;
-    transition: background 0.2s, border-color 0.2s, transform 0.2s;
-  }
-  .spotlight-card:hover {
-    border-color: #66784b;
-    background: #252d1d;
-    transform: translateY(-3px);
-  }
-  .spotlight-image {
+  .coverflow-stage-wrap {
     position: relative;
-    width: 100px;
-    height: 80px;
+  }
+  .coverflow-frame {
+    padding-block: 28px 34px;
     overflow: hidden;
-    flex-shrink: 0;
-    border-radius: 5px;
+    perspective: calc(var(--cf-card) * 3);
+    touch-action: pan-y;
+    cursor: grab;
+    border-radius: 10px;
+    mask-image: linear-gradient(
+      90deg,
+      transparent,
+      #000 9%,
+      #000 91%,
+      transparent
+    );
   }
-  .spotlight-copy {
-    min-width: 0;
+  .coverflow-frame:active {
+    cursor: grabbing;
   }
-  .spotlight-copy .mono-label {
+  .coverflow-frame:focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: -2px;
+  }
+  .coverflow-stage {
+    position: relative;
+    height: calc(var(--cf-card) * 0.625);
+    transform-style: preserve-3d;
+    user-select: none;
+    -webkit-user-select: none;
+    /* Receding cards sit behind this plane, so it would swallow their clicks. */
+    pointer-events: none;
+  }
+  .coverflow-card {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: var(--cf-card);
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: 0 22px 44px -18px #000000cc;
+    pointer-events: auto;
+    will-change: transform;
+  }
+  .coverflow-card a {
+    position: absolute;
+    inset: 0;
+    -webkit-user-drag: none;
+  }
+  .coverflow-nav {
+    position: absolute;
+    top: 50%;
+    z-index: 200;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 50%;
+    color: var(--color-foreground);
+    background: #10110fcc;
+    backdrop-filter: blur(6px);
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  .coverflow-nav:hover {
+    color: var(--color-brand);
+    border-color: var(--color-brand);
+    background: var(--color-surface);
+  }
+  .coverflow-prev {
+    left: 4px;
+    transform: translateY(-50%) rotate(90deg);
+  }
+  .coverflow-next {
+    right: 4px;
+    transform: translateY(-50%) rotate(-90deg);
+  }
+  .coverflow-caption {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 520px;
+    margin-inline: auto;
+    text-align: center;
+  }
+  .coverflow-caption .mono-label {
     color: var(--color-muted);
-    font-size: 8px;
-    letter-spacing: 0.1em;
   }
-  .spotlight-copy h2 {
-    margin-top: 5px;
-    font-size: 14px;
+  .coverflow-caption h2 {
+    margin-top: 6px;
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.015em;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
   }
-  .spotlight-caption {
-    display: block;
+  .coverflow-caption p {
+    display: -webkit-box;
     margin-top: 8px;
-    font-size: 10px;
-    color: var(--color-muted);
+    overflow: hidden;
+    color: var(--color-muted-strong);
+    font-size: 13px;
+    line-height: 1.6;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
-  .spotlight-arrow {
-    margin-left: auto;
-    margin-right: 5px;
-    flex-shrink: 0;
-    color: var(--color-muted);
-    width: 16px;
+  .coverflow-caption .action-button {
+    margin-top: 18px;
+    min-height: 44px;
+    padding-block: 10px;
+  }
+  .coverflow-dots {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 18px;
+  }
+  .coverflow-dots button {
+    position: relative;
+    width: 18px;
+    height: 18px;
+  }
+  .coverflow-dots button::after {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
+    background: var(--color-foreground);
+    opacity: 0.25;
+    transition: opacity 0.2s, background 0.2s;
+  }
+  .coverflow-dots button:hover::after {
+    opacity: 0.6;
+  }
+  .coverflow-dots button.is-active::after {
+    background: var(--color-brand);
+    opacity: 1;
   }
 
   /* A quiet collection allows the actual games to supply the color. */
@@ -1346,20 +1432,6 @@
     height: 80px;
     bottom: 45px;
   }
-  .spotlight-card {
-    gap: 10px;
-  }
-  .spotlight-image {
-    width: 75px;
-    height: 70px;
-  }
-  .spotlight-copy h2 {
-    font-size: 12px;
-  }
-  .spotlight-arrow {
-    width: 13px;
-    margin-right: 0;
-  }
   .collection-toolbar {
     align-items: flex-start;
     gap: 12px;
@@ -1596,31 +1668,24 @@
     font-size: 10px;
     gap: 5px;
   }
-  .spotlight-grid {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
+  .coverflow {
+    --cf-card: 64vw;
+  }
+  .coverflow-stage-wrap {
     margin-inline: -24px;
-    padding-inline: 24px;
-    padding-bottom: 9px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-    scrollbar-color: #414737 transparent;
   }
-  .spotlight-card {
-    flex-shrink: 0;
-    width: 280px;
-    scroll-snap-align: center;
+  .coverflow-frame {
+    padding-block: 18px 24px;
+    border-radius: 0;
   }
-  .spotlight-image {
-    width: 80px;
-    height: 67px;
+  .coverflow-nav {
+    display: none;
   }
-  .spotlight-copy h2 {
-    font-size: 13px;
+  .coverflow-caption h2 {
+    font-size: 21px;
   }
-  .spotlight-caption {
-    margin-top: 5px;
+  .coverflow-caption p {
+    font-size: 12px;
   }
   .section-heading {
     display: block;
@@ -1831,10 +1896,12 @@
   .site-container {
     padding-inline: 20px;
   }
-  .spotlight-grid,
   .category-list {
     margin-inline: -20px;
     padding-inline: 20px;
+  }
+  .coverflow-stage-wrap {
+    margin-inline: -20px;
   }
   .brand-word {
     font-size: 18px;

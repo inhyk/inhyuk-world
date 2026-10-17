@@ -1,18 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { games, getGameBySlug } from "@/data/games";
+import { games } from "@/data/games";
+import { GameCoverflow } from "@/components/home/GameCoverflow";
 import { Icon } from "@/components/ui/Icon";
 
-const spotlightGames = [
-  "orbit-breaker",
-  "valorant-protocol",
-  "undertale-fan-game",
-]
-  .map(getGameBySlug)
-  .filter((game) => game !== undefined);
+// games is already newest first.
+const spotlightGames = games.filter((game) => game.thumbnail).slice(0, 12);
 const genreCount = new Set(games.map((game) => game.category)).size;
 
 export function HomeHero() {
@@ -127,33 +122,7 @@ export function HomeHero() {
             <Icon name="arrow" width="15" height="15" />
           </span>
         </div>
-        <div className="spotlight-grid">
-          {spotlightGames.map((game, index) => (
-            <Link
-              className="spotlight-card"
-              href={`/games/${game.slug}`}
-              key={game.slug}
-            >
-              <div className="spotlight-image">
-                <Image
-                  src={game.thumbnail}
-                  alt=""
-                  fill
-                  sizes="100px"
-                  className="object-cover"
-                />
-              </div>
-              <div className="spotlight-copy">
-                <span className="mono-label">
-                  0{index + 1} / {game.category}
-                </span>
-                <h2>{game.title.split(/ · | \/\/ /)[0]}</h2>
-                <span className="spotlight-caption">게임 만나보기</span>
-              </div>
-              <Icon name="arrow-up" className="spotlight-arrow" />
-            </Link>
-          ))}
-        </div>
+        <GameCoverflow games={spotlightGames} />
       </div>
     </section>
   );
