@@ -541,64 +541,50 @@
   .spotlight-heading > span:last-child svg {
     color: var(--color-brand);
   }
-  .spotlight-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
+  /* Coverflow: the newest games on a ring, dragged or stepped into the centre. */
+  .coverflow {
+    --cf-card: clamp(148px, 22vw, 260px);
   }
-  .spotlight-card {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 12px;
-    border: 1px solid var(--color-border);
-    background: #1b1e1666;
-    border-radius: 10px;
-    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+  .coverflow-frame {
+    padding-block: 40px;
+    overflow: hidden;
+    perspective: calc(var(--cf-card) * 3);
+    touch-action: pan-y;
+    cursor: grab;
   }
-  .spotlight-card:hover {
-    border-color: #66784b;
-    background: #252d1d;
-    transform: translateY(-3px);
+  .coverflow-frame:active {
+    cursor: grabbing;
   }
-  .spotlight-image {
+  .coverflow-frame:focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: -2px;
+  }
+  .coverflow-stage {
     position: relative;
-    width: 100px;
-    height: 80px;
+    height: var(--cf-card);
+    transform-style: preserve-3d;
+    user-select: none;
+    -webkit-user-select: none;
+    /* Receding cards sit behind this plane, so it would swallow their clicks. */
+    pointer-events: none;
+  }
+  .coverflow-card {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: var(--cf-card);
+    aspect-ratio: 1;
     overflow: hidden;
-    flex-shrink: 0;
-    border-radius: 5px;
+    border-radius: 16px;
+    background: var(--color-surface);
+    box-shadow: 0 20px 25px -5px #0000001a, 0 8px 10px -6px #0000001a;
+    pointer-events: auto;
+    will-change: transform;
   }
-  .spotlight-copy {
-    min-width: 0;
-  }
-  .spotlight-copy .mono-label {
-    color: var(--color-muted);
-    font-size: 8px;
-    letter-spacing: 0.1em;
-  }
-  .spotlight-copy h2 {
-    margin-top: 5px;
-    font-size: 14px;
-    font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.015em;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .spotlight-caption {
-    display: block;
-    margin-top: 8px;
-    font-size: 10px;
-    color: var(--color-muted);
-  }
-  .spotlight-arrow {
-    margin-left: auto;
-    margin-right: 5px;
-    flex-shrink: 0;
-    color: var(--color-muted);
-    width: 16px;
+  .coverflow-card a {
+    position: absolute;
+    inset: 0;
+    -webkit-user-drag: none;
   }
 
   /* A quiet collection allows the actual games to supply the color. */
@@ -1346,20 +1332,6 @@
     height: 80px;
     bottom: 45px;
   }
-  .spotlight-card {
-    gap: 10px;
-  }
-  .spotlight-image {
-    width: 75px;
-    height: 70px;
-  }
-  .spotlight-copy h2 {
-    font-size: 12px;
-  }
-  .spotlight-arrow {
-    width: 13px;
-    margin-right: 0;
-  }
   .collection-toolbar {
     align-items: flex-start;
     gap: 12px;
@@ -1596,31 +1568,8 @@
     font-size: 10px;
     gap: 5px;
   }
-  .spotlight-grid {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
+  .coverflow {
     margin-inline: -24px;
-    padding-inline: 24px;
-    padding-bottom: 9px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-    scrollbar-color: #414737 transparent;
-  }
-  .spotlight-card {
-    flex-shrink: 0;
-    width: 280px;
-    scroll-snap-align: center;
-  }
-  .spotlight-image {
-    width: 80px;
-    height: 67px;
-  }
-  .spotlight-copy h2 {
-    font-size: 13px;
-  }
-  .spotlight-caption {
-    margin-top: 5px;
   }
   .section-heading {
     display: block;
@@ -1831,10 +1780,12 @@
   .site-container {
     padding-inline: 20px;
   }
-  .spotlight-grid,
   .category-list {
     margin-inline: -20px;
     padding-inline: 20px;
+  }
+  .coverflow {
+    margin-inline: -20px;
   }
   .brand-word {
     font-size: 18px;
