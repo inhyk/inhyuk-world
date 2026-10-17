@@ -6,6 +6,9 @@ import { siteConfig } from "@/lib/site";
 export const SITE_PROJECT_NAME = "inhyuk-world";
 
 const projectNamesByGame: Record<string, string | null> = {
+  "banner-war": "banner-war",
+  "pulse-rush": "pulse-rush",
+  crabcraft: "inh-crabcraft-multiplayer",
   ginginbam: "ginginbam-game-v2",
   "rhythm-game": "rhythm-game",
   "diep-io": "diep-io",

@@ -112,3 +112,20 @@ test("missing server credentials do not make API requests", async () => {
   assert.equal(result.site.status, "not-configured");
   assert.ok(result.games.every((game) => game.status === "not-configured"));
 });
+
+
+test("new standalone games query their own deployed projects", async () => {
+  const calls = [];
+  const dashboard = loadDashboard({ DASHBOARD_VERCEL_TOKEN: "hub-token", DASHBOARD_VERCEL_TEAM_ID: "hub-team" }, async (input) => {
+    const url = new URL(input); calls.push(url);
+    return { ok: true, json: async () => ({ data: url.pathname.endsWith("/count") ? { visitors: 0, pageviews: 0 } : [] }) };
+  });
+  const result = await dashboard.getAnalyticsDashboard();
+  for (const [slug, projectName] of [["banner-war", "banner-war"], ["pulse-rush", "pulse-rush"], ["crabcraft", "inh-crabcraft-multiplayer"]]) {
+    const game = result.games.find(game => game.slug === slug);
+    assert.equal(game.status, "ready"); assert.equal(game.projectName, projectName);
+    const call = calls.find(url => url.searchParams.get("projectId") === projectName);
+    assert.ok(call, slug + ": standalone project request");
+    assert.equal(call.searchParams.has("filter"), false);
+  }
+});
