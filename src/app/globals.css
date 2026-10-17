@@ -543,25 +543,14 @@
   }
   /* Coverflow: the newest games on a ring, dragged or stepped into the centre. */
   .coverflow {
-    --cf-card: clamp(220px, 27vw, 380px);
-  }
-  .coverflow-stage-wrap {
-    position: relative;
+    --cf-card: clamp(148px, 22vw, 260px);
   }
   .coverflow-frame {
-    padding-block: 28px 34px;
+    padding-block: 40px;
     overflow: hidden;
     perspective: calc(var(--cf-card) * 3);
     touch-action: pan-y;
     cursor: grab;
-    border-radius: 10px;
-    mask-image: linear-gradient(
-      90deg,
-      transparent,
-      #000 9%,
-      #000 91%,
-      transparent
-    );
   }
   .coverflow-frame:active {
     cursor: grabbing;
@@ -572,7 +561,7 @@
   }
   .coverflow-stage {
     position: relative;
-    height: calc(var(--cf-card) * 0.625);
+    height: var(--cf-card);
     transform-style: preserve-3d;
     user-select: none;
     -webkit-user-select: none;
@@ -584,12 +573,11 @@
     top: 0;
     left: 50%;
     width: var(--cf-card);
-    aspect-ratio: 16 / 10;
+    aspect-ratio: 1;
     overflow: hidden;
-    border: 1px solid var(--color-border-strong);
-    border-radius: 12px;
+    border-radius: 16px;
     background: var(--color-surface);
-    box-shadow: 0 22px 44px -18px #000000cc;
+    box-shadow: 0 20px 25px -5px #0000001a, 0 8px 10px -6px #0000001a;
     pointer-events: auto;
     will-change: transform;
   }
@@ -597,94 +585,6 @@
     position: absolute;
     inset: 0;
     -webkit-user-drag: none;
-  }
-  .coverflow-nav {
-    position: absolute;
-    top: 50%;
-    z-index: 200;
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-    border: 1px solid var(--color-border-strong);
-    border-radius: 50%;
-    color: var(--color-foreground);
-    background: #10110fcc;
-    backdrop-filter: blur(6px);
-    transition: color 0.2s, border-color 0.2s, background 0.2s;
-  }
-  .coverflow-nav:hover {
-    color: var(--color-brand);
-    border-color: var(--color-brand);
-    background: var(--color-surface);
-  }
-  .coverflow-prev {
-    left: 4px;
-    transform: translateY(-50%) rotate(90deg);
-  }
-  .coverflow-next {
-    right: 4px;
-    transform: translateY(-50%) rotate(-90deg);
-  }
-  .coverflow-caption {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    max-width: 520px;
-    margin-inline: auto;
-    text-align: center;
-  }
-  .coverflow-caption .mono-label {
-    color: var(--color-muted);
-  }
-  .coverflow-caption h2 {
-    margin-top: 6px;
-    font-family: var(--font-display);
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: -0.03em;
-  }
-  .coverflow-caption p {
-    display: -webkit-box;
-    margin-top: 8px;
-    overflow: hidden;
-    color: var(--color-muted-strong);
-    font-size: 13px;
-    line-height: 1.6;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-  .coverflow-caption .action-button {
-    margin-top: 18px;
-    min-height: 44px;
-    padding-block: 10px;
-  }
-  .coverflow-dots {
-    display: flex;
-    justify-content: center;
-    gap: 4px;
-    margin-top: 18px;
-  }
-  .coverflow-dots button {
-    position: relative;
-    width: 18px;
-    height: 18px;
-  }
-  .coverflow-dots button::after {
-    content: "";
-    position: absolute;
-    inset: 6px;
-    border-radius: 50%;
-    background: var(--color-foreground);
-    opacity: 0.25;
-    transition: opacity 0.2s, background 0.2s;
-  }
-  .coverflow-dots button:hover::after {
-    opacity: 0.6;
-  }
-  .coverflow-dots button.is-active::after {
-    background: var(--color-brand);
-    opacity: 1;
   }
 
   /* A quiet collection allows the actual games to supply the color. */
@@ -1669,23 +1569,7 @@
     gap: 5px;
   }
   .coverflow {
-    --cf-card: 64vw;
-  }
-  .coverflow-stage-wrap {
     margin-inline: -24px;
-  }
-  .coverflow-frame {
-    padding-block: 18px 24px;
-    border-radius: 0;
-  }
-  .coverflow-nav {
-    display: none;
-  }
-  .coverflow-caption h2 {
-    font-size: 21px;
-  }
-  .coverflow-caption p {
-    font-size: 12px;
   }
   .section-heading {
     display: block;
@@ -1900,7 +1784,7 @@
     margin-inline: -20px;
     padding-inline: 20px;
   }
-  .coverflow-stage-wrap {
+  .coverflow {
     margin-inline: -20px;
   }
   .brand-word {

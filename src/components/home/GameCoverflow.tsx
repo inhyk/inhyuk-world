@@ -12,19 +12,14 @@ import {
   type PointerEvent,
 } from "react";
 import type { Game } from "@/data/games";
-import { Icon } from "@/components/ui/Icon";
 
 // Distances are in card widths, so the whole rake scales with --cf-card.
 const ROTATE = 44;
 const DEPTH = 0.6;
 const FALLOFF = 0.56;
-const FADE = 0.12;
+const FADE = 0.1;
 const GAP = 0.05;
 const DRAG_START = 6;
-
-function shortTitle(title: string) {
-  return title.split(/ · | \/\/ /)[0];
-}
 
 // Fold the distance the short way round the ring, so the loop needs no cloned
 // cards. A card has to be invisible by the time it jumps to the other side.
@@ -198,118 +193,72 @@ export function GameCoverflow({ games }: { games: Game[] }) {
       aria-roledescription="carousel"
       aria-label="새로 열린 게임"
     >
-      <div className="coverflow-stage-wrap">
-        <div
-          className="coverflow-frame"
-          tabIndex={0}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-          onDragStart={(event) => event.preventDefault()}
-          onClickCapture={(event) => {
-            if (!suppressClickRef.current) return;
-            suppressClickRef.current = false;
+      <div
+        className="coverflow-frame"
+        tabIndex={0}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onDragStart={(event) => event.preventDefault()}
+        onClickCapture={(event) => {
+          if (!suppressClickRef.current) return;
+          suppressClickRef.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft") {
             event.preventDefault();
-            event.stopPropagation();
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "ArrowLeft") {
-              event.preventDefault();
-              nudge(-1);
-            } else if (event.key === "ArrowRight") {
-              event.preventDefault();
-              nudge(1);
-            } else if (event.key === "Enter") {
-              router.push(`/games/${active.slug}`);
-            }
-          }}
-        >
-          <div className="coverflow-stage">
-            {games.map((game, index) => (
-              <div
-                key={game.slug}
-                ref={(node) => {
-                  cardRefs.current[index] = node;
+            nudge(-1);
+          } else if (event.key === "ArrowRight") {
+            event.preventDefault();
+            nudge(1);
+          } else if (event.key === "Enter") {
+            router.push(`/games/${active.slug}`);
+          }
+        }}
+      >
+        <div className="coverflow-stage">
+          {games.map((game, index) => (
+            <div
+              key={game.slug}
+              ref={(node) => {
+                cardRefs.current[index] = node;
+              }}
+              className="coverflow-card"
+              style={cardStyle(index, 0, count)}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${index + 1} / ${count}`}
+              aria-hidden={index !== selected}
+            >
+              <Link
+                href={`/games/${game.slug}`}
+                tabIndex={-1}
+                draggable={false}
+                onClick={(event) => {
+                  if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+                  // A side card comes to the centre first; only the centre
+                  // card opens its game.
+                  if (indexAt(targetRef.current) !== index) {
+                    event.preventDefault();
+                    goTo(index);
+                  }
                 }}
-                className="coverflow-card"
-                style={cardStyle(index, 0, count)}
-                role="group"
-                aria-roledescription="slide"
-                aria-label={`${index + 1} / ${count}`}
-                aria-hidden={index !== selected}
               >
-                <Link
-                  href={`/games/${game.slug}`}
-                  tabIndex={-1}
+                <Image
+                  src={game.thumbnail}
+                  alt={`${game.title} 게임 화면`}
+                  fill
+                  sizes="(max-width: 767px) 148px, 260px"
                   draggable={false}
-                  onClick={(event) => {
-                    if (event.metaKey || event.ctrlKey || event.shiftKey) return;
-                    // A side card comes to the centre first; only the centre
-                    // card opens its game.
-                    if (indexAt(targetRef.current) !== index) {
-                      event.preventDefault();
-                      goTo(index);
-                    }
-                  }}
-                >
-                  <Image
-                    src={game.thumbnail}
-                    alt={`${game.title} 게임 화면`}
-                    fill
-                    sizes="(max-width: 767px) 64vw, 380px"
-                    draggable={false}
-                    className="object-cover"
-                  />
-                </Link>
-              </div>
-            ))}
-          </div>
+                  className="object-cover"
+                />
+              </Link>
+            </div>
+          ))}
         </div>
-        <button
-          type="button"
-          className="coverflow-nav coverflow-prev"
-          aria-label="이전 게임"
-          onClick={() => nudge(-1)}
-        >
-          <Icon name="chevron" width="18" height="18" />
-        </button>
-        <button
-          type="button"
-          className="coverflow-nav coverflow-next"
-          aria-label="다음 게임"
-          onClick={() => nudge(1)}
-        >
-          <Icon name="chevron" width="18" height="18" />
-        </button>
-      </div>
-
-      <div className="coverflow-caption">
-        <span className="mono-label">
-          {String(selected + 1).padStart(2, "0")} / {active.category}
-        </span>
-        <h2>{shortTitle(active.title)}</h2>
-        <p>{active.description}</p>
-        <Link
-          href={`/games/${active.slug}`}
-          className="action-button action-primary"
-        >
-          게임 만나보기
-          <Icon name="arrow-up" width="17" height="17" />
-        </Link>
-      </div>
-
-      <div className="coverflow-dots">
-        {games.map((game, index) => (
-          <button
-            key={game.slug}
-            type="button"
-            aria-label={`${shortTitle(game.title)} 보기`}
-            aria-current={index === selected}
-            onClick={() => goTo(index)}
-            className={index === selected ? "is-active" : undefined}
-          />
-        ))}
       </div>
     </div>
   );
