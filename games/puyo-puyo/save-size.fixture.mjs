@@ -1,5 +1,5 @@
 // 가장 큰 뿌요뿌요 타워 기록 (클라우드 저장 크기 확인용). 실제로 될 수 있는 값을 모두 끝까지 채운다.
-import { newProgress, sanitize, TIME_IDS, SCHOOL_IDS, GIFT_SEEN_MAX } from './profile.mjs';
+import { newProgress, sanitize, TIME_IDS, SCHOOL_IDS, GIFT_SEEN_MAX, LEVEL_MAX } from './profile.mjs';
 import { PET_IDS } from './pets.mjs';
 import { SKINS, EFFECTS } from './shop.mjs';
 import { MISSIONS, dailyFor } from './missions.mjs';
@@ -26,7 +26,7 @@ export function maxSocial() {
 // 게임 기록(소셜 빼고)을 끝까지: 모든 스킨과 효과, 모든 미션, 오늘 미션, 큰 숫자
 export function maxProgress({ social = true } = {}) {
   const p = newProgress();
-  Object.assign(p, { level: 99, xp: BIG, coins: BIG, tutorial: true });
+  Object.assign(p, { level: LEVEL_MAX, xp: BIG, coins: BIG, tutorial: true });
   p.owned = { skin: SKINS.map(s => s.id), effect: EFFECTS.map(e => e.id) };
   p.equip = { skin: SKINS.at(-1).id, effect: EFFECTS.at(-1).id };
   p.tower = { best: 6, cleared: true, comet: true, nova: true, losses: Object.fromEntries(Array.from({ length: 8 }, (_, i) => [i + 1, BIG])), endings: BIG, cometEndings: BIG };

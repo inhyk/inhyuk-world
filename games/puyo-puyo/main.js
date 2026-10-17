@@ -11,7 +11,7 @@ import { SKINS, EFFECTS, RANK_SKIN, findItem, canBuy, buy, equip, grant, canRede
 import { GROUPS, track, claim, missionView, unclaimedCount } from './missions.mjs';
 import {
   STORE_KEY, loadStore, saveStore, createAccount, login, logout, currentAccount, removeAccount, exportCode, importCode,
-  newProgress, xpToNext, sanitize,
+  newProgress, xpToNext, sanitize, putStatsCompat,
 } from './profile.mjs';
 import { isApp, buzz, restoreSaves, mirrorSave, hideSplash, onBackButton } from './platform.mjs';
 import { calendarBonus, todayKey } from './calendar.mjs';
@@ -2528,7 +2528,7 @@ function sendStats() {
   const social = hub;
   statsJob = (async () => {
     try {
-      await social.putStats(NET_GAME, body);
+      await putStatsCompat(social, NET_GAME, body);
       if (social !== hub) return; // 그사이 로그아웃하거나 다른 계정으로 들어감
       statsSent = key;
       const { me: mine } = await social.rankings(NET_GAME, 'trophies');

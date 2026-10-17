@@ -186,7 +186,7 @@ await account.putSave('jelly-tower', localData, 0, { importId: 'device-1234abcd'
 
 ### 기록과 랭킹
 
-- `PUT /stats/:game` 🔑 `{level, xp, trophies}` → `{ok}`. 게임이 올리는 값입니다 (범위를 벗어나면 400 `bad-stats`, 1분에 30번을 넘으면 429). 서버가 확인할 수 없는 값이라 레벨과 트로피는 마음먹고 속이면 속일 수 있습니다.
+- `PUT /stats/:game` 🔑 `{level, xp, trophies}` → `{ok}`. 게임이 올리는 값입니다 (레벨 1~1000, 2026-10-17 전에는 99까지. 범위를 벗어나면 400 `bad-stats`, 1분에 30번을 넘으면 429). 서버가 확인할 수 없는 값이라 레벨과 트로피는 마음먹고 속이면 속일 수 있습니다.
 - **온라인 승리**(`online_wins`)는 서버가 직접 셉니다. 랜덤 매칭이나 초대로 만든 방의 두 사람이 대전이 끝나면 `{ t: 'report', n, won }` 을 보내고(`n` 은 그 방의 몇 번째 대전), 둘이 같은 사람을 이겼다고 하면 그 사람에게 1을 더합니다. 서로 다르면 세지 않고, 한 사람만 보냈으면 방이 빌 때 셉니다. 한 번 정한 대전은 다시 보고해도 바뀌지 않습니다.
 - `GET /rankings/:game?by=trophies|level|wins` 🔑 → `{ by, list: [{ rank, id, nickname, level, xp, trophies, wins }], me: { rank, ranks: { trophies, level, wins }, level, trophies, wins, top5 } }`. 다른 `by` 는 400 `bad-board`.
   - 50등까지. 트로피 많은 순, 레벨 높은 순(같으면 경험치), 온라인 승리 많은 순. 같은 기록이면 같은 등수입니다 (등수는 나보다 앞선 사람 수 + 1).

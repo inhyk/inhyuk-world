@@ -25,7 +25,8 @@ describe('stats and rankings', () => {
   it('checks the numbers it gets', async () => {
     const a = await signup(), g = newGame();
     expect((await putStats(a, g, { level: 3, xp: 10, trophies: 2 })).data).toEqual({ ok: true });
-    for (const bad of [{ level: 0, xp: 0, trophies: 0 }, { level: 100, xp: 0, trophies: 0 }, { level: 2, xp: -1, trophies: 0 },
+    expect((await putStats(a, g, { level: 1000, xp: 40060, trophies: 2 })).data).toEqual({ ok: true }); // 레벨은 1000까지
+    for (const bad of [{ level: 0, xp: 0, trophies: 0 }, { level: 1001, xp: 0, trophies: 0 }, { level: 2, xp: -1, trophies: 0 },
       { level: 2, xp: 1.5, trophies: 0 }, { level: 2, xp: 0, trophies: '9' }, { level: 2, xp: 0 }]) {
       expect((await putStats(a, g, bad)).data, JSON.stringify(bad)).toEqual({ error: 'bad-stats' });
     }

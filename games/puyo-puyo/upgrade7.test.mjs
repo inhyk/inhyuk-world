@@ -181,7 +181,7 @@ test('캐릭터 번호: 상대가 보낸 이상한 값은 주인공으로, 예�
   assert.equal(cleanPeer({ level: 12, skin: 'cat', effect: 'sparkle', ch: 6 }).char, 6);
   assert.equal(cleanPeer({ level: 12 }).char, 0);
   assert.equal(cleanPeer({ ch: 'king' }).char, 0);
-  assert.deepEqual(cleanPeer({ level: 300, skin: 5, ch: 99 }), { level: 99, skin: 'classic', effect: 'sparkle', char: 0 });
+  assert.deepEqual(cleanPeer({ level: 3000, skin: 5, ch: 99 }), { level: 1000, skin: 'classic', effect: 'sparkle', char: 0 }); // 2026-10-17: 레벨은 1000까지
 });
 
 test('비밀의 층 주인은 그 층이 열려야 고를 수 있다: 코멧은 타워를 깨면, 노바는 혜성을 깨면', () => {

@@ -15,7 +15,7 @@ export const RANK_PAGE = 50;
 export const TOP_REWARD = 5;
 const LIVE_STALE_MS = 12 * 60 * 1000; // 방이 이만큼 소식이 없으면 목록에서 뺀다 (방은 5분마다 소식을 적는다)
 const LIVE_PAGE = 30;
-export const LIMITS = { level: [1, 99], xp: [0, 100_000_000], trophies: [0, 10_000_000] };
+export const LIMITS = { level: [1, 1000], xp: [0, 100_000_000], trophies: [0, 10_000_000] }; // 레벨은 1000까지 (2026-10-17, 그전에는 99)
 
 // 랭킹마다: 누가 들어가는지(where), 줄 세우는 순서(order), 나보다 위인 사람(better)과 그 값(bind)
 const BOARDS = {

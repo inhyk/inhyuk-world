@@ -24,6 +24,7 @@ import { NET_GAME } from './net.mjs';
 import { QUICK, STICKERS, validSticker, validCheer } from './chat.mjs';
 import { MAPS, cleanMapIndex, voteResult } from './maps.mjs';
 import { cleanFighter } from './fighters.mjs';
+import { LEVEL_MAX } from './profile.mjs';
 import { setPiece, setFalling, tickView } from './remote-smooth.mjs';
 
 const SEND_EVERY = 3;        // 3프레임마다 (초당 20번). 예전에는 5프레임마다(초당 12번)라 상대가 느리고 끊겨 보였다
@@ -94,7 +95,7 @@ export function hasLongDigits(value, depth = 0) {
 
 // 상대가 보낸 hello: 레벨과 꾸미기, 고른 캐릭터 번호만 (이름은 서버가 준 것을 쓴다)
 export const cleanPeer = m => ({
-  level: Math.max(1, Math.min(99, Number(m?.level) | 0)),
+  level: Math.max(1, Math.min(LEVEL_MAX, Number(m?.level) | 0)),
   skin: typeof m?.skin === 'string' ? m.skin.slice(0, 20) : 'classic',
   effect: typeof m?.effect === 'string' ? m.effect.slice(0, 20) : 'sparkle',
   char: cleanFighter(m?.ch),

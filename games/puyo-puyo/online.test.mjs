@@ -45,10 +45,10 @@ test('보내는 메시지 모두 숫자 8개 넘는 글자열이 없다', () => 
 });
 
 test('상대가 보낸 hello 에서는 레벨과 꾸미기, 캐릭터 번호만 쓴다 (이름은 버린다)', () => {
-  const p = cleanPeer({ name: '010-1234-5678', level: 500, skin: 'x'.repeat(50) });
+  const p = cleanPeer({ name: '010-1234-5678', level: 5000, skin: 'x'.repeat(50) });
   assert.deepEqual(Object.keys(p).sort(), ['char', 'effect', 'level', 'skin']);
   assert.equal(p.char, 0); // 캐릭터 번호가 없으면(예전 버전) 주인공
-  assert.equal(p.level, 99);
+  assert.equal(p.level, 1000); // 2026-10-17: 레벨은 1000까지 (그전에는 99)
   assert.equal(p.skin.length, 20);
 });
 

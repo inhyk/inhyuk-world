@@ -4,6 +4,7 @@
 export const CHAT_MAX = 60;       // 한 번에 보낼 수 있는 글자
 export const CHAT_KEEP = 50;      // 친구마다 기기에 남기는 대화 수
 export const FRIEND_MAX = 30;     // 친구는 30명까지
+export const FRIEND_LEVEL_MAX = 1000; // 친구 목록에 적는 레벨의 끝 (profile.mjs 의 LEVEL_MAX 와 같다. profile 이 이 파일을 불러서 여기서는 숫자로 적는다)
 export const FRIEND_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 // 게임 중에 빠르게 누르는 말 (글자를 치지 않아도 되고, 나쁜 말이 섞일 수 없다)
@@ -136,7 +137,7 @@ export function sanitizeSocial(s) {
   for (const f of Array.isArray(s.friends) ? s.friends : []) {
     if (!f || !validFriendCode(f.code) || seen.has(f.code) || out.friends.length >= FRIEND_MAX) continue;
     seen.add(f.code);
-    out.friends.push({ code: f.code, name: cleanName(f.name), level: Math.max(1, Math.min(999, Number(f.level) | 0)), since: Number(f.since) || 0 });
+    out.friends.push({ code: f.code, name: cleanName(f.name), level: Math.max(1, Math.min(FRIEND_LEVEL_MAX, Number(f.level) | 0)), since: Number(f.since) || 0 });
   }
   out.blocked = [...new Set((Array.isArray(s.blocked) ? s.blocked : []).filter(validFriendCode))].slice(0, 200);
   for (const f of out.friends) {
@@ -147,7 +148,7 @@ export function sanitizeSocial(s) {
   for (const r of Array.isArray(s.requests) ? s.requests : []) {
     if (!r || !validFriendCode(r.code) || seen.has(r.code) || blocked.has(r.code) || asked.has(r.code) || out.requests.length >= REQUEST_MAX) continue;
     asked.add(r.code);
-    out.requests.push({ code: r.code, name: cleanName(r.name), level: Math.max(1, Math.min(999, Number(r.level) | 0)), time: Number(r.time) || 0 });
+    out.requests.push({ code: r.code, name: cleanName(r.name), level: Math.max(1, Math.min(FRIEND_LEVEL_MAX, Number(r.level) | 0)), time: Number(r.time) || 0 });
   }
   const sentSeen = new Set();
   for (const r of Array.isArray(s.sent) ? s.sent : []) {
