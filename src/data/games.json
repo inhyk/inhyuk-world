@@ -15,12 +15,13 @@
       "Three.js",
       "TypeScript",
       "Vite",
-      "Cloudflare Durable Objects",
+      "Node.js",
+      "PostgreSQL",
       "WebSocket"
     ],
     "category": "액션",
-    "playUrl": "https://inh-crabcraft-multiplayer.vercel.app",
-    "githubUrl": "https://github.com/inhyk/inh-crabcraft-multiplayer",
+    "playUrl": "https://crab.seonn.dev",
+    "githubUrl": "https://github.com/inhyk/crabcraft",
     "createdAt": "2026-10",
     "featured": false,
     "order": 59
