@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1b1b1b">
+  <title>픽셀크래프트 · 2D 마인크래프트</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23865b3a'/%3E%3Crect width='16' height='5' fill='%235fa83b'/%3E%3Crect x='3' y='5' width='2' height='2' fill='%235fa83b'/%3E%3Crect x='10' y='5' width='3' height='1' fill='%235fa83b'/%3E%3C/svg%3E">
+  <link rel="preload" href="../undertale/fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="game" aria-label="픽셀크래프트 게임 화면"></canvas>
+
+  <div id="hud" hidden>
+    <div id="hint" hidden><span></span><button aria-label="길잡이 닫기">✕</button></div>
+    <div id="toasts" aria-live="polite"></div>
+    <pre id="debug" hidden></pre>
+    <div id="heldInfo" hidden></div>
+    <div class="bottom">
+      <div id="heldName" hidden></div>
+      <div id="bars"></div>
+      <div id="hotbar"></div>
+    </div>
+  </div>
+
+  <div id="touch">
+    <div class="pad">
+      <button data-key="KeyA" aria-label="왼쪽">◀</button>
+      <button data-key="KeyS" aria-label="아래">▼</button>
+      <button data-key="KeyD" aria-label="오른쪽">▶</button>
+    </div>
+    <div class="tops">
+      <button data-act="fly" class="small fly">날기</button>
+      <button data-act="drop" class="small">버리기</button>
+      <button data-act="inv" class="small">가방</button>
+      <button data-act="menu" class="small">☰</button>
+    </div>
+    <div class="acts">
+      <button data-act="mode" class="mode">⛏ 캐기</button>
+      <button data-key="Space" class="jump" aria-label="점프">▲</button>
+    </div>
+  </div>
+
+  <div id="panel" hidden></div>
+  <div id="tip" hidden></div>
+  <div id="cursorItem" hidden></div>
+
+  <section id="title" hidden>
+    <a class="back" href="/games" target="_top">← 게임 목록</a>
+    <div class="logo">
+      <h1>PIXELCRAFT</h1>
+      <p class="sub">픽셀크래프트</p>
+      <span class="splash">2D 마인크래프트!</span>
+    </div>
+    <div class="menu">
+      <div id="slots"></div>
+      <div class="row2">
+        <button id="btnHelp" class="mc-btn">조작법 보기</button>
+      </div>
+    </div>
+    <div id="newWorld" class="mc-dialog" hidden>
+      <h2>새 세계 만들기</h2>
+      <label>세계 이름 <input id="nwName" maxlength="20" autocomplete="off"></label>
+      <label>시드 (비워 두면 무작위) <input id="nwSeed" maxlength="24" autocomplete="off" placeholder="예: 인혁"></label>
+      <fieldset>
+        <legend>게임 모드</legend>
+        <label class="pick"><input type="radio" name="mode" value="survival" checked><span>서바이벌<small>캐고, 만들고, 살아남기</small></span></label>
+        <label class="pick"><input type="radio" name="mode" value="creative"><span>크리에이티브<small>모든 블록 무한 · 날기</small></span></label>
+      </fieldset>
+      <fieldset>
+        <legend>난이도</legend>
+        <label class="pick"><input type="radio" name="diff" value="0"><span>평화로움<small>몬스터 없음</small></span></label>
+        <label class="pick"><input type="radio" name="diff" value="1" checked><span>보통<small>밤에 몬스터</small></span></label>
+        <label class="pick"><input type="radio" name="diff" value="2"><span>어려움<small>더 많고 더 아파</small></span></label>
+      </fieldset>
+      <div class="row2">
+        <button id="nwCreate" class="mc-btn green">세계 만들기</button>
+        <button id="nwCancel" class="mc-btn">취소</button>
+      </div>
+    </div>
+    <p class="foot">비공식 팬 게임 · Minecraft는 Mojang Studios의 상표입니다 · 그림과 소리는 전부 코드로 만들었어요</p>
+  </section>
+
+  <section id="help" class="overlay" hidden>
+    <div class="mc-dialog wide">
+      <h2>조작법</h2>
+      <div class="keys">
+        <p><kbd>A</kbd><kbd>D</kbd> 걷기 · <kbd>Shift</kbd> 달리기 · <kbd>스페이스</kbd>/<kbd>W</kbd> 점프 · <kbd>S</kbd> 사다리 내려가기</p>
+        <p><b>마우스 왼쪽</b> 꾹 누르기: 캐기 · 공격</p>
+        <p><b>마우스 오른쪽</b>: 블록 놓기 · 먹기 · 제작대/화로/상자/문/침대 쓰기 · 활 당기기</p>
+        <p><kbd>1</kbd>~<kbd>9</kbd> / 휠: 손에 들 것 고르기 · <kbd>Q</kbd> 버리기</p>
+        <p><kbd>E</kbd> 가방 (Shift+클릭: 빨리 옮기기, 오른쪽 클릭: 반만 집기)</p>
+        <p><kbd>Esc</kbd> 메뉴 · <kbd>M</kbd> 소리 · <kbd>+</kbd><kbd>-</kbd> 확대 · <kbd>O</kbd> 좌표 보기</p>
+        <p>크리에이티브: <kbd>F</kbd> 또는 스페이스 두 번 → 날기</p>
+      </div>
+      <h3>살아남는 순서</h3>
+      <ol>
+        <li>나무 캐기 → 나무 판자 → 제작대</li>
+        <li>막대기 → 나무 곡괭이 → 돌 캐기</li>
+        <li>돌 곡괭이·화로 → 석탄으로 횃불</li>
+        <li>철 광석을 화로에 구워 철 곡괭이 → 깊은 곳에서 다이아몬드!</li>
+        <li>양털 3개 + 판자 3개 = 침대. 밤에 자면 아침이 돼</li>
+      </ol>
+      <button id="helpClose" class="mc-btn">닫기</button>
+    </div>
+  </section>
+
+  <section id="pause" class="overlay" hidden>
+    <div class="mc-dialog">
+      <h2>잠깐 멈춤</h2>
+      <p id="pauseInfo" class="dim"></p>
+      <button id="btnResume" class="mc-btn green">계속 하기</button>
+      <button id="btnSave" class="mc-btn">지금 저장</button>
+      <div class="row2"><button id="btnSound" class="mc-btn"></button><button id="btnMusic" class="mc-btn"></button></div>
+      <button id="btnQuit" class="mc-btn">저장하고 처음 화면으로</button>
+    </div>
+  </section>
+
+  <section id="death" class="overlay red" hidden>
+    <div class="mc-dialog clear">
+      <h2>쓰러졌어!</h2>
+      <p id="deathText"></p>
+      <p class="dim">가방 속 물건은 그대로 있어</p>
+      <button id="btnRespawn" class="mc-btn green">다시 태어나기</button>
+      <button id="btnDeathQuit" class="mc-btn">처음 화면으로</button>
+    </div>
+  </section>
+
+  <div id="loading" class="overlay" hidden><div class="mc-dialog clear"><h2>세계를 만드는 중…</h2></div></div>
+
+  <script type="module" src="./game.mjs"></script>
+</body>
+</html>
