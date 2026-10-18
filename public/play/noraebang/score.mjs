@@ -1,5 +1,6 @@
 // 악보(song.mjs)를 박자 단위 시간표로 바꾼다. 화면과 소리와 검사가 모두 이 결과를 쓴다. DOM 을 쓰지 않는다.
 import { SONG, SECTIONS } from './song.mjs';
+import { pronounce } from './hangul.mjs';
 
 const LETTER = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -85,11 +86,14 @@ export function compileSong(sections = SECTIONS, song = SONG) {
       if (syllables.length !== lineNotes.length) throw new Error(`「${line.text}」 글자 ${syllables.length}개, 음표 ${lineNotes.length}개`);
       let index = 0;
       const glyphs = [...line.text].map((char) => ({ char, syllable: SYLLABLE.test(char) ? index++ : -1 }));
+      const sounds = pronounce(line.text);
+      if (sounds.length !== syllables.length) throw new Error(`「${line.text}」 한글이 아닌 글자가 있음`);
       const last = lineNotes.at(-1);
       result.lines.push({
         text: line.text,
         glyphs,
-        syllables: lineNotes.map((note, i) => ({ char: syllables[i], beat: note.beat, dur: note.dur, midi: note.midi })),
+        syllables: lineNotes.map((note, i) => ({ char: syllables[i], beat: note.beat, dur: note.dur, midi: note.midi, sound: sounds[i] })),
+        key: section.key,
         startBeat: lineNotes[0].beat,
         endBeat: last.beat + last.dur,
         section: section.id,

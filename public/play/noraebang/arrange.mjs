@@ -1,4 +1,4 @@
-// 시간표(score)에서 반주를 만든다: 드럼, 베이스, 화음, 아르페지오, 가이드 멜로디, 화음 멜로디.
+// 시간표(score)에서 반주를 만든다: 드럼, 베이스, 화음, 아르페지오, 화음 멜로디, 그리고 가사 줄마다 노래 한 번.
 // 결과는 { beat, dur, inst, vel, midi?, notes? } 목록이다. 소리를 내지 않는 순수 함수라 검사할 수 있다.
 import { thirdBelow } from './score.mjs';
 
@@ -136,12 +136,13 @@ export function arrange(score) {
 
   for (const melody of score.notes) {
     if (!melody.sung) { note(melody.beat, melody.dur, 'lead', melody.style === 'outro' ? 1 : 0.8, melody.midi); continue; }
-    note(melody.beat, melody.dur, 'vox', 0.9, melody.midi);
-    // 2절 후렴 뒷부분과 마지막 후렴은 3도 아래 화음을 함께 부른다
+    // 2절 후렴 뒷부분과 마지막 후렴은 3도 아래 화음을 악기로 받쳐 준다
     if (melody.style === 'final' || (melody.section === 'chorus2' && melody.beat >= harmonyFrom)) {
       note(melody.beat, melody.dur, 'harm', 0.8, thirdBelow(melody.midi, melody.key));
     }
   }
+  // 가사 한 줄 = 노래 한 번. 누가 부를지는 연주할 때 정한다(singers.mjs)
+  for (const line of score.lines) add(line.startBeat, line.endBeat - line.startBeat, 'sing', 1, { line: line.index, section: line.section });
 
   events.sort((a, b) => a.beat - b.beat);
   return events;

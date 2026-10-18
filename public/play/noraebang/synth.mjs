@@ -1,5 +1,7 @@
 // Web Audio 로 반주를 연주한다. 미리 0.2초씩 앞서 음을 예약하고, 멈추면 예약한 음을 모두 끊는다.
 import { arrange } from './arrange.mjs';
+import { singLine } from './voice.mjs';
+import { singersFor, harmonyPart } from './singers.mjs';
 
 const freq = (midi) => 440 * 2 ** ((midi - 69) / 12);
 
@@ -25,7 +27,8 @@ export class Synth {
     this.ctx = null;
     this.playing = false;
     this.position = 0; // 멈춰 있을 때의 박자 위치
-    this.guide = true;
+    this.mode = 'duet'; // 누가 노래하나: duet, pink, blue, off
+    this.singing = [];
     this.lookahead = 0.2; // 몇 초 앞까지 미리 예약할지. 탭이 숨으면 타이머가 느려지니 늘린다
     this.listeners = new Set();
   }
@@ -87,6 +90,9 @@ export class Synth {
     if (this.cursor < 0) this.cursor = this.events.length;
     this.playing = true;
     this.pending = [];
+    // 줄 가운데로 건너뛰었으면 그 줄의 남은 글자부터 부른다
+    const inside = this.score.lines.find((line) => line.startBeat < this.startBeat && line.endBeat > this.startBeat);
+    if (inside) this.sing(inside.index, this.startBeat, (beat) => this.startTime + (beat - this.startBeat) * this.score.beatSec);
     this.tick();
     clearInterval(this.timer);
     this.timer = setInterval(() => this.tick(), 25);
@@ -114,6 +120,7 @@ export class Synth {
     this.delaySend = ctx.createGain(); this.delaySend.connect(this.delay);
     this.voices = new Set();
     this.shared = new Map();
+    this.singing = [];
   }
 
   sharedNode(key, make) {
@@ -139,9 +146,9 @@ export class Synth {
     const horizon = this.beat + this.lookahead / this.score.beatSec;
     while (this.cursor < this.events.length && this.events[this.cursor].beat < horizon) {
       const event = this.events[this.cursor++];
-      if (event.inst === 'vox' && !this.guide) continue;
       const time = this.startTime + (event.beat - this.startBeat) * this.score.beatSec;
-      this.voice(event, Math.max(time, this.ctx.currentTime), event.dur * this.score.beatSec);
+      if (event.inst === 'sing') this.sing(event.line, 0, (beat) => this.startTime + (beat - this.startBeat) * this.score.beatSec);
+      else this.voice(event, Math.max(time, this.ctx.currentTime), event.dur * this.score.beatSec);
       if (this.listeners.size) this.pending.push({ at: time, event });
     }
     const now = this.ctx.currentTime;
@@ -155,9 +162,37 @@ export class Synth {
   renderAll(ctx, keep = () => true, fromBeat = 0) {
     this.ensure(ctx);
     this.session(ctx);
+    const timeOf = (beat) => 0.05 + (beat - fromBeat) * this.score.beatSec;
     for (const event of this.events) {
-      if (event.inst === 'vox' && !this.guide) continue;
-      if (event.beat >= fromBeat && keep(event)) this.voice(event, 0.05 + (event.beat - fromBeat) * this.score.beatSec, event.dur * this.score.beatSec);
+      if (event.beat < fromBeat || !keep(event)) continue;
+      if (event.inst === 'sing') this.sing(event.line, 0, timeOf);
+      else this.voice(event, timeOf(event.beat), event.dur * this.score.beatSec);
+    }
+  }
+
+  // 가사 한 줄을 지금 고른 가수(들)가 부른다
+  sing(lineIndex, fromBeat, timeOf) {
+    const line = this.score.lines[lineIndex];
+    const syllables = line.syllables.filter((syllable) => syllable.beat >= fromBeat - 1e-6);
+    if (!syllables.length) return;
+    const singers = singersFor(this.mode, line.section);
+    this.singing = this.singing.filter((voice) => voice.end > this.ctx.currentTime);
+    for (const singer of singers) {
+      const voice = singLine(this, { syllables, singer, harmony: harmonyPart(this.mode, line.section, singer), key: line.key, level: singers.length > 1 ? 0.72 : 1, timeOf });
+      this.singing.push({ ...voice, section: line.section });
+    }
+  }
+
+  setMode(mode) {
+    this.mode = mode;
+    if (!this.ctx) return;
+    // 지금 부르던 가수가 빠지면 바로 조용히
+    const now = this.ctx.currentTime;
+    for (const voice of this.singing) {
+      if (voice.end > now && !singersFor(mode, voice.section).includes(voice.singer)) {
+        voice.out.gain.cancelScheduledValues(now);
+        voice.out.gain.setTargetAtTime(0, now, 0.03);
+      }
     }
   }
 
@@ -236,25 +271,6 @@ export class Synth {
   voice(event, time, dur) {
     const ctx = this.ctx, v = event.vel;
     switch (event.inst) {
-      case 'vox': {
-        // 가이드 멜로디: 부드러운 사각파 + 삼각파, 길게 끌면 비브라토
-        const f = freq(event.midi);
-        const { gain, end } = this.envelope(time, dur * 0.92, 0.36 * v, { attack: 0.02, decay: 0.2, sustain: 0.75, release: 0.1 });
-        const lp = this.filter('lowpass', 3000);
-        lp.connect(gain);
-        const a = this.osc(this.pulse40, f, time, end, lp);
-        const b = this.osc('triangle', f, time, end, lp, 4);
-        if (dur > 0.3) {
-          const lfo = ctx.createOscillator(), depth = ctx.createGain();
-          lfo.frequency.value = 5.6;
-          depth.gain.setValueAtTime(0, time);
-          depth.gain.linearRampToValueAtTime(f * 0.012, time + Math.min(dur, 0.6));
-          lfo.connect(depth); depth.connect(a.frequency); depth.connect(b.frequency);
-          this.track(lfo, time, end);
-        }
-        this.send(gain, 0.28, 0.16);
-        break;
-      }
       case 'harm': {
         const { gain, end } = this.envelope(time, dur * 0.92, 0.12 * v, { attack: 0.03, decay: 0.2, sustain: 0.8, release: 0.12 });
         this.osc('triangle', freq(event.midi), time, end, gain);

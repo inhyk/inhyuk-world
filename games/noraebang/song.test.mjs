@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { SECTIONS } from '../../public/play/noraebang/song.mjs';
 import { compileSong, parseNotes, parseChord, thirdBelow, midiOf, lineIndexAt } from '../../public/play/noraebang/score.mjs';
 import { arrange } from '../../public/play/noraebang/arrange.mjs';
+import { pronounce, decompose } from '../../public/play/noraebang/hangul.mjs';
+import { singersFor, harmonyPart, SINGERS } from '../../public/play/noraebang/singers.mjs';
 
 const score = compileSong();
 
@@ -65,7 +67,7 @@ test('반주는 노래 안에서만 울리고 구간마다 악기가 있다', ()
   for (const event of events) {
     assert.ok(event.beat >= 0 && event.beat < score.totalBeats, `${event.inst} @${event.beat}`);
     assert.ok(event.vel > 0 && event.vel <= 1.2, `${event.inst} vel ${event.vel}`);
-    if (['vox', 'harm', 'lead', 'bass', 'arp', 'bell'].includes(event.inst)) assert.ok(Number.isFinite(event.midi), event.inst);
+    if (['harm', 'lead', 'bass', 'arp', 'bell'].includes(event.inst)) assert.ok(Number.isFinite(event.midi), event.inst);
     if (['pad', 'pluck'].includes(event.inst)) assert.ok(event.notes.length >= 3, event.inst);
   }
   for (const section of score.sections) {
@@ -73,6 +75,33 @@ test('반주는 노래 안에서만 울리고 구간마다 악기가 있다', ()
     assert.ok(inside.some((e) => e.inst === 'kick'), `${section.id} 킥`);
     assert.ok(inside.some((e) => e.inst === 'pad' || e.inst === 'pluck'), `${section.id} 화음`);
   }
-  const vox = events.filter((e) => e.inst === 'vox');
-  assert.equal(vox.length, score.notes.filter((n) => n.sung).length);
+  const sing = events.filter((e) => e.inst === 'sing');
+  assert.equal(sing.length, score.lines.length);
+  sing.forEach((event) => assert.equal(event.beat, score.lines[event.line].startBeat));
+});
+
+const said = (text) => pronounce(text).map((s) => (s.onset ?? '') + s.vowel + (s.coda ?? '')).join(' ');
+
+test('가사를 소리 나는 대로 바꾼다', () => {
+  assert.deepEqual(decompose('한'), { onset: 'ㅎ', vowel: 'ㅏ', coda: 'ㄴ' });
+  assert.equal(said('손을'), 'ㅅㅗ ㄴㅡㄹ'); // 연음
+  assert.equal(said('괜찮아'), 'ㄱㅙㄴ ㅊㅏ ㄴㅏ'); // ㄶ + ㅇ
+  assert.equal(said('같이'), 'ㄱㅏ ㅊㅣ'); // 구개음화
+  assert.equal(said('잊지'), 'ㅣㄷ ㅉㅣ'); // 된소리
+  assert.equal(said('됐니'), 'ㄷㅙㄴ ㄴㅣ'); // 콧소리
+  assert.equal(said('없어'), 'ㅓㅂ ㅆㅓ');
+  assert.equal(said('않을게'), 'ㅏ ㄴㅡㄹ ㄲㅔ');
+  assert.equal(said('손을 올리면'), 'ㅅㅗ ㄴㅡㄹ ㅗㄹ ㄹㅣ ㅁㅕㄴ'); // 띄어쓰기를 넘어 연음하지 않는다
+  for (const line of score.lines) for (const syllable of line.syllables) assert.ok(syllable.sound.vowel, syllable.char);
+});
+
+test('누가 어디를 부르나', () => {
+  assert.deepEqual(singersFor('duet', 'verse1'), ['pink']);
+  assert.deepEqual(singersFor('duet', 'verse2'), ['blue']);
+  assert.deepEqual(singersFor('duet', 'chorus1'), ['pink', 'blue']);
+  assert.deepEqual(singersFor('blue', 'bridge'), ['blue']);
+  assert.deepEqual(singersFor('off', 'chorus1'), []);
+  assert.equal(harmonyPart('duet', 'final', 'blue'), true);
+  assert.equal(harmonyPart('blue', 'final', 'blue'), false);
+  assert.equal(SINGERS.blue.shift, -12);
 });

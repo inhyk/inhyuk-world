@@ -63,7 +63,7 @@ export class Sky {
     if (this.notes.length > 40) this.notes.shift();
   }
 
-  draw({ beat, style, spectrum, playing }) {
+  draw({ beat, style, spectrum, playing, mouths = [null, null] }) {
     const now = performance.now(), dt = Math.min(0.05, (now - this.lastTime) / 1000);
     this.lastTime = now;
     const ctx = this.ctx, w = this.canvas.width, h = this.canvas.height, t = now / 1000;
@@ -144,8 +144,8 @@ export class Sky {
 
     // 젤리 친구들
     const ground = Math.round(h * 0.62);
-    this.jelly(Math.round(w * 0.14), ground, beat, energy, playing, '#ff4fa3', '#ffb3d6', 0);
-    this.jelly(Math.round(w * 0.86), ground, beat + 0.5, energy, playing, '#3ee8ff', '#b8f6ff', 1);
+    this.jelly(Math.round(w * 0.14), ground, beat, energy, playing, '#ff4fa3', '#ffb3d6', 0, mouths[0]);
+    this.jelly(Math.round(w * 0.86), ground, beat + 0.5, energy, playing, '#3ee8ff', '#b8f6ff', 1, mouths[1]);
 
     // 음표
     for (const note of this.notes) {
@@ -175,8 +175,16 @@ export class Sky {
     }
   }
 
-  jelly(cx, ground, beat, energy, playing, body, shine, side) {
+  jelly(cx, ground, beat, energy, playing, body, shine, side, mouth) {
     const ctx = this.ctx;
+    // 노래하는 젤리 발밑에 조명
+    if (mouth !== null) {
+      const light = ctx.createRadialGradient(cx, ground, 2, cx, ground, 34);
+      light.addColorStop(0, rgb(hex(body), 0.45));
+      light.addColorStop(1, rgb(hex(body), 0));
+      ctx.fillStyle = light;
+      ctx.fillRect(cx - 34, ground - 34, 68, 40);
+    }
     const phase = playing ? ((beat % 1) + 1) % 1 : 0.5;
     const hop = playing ? Math.sin(Math.PI * phase) * (3 + energy * 7) : Math.sin(performance.now() / 600 + side) * 1.5 + 1.5;
     const squash = playing ? Math.max(0, 1 - phase * 5) * 0.28 * energy : 0;
@@ -204,9 +212,17 @@ export class Sky {
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.fillRect(cx - 8, eyeY + 3, 2, 1);
     ctx.fillRect(cx + 6, eyeY + 3, 2, 1);
-    // 노래하는 입
+    // 입: 노래할 땐 모음만큼 벌리고, 아니면 작게 웃는다
     ctx.fillStyle = '#1a1145';
-    const open = playing ? 1 + Math.round(Math.abs(Math.sin(Math.PI * phase * 2)) * 1.5) : 1;
-    ctx.fillRect(cx - 1, eyeY + 3, 2, open);
+    if (mouth !== null) {
+      const tall = 1 + Math.round(mouth * 4), wide = 2 + Math.round(mouth * 2);
+      ctx.fillRect(cx - Math.floor(wide / 2), eyeY + 3, wide, tall);
+      ctx.fillStyle = '#ff7a9c';
+      if (tall > 2) ctx.fillRect(cx - Math.floor(wide / 2) + 1, eyeY + 3 + tall - 1, Math.max(1, wide - 2), 1);
+    } else {
+      ctx.fillRect(cx - 2, eyeY + 3, 1, 1);
+      ctx.fillRect(cx - 1, eyeY + 4, 2, 1);
+      ctx.fillRect(cx + 1, eyeY + 3, 1, 1);
+    }
   }
 }

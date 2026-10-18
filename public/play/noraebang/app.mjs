@@ -1,7 +1,9 @@
-// 인혁 노래방: 재생 조작, 노래방 가사(위아래 두 줄, 글자마다 색 채우기), 가사 전체 보기.
+// 인혁 노래방: 재생 조작, 노래방 가사(위아래 두 줄, 글자마다 색 채우기), 젤리 가수 고르기, 가사 전체 보기.
 import { compileSong, sectionAt, chordAt } from './score.mjs';
 import { Synth } from './synth.mjs';
 import { Sky } from './sky.mjs';
+import { SINGERS, MODES, singersFor } from './singers.mjs';
+import { mouthOpen } from './hangul.mjs';
 
 const score = compileSong();
 const synth = new Synth(score);
@@ -15,9 +17,24 @@ const SHOW_LYRICS_FROM = firstLine.startBeat - 8;
 $('total').textContent = formatTime(score.duration);
 $('meta').textContent = `${score.bpm} BPM · ${formatTime(score.duration)}`;
 
+// ---- 누가 부르나 ----
+
+const BOTH_COLOR = '#ffd84d';
+const lineSingers = (line) => singersFor(synth.mode, line.section);
+function lineColor(line, rowNumber) {
+  const singers = lineSingers(line);
+  if (singers.length === 2) return BOTH_COLOR;
+  if (singers.length === 1) return SINGERS[singers[0]].color;
+  return rowNumber ? SINGERS.blue.color : SINGERS.pink.color;
+}
+function lineWho(line) {
+  const singers = lineSingers(line);
+  return singers.length === 2 ? '둘이 같이' : singers.length === 1 ? SINGERS[singers[0]].name : '';
+}
+
 // ---- 가사 줄 ----
 
-const rows = [0, 1].map((n) => ({ n, el: $(`row${n}`), lineEl: $(`row${n}`).querySelector('.line'), dots: $(`dots${n}`), index: null, spans: [], positions: [], width: 0, popped: -1 }));
+const rows = [0, 1].map((n) => ({ n, el: $(`row${n}`), lineEl: $(`row${n}`).querySelector('.line'), tag: $(`row${n}`).querySelector('.tag'), dots: $(`row${n}`).querySelector('.dots'), who: $(`row${n}`).querySelector('.who'), index: null, spans: [], positions: [], width: 0, popped: -1 }));
 
 function renderRow(row, index) {
   row.index = index;
@@ -26,7 +43,10 @@ function renderRow(row, index) {
   row.lineEl.style.fontSize = '';
   row.spans = [];
   const line = score.lines[index];
+  row.who.textContent = line ? lineWho(line) : '';
   if (!line) { row.base = row.fill = null; return; }
+  const color = lineColor(line, row.n);
+  row.who.style.background = color;
   const base = document.createElement('span'), fill = document.createElement('span');
   base.className = 'base';
   fill.className = 'fill';
@@ -37,6 +57,7 @@ function renderRow(row, index) {
     base.append(b);
     fill.append(f);
   }
+  fill.style.color = color;
   row.lineEl.append(base, fill);
   row.base = base;
   row.fill = fill;
@@ -75,12 +96,16 @@ function updateRow(row, beat, current) {
     for (let i = row.popped + 1; i <= k; i++) {
       for (const span of row.spans[i]) { span.classList.remove('pop'); void span.offsetWidth; span.classList.add('pop'); }
     }
-    sky.spawnNote(row.n);
+    const singers = lineSingers(line);
+    if (singers.length) singers.forEach((singer) => sky.spawnNote(SINGERS[singer].side));
+    else sky.spawnNote(row.n);
   }
   row.popped = Math.max(row.popped, k);
   // 다 부른 줄은 조금 쉬면 흐리게
   const done = row.index === current && beat > line.endBeat + 2;
-  row.lineEl.style.opacity = beat < SHOW_LYRICS_FROM ? '0' : done ? '0.35' : '1';
+  const opacity = beat < SHOW_LYRICS_FROM ? '0' : done ? '0.35' : '1';
+  row.lineEl.style.opacity = opacity;
+  row.tag.style.opacity = opacity;
 }
 
 function countdown(row, beat, previous) {
@@ -124,6 +149,11 @@ for (const [title, ids] of BLOCKS) {
   }
   $('sheet').append(block);
 }
+
+function paintSheet() {
+  score.lines.forEach((line) => { sheetButtons[line.index].style.borderLeftColor = lineSingers(line).length ? lineColor(line, 0) : 'transparent'; });
+}
+paintSheet();
 
 // ---- 진행 막대 ----
 
@@ -180,18 +210,29 @@ function togglePlay() {
 
 function nudge(seconds) { seekTo(synth.beat + seconds / score.beatSec); }
 
-function toggleGuide() {
-  synth.guide = !synth.guide;
-  $('guide').setAttribute('aria-pressed', String(synth.guide));
-  $('guide').textContent = synth.guide ? '🎤 멜로디 켬' : '🎤 멜로디 끔';
-  $('tip').textContent = synth.guide ? '멜로디를 끄면 반주만 나와. 그때는 내가 직접 불러 보자!' : '지금은 반주만 나와. 가사 색이 바뀌는 대로 불러 봐!';
+const TIPS = {
+  duet: '1절은 핑크 젤리, 2절은 파랑 젤리, 후렴은 둘이 같이 불러!',
+  pink: '핑크 젤리가 처음부터 끝까지 혼자 불러.',
+  blue: '파랑 젤리가 한 옥타브 낮은 목소리로 혼자 불러.',
+  off: '지금은 반주만 나와. 가사 색이 바뀌는 대로 직접 불러 봐!',
+};
+
+function nextSinger() {
+  const index = MODES.findIndex((mode) => mode.id === synth.mode);
+  const mode = MODES[(index + 1) % MODES.length];
+  synth.setMode(mode.id);
+  $('singer').textContent = `🎤 ${mode.label}`;
+  $('singer').dataset.mode = mode.id;
+  $('tip').textContent = TIPS[mode.id];
+  rows.forEach((row) => { row.index = null; });
+  paintSheet();
 }
 
 $('play').addEventListener('click', togglePlay);
 $('bigplay').addEventListener('click', () => startAt(0));
 $('again').addEventListener('click', () => startAt(0));
 $('restart').addEventListener('click', () => startAt(0));
-$('guide').addEventListener('click', toggleGuide);
+$('singer').addEventListener('click', nextSinger);
 
 window.addEventListener('keydown', (event) => {
   if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -199,7 +240,7 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'Space' && !onButton) { event.preventDefault(); togglePlay(); }
   else if (event.code === 'ArrowLeft') { event.preventDefault(); nudge(-5); }
   else if (event.code === 'ArrowRight') { event.preventDefault(); nudge(5); }
-  else if (event.code === 'KeyG') toggleGuide();
+  else if (event.code === 'KeyG') nextSinger();
   else if (event.code === 'KeyR') startAt(0);
 });
 
@@ -214,6 +255,16 @@ new ResizeObserver(() => rows.forEach(measureRow)).observe($('stage'));
 document.fonts?.ready.then(() => rows.forEach(measureRow));
 
 // ---- 매 화면 ----
+
+// 젤리 입 크기: 지금 부르는 글자의 모음만큼 벌린다. 안 부르는 젤리는 null
+function mouths(beat, current) {
+  const result = [null, null];
+  const line = score.lines[current];
+  if (!line || beat > line.endBeat + 0.05) return result;
+  const syllable = line.syllables.find((s) => beat >= s.beat - 0.05 && beat < s.beat + s.dur * 0.92);
+  for (const singer of lineSingers(line)) result[SINGERS[singer].side] = syllable ? mouthOpen(syllable.sound.vowel) : 0.08;
+  return result;
+}
 
 let spectrum = null, lastSheet = -2, lastSection = '', lastChord = '';
 
@@ -268,11 +319,11 @@ function frame() {
     spectrum ??= new Uint8Array(synth.analyser.frequencyBinCount);
     synth.analyser.getByteFrequencyData(spectrum);
   }
-  sky.draw({ beat, style: section.style, spectrum: synth.playing ? spectrum : null, playing: synth.playing });
+  sky.draw({ beat, style: section.style, spectrum: synth.playing ? spectrum : null, playing: synth.playing, mouths: synth.playing ? mouths(beat, current) : [null, null] });
   requestAnimationFrame(frame);
 }
 
 requestAnimationFrame(frame);
 
 // 검사 도구가 상태를 읽을 수 있게 열어 둔다
-window.noraebang = { score, synth, startAt, seekTo, toggleGuide, get beat() { return synth.beat; } };
+window.noraebang = { score, synth, startAt, seekTo, nextSinger, get beat() { return synth.beat; } };

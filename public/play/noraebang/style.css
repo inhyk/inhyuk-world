@@ -84,10 +84,13 @@ button:focus-visible, .track:focus-visible, .sheet-line:focus-visible { outline:
 .line .s { display: inline-block; }
 .line .s.pop { animation: pop 0.25s ease-out; }
 @keyframes pop { 40% { transform: translateY(-0.12em) scale(1.08); } }
-.dots { position: absolute; top: -0.9em; display: flex; gap: 6px; font-size: 14px; color: var(--yellow); text-shadow: 0 2px 0 #000a; letter-spacing: 2px; }
-.row.right .dots { right: 0; }
+.tag { position: absolute; top: -1.05em; display: flex; align-items: center; gap: 8px; font-family: var(--pixel); font-weight: normal; font-size: 13px; line-height: 1.4; transition: opacity 0.25s ease; }
+.row.right .tag { right: 0; flex-direction: row-reverse; }
+.who { color: #1a1145; border-radius: 999px; padding: 0 8px; box-shadow: 0 2px 0 #0007; }
+.who:empty { display: none; }
+.dots { color: var(--yellow); text-shadow: 0 2px 0 #000a; letter-spacing: 2px; }
 
-.controls { display: grid; grid-template-areas: 'play time guide restart'; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center; background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 10px 12px; }
+.controls { display: grid; grid-template-areas: 'play time singer restart'; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center; background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 10px 12px; }
 .play { grid-area: play; width: 52px; height: 52px; border-radius: 50%; border: 3px solid #fff; background: var(--pink); font-size: 20px; box-shadow: 0 4px 0 #8f1f63; }
 .play:active { transform: translateY(3px); box-shadow: 0 1px 0 #8f1f63; }
 .timeline { grid-area: time; display: grid; gap: 4px; min-width: 0; }
@@ -104,10 +107,12 @@ button:focus-visible, .track:focus-visible, .sheet-line:focus-visible { outline:
 .knob { position: absolute; top: -2px; bottom: -2px; width: 4px; margin-left: -2px; background: #fff; box-shadow: 0 0 10px #fff; pointer-events: none; }
 .times { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
 .toggle { border: 2px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 10px 14px; white-space: nowrap; }
-#guide { grid-area: guide; }
+#singer { grid-area: singer; min-width: 150px; }
 #restart { grid-area: restart; }
 .toggle:hover { border-color: #fff6; }
-.toggle[aria-pressed='false'] { color: var(--yellow); border-color: var(--yellow); }
+.toggle[data-mode='off'] { color: var(--yellow); border-color: var(--yellow); }
+.toggle[data-mode='pink'] { border-color: var(--pink); }
+.toggle[data-mode='blue'] { border-color: var(--cyan); }
 
 .tip { margin: -2px 4px 0; color: var(--muted); font-size: 13px; }
 .help { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: 12px; padding: 0 4px; }
@@ -119,7 +124,7 @@ kbd { font-family: var(--pixel); background: var(--panel-2); border: 1px solid v
 .sheet-body { columns: 2 280px; column-gap: 28px; }
 .sheet-block { break-inside: avoid; margin: 0 0 14px; }
 .sheet-block h3 { margin: 0 0 4px; font-size: 12px; font-weight: normal; color: var(--cyan); letter-spacing: 2px; }
-.sheet-line { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 3px 8px; margin: 0 -8px; border-radius: 8px; font-family: var(--lyric); font-weight: 700; font-size: 16px; color: var(--ink); }
+.sheet-line { display: block; width: 100%; text-align: left; border: 0; border-left: 4px solid transparent; background: none; padding: 3px 8px; margin: 0 -8px; border-radius: 8px; font-family: var(--lyric); font-weight: 700; font-size: 16px; color: var(--ink); }
 .sheet-line:hover { background: var(--panel-2); }
 .sheet-line.now { background: #ff4fa333; color: #fff; }
 
@@ -130,7 +135,7 @@ footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6p
   .brand { font-size: 15px; }
   .state { display: none; }
   .stage { height: clamp(360px, 58vh, 520px); border-radius: 14px; }
-  .controls { grid-template-areas: 'play time time' 'guide guide restart'; grid-template-columns: auto 1fr auto; }
+  .controls { grid-template-areas: 'play time time' 'singer singer restart'; grid-template-columns: auto 1fr auto; }
   .help { display: none; }
   .segments span { font-size: 0; }
 }

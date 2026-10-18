@@ -1,4 +1,4 @@
-// 인혁 노래방 브라우저 검사: 실제 페이지에서 재생, 이동, 멜로디 끄기, 가사 눌러 이동, 끝 화면을 확인한다.
+// 인혁 노래방 브라우저 검사: 실제 페이지에서 재생, 이동, 가수 바꾸기, 가사 눌러 이동, 끝 화면을 확인한다.
 // 실행: node games/noraebang/browser-check.mjs [스크린샷 폴더]   (tools/node_modules 의 playwright 를 사용)
 import { chromium } from '../../tools/node_modules/playwright/index.mjs';
 import assert from 'node:assert/strict';
@@ -45,13 +45,25 @@ try {
     assert.ok(verse.includes('키보드 위에 손을 올리면'), verse.join(' / '));
     const clip = await page.evaluate(() => document.querySelector('#row0 .fill').style.clipPath);
     assert.match(clip, /inset\(-20px [\d.]+px/);
+    // 1절은 핑크 젤리가 부르고, 목소리가 실제로 만들어진다
+    assert.equal(await page.textContent('#row0 .who'), '핑크 젤리');
+    const voices = await page.evaluate(() => window.noraebang.synth.singing.map((v) => v.singer));
+    assert.ok(voices.includes('pink'), `노래하는 가수: ${voices}`);
     await shot(page, `${name}-verse`);
 
-    // 멜로디 끄기
-    await page.click('#guide');
-    assert.equal(await page.evaluate(() => window.noraebang.synth.guide), false);
-    assert.match(await page.textContent('#guide'), /끔/);
-    await page.click('#guide');
+    // 가수 바꾸기: 둘이 → 핑크 → 파랑 → 반주만 → 둘이
+    const modes = [];
+    for (let i = 0; i < 4; i++) {
+      await page.click('#singer');
+      modes.push(await page.evaluate(() => window.noraebang.synth.mode));
+    }
+    assert.deepEqual(modes, ['pink', 'blue', 'off', 'duet']);
+    await page.evaluate(() => window.noraebang.seekTo(81));
+    await page.waitForTimeout(500);
+    assert.equal(await page.textContent('#row0 .who'), '둘이 같이');
+    const chorusVoices = await page.evaluate(() => window.noraebang.synth.singing.filter((v) => v.end > window.noraebang.synth.ctx.currentTime).map((v) => v.singer).sort());
+    assert.deepEqual(chorusVoices, ['blue', 'pink'], '후렴 가운데로 건너뛰어도 둘이 이어서 불러야 함');
+    await shot(page, `${name}-chorus`);
 
     // 가사 전체 보기에서 줄을 누르면 그 줄 조금 앞부터
     const bridgeLine = page.locator('.sheet-line', { hasText: '언젠가 어른이 되어도' });
