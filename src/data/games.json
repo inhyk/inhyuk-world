@@ -1,5 +1,29 @@
 [
   {
+    "slug": "pixelcraft",
+    "title": "픽셀크래프트 · 2D 마인크래프트",
+    "description": "나무를 캐고 곡괭이를 만들어 동굴 속 다이아몬드까지! 밤에는 좀비·크리퍼가 나와요.",
+    "longDescription": "옆에서 보는 2D 마인크래프트입니다. 매번 다른 세계가 만들어지고 초원·숲·사막·눈 덮인 숲, 구불구불한 동굴, 바다와 깊은 곳의 용암이 펼쳐집니다. 나무를 베면 통째로 쓰러지고, 가방의 \"만들 수 있는 것\" 목록을 누르면 나무 판자·제작대·곡괭이를 바로 만들 수 있어요(2x2·3x3 조합 칸도 그대로 있어요). 돌·석탄·철·금·레드스톤·다이아몬드 광석은 맞는 곡괭이로 캐야 나오고, 화로에서 철을 굽고 고기를 익힙니다. 낮과 밤이 10분마다 바뀌고, 밤이나 어두운 동굴에는 좀비·스켈레톤·크리퍼·거미가 나타나며, 돼지·소·양·닭은 고기와 양털을 줍니다. 횃불은 동굴을 밝히고 손에 들고만 있어도 주변이 환해져요. 물과 용암은 흐르고 만나면 흑요석이 되며, TNT는 진짜로 땅을 날립니다. 침대에서 자면 아침이 되고, 상자·문·사다리·활과 화살·나침반·시계·황금 사과도 있어요. 서바이벌(평화로움·보통·어려움)과 날 수 있는 크리에이티브 모드, 세계 3칸 자동 저장, 처음 하는 사람을 위한 길잡이, PC와 휴대폰 터치 조작을 지원합니다. 그림과 소리는 모두 코드로 만들었습니다.",
+    "emoji": "⛏️",
+    "thumbnail": "/images/games/pixelcraft-thumb.png",
+    "screenshots": [
+      "/images/games/pixelcraft-thumb.png",
+      "/images/games/pixelcraft-1.png",
+      "/images/games/pixelcraft-2.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "샌드박스",
+    "playUrl": "/play/pixelcraft",
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/pixelcraft",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 60
+  },
+  {
     "slug": "crabcraft",
     "title": "Crabcraft",
     "description": "친구와 세 섬을 탐험하는 게 로봇 RPG. 3·10·20·30레벨 보스, 코인 강화와 친구 구출의 춤추는 엔딩!",
