@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0820">
+  <title>인혁 노래방 · 인혁 월드로 와!</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23ff4fa3' d='M6 2h8v3H8v7a3 3 0 1 1-2-2.8z'/%3E%3C/svg%3E">
+  <link rel="preload" href="../undertale/fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <a href="/games" target="_top">← 게임 목록</a>
+      <strong class="brand"><i aria-hidden="true">♪</i> 인혁 노래방</strong>
+      <span class="state" id="state">대기 중</span>
+    </header>
+
+    <section class="stage" id="stage" aria-label="노래방 화면">
+      <canvas id="sky" aria-hidden="true"></canvas>
+      <div class="hud" aria-hidden="true"><span id="section">전주</span><span class="chord">코드 <b id="chord">C</b></span></div>
+      <div class="titlecard" id="titlecard">
+        <p class="eyebrow">인혁 월드 주제가</p>
+        <h1>인혁 월드로 와!</h1>
+        <p class="credit">작사·작곡 수영(AI) · <span id="meta">124 BPM</span></p>
+        <button class="bigplay" id="bigplay" type="button">▶ 노래 시작</button>
+      </div>
+      <div class="endcard" id="endcard" hidden>
+        <p>다 불렀어!</p>
+        <strong>짝짝짝 👏</strong>
+        <button class="bigplay" id="again" type="button">⟲ 다시 부르기</button>
+      </div>
+      <div class="lyrics" aria-hidden="true">
+        <div class="row" id="row0"><span class="dots" id="dots0"></span><div class="line"></div></div>
+        <div class="row right" id="row1"><span class="dots" id="dots1"></span><div class="line"></div></div>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="재생 조작">
+      <button class="play" id="play" type="button" aria-label="재생">▶</button>
+      <div class="timeline">
+        <div class="track" id="track" role="slider" tabindex="0" aria-label="노래 위치" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="segments" id="segments"></div>
+          <div class="progress" id="progress"></div>
+          <div class="knob" id="knob"></div>
+        </div>
+        <div class="times"><span id="time">0:00</span><span id="total">0:00</span></div>
+      </div>
+      <button class="toggle" id="guide" type="button" aria-pressed="true">🎤 멜로디 켬</button>
+      <button class="toggle" id="restart" type="button">⟲ 처음부터</button>
+    </section>
+
+    <p class="tip" id="tip">멜로디를 끄면 반주만 나와. 그때는 내가 직접 불러 보자!</p>
+
+    <section class="help" aria-label="키보드 조작">
+      <span><kbd>SPACE</kbd> 재생 · 멈춤</span><span><kbd>← →</kbd> 5초 이동</span><span><kbd>G</kbd> 멜로디 켜기 · 끄기</span><span><kbd>R</kbd> 처음부터</span>
+    </section>
+
+    <section class="sheet" aria-labelledby="sheet-title">
+      <h2 id="sheet-title">가사 <small>줄을 누르면 거기부터 불러</small></h2>
+      <div class="sheet-body" id="sheet"></div>
+    </section>
+
+    <footer><span>반주와 멜로디는 모두 브라우저에서 바로 만들어지는 합성 소리야.</span><span>인혁 월드 · seonn.dev</span></footer>
+  </main>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
