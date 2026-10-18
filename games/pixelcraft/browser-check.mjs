@@ -69,6 +69,16 @@ try {
   await shot('03-inventory');
   const planks = await ev(() => window.__pixelcraft.G.player.inv.filter((s) => s?.id === 17).reduce((n, s) => n + s.count, 0));
   assert.equal(planks, 4);
+  // 꾹 누른 채 끌어다 놓기로 판자를 가방 20번 칸으로 옮긴다
+  const plankSlot = await ev(() => window.__pixelcraft.G.player.inv.findIndex((s) => s?.id === 17));
+  const from = await page.locator(`[data-s="i:${plankSlot}"]`).boundingBox();
+  const to = await page.locator('[data-s="i:20"]').boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+  await page.mouse.up();
+  assert.equal(await ev(() => window.__pixelcraft.G.player.inv[20]?.id), 17, '끌어다 놓기');
+  assert.equal(await ev(() => window.__pixelcraft.UI.cursor), null);
   await page.keyboard.press('Escape');
 
   // 제작대를 놓고 오른쪽 클릭으로 열기

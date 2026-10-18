@@ -55,11 +55,15 @@ export function initUI(game, hooks) {
   api = hooks;
   buildHudIcons();
   const panel = $('panel');
+  // 눌러서 집고 다른 칸을 눌러 놓아도 되고, 꾹 누른 채 끌어다 놓아도 된다
+  let drag = null;
   panel.addEventListener('pointerdown', (e) => {
     const el = e.target.closest('[data-s]');
     if (el) {
       e.preventDefault();
+      const carrying = !!UI.cursor;
       clickSlot(el.dataset.s, e.button === 2 ? 2 : 0, e.shiftKey);
+      drag = !carrying && UI.cursor && !e.shiftKey ? { from: el.dataset.s, x: e.clientX, y: e.clientY } : null;
       sfx.click();
       renderPanel();
       return;
@@ -71,6 +75,24 @@ export function initUI(game, hooks) {
       return;
     }
     if (e.target.closest('[data-close]')) closePanel();
+  });
+  document.addEventListener('pointerup', (e) => {
+    const d = drag;
+    drag = null;
+    if (!d || !UI.open || !UI.cursor) return;
+    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 8) return;
+    // 터치는 누른 칸이 손을 뗄 때도 target 이라서, 손가락 아래 칸을 직접 찾는다
+    const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('#panel [data-s]');
+    const to = target?.dataset.s;
+    const backable = /^[igcf]:/.test(d.from);
+    if (to && to !== d.from && !to.startsWith('rb:') && to !== 'o') {
+      clickSlot(to, 0, false);
+      // 다른 물건과 자리를 바꿨거나 다 못 들어갔으면 남은 건 원래 칸으로
+      if (UI.cursor && backable) clickSlot(d.from, 0, false);
+    } else if (backable) clickSlot(d.from, 0, false);
+    else return;
+    sfx.click();
+    renderPanel();
   });
   panel.addEventListener('contextmenu', (e) => e.preventDefault());
   panel.addEventListener('pointermove', (e) => {
