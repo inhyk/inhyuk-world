@@ -147,6 +147,11 @@ function metalBlock(seed, base, light, dark) {
 }
 
 const BLOCK_ART = {
+  [B.END_STONE]: (p) => { p.fill(['#d7dba5','#c7ce94','#e4e4b3','#b3be83']); for(let k=0;k<12;k++) p.rect((k*7)%16,(k*11)%16,2,1,'#a1ac79'); },
+  [B.PURPUR]: (p) => { p.fill(['#9e789c','#a682a3','#8b678b']); p.line(0,0,15,0,'#c39dbd');p.line(0,8,15,8,'#6f516e');p.line(7,0,7,7,'#6f516e');p.line(3,8,3,15,'#6f516e'); },
+  [B.NETHERRACK]: (p) => { p.fill(['#743839', '#8e4746', '#633034', '#a14e46']); for(let k=0;k<8;k++) p.line(k*2, (k*7)%16, k*2+2, (k*7)%16+2, '#46252e'); },
+  [B.SOUL_SAND]: (p) => { p.fill(['#625043','#726052','#564538']); for(let k=0;k<4;k++){ const x=2+(k%2)*8,y=2+Math.floor(k/2)*8; p.rect(x,y,2,2,'#312e2b');p.rect(x+3,y,2,2,'#312e2b');p.rect(x+1,y+4,3,1,'#312e2b');} },
+  [B.GLOWSTONE]: (p) => { p.fill(['#e6aa51','#ffde83','#f3c664','#ba7834']); for(let k=0;k<12;k++) p.rect((k*7)%16,(k*11)%16,2,2,'#fff0b4'); },
   [B.GRASS]: (p) => {
     p.fill(PAL.dirt);
     for (let x = 0; x < S; x++) {
@@ -546,7 +551,17 @@ export function buildTextures() {
   for (const it of ITEMS) {
     if (!it) continue;
     let c = null;
-    if (it.tool) {
+    if (it.armor) {
+      const p = painter(it.id);
+      const shapes = [
+        ['..MMMMMM..', '.MLLLLLLM.', '.MM....MM.', '.MM....MM.', '.MM....MM.'],
+        ['MM....MM', 'MLM..MLM', 'MLMMMMMM', '.MLLLLM.', '.MMMMMM.', '.MMMMMM.'],
+        ['MMMMMMMM', 'MLLLLLLM', 'MMM..MMM', 'MLM..MLM', 'MMM..MMM', 'MMM..MMM'],
+        ['MMM..MMM', 'MLM..MLM', 'MLM..MLM', 'MMMM.MMMM', 'MMMM.MMMM'],
+      ];
+      p.map(shapes[it.armor.slot], { M: it.armor.color, L: '#f2fff4' }, 3, 4);
+      c = p.c; outline(c);
+    } else if (it.tool) {
       const p = painter(it.id);
       toolArt(p, it.tool.type, it.tool.mat);
       c = p.c;

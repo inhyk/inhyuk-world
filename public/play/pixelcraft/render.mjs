@@ -1,6 +1,7 @@
 // 화면 그리기: 하늘 → 뒷벽 → 블록 → 생물 → 물 → 빛 → 금·선택 칸 → 조각
 import { B, I, BLOCKS, ITEMS } from './data.mjs';
 import { W, H, noise1 } from './core.mjs';
+import { SKINS } from './adventure-world.mjs';
 import { tex, darkTex, icons, crack, fluidFrames } from './textures.mjs';
 
 const lightCanvas = document.createElement('canvas');
@@ -27,6 +28,23 @@ const css = (c) => `rgb(${c.map(Math.round).join(',')})`;
 const hash = (k) => Math.abs(Math.sin(k * 12.9898 + 78.233) * 43758.5453) % 1;
 
 function drawSky(g, G, cw, ch, view) {
+  if (G.adventure?.dimension === 'end') {
+    g.fillStyle = '#171528'; g.fillRect(0, 0, cw, ch);
+    for (let k = 0; k < 90; k++) { g.fillStyle = k % 3 ? '#8a7eaa' : '#d0bdde'; g.globalAlpha = 0.25 + k % 3 * 0.2; g.fillRect(((k * 137.3 - G.cam.x * 2) % cw + cw) % cw, (k * 71.7) % ch, 2, 2); }
+    g.globalAlpha = 1; return;
+  }
+  if (G.adventure?.dimension === 'nether') {
+    const grad = g.createLinearGradient(0, 0, 0, ch);
+    grad.addColorStop(0, '#1e1024'); grad.addColorStop(0.6, '#6b2d3a'); grad.addColorStop(1, '#c45d38');
+    g.fillStyle = grad; g.fillRect(0, 0, cw, ch);
+    for (let k = 0; k < 55; k++) {
+      g.fillStyle = k % 3 ? '#bd704c' : '#f0b970';
+      const x = ((k * 137.3 - G.cam.x * 8 + G.clock * 7) % cw + cw) % cw;
+      const y = ((k * 73.1 - G.clock * (5 + k % 4)) % ch + ch) % ch;
+      g.globalAlpha = 0.2 + (k % 3) * 0.1; g.fillRect(x, y, 2 + k % 2, 2 + k % 2);
+    }
+    g.globalAlpha = 1; return;
+  }
   const T = view.T;
   const n = (dayFactor(G.time) - 0.3) / 0.7;
   const dusk = Math.max(0, 1 - Math.abs(Math.sin(G.time * Math.PI * 2)) * 4);
@@ -140,8 +158,19 @@ export function render(g, G, cw, ch, T) {
     const s = T * 0.5;
     g.drawImage(ic, Math.round(sx(dr.x + 0.175) - s * 0.25 + T * 0.09), Math.round(sy(dr.y) + T * 0.35 - s * 0.6 + bob), Math.round(s), Math.round(s));
   }
+  G.drawAdventure?.(g, G, sx, sy, T);
+  for (const v of G.adventure?.villagers ?? []) {
+    if (Math.abs(v.x - G.cam.x) > view.viewW) continue;
+    const u = placeSprite(g, { ...v, face: G.player.x > v.x ? 1 : -1 }, sx, sy, T, 1.8);
+    humanoid(g, u, { skin: '#b88b67', shirt: ['#8b6647', '#55485a', '#4f7560'][v.shop], pants: '#413b37', hair: '#503b29', swing: 0, armAng: -0.6, pupil: '#305d41' });
+    box(g, u, 2, -28, 4, 3, '#b88b67');
+    g.restore();
+    g.font = `${Math.max(10, T * 0.22)}px Galmuri11`; g.textAlign = 'center'; g.fillStyle = '#ffe6a6';
+    g.fillText(['농부', '대장장이', '상인'][v.shop], sx(v.x + 0.3), sy(v.y - 0.25)); g.textAlign = 'start';
+  }
   for (const m of G.mobs) drawMob(g, G, m, sx, sy, T);
   drawPlayer(g, G, sx, sy, T);
+  if (G.adventure?.coop && G.companion && !G.companion.spectator) drawPlayer(g, { ...G, player: G.companion, dead: false }, sx, sy, T);
   for (const a of G.arrows) {
     const ang = Math.atan2(a.vy, a.vx);
     g.save();
@@ -242,9 +271,16 @@ function drawLight(g, G, x0, x1, y0, y1, sx, sy) {
         opaque[k] = 1;
         continue;
       }
-      let v = Math.max(w.sky[i] * day, w.blk[i]);
+      let v = Math.max(w.sky[i] * day, w.blk[i], G.adventure?.dimension === 'nether' ? 8 : G.adventure?.dimension === 'end' ? 7 : 0);
       if (w.sky[i] === 15 && !w.bg[i]) v = Math.max(v, 15 * (0.62 + 0.38 * day));
       L[k] = v;
+    }
+  }
+  for (const portal of G.adventure?.portals ?? []) {
+    if (Math.abs(portal.x - G.cam.x) > G.view.viewW) continue;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const k = r * cols + c;
+      if (!opaque[k]) L[k] = Math.max(L[k], 13 - Math.hypot(x0 + c - portal.x - 0.5, y0 + r - portal.y - 2) * 1.3);
     }
   }
   // 횃불·잭오랜턴·용암 양동이를 손에 들면 둘레가 밝아진다
@@ -380,12 +416,24 @@ function drawPlayer(g, G, sx, sy, T) {
   const walk = Math.abs(p.vx) > 0.3 ? Math.sin(p.walkT * 9) * 0.6 : 0;
   const swingArm = p.swing > 0 ? -1.6 + Math.sin(p.swing * Math.PI) * -0.9 : null;
   const held = G.heldId ? icons[G.heldId] : null;
+  const armor = (p.armor ?? []).map(s => s && ITEMS[s.id]?.armor?.color);
   humanoid(g, ux, {
-    skin: '#c69c7a', shirt: '#2fa6b4', pants: '#3a3aa8', hair: '#3b2a1a', swing: walk, armAng: swingArm ?? (held ? -0.5 + walk * -0.3 : null),
+    ...(SKINS[p.skin ?? 0] ?? SKINS[0]), swing: walk, armAng: swingArm ?? (held ? -0.5 + walk * -0.3 : null),
+    ...(armor[1] ? { shirt: armor[1], arm: armor[1] } : {}), ...(armor[2] ? { pants: armor[2] } : {}),
     tint: p.hurtT > 0.15 ? 'red' : null, held, pupil: '#3a5aa8',
   });
+  if (armor[0]) { box(g, ux, -5, -33, 10, 3, armor[0]); box(g, ux, -5, -30, 2, 5, armor[0]); box(g, ux, 4, -30, 1, 3, armor[0]); box(g, ux, -3, -33, 6, 1, '#f2fff4'); }
+  if (armor[1]) { box(g, ux, -3, -24, 6, 3, armor[1]); box(g, ux, -2, -22, 1, 7, '#f2fff4'); }
+  if (armor[3]) { box(g, ux, -3, -4, 7, 4, armor[3]); box(g, ux, -3, -4, 6, 1, '#f2fff4'); }
   if (p.fire > 0) flames(g, ux, G.clock);
   g.restore();
+  if (G.adventure?.coop) {
+    g.save(); g.font = `${Math.max(10, T * 0.23)}px Galmuri11`; g.textAlign = 'center';
+    const label = p === G.companion ? '2P · 동료' : `1P · ${G.adventure.name}`;
+    const x = sx(p.x + p.w / 2), y = sy(p.y - 0.3);
+    g.fillStyle = '#17232bcc'; g.fillRect(x - g.measureText(label).width / 2 - 5, y - T * 0.25, g.measureText(label).width + 10, T * 0.34);
+    g.fillStyle = p === G.companion ? '#ffd99c' : '#d7c2ff'; g.fillText(label, x, y); g.restore();
+  }
 }
 function flames(g, ux, clock) {
   for (let k = 0; k < 6; k++) {
@@ -404,6 +452,20 @@ function drawMob(g, G, m, sx, sy, T) {
   if (m.dead) g.rotate(Math.min(1.5, m.deadT * 4));
   const u = ux;
   switch (m.type) {
+    case 'summoner': {
+      const phase = m.phase ?? 1;
+      humanoid(g, u, { skin: '#5d975c', shirt: phase === 3 ? '#5c305d' : '#343452', pants: '#242338', hair: '#222637', swing: walk, armAng: -1.3, tint, eye: '#ecdfaf', pupil: '#f0bd59' });
+      box(g, u, -5, -34, 10, 3, '#d7ab52', tint);
+      for (let k = 0; k < 3; k++) box(g, u, -4 + k * 3, -37, 2, 4, '#f0ce73', tint);
+      box(g, u, 5, -25, 2, 24, '#6b4e3b', tint); box(g, u, 3, -29, 6, 6, '#b585ef', tint);
+      g.fillStyle = '#dec0ff'; g.globalAlpha = 0.55;
+      for (let k = 0; k < phase + 2; k++) {
+        const a = G.clock * 1.7 + k * Math.PI * 2 / (phase + 2);
+        g.fillRect(Math.cos(a) * 12 * u, (-20 + Math.sin(a) * 8) * u, 2 * u, 2 * u);
+      }
+      g.globalAlpha = 1;
+      break;
+    }
     case 'zombie':
       humanoid(g, u, { skin: '#4f8a3a', shirt: '#2a9aa8', pants: '#4a3a9a', swing: walk, armAng: -1.5, arm: '#4f8a3a', tint, eye: '#1a2a12', pupil: '#000000', mouth: '#2a3a1a' });
       break;

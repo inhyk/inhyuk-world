@@ -519,3 +519,72 @@ legend { font-size: 14px; margin-bottom: 6px; }
   .foot { display: none; }
   #newWorld { gap: 6px; padding: 12px; }
 }
+
+/* 숲의 비밀: 이야기와 모험 안내 */
+#newWorld { max-height: calc(100dvh - 24px); overflow-y: auto; }
+#newWorld select { min-height: 34px; border: 2px solid #666; padding: 5px 8px; background: #20231f; color: #f4e9c9; font: inherit; }
+#newWorld .coop-pick { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+#questHUD { position: fixed; top: 12px; left: 12px; z-index: 15; display: grid; gap: 5px; padding: 12px 15px; max-width: min(380px, calc(100vw - 24px)); color: #eee6d3; background: linear-gradient(125deg, #182724ee, #111a21dd); border: 1px solid #9aab7b66; border-left: 3px solid #ddbc71; box-shadow: 0 4px 20px #0004; font-size: 12px; pointer-events: none; }
+#worldLine { color: #ddc785; font-size: 13px; }
+#questHUD div { display: flex; gap: 8px; margin-top: 4px; }
+#questHUD button { pointer-events: auto; border: 1px solid #75806c; background: #263b32; color: #fff0c8; font: inherit; padding: 7px 10px; cursor: pointer; }
+#questHUD button.near { background: #637e41; border-color: #d8c786; }
+#hint { top: 128px; }
+#bossHUD { position: fixed; top: 15px; right: 20px; width: min(420px, 42vw); z-index: 16; color: #f0d8fa; text-align: center; font-size: 14px; text-shadow: 2px 2px #1e1427; }
+#bossHealth { display: block; appearance: none; width: 100%; height: 17px; margin-top: 7px; border: 2px solid #e2aeea; background: #211329; }
+#bossHealth::-webkit-progress-bar { background: #211329; }
+#bossHealth::-webkit-progress-value { background: linear-gradient(90deg,#7b448b,#c380d8,#f0c3ff); }
+#bossHealth::-moz-progress-bar { background: #bd79d0; }
+#questHUD button:focus-visible, #adventureDialog button:focus-visible { outline: 3px solid #ffe3a0; outline-offset: 3px; }
+#questHUD[hidden], #bossHUD[hidden] { display: none; }
+#questHUD ~ #adventureDialog { z-index: 55; }
+.story-dialog { color: #f5e9d6; background: linear-gradient(145deg, #233730, #17232a); border-color: #a5a57a; padding: 26px; box-shadow: 0 20px 80px #0008; gap: 16px; }
+.chapter { color: #d5b77c; font-size: 11px; letter-spacing: 2px; text-align: center; }
+#originalTitle { color: #ead7ae; }
+#adventureBody { display: grid; gap: 14px; }
+#adventureBody p { font-size: 14px; line-height: 1.85; }
+#adventureActions { display: grid; gap: 8px; }
+@media (max-width: 600px) { #questHUD { font-size: 10px; padding: 8px 10px; gap: 3px; max-width: calc(100vw - 24px); } #worldLine { font-size: 11px; } #bossHUD { top: 121px; right: 12px; width: calc(100vw - 24px); font-size: 12px; } #hint { top: 166px; font-size: 11px; } .story-dialog { padding: 17px; } #adventureBody p { font-size: 12px; } .logo h1 { font-size: clamp(24px, 7vw, 48px); } }
+
+#toasts { top: 190px; max-width: min(360px, 50vw); }
+.toast { font-size: 12px; }
+@media (max-width: 600px) { #toasts { top: 232px; left: 12px; max-width: calc(100vw - 24px); } .toast { font-size: 10px; padding: 5px 8px; } }
+@media (pointer: coarse) and (max-width: 600px) {
+  #touch .tops { top: 112px; }
+  #bossHUD { top: 157px; }
+  body:has(#bossHUD:not([hidden])) #hint { top: 201px; }
+  body:has(#bossHUD:not([hidden])) #toasts { top: 264px; }
+  #heldInfo { top: 112px; left: 12px; right: auto; max-width: 190px; }
+}
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  #questHUD { font-size: 10px; padding: 7px 10px; max-width: 290px; }
+  #worldLine { font-size: 11px; }
+  #questHUD button { padding: 5px 7px; }
+  #bossHUD { top: 62px; right: 12px; font-size: 11px; width: 300px; }
+  #hint { top: 115px; font-size: 10px; }
+  #toasts { top: 166px; max-width: 280px; }
+}
+
+.account-bar { display: flex; align-items: center; gap: 12px; padding: 12px; background: #10221de8; border: 2px solid #b5d288; margin-bottom: 12px; text-align: left; }
+.account-bar > div { flex: 1; min-width: 0; }
+.account-bar b { display: block; overflow-wrap: anywhere; font-size: 14px; color: #e8f4c9; }
+.account-bar small { display: block; margin-top: 6px; font-size: 10px; line-height: 1.6; color: #c4d5c7; }
+.account-bar .mc-btn { min-width: 90px; font-size: 12px; }
+#accountDialog { z-index: 70; overflow-y: auto; touch-action: pan-y; padding: 18px; }
+.account-dialog { width: min(440px, 100%); max-height: calc(100dvh - 36px); overflow-y: auto; touch-action: pan-y; text-align: left; }
+.account-dialog label { display: block; margin: 16px 0; }
+.account-dialog input { width: 100%; margin-top: 8px; font: inherit; font-size: 16px; padding: 12px; background: #202720; color: white; border: 2px solid #77816e; user-select: text; }
+.account-dialog p, .account-dialog small { font-size: 12px; line-height: 1.7; }
+.account-dialog .account-error { min-height: 40px; color: #86271d; font-weight: bold; }
+.account-switch { display: block; margin: 18px 0; border: 0; background: none; color: #254f31; text-decoration: underline; font: inherit; font-size: 13px; cursor: pointer; }
+@media (max-width: 500px) { .account-bar { padding: 8px; gap: 6px; } .account-bar .mc-btn { padding: 8px; min-width: 75px; } }
+.account-dialog { background: #242822; }
+.account-dialog .account-error { color: #ffb39e; }
+.account-switch { color: #bceba8; }
+.armor-rack { margin: 10px 0; padding: 8px 0; border-top: 2px solid #888; border-bottom: 2px solid #888; }
+.armor-line { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.armor-line > span { width: 83px; font-size: 12px; line-height: 1.6; }
+.armor-cell { text-align: center; }
+.armor-cell small, .armor-rack > small { display: block; font-size: 10px; margin-top: 3px; }
+.armor-hud { color: #ddf5ff; text-shadow: 1px 2px #111; font-size: 12px; text-align: left; margin-bottom: 5px; }
+@media (max-width: 500px) { .armor-line { gap: 5px; } .armor-line > span { width: 65px; font-size: 10px; } }

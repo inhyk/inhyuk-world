@@ -2,7 +2,7 @@
 // 브라우저 없이 node 로도 돌아가야 한다 (games/pixelcraft/core.test.mjs).
 import { B, BLOCKS, ITEMS, RECIPES, isSolid, maxStack } from './data.mjs';
 
-export const W = 640;
+export const W = 1280;
 export const H = 160;
 export const SEA = 70;
 export const BIOME = { PLAINS: 0, FOREST: 1, DESERT: 2, SNOW: 3 };

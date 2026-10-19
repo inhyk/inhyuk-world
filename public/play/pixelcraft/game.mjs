@@ -1,8 +1,12 @@
+import { absorbDamage } from './armor.mjs';
+import { account, saveKey, initAccount } from './account.mjs';
+import { newAdventure, packAdventure, unpackAdventure, createAdventureController } from './adventure.mjs';
+import { restoreTerrain, remapIndex } from './adventure-world.mjs';
 // 픽셀크래프트: 게임 진행, 입력, 생물, 저장
 import { B, I, BLOCKS, ITEMS, MOBS, HOSTILE, SMELT, SMELT_TIME, FUEL, isSolid, maxStack, durabilityOf } from './data.mjs';
 import {
   W, H, BIOME_NAMES, generateWorld, computeLight, stepFluid, wake, moveBody, collides, touching, solidAt,
-  addItem, countItem, breakInfo, rleEncode, rleDecode, findSpawn, seedFromText, makeRng, growTree, idx,
+  addItem, countItem, breakInfo, rleEncode, findSpawn, seedFromText, makeRng, growTree, idx,
 } from './core.mjs';
 import { buildTextures, avgColor } from './textures.mjs';
 import { render, dayFactor, isNight } from './render.mjs';
@@ -14,7 +18,7 @@ const canvas = $('game');
 const g = canvas.getContext('2d');
 const DAY_LEN = 600;
 const SLOTS = 3;
-const SAVE_KEY = (k) => `pixelcraft.v1.slot${k}`;
+const SAVE_KEY = saveKey;
 const DIFF_NAMES = ['평화로움', '보통', '어려움'];
 
 let G = null;
@@ -48,7 +52,7 @@ function makePlayer(sp) {
   return {
     x: sp.x, y: sp.y, w: 0.6, h: 1.8, vx: 0, vy: 0, onGround: false, step: true,
     hp: 20, food: 20, sat: 5, exhaust: 0, air: 10, face: 1, fallTop: sp.y, hurtT: 0, invT: 0, fire: 0,
-    sel: 0, inv: Array(36).fill(null), spawn: { x: sp.x, y: sp.y }, flying: false, swing: 0, walkT: 0,
+    sel: 0, inv: Array(36).fill(null), armor: Array(4).fill(null), spawn: { x: sp.x, y: sp.y }, flying: false, swing: 0, walkT: 0,
     regenT: 0, starveT: 0, hazardT: 0, drownT: 0, stepT: 0, bowT: -1, stepLift: 0,
   };
 }
@@ -79,16 +83,17 @@ function newGame(opts) {
     const n = 1 + Math.floor(r() * 3);
     for (let k = 0; k < n; k++) game.mobs.push(makeMob(type, x + k * 1.2, s - MOBS[type].h - 0.05));
   }
+  newAdventure(game, opts);
   return game;
 }
 function serialize(game) {
   const p = game.player;
   return JSON.stringify({
-    v: 1, seed: game.w.seed, name: game.name, mode: game.mode, diff: game.diff, time: game.time, day: game.day, playTime: game.playTime, hint: game.hint,
-    player: { x: p.x, y: p.y, hp: p.hp, food: p.food, sat: p.sat, air: p.air, sel: p.sel, inv: p.inv, spawn: p.spawn, flying: p.flying },
-    tiles: rleEncode(game.w.tiles), meta: rleEncode(game.w.meta),
+    v: 2, width: W, adventure: packAdventure(game), stats: game.stats, seed: game.adventure?.seed ?? game.w.seed, name: game.name, mode: game.mode, diff: game.diff, time: game.time, day: game.day, playTime: game.playTime, hint: game.hint,
+    player: { armor: p.armor, x: p.x, y: p.y, hp: p.hp, food: p.food, sat: p.sat, air: p.air, sel: p.sel, inv: p.inv, spawn: p.spawn, flying: p.flying, skin: p.skin },
+    surface: [...game.w.surface], bg: rleEncode(game.w.bg), tiles: rleEncode(game.w.tiles), meta: rleEncode(game.w.meta),
     chests: [...game.chests], furnaces: [...game.furnaces],
-    mobs: game.mobs.filter((m) => !m.dead && !HOSTILE.has(m.type)).map((m) => [m.type, +m.x.toFixed(2), +m.y.toFixed(2), m.hp]),
+    mobs: game.mobs.filter((m) => !m.dead).map((m) => ({ ...m })),
   });
 }
 function saveGame(quiet) {
@@ -102,9 +107,7 @@ function loadGame(slot) {
   try {
     const d = JSON.parse(raw);
     const w = generateWorld(d.seed);
-    w.tiles.set(rleDecode(d.tiles, W * H));
-    w.meta.set(rleDecode(d.meta, W * H));
-    computeLight(w, 0, W - 1);
+    restoreTerrain(w, d);
     const game = baseGame(w, { name: d.name, mode: d.mode, diff: d.diff, slot });
     Object.assign(game.player, d.player);
     game.player.inv = Array.from({ length: 36 }, (_, k) => d.player.inv[k] ?? null);
@@ -113,9 +116,11 @@ function loadGame(slot) {
     game.day = d.day;
     game.playTime = d.playTime ?? 0;
     game.hint = d.hint ?? 0;
-    game.chests = new Map(d.chests);
-    game.furnaces = new Map(d.furnaces);
-    game.mobs = (d.mobs ?? []).map(([type, x, y, hp]) => Object.assign(makeMob(type, x, y), { hp }));
+    game.stats = d.stats ?? { mined: 0 };
+    game.chests = new Map((d.chests ?? []).map(([i, v]) => [remapIndex(i, d.width ?? 640), v]));
+    game.furnaces = new Map((d.furnaces ?? []).map(([i, v]) => [remapIndex(i, d.width ?? 640), v]));
+    game.mobs = (d.mobs ?? []).map(m => Array.isArray(m) ? Object.assign(makeMob(m[0], m[1], m[2]), { hp: m[3] }) : Object.assign(makeMob(m.type, m.x, m.y), m));
+    unpackAdventure(game, d.adventure);
     game.cam = { x: game.player.x, y: game.player.y };
     // 흐르던 물은 불러온 뒤 다시 흐르게 깨운다
     for (let i = 0; i < W * H; i++) {
@@ -298,11 +303,12 @@ function lineOfSight(x0, y0, x1, y1) {
   return true;
 }
 function hurtPlayer(amount, cause, fromX, opts = {}) {
-  const p = G.player;
+  const p = opts.player ?? G.player;
+  if (p === G.companion) return adventure.hurtCompanion(amount, cause);
   if (G.mode === 'creative' || G.dead) return;
   if (!opts.pierce && p.invT > 0) return;
   const mul = [0.5, 1, 1.5][G.diff];
-  p.hp -= Math.max(1, Math.round(amount * (opts.raw ? 1 : mul)));
+  p.hp -= absorbDamage(p, Math.max(1, Math.round(amount * (opts.raw ? 1 : mul))), cause);
   p.invT = 0.5;
   p.hurtT = 0.4;
   p.exhaust += 0.1;
@@ -413,13 +419,14 @@ function updateMobs(dt) {
       continue;
     }
     const mx = m.x + m.w / 2, my = m.y + m.h / 2;
-    const dx = px - mx, dy = py - my, dist = Math.hypot(dx, dy);
+    const p = G.adventure?.coop && !G.companion.spectator && Math.hypot(G.companion.x - mx, G.companion.y - my) < Math.hypot(px - mx, py - my) ? G.companion : G.player;
+    const dx = p.x + p.w / 2 - mx, dy = p.y + p.h / 2 - my, dist = Math.hypot(dx, dy);
     const hostile = HOSTILE.has(m.type);
-    if (Math.abs(dx) > 80) {
+    if (Math.abs(dx) > 80 && m.type !== 'summoner') {
       if (hostile) m.remove = true;
       continue;
     }
-    if (hostile && G.diff === 0) {
+    if (hostile && G.diff === 0 && m.type !== 'summoner' && !m.summoned) {
       m.remove = true;
       smoke(mx, my, 8);
       continue;
@@ -436,8 +443,8 @@ function updateMobs(dt) {
       if (m.type === 'skeleton') {
         move = dist < 6 ? -Math.sign(dx) : dist > 10 ? Math.sign(dx) : 0;
         m.face = Math.sign(dx) || 1;
-        if (m.attackT <= 0 && dist < 16 && lineOfSight(mx, m.y + 0.4, px, p.y + 0.5)) {
-          shootArrow(mx, m.y + 0.5, px + (G.rng() - 0.5) * 0.8, p.y + 0.6, 15, 'mob', 3);
+        if (m.attackT <= 0 && dist < 16 && lineOfSight(mx, m.y + 0.4, p.x + p.w / 2, p.y + 0.5)) {
+          shootArrow(mx, m.y + 0.5, p.x + p.w / 2 + (G.rng() - 0.5) * 0.8, p.y + 0.6, 15, 'mob', 3);
           m.attackT = 1.8 + G.rng() * 1.2;
           sfx.bow();
         }
@@ -466,7 +473,7 @@ function updateMobs(dt) {
           if (m.fuse === 0) m.hissed = false;
         }
       } else if (def.dmg && m.attackT <= 0 && Math.abs(dx) < (m.w + p.w) / 2 + 0.3 && Math.abs(dy) < (m.h + p.h) / 2 && m.type !== 'skeleton') {
-        hurtPlayer(def.dmg, def.name, mx);
+        hurtPlayer(def.dmg, def.name, mx, { player: p });
         m.attackT = 1;
       }
       if (G.rng() < dt * 0.15 && m.type === 'zombie') sfx.groan();
@@ -514,7 +521,7 @@ function updateMobs(dt) {
     m.walkT += dt * Math.abs(m.vx) * 0.6;
     // 해가 뜨면 좀비·스켈레톤은 불탄다
     const headI = Math.floor(m.y + 0.2) * W + Math.floor(mx);
-    if (def.burns && day > 0.85 && G.w.sky[headI] >= 14 && !inFluid) m.fire = Math.max(m.fire, 1);
+    if (def.burns && !m.summoned && G.adventure?.dimension !== 'nether' && day > 0.85 && G.w.sky[headI] >= 14 && !inFluid) m.fire = Math.max(m.fire, 1);
     if (inLava) m.fire = 4;
     if (inFluid === B.WATER) m.fire = 0;
     if (m.fire > 0) {
@@ -606,10 +613,10 @@ function updatePlayer(dt) {
   const p = G.player;
   const w = G.w;
   if (G.dead) return;
-  const left = keys.has('KeyA') || keys.has('ArrowLeft');
-  const right = keys.has('KeyD') || keys.has('ArrowRight');
-  const jump = keys.has('Space') || keys.has('KeyW') || keys.has('ArrowUp');
-  const down = keys.has('KeyS') || keys.has('ArrowDown');
+  const left = keys.has('KeyA') || (!G.adventure?.coop && keys.has('ArrowLeft'));
+  const right = keys.has('KeyD') || (!G.adventure?.coop && keys.has('ArrowRight'));
+  const jump = keys.has('Space') || keys.has('KeyW') || (!G.adventure?.coop && keys.has('ArrowUp'));
+  const down = keys.has('KeyS') || (!G.adventure?.coop && keys.has('ArrowDown'));
   const run = keys.has('ShiftLeft') || keys.has('ShiftRight');
   const panel = !!UI.open;
   const move = panel ? 0 : (right ? 1 : 0) - (left ? 1 : 0);
@@ -740,7 +747,7 @@ function updatePlayer(dt) {
 function mouseWorld() {
   const v = G.view;
   if (!v) return null;
-  return { x: v.left + (mouse.x * devicePixelRatioSafe()) / T, y: v.top + (mouse.y * devicePixelRatioSafe()) / T };
+  return { x: v.left + (mouse.x * devicePixelRatioSafe()) / v.T, y: v.top + (mouse.y * devicePixelRatioSafe()) / v.T };
 }
 function devicePixelRatioSafe() {
   return canvas.width / Math.max(1, canvas.clientWidth);
@@ -859,7 +866,7 @@ function canPlaceSupport(x, y) {
     || [tileAt(x, y + 1), tileAt(x - 1, y), tileAt(x + 1, y), tileAt(x, y - 1)].some((t) => t !== B.AIR && !BLOCKS[t].fluid);
 }
 function overlapsBody(x, y) {
-  const all = [G.player, ...G.mobs.filter((m) => !m.dead)];
+  const all = [G.player, ...(G.partnerDuringPlace ? [G.partnerDuringPlace] : []), ...(G.adventure?.coop && !G.companion.spectator ? [G.companion] : []), ...G.mobs.filter((m) => !m.dead)];
   return all.some((e) => e.x < x + 1 && e.x + e.w > x && e.y < y + 1 && e.y + e.h > y);
 }
 function placeBlock(x, y, itemId) {
@@ -1084,8 +1091,9 @@ function updateWorld(dt) {
         break;
       }
       if (a.from === 'mob') {
-        if (a.x > p.x && a.x < p.x + p.w && a.y > p.y && a.y < p.y + p.h) {
-          hurtPlayer(a.dmg, '스켈레톤', a.x - a.vx);
+        const target = [p, ...(G.adventure?.coop && !G.companion.spectator ? [G.companion] : [])].find(p => a.x > p.x && a.x < p.x + p.w && a.y > p.y && a.y < p.y + p.h);
+        if (target) {
+          hurtPlayer(a.dmg, '스켈레톤', a.x - a.vx, { player: target });
           a.life = 0;
         }
       } else {
@@ -1285,7 +1293,7 @@ function update(dt) {
   G.clock += dt;
   G.playTime += dt;
   const was = G.time;
-  G.time += dt / DAY_LEN;
+  G.time += dt / (G.adventure?.dayLength ?? DAY_LEN);
   if (G.time >= 1) {
     G.time -= 1;
     G.day++;
@@ -1310,6 +1318,7 @@ function update(dt) {
   }
   updateMobs(dt);
   updateWorld(dt);
+  adventure.tick(dt);
   G.spawnT -= dt;
   if (G.spawnT <= 0) {
     G.spawnT = 1;
@@ -1322,7 +1331,8 @@ function update(dt) {
   }
   const p = G.player;
   const k = 1 - Math.exp(-dt * 9);
-  G.cam.x += (p.x + p.w / 2 - G.cam.x) * k;
+  const cameraX = G.adventure?.coop && !G.companion.spectator && Math.abs(G.companion.x - p.x) < 22 ? (p.x + G.companion.x) / 2 : p.x;
+  G.cam.x += (cameraX + p.w / 2 - G.cam.x) * k;
   G.cam.y += (p.y + p.stepLift + p.h / 2 - 0.4 - G.cam.y) * k;
   G.shake = Math.max(0, G.shake - dt);
   G.fade = Math.max(0, G.fade - dt);
@@ -1352,10 +1362,11 @@ function draw() {
   const cam = G.cam;
   const keep = { x: cam.x, y: cam.y };
   // 세상 끝 밖은 보이지 않게
-  const vw = cw / T, vh = ch / T;
+  const drawT = T * (G.mobs.some(m => m.type === 'summoner' && !m.dead) ? 0.72 : G.adventure?.coop ? 0.85 : 1);
+  const vw = cw / drawT, vh = ch / drawT;
   cam.x = Math.max(vw / 2, Math.min(W - vw / 2, cam.x)) + (G.rng() - 0.5) * shake / T;
   cam.y = Math.max(vh / 2 - 8, Math.min(H - vh / 2, cam.y)) + (G.rng() - 0.5) * shake / T;
-  render(g, G, cw, ch, T);
+  render(g, G, cw, ch, drawT);
   G.cam.x = keep.x;
   G.cam.y = keep.y;
   if (G.fade > 0) {
@@ -1363,6 +1374,7 @@ function draw() {
     g.fillRect(0, 0, cw, ch);
   }
   renderHUD();
+  adventure.hud();
   fpsN++;
   if ($('debug').hidden === false) {
     const p = G.player;
@@ -1397,6 +1409,15 @@ window.addEventListener('keydown', (e) => {
   }
   keys.add(e.code);
   unlockAudio();
+  if (adventure.key(e)) return;
+  if (e.code === 'Comma' && G.adventure?.coop && !G.companion.spectator && !G.paused && !G.dead && !UI.open) {
+    const p = G.player;
+    G.companion.sel = p.sel;
+    G.partnerDuringPlace = p;
+    try { G.player = G.companion; placeBlock(Math.floor(G.player.x + (G.player.face > 0 ? 1.4 : -0.7)), Math.floor(G.player.y + 0.8), G.player.inv[p.sel]?.id ?? 0); }
+    finally { G.player = p; G.partnerDuringPlace = null; hudDirty(); }
+    return;
+  }
   if (e.code === 'Escape') {
     if (UI.open) closePanel();
     else togglePause();
@@ -1572,6 +1593,7 @@ function updateSoundButtons() {
 
 function startGame(game) {
   G = game;
+  keys.clear(); mouse.left = mouse.right = false;
   demo = null;
   initUI(G, {
     drop: (id, count, dur) => spawnDrop(G.player.x + G.player.w / 2, G.player.y + 0.5, id, count, dur),
@@ -1585,10 +1607,12 @@ function startGame(game) {
   G.hintHidden = false;
   resize();
   if (G.day === 1 && G.playTime < 1) toast(`${G.name}에 온 걸 환영해!`);
+  adventure.start();
 }
 function quitToTitle() {
   saveGame(true);
   closePanel();
+  adventure.reset();
   G = null;
   $('pause').hidden = true;
   $('death').hidden = true;
@@ -1641,6 +1665,7 @@ function openNewWorld(k) {
   $('newWorld').hidden = false;
   $('nwName').value = `나의 세계 ${k + 1}`;
   $('nwSeed').value = '';
+  if (account.user) $('nwPlayer').value = account.user.name;
   $('nwName').focus();
 }
 function createWorld() {
@@ -1652,7 +1677,8 @@ function createWorld() {
   const diff = Number(document.querySelector('input[name="diff"]:checked').value);
   $('loading').hidden = false;
   setTimeout(() => {
-    const game = newGame({ name, seed, mode, diff, slot: newSlot });
+    const game = newGame({ name, seed, mode, diff, slot: newSlot, coop: $('nwCoop').checked, skin: Number($('nwSkin').value), playerName: $('nwPlayer').value.trim().slice(0, 16) });
+    game.adventure.dayLength = Number($('nwDayLength').value);
     $('loading').hidden = true;
     startGame(game);
     saveGame(true);
@@ -1704,6 +1730,7 @@ function boot() {
   resize();
   makeDemo();
   showTitle();
+  initAccount(showTitle);
   bindTouch();
   $('nwCreate').onclick = createWorld;
   $('nwCancel').onclick = () => { $('newWorld').hidden = true; };
@@ -1724,6 +1751,7 @@ function boot() {
   window.addEventListener('pagehide', () => { if (G) saveGame(true); });
   requestAnimationFrame(frame);
   // 브라우저 확인 스크립트가 들여다볼 수 있게
-  window.__pixelcraft = { get G() { return G; }, startGame, newGame, loadGame, saveGame, serialize, keys, mouse, setTile, breakBlock, placeBlock, doUse, explode, makeMob, openPanel, closePanel, UI };
+  window.__pixelcraft = { adventure, W, H, get G() { return G; }, startGame, newGame, loadGame, saveGame, serialize, keys, mouse, setTile, breakBlock, placeBlock, doUse, explode, makeMob, openPanel, closePanel, UI };
 }
+const adventure = createAdventureController({ get: () => G, keys, UI, closePanel, toast, hudDirty, save: () => saveGame(true), makeMob, hitMob, shootArrow, breakInfo, breakBlock, wearTool });
 boot();
