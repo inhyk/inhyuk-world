@@ -1,3 +1,4 @@
+import { drawJumpSky } from './jump-world.mjs';
 // 화면 그리기: 하늘 → 뒷벽 → 블록 → 생물 → 물 → 빛 → 금·선택 칸 → 조각
 import { B, I, BLOCKS, ITEMS } from './data.mjs';
 import { W, H, noise1 } from './core.mjs';
@@ -28,6 +29,7 @@ const css = (c) => `rgb(${c.map(Math.round).join(',')})`;
 const hash = (k) => Math.abs(Math.sin(k * 12.9898 + 78.233) * 43758.5453) % 1;
 
 function drawSky(g, G, cw, ch, view) {
+  if (G.jump) return drawJumpSky(g, G, cw, ch);
   if (G.adventure?.dimension === 'end') {
     g.fillStyle = '#171528'; g.fillRect(0, 0, cw, ch);
     for (let k = 0; k < 90; k++) { g.fillStyle = k % 3 ? '#8a7eaa' : '#d0bdde'; g.globalAlpha = 0.25 + k % 3 * 0.2; g.fillRect(((k * 137.3 - G.cam.x * 2) % cw + cw) % cw, (k * 71.7) % ch, 2, 2); }
