@@ -1672,6 +1672,9 @@ function showTitle() {
     }
     list.appendChild(row);
   }
+  const full = Array.from({ length: SLOTS }, (_, k) => !!load(SAVE_KEY(k))).every(Boolean);
+  $('btnJumpWorld').disabled = full;
+  $('btnJumpWorld').textContent = full ? '점프맵 시작 · 저장 칸을 하나 비워 줘' : '☁ 점프맵 세계로 들어가기';
 }
 let newSlot = 0;
 function updateWorldChoice() {
