@@ -59,6 +59,7 @@
         <button id="btnAccount" class="mc-btn" disabled>로그인 / 가입</button>
         <button id="btnLogout" class="mc-btn" hidden>로그아웃</button>
       </div>
+      <button id="btnJumpWorld" class="mc-btn green">☁ 점프맵 세계로 들어가기</button>
       <div id="slots"></div>
       <div class="row2">
         <button id="btnHelp" class="mc-btn">조작법 보기</button>
@@ -66,18 +67,20 @@
     </div>
     <div id="newWorld" class="mc-dialog" hidden>
       <h2>새 세계 만들기</h2>
+      <label>세계 종류 <select id="nwWorldType"><option value="overworld">숲 세계 · 생존과 모험</option><option value="jump">점프맵 세계 · 하늘 발판 도전</option></select></label>
+      <small id="jumpWorldNote" hidden>점프맵은 평화로운 서바이벌로 시작해요. 체크포인트 · 즉시 재도전 · 완주 기록!</small>
       <label>세계 이름 <input id="nwName" maxlength="20" autocomplete="off"></label>
       <label>시드 (비워 두면 무작위) <input id="nwSeed" maxlength="24" autocomplete="off" placeholder="예: 인혁"></label>
       <label>내 이름 <input id="nwPlayer" maxlength="16" autocomplete="off" value="여행자"></label>
       <label>내 모습 <select id="nwSkin"><option value="0">하늘 탐험가</option><option value="1">숲의 모험가</option><option value="2">보랏빛 여행자</option><option value="3">노을 기사</option></select></label>
       <label class="coop-pick"><input id="nwCoop" type="checkbox"> 한 컴퓨터에서 2인 플레이 (공유 가방)</label>
-      <label>하루 길이 <select id="nwDayLength"><option value="120">2분 · 빠른 모험</option><option value="600" selected>10분 · 느긋한 생존</option><option value="60">1분 · 이야기 여행</option></select></label>
-      <fieldset>
+      <label id="dayLengthChoice">하루 길이 <select id="nwDayLength"><option value="120">2분 · 빠른 모험</option><option value="600" selected>10분 · 느긋한 생존</option><option value="60">1분 · 이야기 여행</option></select></label>
+      <fieldset id="modeChoice">
         <legend>게임 모드</legend>
         <label class="pick"><input type="radio" name="mode" value="survival" checked><span>서바이벌<small>캐고, 만들고, 살아남기</small></span></label>
         <label class="pick"><input type="radio" name="mode" value="creative"><span>크리에이티브<small>모든 블록 무한 · 날기</small></span></label>
       </fieldset>
-      <fieldset>
+      <fieldset id="diffChoice">
         <legend>난이도</legend>
         <label class="pick"><input type="radio" name="diff" value="0"><span>평화로움<small>몬스터 없음</small></span></label>
         <label class="pick"><input type="radio" name="diff" value="1" checked><span>보통<small>밤에 몬스터</small></span></label>

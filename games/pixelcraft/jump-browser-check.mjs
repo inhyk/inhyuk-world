@@ -1,0 +1,42 @@
+import { chromium } from '../../tools/node_modules/playwright/index.mjs';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+const out = process.env.PIXELCRAFT_ARTIFACTS || '/tmp/pixelcraft-jump-world'; await fs.mkdir(out, { recursive: true });
+const browser = await chromium.launch(); const page = await browser.newPage({ viewport: { width: 1360, height: 850 } });
+const errors = []; page.on('pageerror', e => errors.push(e.message));
+try {
+ await page.goto(process.env.PIXELCRAFT_TEST_URL || 'http://127.0.0.1:3051/play/pixelcraft/index.html');
+ await page.waitForFunction(() => window.__pixelcraft && !document.getElementById('slots').inert);
+ await page.click('#btnJumpWorld'); assert.equal(await page.inputValue('#nwWorldType'), 'jump');
+ await page.check('#nwCoop'); await page.screenshot({path: `${out}/01-start.png`});
+ await page.click('#nwCreate'); await page.waitForSelector('#adventureDialog:not([hidden])');
+ assert.match(await page.textContent('#adventureTitle'), /点|ジャンプ|점프맵/); await page.click('#adventureActions button:last-child');
+ await page.waitForFunction(() => window.__pixelcraft.G.player.onGround);
+ assert.deepEqual(await page.evaluate(() => { const G = window.__pixelcraft.G; return [G.mode, G.diff, G.mobs.length, G.adventure.portals.length]; }), ['survival', 0, 0, 0]);
+ // 실제 키 입력으로 출발 발판에서 다음 발판으로 점프한다.
+ await page.keyboard.down('KeyD'); await page.waitForTimeout(330); await page.keyboard.down('Space'); await page.waitForTimeout(580); await page.keyboard.up('Space'); await page.keyboard.up('KeyD');
+ await page.waitForTimeout(250); assert.ok(await page.evaluate(() => window.__pixelcraft.G.jump.progress >= 1));
+ await page.screenshot({path: `${out}/02-jump.png`});
+ await page.evaluate(async () => { const {resetJumper} = await import('./jump-world.mjs'); const G = window.__pixelcraft.G; resetJumper(G.player, 6); });
+ await page.waitForFunction(() => window.__pixelcraft.G.jump.checkpoint === 6);
+ await page.evaluate(() => { window.__pixelcraft.G.player.y = 90; });
+ await page.waitForFunction(() => window.__pixelcraft.G.jump.falls === 1);
+ await page.evaluate(() => window.__pixelcraft.saveGame(true)); await page.reload(); await page.click('#slots .play >> nth=0');
+ assert.equal(await page.evaluate(() => window.__pixelcraft.G.jump.checkpoint), 6);
+ await page.evaluate(async () => { const {resetJumper} = await import('./jump-world.mjs'); resetJumper(window.__pixelcraft.G.player, 30); });
+ await page.waitForFunction(() => window.__pixelcraft.G.jump.completed); await page.keyboard.press('KeyR');
+ assert.match(await page.textContent('#adventureTitle'), /완주/); await page.screenshot({path:`${out}/03-complete.png`});
+ await page.click('#adventureActions button:first-child'); assert.equal(await page.evaluate(() => window.__pixelcraft.G.jump.checkpoint),0);
+ await page.waitForTimeout(300); await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(100); await page.screenshot({path:`${out}/04-mobile.png`});
+ const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+ const mp = await mobile.newPage(); mp.on('pageerror', e => errors.push(e.message));
+ await mp.goto(page.url()); await mp.waitForFunction(() => window.__pixelcraft && !document.getElementById('slots').inert);
+ await mp.locator('#btnJumpWorld').tap(); await mp.locator('#nwCreate').tap(); await mp.locator('#adventureActions button:last-child').tap();
+ await mp.waitForFunction(() => window.__pixelcraft.G.player.onGround);
+ const y = await mp.evaluate(() => window.__pixelcraft.G.player.y);
+ const button = mp.locator('[data-key="Space"]'); await button.dispatchEvent('pointerdown', { pointerId: 1, pointerType: 'touch', bubbles: true });
+ await mp.waitForTimeout(150); assert.ok(await mp.evaluate(y => window.__pixelcraft.G.player.y < y - 0.3, y));
+ await button.dispatchEvent('pointerup', { pointerId: 1, pointerType: 'touch', bubbles: true });
+ await mp.screenshot({ path: `${out}/05-touch.png` }); await mobile.close();
+ assert.deepEqual(errors, []); console.log('PASS: title entry, actual jump, checkpoint/fall, save/reload, completion/retry, mobile; no errors');
+} finally { await browser.close(); }

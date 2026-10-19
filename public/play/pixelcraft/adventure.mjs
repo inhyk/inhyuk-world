@@ -1,3 +1,4 @@
+import { tickJumpWorld, drawJumpWorld, resetJumper } from './jump-world.mjs';
 import { absorbDamage } from './armor.mjs';
 import { B, I, ITEMS, HOSTILE } from './data.mjs';
 import { W, H, idx, moveBody, touching, computeLight, addItem, countItem, generateWorld } from './core.mjs';
@@ -8,6 +9,7 @@ export function newAdventure(G, opts = {}) {
     storySeen: false, bossDefeated: false, endingSeen: false, villagers: [], portals: [], worlds: {}, boss: null, achievements: [], trades: 0, visited: [] };
   G.player.skin = G.adventure.skin;
   G.companion = { ...G.player, armor: Array(4).fill(null), x: G.player.x + 1, inv: G.player.inv, spawn: { ...G.player.spawn }, skin: (G.adventure.skin + 1) % SKINS.length, attackT: 0 };
+  if (G.jump) return;
   for (const center of [Math.floor(W / 2) + 65, ...(opts.legacy ? [] : [Math.floor(W / 2) - 215]), W - 130]) G.adventure.villagers.push(...makeVillage(G.w, center));
   const x = Math.floor(W / 2) + 102;
   G.adventure.portals.push({ ...portalFrame(G.w, x, G.w.surface[x] - 1), kind: 'nether' });
@@ -72,6 +74,10 @@ export function createAdventureController(api) {
   }
   function story() {
     const G = get();
+    if (G.jump) {
+      G.adventure.storySeen = true;
+      return show('하늘 점프맵에 온 걸 환영해!', ['A·D 또는 방향키로 걷고 스페이스로 점프! 휴대폰에서는 화면 아래 이동·점프 버튼을 눌러 줘.', '31개의 공중 발판을 건너 황금 발판까지 가 보자. 다이아몬드 발판은 체크포인트! 떨어져도 마지막 체크포인트에서 바로 다시 시작해.', '블록 캐기·놓기와 날기는 쉬어 가요. 몬스터와 배고픔 없이 점프에 집중할 수 있어! 2인 플레이에서는 체크포인트를 함께 써.']);
+    }
     show('깊은 숲에서 깨어나다', [
       `${G.adventure.name}, 학교에서 잠깐 잠들었을 뿐인데… 눈을 뜨니 깊은 숲, 네모난 세상이야.`,
       '마을 주민: “이곳은 소환사 좀비가 잠가 놓은 세계야. 나무를 캐고 집을 지어서 살아남아. 동쪽 마을에서는 물건을 바꿀 수 있어.”',
@@ -128,6 +134,7 @@ export function createAdventureController(api) {
   function interact() {
     const G = get();
     if (!G || G.dead || G.paused || api.UI.open) return;
+    if (G.jump) return show(G.jump.completed ? '점프맵 완주!' : '하늘 점프맵 기록', [`진행: ${G.jump.progress} / 30 · 시간: ${Math.floor(G.jump.elapsed)}초 · 떨어진 횟수: ${G.jump.falls}`, '황금 발판에 도착하면 완주! R로 언제든 기록을 확인할 수 있어.'], [['처음부터 다시 도전', () => { G.jump = { checkpoint: 0, progress: 0, elapsed: 0, falls: 0, completed: false }; resetJumper(G.player, 0); resetJumper(G.companion, 0); G.cam = { x: G.player.x, y: G.player.y }; close(); api.save(); }]]);
     const a = G.adventure, p = G.player;
     const near = (e, r) => Math.hypot(e.x - p.x, e.y - p.y) < r;
     const v = a.villagers.find(v => near(v, 4));
@@ -202,6 +209,7 @@ export function createAdventureController(api) {
     const G = get(), a = G.adventure;
     if (!a) return;
     tickCompanion(dt);
+    if (G.jump) { tickJumpWorld(G, dt, api.toast, api.save); return; }
     a.achievements ??= [];
     for (const [id, label, done] of achievementList(G)) if (done && !a.achievements.includes(id)) { a.achievements.push(id); api.toast(`도전과제 달성: ${label}`); }
 
@@ -240,6 +248,7 @@ export function createAdventureController(api) {
   function draw(g, G, sx, sy, T) {
     const a = G.adventure;
     if (!a) return;
+    if (G.jump) return drawJumpWorld(g, G, sx, sy, T);
     for (const p of a.portals) {
       const x = sx(p.x), y = sy(p.y), gold = p.kind === 'ending', end = p.kind === 'end';
       const gradient = g.createLinearGradient(x, y, x + T * 2, y + T * 4);
@@ -254,6 +263,13 @@ export function createAdventureController(api) {
     const G = get(), a = G?.adventure;
     $('questHUD').hidden = !G;
     if (!a) return;
+    if (G.jump) {
+      $('worldLine').textContent = `하늘 점프맵 · ${G.jump.progress} / 30 · ${Math.floor(G.jump.elapsed)}초`;
+      $('questLine').textContent = G.jump.completed ? `★ 완주! · 떨어진 횟수 ${G.jump.falls} · R로 다시 도전` : `체크포인트 ${G.jump.checkpoint / 6} · 떨어지면 바로 재도전!`;
+      $('interactButton').textContent = '기록 · 재도전 R';
+      $('bossHUD').hidden = true; return;
+    }
+    $('interactButton').textContent = '대화·포탈 R';
     const p = G.player;
     $('questLine').textContent = a.bossDefeated ? (a.endingSeen ? '이야기 완료 · 자유롭게 세계를 탐험해!' : '황금빛 포탈에서 현실로 돌아가자') : G.day < 50 ? `소환사 좀비까지 ${50 - G.day}일 · 집과 장비를 준비하자` : '소환사 좀비를 쓰러뜨려 포탈을 열자';
     $('worldLine').textContent = `${a.dimension === 'nether' ? '네더' : a.dimension === 'end' ? '엔드' : '숲 세계'} · ${G.day}일째 · ${W}칸${a.coop ? ` · 2P ${G.companion.spectator ? '관전 중' : `HP ${Math.ceil(G.companion.hp)}/20`}` : ''}`;

@@ -1,3 +1,4 @@
+import { makeJumpWorld, resetJumper } from './jump-world.mjs';
 import { absorbDamage } from './armor.mjs';
 import { account, saveKey, initAccount } from './account.mjs';
 import { newAdventure, packAdventure, unpackAdventure, createAdventureController } from './adventure.mjs';
@@ -68,13 +69,22 @@ function baseGame(w, opts) {
   };
 }
 function newGame(opts) {
-  const w = generateWorld(opts.seed);
+  const w = opts.worldType === 'jump' ? makeJumpWorld(opts.seed) : generateWorld(opts.seed);
+  if (opts.worldType === 'jump') opts = { ...opts, mode: 'survival', diff: 0 };
   const game = baseGame(w, opts);
   // 처음엔 맨손. 크리에이티브는 자주 쓰는 블록을 손에 쥐여 준다
   if (opts.mode === 'creative') {
     [B.GRASS, B.DIRT, B.STONE, B.PLANKS, B.GLASS, B.TORCH, B.OAK_LOG, B.STONE_BRICKS, B.TNT].forEach((id, k) => { game.player.inv[k] = newStack(id, maxStack(id)); });
   }
   const r = game.rng;
+  if (opts.worldType === 'jump') {
+    game.jump = { checkpoint: 0, progress: 0, elapsed: 0, falls: 0, completed: false };
+    resetJumper(game.player, 0);
+    newAdventure(game, opts);
+    resetJumper(game.companion, 0);
+    game.cam = { x: game.player.x, y: game.player.y };
+    return game;
+  }
   for (let x = 12; x < W - 12; x += 14) {
     if (r() > 0.55) continue;
     const s = w.surface[x];
@@ -89,7 +99,7 @@ function newGame(opts) {
 function serialize(game) {
   const p = game.player;
   return JSON.stringify({
-    v: 2, width: W, adventure: packAdventure(game), stats: game.stats, seed: game.adventure?.seed ?? game.w.seed, name: game.name, mode: game.mode, diff: game.diff, time: game.time, day: game.day, playTime: game.playTime, hint: game.hint,
+    v: 2, width: W, jump: game.jump, adventure: packAdventure(game), stats: game.stats, seed: game.adventure?.seed ?? game.w.seed, name: game.name, mode: game.mode, diff: game.diff, time: game.time, day: game.day, playTime: game.playTime, hint: game.hint,
     player: { armor: p.armor, x: p.x, y: p.y, hp: p.hp, food: p.food, sat: p.sat, air: p.air, sel: p.sel, inv: p.inv, spawn: p.spawn, flying: p.flying, skin: p.skin },
     surface: [...game.w.surface], bg: rleEncode(game.w.bg), tiles: rleEncode(game.w.tiles), meta: rleEncode(game.w.meta),
     chests: [...game.chests], furnaces: [...game.furnaces],
@@ -106,7 +116,7 @@ function loadGame(slot) {
   if (!raw) return null;
   try {
     const d = JSON.parse(raw);
-    const w = generateWorld(d.seed);
+    const w = d.jump ? makeJumpWorld(d.seed) : generateWorld(d.seed);
     restoreTerrain(w, d);
     const game = baseGame(w, { name: d.name, mode: d.mode, diff: d.diff, slot });
     Object.assign(game.player, d.player);
@@ -116,6 +126,7 @@ function loadGame(slot) {
     game.day = d.day;
     game.playTime = d.playTime ?? 0;
     game.hint = d.hint ?? 0;
+    game.jump = d.jump;
     game.stats = d.stats ?? { mined: 0 };
     game.chests = new Map((d.chests ?? []).map(([i, v]) => [remapIndex(i, d.width ?? 640), v]));
     game.furnaces = new Map((d.furnaces ?? []).map(([i, v]) => [remapIndex(i, d.width ?? 640), v]));
@@ -138,7 +149,7 @@ function slotSummary(slot) {
   if (!raw) return null;
   try {
     const d = JSON.parse(raw);
-    return { name: d.name, mode: d.mode, diff: d.diff, day: d.day, playTime: d.playTime ?? 0 };
+    return { jump: !!d.jump, name: d.name, mode: d.mode, diff: d.diff, day: d.day, playTime: d.playTime ?? 0 };
   } catch {
     return null;
   }
@@ -200,6 +211,7 @@ function dropOf(t) {
 }
 // 블록 부수기. harvest 가 false 면 아이템이 안 나온다
 function breakBlock(x, y, { harvest = true, quiet = false, chance = 1 } = {}) {
+  if (G.jump) return;
   const i = y * W + x;
   const t = G.w.tiles[i];
   if (t === B.AIR || BLOCKS[t].fluid) return;
@@ -549,6 +561,7 @@ function shootArrow(x, y, tx, ty, speed, from, dmg) {
   G.arrows.push({ x, y, vx: vx * Math.min(1.25, k), vy: vy * Math.min(1.25, k), from, dmg, life: 10, stuck: false });
 }
 function spawnTick() {
+  if (G.jump) return;
   const p = G.player;
   const day = dayFactor(G.time);
   const vw = G.view ? G.view.viewW / 2 + 2 : 18;
@@ -870,6 +883,7 @@ function overlapsBody(x, y) {
   return all.some((e) => e.x < x + 1 && e.x + e.w > x && e.y < y + 1 && e.y + e.h > y);
 }
 function placeBlock(x, y, itemId) {
+  if (G.jump) return;
   const blockId = ITEMS[itemId]?.place;
   if (blockId === undefined) return false;
   const t = tileAt(x, y);
@@ -1267,7 +1281,7 @@ function has(ids) {
   return countItem(G.player.inv, ids) > 0;
 }
 function updateHint() {
-  if (G.mode === 'creative') {
+  if (G.jump || G.mode === 'creative') {
     $('hint').hidden = true;
     return;
   }
@@ -1633,7 +1647,7 @@ function showTitle() {
     row.className = 'slotrow';
     if (s) {
       const mins = Math.floor(s.playTime / 60);
-      row.innerHTML = `<div class="sinfo"><b></b><small>${s.mode === 'creative' ? '크리에이티브' : `서바이벌 · ${DIFF_NAMES[s.diff]}`} · ${s.day}일째 · ${mins}분 놀았어</small></div><button class="mc-btn play">이어 하기</button><button class="mc-btn del">지우기</button>`;
+      row.innerHTML = `<div class="sinfo"><b></b><small>${s.jump ? '점프맵 세계' : s.mode === 'creative' ? '크리에이티브' : `서바이벌 · ${DIFF_NAMES[s.diff]}`} · ${s.day}일째 · ${mins}분 놀았어</small></div><button class="mc-btn play">이어 하기</button><button class="mc-btn del">지우기</button>`;
       row.querySelector('b').textContent = s.name;
       row.querySelector('.play').onclick = () => {
         unlockAudio();
@@ -1658,12 +1672,22 @@ function showTitle() {
     }
     list.appendChild(row);
   }
+  const full = Array.from({ length: SLOTS }, (_, k) => !!load(SAVE_KEY(k))).every(Boolean);
+  $('btnJumpWorld').disabled = full;
+  $('btnJumpWorld').textContent = full ? '점프맵 시작 · 저장 칸을 하나 비워 줘' : '☁ 점프맵 세계로 들어가기';
 }
 let newSlot = 0;
-function openNewWorld(k) {
+function updateWorldChoice() {
+  const jump = $('nwWorldType').value === 'jump';
+  for (const id of ['modeChoice', 'diffChoice', 'dayLengthChoice']) $(id).hidden = jump;
+  $('jumpWorldNote').hidden = !jump;
+}
+function openNewWorld(k, type = 'overworld') {
+  $('nwWorldType').value = type;
+  updateWorldChoice();
   newSlot = k;
   $('newWorld').hidden = false;
-  $('nwName').value = `나의 세계 ${k + 1}`;
+  $('nwName').value = type === 'jump' ? '하늘 점프맵' : `나의 세계 ${k + 1}`;
   $('nwSeed').value = '';
   if (account.user) $('nwPlayer').value = account.user.name;
   $('nwName').focus();
@@ -1677,7 +1701,7 @@ function createWorld() {
   const diff = Number(document.querySelector('input[name="diff"]:checked').value);
   $('loading').hidden = false;
   setTimeout(() => {
-    const game = newGame({ name, seed, mode, diff, slot: newSlot, coop: $('nwCoop').checked, skin: Number($('nwSkin').value), playerName: $('nwPlayer').value.trim().slice(0, 16) });
+    const game = newGame({ worldType: $('nwWorldType').value, name, seed, mode, diff, slot: newSlot, coop: $('nwCoop').checked, skin: Number($('nwSkin').value), playerName: $('nwPlayer').value.trim().slice(0, 16) });
     game.adventure.dayLength = Number($('nwDayLength').value);
     $('loading').hidden = true;
     startGame(game);
@@ -1733,6 +1757,13 @@ function boot() {
   initAccount(showTitle);
   bindTouch();
   $('nwCreate').onclick = createWorld;
+  $('nwWorldType').onchange = updateWorldChoice;
+  $('btnJumpWorld').onclick = () => {
+    if ($('slots').inert) return toast('계정 확인 중이야. 잠시만 기다려 줘!');
+    const slot = Array.from({ length: SLOTS }, (_, i) => i).find(i => !load(SAVE_KEY(i)));
+    if (slot === undefined) return toast('저장 칸이 가득 찼어. 필요 없는 세계를 지우면 점프맵을 만들 수 있어.');
+    openNewWorld(slot, 'jump');
+  };
   $('nwCancel').onclick = () => { $('newWorld').hidden = true; };
   $('nwName').addEventListener('keydown', (e) => { if (e.key === 'Enter') createWorld(); });
   $('btnResume').onclick = () => togglePause(false);
