@@ -592,3 +592,17 @@ legend { font-size: 14px; margin-bottom: 6px; }
 #touch .sprint { display: none; }
 #touch.jump-world .sprint { display: block; width: 70px; height: 52px; font-size: 14px; }
 #touch.jump-world .mode { display: none; }
+
+#questHUD div { flex-wrap: wrap; }
+#commandDialog { z-index: 65; touch-action: pan-y; }
+.command-dialog { background: #182731f5; border-color: #79958a; }
+.command-dialog small { line-height: 1.6; color: #d6dfbf; }
+#commandLog { min-height: 100px; max-height: min(32dvh, 280px); overflow: auto; background: #081117; border: 1px solid #50645b; padding: 10px; font-size: 12px; }
+#commandLog p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 8px; }
+#commandLog .command-error { color: #ffab9c; }
+.command-examples { display: flex; flex-wrap: wrap; gap: 6px; }
+.command-examples button { background: #2a4035; border: 1px solid #6c836a; color: #e6edca; font: inherit; font-size: 11px; padding: 7px; }
+#commandForm { display: grid; grid-template-columns: 1fr auto; gap: 7px; }
+#commandForm label { grid-column: 1 / -1; font-size: 12px; }
+#commandInput { min-width: 0; width: 100%; border: 2px solid #87977b; background: #080f15; color: #fff4c3; font: inherit; font-size: 16px; padding: 8px; }
+#commandInput:focus { outline: 2px solid #e3c47c; outline-offset: 1px; }

@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <canvas id="game" aria-label="2D마인크레프트 게임 화면"></canvas>
+  <canvas id="game" tabindex="-1" aria-label="2D마인크레프트 게임 화면"></canvas>
 
   <div id="hud" hidden>
     <div id="hint" hidden><span></span><button aria-label="길잡이 닫기">✕</button></div>
@@ -121,6 +121,7 @@
         <p><kbd>Esc</kbd> 메뉴 · <kbd>M</kbd> 소리 · <kbd>+</kbd><kbd>-</kbd> 확대 · <kbd>O</kbd> 좌표 보기</p>
         <p>크리에이티브: <kbd>F</kbd> 또는 스페이스 두 번 → 날기</p>
       </div>
+      <p><kbd>/</kbd> 또는 <kbd>T</kbd>: 명령어 창 · /help로 목록. 2인 플레이에서는 T로 열기 (/는 2P 공격).</p>
       <h3>함께하는 모험</h3>
       <p>주민·포탈 가까이에서 <kbd>R</kbd> / 화면의 ‘대화·포탈’. 흑요석 4×6 테두리의 안을 비우고 부싯돌과 부시를 든 채 R로 직접 포탈을 켤 수도 있어요.</p>
       <p>2인: 1P는 A·D·W/스페이스와 마우스, 2P는 방향키 이동·점프, <kbd>/</kbd> 공격, <kbd>.</kbd> 정면 캐기, <kbd>,</kbd> 정면 블록 놓기, <kbd>L</kbd> 2P 관전 모드 켜기·끄기, <kbd>B</kbd> 1P 곁으로 합류. 가방과 선택한 도구는 함께 사용해요. 서로 멀어지면 B로 합류해요.</p>
@@ -158,9 +159,19 @@
     </div>
   </section>
 
-  <aside id="questHUD" hidden><b id="worldLine"></b><span id="questLine"></span><div><button id="interactButton">대화·포탈 R</button><button id="storyButton">이야기</button><button id="achievementButton">도전과제</button></div></aside>
+  <aside id="questHUD" hidden><b id="worldLine"></b><span id="questLine"></span><div><button id="interactButton">대화·포탈 R</button><button id="storyButton">이야기</button><button id="achievementButton">도전과제</button><button id="commandButton">명령어</button></div></aside>
   <aside id="bossHUD" hidden><b id="bossLabel"></b><progress id="bossHealth" max="360" value="360" aria-label="소환사 좀비 체력"></progress></aside>
   <section id="adventureDialog" class="overlay" hidden><div class="mc-dialog wide story-dialog"><span class="chapter">2D마인크레프트 · 숲의 비밀</span><h2 id="adventureTitle"></h2><div id="adventureBody"></div><div id="adventureActions"></div></div></section>
+  <section id="commandDialog" class="overlay" role="dialog" aria-modal="true" aria-labelledby="commandHeading" hidden>
+    <div class="mc-dialog wide command-dialog">
+      <h2 id="commandHeading">세계 명령어</h2>
+      <small>게임은 잠깐 멈춰 있어요. 점프맵에서 명령어로 바꾸면 ‘연습’으로 표시돼요.</small>
+      <div id="commandLog" role="log" aria-live="polite"></div>
+      <div class="command-examples"><button type="button" data-command="/help">도움말</button><button type="button" data-command="/give diamond_sword 1">다이아 검</button><button type="button" data-command="/gamemode creative">크리에이티브</button><button type="button" data-command="/checkpoint 1">체크포인트 1</button><button type="button" data-command="50day">50일째</button></div>
+      <form id="commandForm"><label for="commandInput">명령어</label><input id="commandInput" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="/help"><button type="submit" class="mc-btn green">실행</button></form>
+      <button id="commandClose" type="button" class="mc-btn">닫기 · Esc</button>
+    </div>
+  </section>
   <div id="loading" class="overlay" hidden><div class="mc-dialog clear"><h2>세계를 만드는 중…</h2></div></div>
 
   <script type="module" src="./game.mjs"></script>

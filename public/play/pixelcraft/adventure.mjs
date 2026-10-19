@@ -264,7 +264,7 @@ export function createAdventureController(api) {
     $('questHUD').hidden = !G;
     if (!a) return;
     if (G.jump) {
-      $('worldLine').textContent = `극한 점프맵 · ${G.jump.progress} / ${JUMP_LAST} · ${Math.floor(G.jump.elapsed)}초`;
+      $('worldLine').textContent = `${G.jump.assisted ? '연습 · ' : ''}극한 점프맵 · ${G.jump.progress} / ${JUMP_LAST} · ${Math.floor(G.jump.elapsed)}초`;
       $('questLine').textContent = G.jump.completed ? `★ 완주! · 떨어진 횟수 ${G.jump.falls} · R로 다시 도전` : `체크포인트 ${checkpointNumber(G.jump.checkpoint)} · 떨어지면 바로 재도전!`;
       $('interactButton').textContent = '기록 · 재도전 R';
       $('bossHUD').hidden = true; return;
