@@ -1,0 +1,52 @@
+import { chromium } from '../../tools/node_modules/playwright/index.mjs';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+const out=process.env.PIXELCRAFT_ARTIFACTS||'/tmp/pixelcraft-commands'; await fs.mkdir(out,{recursive:true});
+const browser=await chromium.launch(), page=await browser.newPage({viewport:{width:1360,height:850}}), errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+const url=process.env.PIXELCRAFT_TEST_URL||'http://127.0.0.1:3051/play/pixelcraft/index.html';
+async function submit(p,command){ await p.fill('#commandInput',command); await p.click('#commandForm button'); }
+try {
+ await page.goto(url); await page.waitForFunction(()=>window.__pixelcraft&&!document.getElementById('slots').inert);
+ await page.click('#btnJumpWorld'); await page.click('#nwCreate'); await page.click('#adventureActions button:last-child');
+ await page.keyboard.press('Slash'); await page.waitForSelector('#commandDialog:not([hidden])');
+ assert.equal(await page.evaluate(()=>window.__pixelcraft.G.paused),true);
+ await submit(page,'/help'); assert.match(await page.textContent('#commandLog'),/\/checkpoint/);
+ assert.equal(await page.evaluate(()=>!!window.__pixelcraft.G.jump.assisted),false);
+ await submit(page,'/give diamond_sword 1');
+ assert.ok(await page.evaluate(()=>window.__pixelcraft.G.player.inv.some(s=>s?.dur>0)));
+ await submit(page,'/checkpoint 2'); assert.equal(await page.evaluate(()=>window.__pixelcraft.G.jump.checkpoint),30);
+ await submit(page,'/tp 520 62'); assert.match(await page.textContent('#commandLog'),/막혀/);
+ await submit(page,'/<img src=x onerror=alert(1)>'); assert.equal(await page.locator('#commandLog img').count(),0);
+ await page.keyboard.press('ArrowUp'); assert.match(await page.inputValue('#commandInput'),/img/);
+ await page.screenshot({path:`${out}/01-commands-desktop.png`});
+ await page.keyboard.press('Escape'); assert.equal(await page.evaluate(()=>window.__pixelcraft.G.paused),false);
+ await page.reload(); await page.click('#slots .play >> nth=0');
+ assert.equal(await page.evaluate(()=>window.__pixelcraft.G.jump.assisted),true);
+ assert.match(await page.textContent('#worldLine'),/연습/);
+ await page.keyboard.press('KeyT'); await page.waitForSelector('#commandDialog:not([hidden])'); await submit(page,'/gamemode creative'); await page.keyboard.press('Escape');
+ assert.equal(await page.evaluate(()=>window.__pixelcraft.G.mode),'creative');
+ await page.waitForTimeout(350); await page.keyboard.down('Space'); await page.keyboard.press('KeyF'); assert.equal(await page.evaluate(()=>window.__pixelcraft.G.player.flying),true); await page.keyboard.up('Space');
+ // 새 숲 세계에서는 시간·난이도·회복 명령어도 작동한다.
+ await page.evaluate(()=>{const a=window.__pixelcraft; const G=a.newGame({seed:42,mode:'survival',diff:1,slot:1,name:'명령어 시험'});G.adventure.storySeen=true; a.startGame(G);});
+ await page.click('#commandButton');
+ for(const command of ['/time set night','/day 12','/difficulty hard','/heal']) await submit(page,command);
+ assert.deepEqual(await page.evaluate(()=>{const G=window.__pixelcraft.G;return [G.time,G.day,G.diff,G.player.hp]}),[.65,12,2,20]);
+ await page.keyboard.press('Escape');
+ await page.evaluate(()=>{window.__pixelcraft.G.adventure.coop=true;});
+ await page.keyboard.press('Slash'); assert.equal(await page.locator('#commandDialog').isVisible(),false);
+ await page.keyboard.press('KeyT'); assert.equal(await page.locator('#commandDialog').isVisible(),true);
+ await submit(page,'50day'); assert.equal(await page.evaluate(()=>window.__pixelcraft.G.day),50);
+ await page.keyboard.press('Escape'); await page.waitForFunction(()=>window.__pixelcraft.G.adventure.boss?.spawned);
+ const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}), mp=await mobile.newPage(); mp.on('pageerror',e=>errors.push(e.message));
+ await mp.goto(url); await mp.waitForFunction(()=>window.__pixelcraft&&!document.getElementById('slots').inert);
+ await mp.locator('#btnJumpWorld').tap(); await mp.locator('#nwCreate').tap(); await mp.locator('#adventureActions button:last-child').tap();
+ await mp.locator('#commandButton').tap(); await submit(mp,'/checkpoint 1');
+ assert.equal(await mp.evaluate(()=>window.__pixelcraft.G.jump.checkpoint),15);
+ await submit(mp,'50day');
+ assert.ok(await mp.locator('#commandClose').evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}));
+ await mp.screenshot({path:`${out}/02-commands-mobile.png`}); await mp.locator('#commandClose').tap();
+ assert.equal(await mp.evaluate(()=>window.__pixelcraft.G.paused),false);
+ await mp.waitForTimeout(150); assert.equal(await mp.evaluate(()=>window.__pixelcraft.G.day),50);
+ await mobile.close(); assert.deepEqual(errors,[]); console.log('PASS: commands, inventory, teleport rejection, history, pause/focus, saved practice, creative flight, world controls, co-op keys, mobile; no browser errors');
+} finally { await browser.close(); }

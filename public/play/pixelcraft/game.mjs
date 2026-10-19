@@ -1,3 +1,4 @@
+import { createCommandConsole } from './command-ui.mjs';
 import { makeJumpWorld, resetJumper, newJumpState, JUMP_COURSE } from './jump-world.mjs';
 import { absorbDamage } from './armor.mjs';
 import { account, saveKey, initAccount } from './account.mjs';
@@ -1418,7 +1419,8 @@ setInterval(() => {
 // ---- 입력 ----
 const GAME_KEYS = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'F3']);
 window.addEventListener('keydown', (e) => {
-  if (e.target instanceof HTMLInputElement) return;
+  if (commands.isOpen() || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+  if (G && !G.paused && !G.dead && (e.code === 'KeyT' || (e.code === 'Slash' && !G.adventure?.coop))) { e.preventDefault(); commands.open(); return; }
   if (GAME_KEYS.has(e.code)) e.preventDefault();
   if (!G) return;
   if (e.repeat && !['KeyQ'].includes(e.code)) {
@@ -1610,6 +1612,7 @@ function updateSoundButtons() {
 }
 
 function startGame(game) {
+  commands.reset();
   G = game;
   keys.clear(); mouse.left = mouse.right = false;
   demo = null;
@@ -1632,6 +1635,7 @@ function quitToTitle() {
   saveGame(true);
   closePanel();
   adventure.reset();
+  commands.reset();
   G = null;
   $('pause').hidden = true;
   $('death').hidden = true;
@@ -1790,4 +1794,5 @@ function boot() {
   window.__pixelcraft = { adventure, W, H, get G() { return G; }, startGame, newGame, loadGame, saveGame, serialize, keys, mouse, setTile, breakBlock, placeBlock, doUse, explode, makeMob, openPanel, closePanel, UI };
 }
 const adventure = createAdventureController({ get: () => G, keys, UI, closePanel, toast, hudDirty, save: () => saveGame(true), makeMob, hitMob, shootArrow, breakInfo, breakBlock, wearTool });
+const commands = createCommandConsole({ get: () => G, closePanel, clearInput: () => { keys.clear(); mouse.left = mouse.right = false; }, changed: () => { hudDirty(); if (UI.open) renderPanel(); $('touch').classList.toggle('creative', G.mode === 'creative'); }, save: () => saveGame(true) });
 boot();

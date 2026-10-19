@@ -60,7 +60,7 @@ export function tickJumpWorld(G, dt, notify = () => {}, save = () => {}) {
     else { putPlatform(G.w, b, true); runtime.delete(i); }
     G.dirty = [Math.min(G.dirty?.[0] ?? b.x, b.x - 2), Math.max(G.dirty?.[1] ?? b.x, b.x + b.width + 2)];
   }
-  G.time = 0.18; G.day = 1;
+  G.time = 0.18; if (!j.assisted) G.day = 1;
   for (const p of [G.player, ...(G.adventure.coop && !G.companion.spectator ? [G.companion] : [])]) {
     p.hp = 20; p.food = 20;
     if (p.y > 78 || p.x < JUMP_PLATFORMS[0].x - 5) {
