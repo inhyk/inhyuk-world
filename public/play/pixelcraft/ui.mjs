@@ -1,3 +1,4 @@
+import { ARMOR_SLOTS, armorPoints } from './armor.mjs';
 // 가방·제작대·화로·상자 화면과 아래쪽 손 줄(핫바), 체력·배고픔 표시
 import { ITEMS, RECIPES, SMELT, SMELT_TIME, FUEL, maxStack, durabilityOf, I } from './data.mjs';
 import { addItem, matchRecipe, canCraft, craftFromSlots, recipeNeeds, countItem } from './core.mjs';
@@ -84,7 +85,7 @@ export function initUI(game, hooks) {
     // 터치는 누른 칸이 손을 뗄 때도 target 이라서, 손가락 아래 칸을 직접 찾는다
     const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('#panel [data-s]');
     const to = target?.dataset.s;
-    const backable = /^[igcf]:/.test(d.from);
+    const backable = /^[aigcf]:/.test(d.from);
     if (to && to !== d.from && !to.startsWith('rb:') && to !== 'o') {
       clickSlot(to, 0, false);
       // 다른 물건과 자리를 바꿨거나 다 못 들어갔으면 남은 건 원래 칸으로
@@ -123,6 +124,7 @@ function furnace() {
 function resolve(ref) {
   const [kind, n] = ref.split(':');
   const k = Number(n);
+  if (kind === 'a') { const player = k >= 4 ? G.companion : G.player; player.armor ??= Array(4).fill(null); return { arr: player.armor, k: k % 4, kind: `a${k % 4}` }; }
   if (kind === 'i') return { arr: G.player.inv, k, kind };
   if (kind === 'g') return { arr: UI.grid, k, kind };
   if (kind === 'c') return { arr: chestSlots(), k, kind };
@@ -130,6 +132,7 @@ function resolve(ref) {
   return null;
 }
 function accepts(kind, id) {
+  if (kind.startsWith('a')) return ITEMS[id]?.armor?.slot === Number(kind.slice(1));
   if (kind === 'fo') return false;
   if (kind === 'ff') return FUEL[id] !== undefined;
   return true;
@@ -207,6 +210,8 @@ function quickMove({ arr, k, kind }) {
   const inv = G.player.inv;
   let left = s.count;
   if (kind === 'i') {
+    const armor = ITEMS[s.id]?.armor;
+    if (armor && !G.player.armor?.[armor.slot] && ['inv', 'table'].includes(UI.open)) { G.player.armor ??= Array(4).fill(null); G.player.armor[armor.slot] = s; arr[k] = null; return; }
     if (UI.open === 'chest') left = addItem(chestSlots(), s.id, s.count, s.dur);
     else if (UI.open === 'furnace') {
       const f = furnace().slots;
@@ -346,12 +351,12 @@ function bookHtml() {
   }).join('');
   return `<div class="book-wrap"><div class="label">만들 수 있는 것 <small>누르면 바로 만들어 (Shift: 많이)</small></div><div class="bookgrid">${items}</div></div>`;
 }
-const CREATIVE_TABS = ['블록', '도구', '재료·음식'];
+const CREATIVE_TABS = ['블록', '도구·방어구', '재료·음식'];
 function creativeIds(tab) {
   const ids = ITEMS.filter(Boolean).map((it) => it.id);
   if (tab === 0) return ids.filter((id) => id < 100);
-  if (tab === 1) return ids.filter((id) => ITEMS[id].tool || [I.FLINT_STEEL, I.BUCKET, I.WATER_BUCKET, I.LAVA_BUCKET, I.BOW, I.ARROW, I.COMPASS, I.CLOCK, I.DOOR, I.BED].includes(id));
-  return ids.filter((id) => id >= 100 && !ITEMS[id].tool && ![I.FLINT_STEEL, I.BUCKET, I.WATER_BUCKET, I.LAVA_BUCKET, I.BOW, I.ARROW, I.COMPASS, I.CLOCK, I.DOOR, I.BED].includes(id));
+  if (tab === 1) return ids.filter((id) => ITEMS[id].tool || ITEMS[id].armor || [I.FLINT_STEEL, I.BUCKET, I.WATER_BUCKET, I.LAVA_BUCKET, I.BOW, I.ARROW, I.COMPASS, I.CLOCK, I.DOOR, I.BED].includes(id));
+  return ids.filter((id) => id >= 100 && !ITEMS[id].tool && !ITEMS[id].armor && ![I.FLINT_STEEL, I.BUCKET, I.WATER_BUCKET, I.LAVA_BUCKET, I.BOW, I.ARROW, I.COMPASS, I.CLOCK, I.DOOR, I.BED].includes(id));
 }
 function creativeHtml() {
   const tabs = CREATIVE_TABS.map((t, k) => `<button class="tab ${k === UI.tab ? 'on' : ''}" data-tab="${k}">${t}</button>`).join('');
@@ -374,6 +379,10 @@ function chestHtml() {
   return `<div class="label">상자</div><div class="grid9">${cells}</div>`;
 }
 
+function armorHtml() {
+  const row = (player, offset, label) => `<div class="armor-line"><span>${label}<br><small>방어 ${armorPoints(player)}/20</small></span>${ARMOR_SLOTS.map((name, k) => `<div class="armor-cell">${slotHtml(`a:${offset+k}`, player.armor?.[k])}<small>${name}</small></div>`).join('')}</div>`;
+  return `<div class="armor-rack">${row(G.player, 0, G.adventure?.coop ? '1P 방어구' : '방어구')}${G.adventure?.coop ? row(G.companion, 4, '2P 방어구') : ''}<small>가방에서 집어 맞는 부위에 놓기 · Shift+클릭: 1P 빠른 착용</small></div>`;
+}
 export function renderPanel() {
   if (!UI.open) return;
   const panel = $('panel');
@@ -385,7 +394,7 @@ export function renderPanel() {
     side = bookHtml();
   } else if (UI.open === 'furnace') top = furnaceHtml();
   else if (UI.open === 'chest') top = chestHtml();
-  panel.innerHTML = `<div class="mc-wrap"><div class="mc-panel"><button class="close" data-close aria-label="닫기">✕</button>${top}${invHtml()}</div>${side ? `<div class="mc-panel side">${side}</div>` : ''}</div>`;
+  panel.innerHTML = `<div class="mc-wrap"><div class="mc-panel"><button class="close" data-close aria-label="닫기">✕</button>${top}${['inv', 'table'].includes(UI.open) ? armorHtml() : ''}${invHtml()}</div>${side ? `<div class="mc-panel side">${side}</div>` : ''}</div>`;
   UI.lastRender = performance.now();
   renderCursor();
 }
@@ -422,6 +431,7 @@ function tipFor(ref) {
   const it = ITEMS[s.id];
   let extra = '';
   if (it.tool) extra = `<br>공격력 ${it.tool.dmg}${s.dur !== undefined ? ` · 내구도 ${s.dur}/${durabilityOf(s.id)}` : ''}`;
+  else if (it.armor) extra = `<br>방어력 +${it.armor.points} · 내구도 ${s.dur ?? durabilityOf(s.id)}/${durabilityOf(s.id)}`;
   else if (it.food) extra = `<br>배고픔 +${it.food}`;
   else if (FUEL[s.id]) extra = `<br>연료 (${Math.round(FUEL[s.id] / SMELT_TIME)}개 굽기)`;
   return `<b>${it.name}</b>${extra}`;
@@ -444,7 +454,7 @@ let hudKey = '';
 export function renderHUD() {
   const p = G.player;
   const inv = p.inv;
-  const parts = [p.sel, G.mode, Math.ceil(p.hp), Math.ceil(p.food), Math.ceil(p.air)];
+  const parts = [armorPoints(p), p.sel, G.mode, Math.ceil(p.hp), Math.ceil(p.food), Math.ceil(p.air)];
   for (let k = 0; k < 9; k++) parts.push(inv[k] ? `${inv[k].id}x${inv[k].count}d${inv[k].dur ?? ''}` : '-');
   const key = parts.join('|');
   if (key === hudKey) return;
@@ -477,7 +487,7 @@ export function renderHUD() {
   };
   let air = '';
   if (p.air < 10) for (let k = 0; k < Math.ceil(p.air); k++) air += `<img src="${hudIcons.bubble}" alt="">`;
-  bars.innerHTML = `<div class="row air">${air}</div><div class="hb"><div class="row hearts ${p.hp <= 6 ? 'low' : ''}">${row(Math.ceil(p.hp), hudIcons.heart, hudIcons.heartHalf, hudIcons.heartEmpty)}</div><div class="row food">${row(Math.ceil(p.food), hudIcons.food, hudIcons.foodHalf, hudIcons.foodEmpty)}</div></div>`;
+  bars.innerHTML = `<div class="row air">${air}</div>${armorPoints(p) ? `<div class="armor-hud">🛡 방어 ${armorPoints(p)}/20</div>` : ''}<div class="hb"><div class="row hearts ${p.hp <= 6 ? 'low' : ''}">${row(Math.ceil(p.hp), hudIcons.heart, hudIcons.heartHalf, hudIcons.heartEmpty)}</div><div class="row food">${row(Math.ceil(p.food), hudIcons.food, hudIcons.foodHalf, hudIcons.foodEmpty)}</div></div>`;
 }
 export function hudDirty() {
   hudKey = '';

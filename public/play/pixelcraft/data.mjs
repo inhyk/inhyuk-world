@@ -11,7 +11,7 @@ export const B = {
   TALL_GRASS: 39, POPPY: 40, DANDELION: 41, OBSIDIAN: 42, IRON_BLOCK: 43, GOLD_BLOCK: 44, DIAMOND_BLOCK: 45,
   LADDER: 46, DOOR_B: 47, DOOR_T: 48, BED_FOOT: 49, BED_HEAD: 50,
   SAPLING_OAK: 51, SAPLING_BIRCH: 52, SAPLING_SPRUCE: 53, PUMPKIN: 54, JACK: 55, DEAD_BUSH: 56,
-  COAL_BLOCK: 57, MOSSY_COBBLE: 58,
+  COAL_BLOCK: 57, MOSSY_COBBLE: 58, NETHERRACK: 59, SOUL_SAND: 60, GLOWSTONE: 61, END_STONE: 62, PURPUR: 63,
 };
 
 export const I = {
@@ -27,6 +27,10 @@ export const I = {
   ROTTEN_FLESH: 146, APPLE: 147, GOLDEN_APPLE: 148,
   BONE: 150, GUNPOWDER: 151, LEATHER: 152, FEATHER: 153, STRING: 154,
   DOOR: 160, BED: 161,
+  LEATHER_HELMET: 170, LEATHER_CHEST: 171, LEATHER_LEGS: 172, LEATHER_BOOTS: 173,
+  IRON_HELMET: 174, IRON_CHEST: 175, IRON_LEGS: 176, IRON_BOOTS: 177,
+  GOLD_HELMET: 178, GOLD_CHEST: 179, GOLD_LEGS: 180, GOLD_BOOTS: 181,
+  DIAMOND_HELMET: 182, DIAMOND_CHEST: 183, DIAMOND_LEGS: 184, DIAMOND_BOOTS: 185,
 };
 
 // tool: 이 블록을 빨리 캐는 도구. tier: 아이템을 얻으려면 필요한 곡괭이 등급(1 나무·금, 2 돌, 3 철, 4 다이아)
@@ -101,6 +105,11 @@ block(B.JACK, '잭오랜턴', { hard: 1, tool: 'axe', light: 15, sound: 'wood' }
 block(B.DEAD_BUSH, '마른 덤불', { ...plant, drop: (r) => (r < 0.5 ? [I.STICK, 1] : null) });
 block(B.COAL_BLOCK, '석탄 블록', { hard: 5, tool: 'pick', tier: 1 });
 block(B.MOSSY_COBBLE, '이끼 낀 조약돌', { hard: 2, tool: 'pick', tier: 1 });
+block(B.NETHERRACK, '네더랙', { hard: 0.4, tool: 'pick', tier: 1 });
+block(B.SOUL_SAND, '영혼 모래', { hard: 0.5, tool: 'shovel', sound: 'sand' });
+block(B.GLOWSTONE, '발광석', { hard: 0.4, light: 15, sound: 'glass' });
+block(B.END_STONE, '엔드 돌', { hard: 3, tool: 'pick', tier: 1 });
+block(B.PURPUR, '퍼퍼 블록', { hard: 1.5, tool: 'pick', tier: 1 });
 
 // 문은 닫혔을 때만 몸을 막는다 (meta 의 1 비트가 열림)
 export function isSolid(t, m) {
@@ -142,6 +151,16 @@ for (const [mat, ids] of Object.entries(toolIds)) {
     });
   });
 }
+
+export const ARMOR_MATERIALS = {
+  leather: { name: '가죽', ingredient: I.LEATHER, ids: [170, 171, 172, 173], points: [1, 3, 2, 1], dur: 5, color: '#a16c46' },
+  iron: { name: '철', ingredient: I.IRON_INGOT, ids: [174, 175, 176, 177], points: [2, 6, 5, 2], dur: 15, color: '#d3dee6' },
+  gold: { name: '금', ingredient: I.GOLD_INGOT, ids: [178, 179, 180, 181], points: [2, 5, 3, 1], dur: 7, color: '#f3c74f' },
+  diamond: { name: '다이아몬드', ingredient: I.DIAMOND, ids: [182, 183, 184, 185], points: [3, 8, 6, 3], dur: 33, color: '#57ded5' },
+};
+for (const [mat, def] of Object.entries(ARMOR_MATERIALS)) def.ids.forEach((id, slot) => {
+  item(id, `${def.name} ${['투구', '흉갑', '바지', '신발'][slot]}`, { stack: 1, armor: { slot, mat, points: def.points[slot], color: def.color }, uses: [11, 16, 15, 13][slot] * def.dur });
+});
 
 item(I.STICK, '막대기');
 item(I.COAL, '석탄');
@@ -222,6 +241,10 @@ for (const [mat, ids] of Object.entries(toolIds)) {
     { out: [ids[3], 1], shape: ['M', 'M', 'S'], key },
   );
 }
+for (const def of Object.values(ARMOR_MATERIALS)) {
+  const shapes = [['MMM', 'M M'], ['M M', 'MMM', 'MMM'], ['MMM', 'M M', 'M M'], ['M M', 'M M']];
+  def.ids.forEach((id, slot) => raw.push({ out: [id, 1], shape: shapes[slot], key: { M: def.ingredient } }));
+}
 raw.push(
   { out: [I.FLINT_STEEL, 1], items: [I.IRON_INGOT, I.FLINT] },
   { out: [I.BUCKET, 1], shape: ['I I', ' I '], key: { I: I.IRON_INGOT } },
@@ -264,8 +287,9 @@ export const RECIPES = raw.map((r, index) => {
 // 2x2 안에 들어가지 않는 조합법은 제작대가 있어야 한다
 for (const r of RECIPES) r.table = r.items ? r.items.length > 4 : r.w > 2 || r.h > 2;
 
-export const HOSTILE = new Set(['zombie', 'skeleton', 'creeper', 'spider']);
+export const HOSTILE = new Set(['zombie', 'skeleton', 'creeper', 'spider', 'summoner']);
 export const MOBS = {
+  summoner: { name: '소환사 좀비', w: 1, h: 2.6, hp: 360, speed: 1.6, dmg: 5, drops: [[I.DIAMOND, 10, 10], [I.GOLDEN_APPLE, 3, 3]] },
   pig: { name: '돼지', w: 0.9, h: 0.85, hp: 10, speed: 1.5, drops: [[I.RAW_PORK, 1, 3]] },
   cow: { name: '소', w: 0.95, h: 1.3, hp: 10, speed: 1.3, drops: [[I.RAW_BEEF, 1, 3], [I.LEATHER, 0, 2]] },
   sheep: { name: '양', w: 0.9, h: 1.15, hp: 8, speed: 1.4, drops: [[B.WOOL, 1, 2]] },

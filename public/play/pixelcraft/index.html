@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#1b1b1b">
-  <title>픽셀크래프트 · 2D 마인크래프트</title>
+  <title>2D마인크레프트</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23865b3a'/%3E%3Crect width='16' height='5' fill='%235fa83b'/%3E%3Crect x='3' y='5' width='2' height='2' fill='%235fa83b'/%3E%3Crect x='10' y='5' width='3' height='1' fill='%235fa83b'/%3E%3C/svg%3E">
   <link rel="preload" href="../undertale/fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <canvas id="game" aria-label="픽셀크래프트 게임 화면"></canvas>
+  <canvas id="game" aria-label="2D마인크레프트 게임 화면"></canvas>
 
   <div id="hud" hidden>
     <div id="hint" hidden><span></span><button aria-label="길잡이 닫기">✕</button></div>
@@ -49,11 +49,16 @@
   <section id="title" hidden>
     <a class="back" href="/games" target="_top">← 게임 목록</a>
     <div class="logo">
-      <h1>PIXELCRAFT</h1>
-      <p class="sub">픽셀크래프트</p>
-      <span class="splash">2D 마인크래프트!</span>
+      <h1>2D마인크레프트</h1>
+      <p class="sub">숲의 비밀</p>
+      <span class="splash">깊은 숲과 소환사 좀비!</span>
     </div>
     <div class="menu">
+      <div class="account-bar">
+        <div><b id="accountName">손님으로 플레이 중</b><small id="accountNote">계정 확인 중…</small></div>
+        <button id="btnAccount" class="mc-btn" disabled>로그인 / 가입</button>
+        <button id="btnLogout" class="mc-btn" hidden>로그아웃</button>
+      </div>
       <div id="slots"></div>
       <div class="row2">
         <button id="btnHelp" class="mc-btn">조작법 보기</button>
@@ -63,6 +68,10 @@
       <h2>새 세계 만들기</h2>
       <label>세계 이름 <input id="nwName" maxlength="20" autocomplete="off"></label>
       <label>시드 (비워 두면 무작위) <input id="nwSeed" maxlength="24" autocomplete="off" placeholder="예: 인혁"></label>
+      <label>내 이름 <input id="nwPlayer" maxlength="16" autocomplete="off" value="여행자"></label>
+      <label>내 모습 <select id="nwSkin"><option value="0">하늘 탐험가</option><option value="1">숲의 모험가</option><option value="2">보랏빛 여행자</option><option value="3">노을 기사</option></select></label>
+      <label class="coop-pick"><input id="nwCoop" type="checkbox"> 한 컴퓨터에서 2인 플레이 (공유 가방)</label>
+      <label>하루 길이 <select id="nwDayLength"><option value="120">2분 · 빠른 모험</option><option value="600" selected>10분 · 느긋한 생존</option><option value="60">1분 · 이야기 여행</option></select></label>
       <fieldset>
         <legend>게임 모드</legend>
         <label class="pick"><input type="radio" name="mode" value="survival" checked><span>서바이벌<small>캐고, 만들고, 살아남기</small></span></label>
@@ -82,6 +91,20 @@
     <p class="foot">비공식 팬 게임 · Minecraft는 Mojang Studios의 상표입니다 · 그림과 소리는 전부 코드로 만들었어요</p>
   </section>
 
+  <section id="accountDialog" class="overlay" role="dialog" aria-modal="true" aria-labelledby="accountHeading" hidden>
+    <form id="accountForm" class="mc-dialog account-dialog">
+      <h2 id="accountHeading">로그인</h2>
+      <p>게임 월드의 공용 계정으로 로그인해요.</p>
+      <label>닉네임 <input id="accountUsername" name="username" autocomplete="username" minlength="2" maxlength="10" required pattern="[a-zA-Z0-9가-힣_]{2,10}" placeholder="한글·영문·숫자·밑줄 2~10자"></label>
+      <label>비밀번호 <input id="accountPassword" name="password" type="password" autocomplete="current-password" minlength="4" maxlength="16" required placeholder="4~16자"></label>
+      <label id="accountConfirmRow" hidden>비밀번호 확인 <input id="accountConfirm" name="confirm" type="password" autocomplete="new-password" minlength="4" maxlength="16"></label>
+      <p id="accountError" class="account-error" role="status" aria-live="polite"></p>
+      <div class="row2"><button id="accountSubmit" type="submit" class="mc-btn green">로그인</button><button id="accountCancel" type="button" class="mc-btn">취소</button></div>
+      <button id="accountSwitch" type="button" class="account-switch">처음 왔어요 · 계정 만들기</button>
+      <small>세계는 이 브라우저에 계정별로 저장돼요. 다른 게임에서도 같은 닉네임으로 로그인할 수 있어요. 비밀번호를 잊으면 복구할 수 없어요.</small>
+    </form>
+  </section>
+
   <section id="help" class="overlay" hidden>
     <div class="mc-dialog wide">
       <h2>조작법</h2>
@@ -94,6 +117,10 @@
         <p><kbd>Esc</kbd> 메뉴 · <kbd>M</kbd> 소리 · <kbd>+</kbd><kbd>-</kbd> 확대 · <kbd>O</kbd> 좌표 보기</p>
         <p>크리에이티브: <kbd>F</kbd> 또는 스페이스 두 번 → 날기</p>
       </div>
+      <h3>함께하는 모험</h3>
+      <p>주민·포탈 가까이에서 <kbd>R</kbd> / 화면의 ‘대화·포탈’. 흑요석 4×6 테두리의 안을 비우고 부싯돌과 부시를 든 채 R로 직접 포탈을 켤 수도 있어요.</p>
+      <p>2인: 1P는 A·D·W/스페이스와 마우스, 2P는 방향키 이동·점프, <kbd>/</kbd> 공격, <kbd>.</kbd> 정면 캐기, <kbd>,</kbd> 정면 블록 놓기, <kbd>L</kbd> 2P 관전 모드 켜기·끄기, <kbd>B</kbd> 1P 곁으로 합류. 가방과 선택한 도구는 함께 사용해요. 서로 멀어지면 B로 합류해요.</p>
+      <p>50일째 소환사 좀비가 등장해요. 3페이즈를 이기고 황금 포탈에 들어가면 엔딩! 평화로움에서도 이야기 보스가 등장해요.</p>
       <h3>살아남는 순서</h3>
       <ol>
         <li>나무 캐기 → 나무 판자 → 제작대</li>
@@ -127,6 +154,9 @@
     </div>
   </section>
 
+  <aside id="questHUD" hidden><b id="worldLine"></b><span id="questLine"></span><div><button id="interactButton">대화·포탈 R</button><button id="storyButton">이야기</button><button id="achievementButton">도전과제</button></div></aside>
+  <aside id="bossHUD" hidden><b id="bossLabel"></b><progress id="bossHealth" max="360" value="360" aria-label="소환사 좀비 체력"></progress></aside>
+  <section id="adventureDialog" class="overlay" hidden><div class="mc-dialog wide story-dialog"><span class="chapter">2D마인크레프트 · 숲의 비밀</span><h2 id="adventureTitle"></h2><div id="adventureBody"></div><div id="adventureActions"></div></div></section>
   <div id="loading" class="overlay" hidden><div class="mc-dialog clear"><h2>세계를 만드는 중…</h2></div></div>
 
   <script type="module" src="./game.mjs"></script>

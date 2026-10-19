@@ -7,9 +7,9 @@
     "games/valorant"
   ],
   "scripts": {
-    "predev": "npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build",
+    "predev": "node games/pixelcraft/sync-net.mjs && npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build",
     "dev": "next dev",
-    "build": "npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build && next build",
+    "build": "node games/pixelcraft/sync-net.mjs && npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build && next build",
     "start": "next start",
     "lint": "eslint",
     "snowflow:dev": "npm run dev --workspace=@inhyuk/snowflow",

@@ -10,6 +10,7 @@ const root = path.resolve('public'), outDir = process.argv[2] || null;
 if (outDir) fs.mkdirSync(outDir, { recursive: true });
 const types = { '.html': 'text/html; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2' };
 const server = http.createServer((request, response) => {
+  if (new URL(request.url, 'http://localhost').pathname === '/api/pixelcraft/account') { response.writeHead(200, { 'content-type': 'application/json' }); response.end(JSON.stringify({ ok: true, available: false, user: null })); return; }
   const filename = path.resolve(root, '.' + decodeURIComponent(new URL(request.url, 'http://localhost').pathname));
   if (!filename.startsWith(root + path.sep) || !fs.existsSync(filename) || !fs.statSync(filename).isFile()) { response.writeHead(404); response.end(); return; }
   response.writeHead(200, { 'content-type': types[path.extname(filename)] || 'application/octet-stream' });
@@ -40,6 +41,7 @@ try {
   await page.fill('#nwSeed', '1234');
   await page.click('#nwCreate');
   await page.waitForFunction(() => window.__pixelcraft.G?.view);
+  await page.click('#adventureActions button:last-child');
   await shot('02-world');
 
   // 가장 가까운 나무 밑동 옆에 서서 베기 → 통째로 쓰러져 원목 여러 개
@@ -47,12 +49,12 @@ try {
     const G = window.__pixelcraft.G, w = G.w, px = Math.floor(G.player.x);
     for (let d = 1; d < 60; d++) for (const x of [px + d, px - d]) {
       const s = w.surface[x];
-      if ([9, 12, 15].includes(w.tiles[(s - 1) * 640 + x])) return { x, s };
+      if ([9, 12, 15].includes(w.tiles[(s - 1) * w.surface.length + x])) return { x, s };
     }
     return null;
   });
   assert.ok(tree, '가까운 나무');
-  await ev((t) => { const G = window.__pixelcraft.G; Object.assign(G.player, { x: t.x - 1.6, y: t.s - 1.85, vx: 0, vy: 0, fallTop: t.s - 1.85 }); G.cam.x = G.player.x; G.cam.y = G.player.y; }, tree);
+  await ev((t) => { const G = window.__pixelcraft.G; Object.assign(G.player, { x: t.x + 0.1, y: t.s - 1.85, vx: 0, vy: 0, fallTop: t.s - 1.85 }); G.cam.x = G.player.x; G.cam.y = G.player.y; }, tree);
   await page.waitForTimeout(300);
   let pt = await toScreen(tree.x + 0.5, tree.s - 0.5);
   await page.mouse.move(pt.x, pt.y);
@@ -61,6 +63,7 @@ try {
   await page.mouse.up();
   await page.waitForTimeout(1500);
   const logs = await ev(() => window.__pixelcraft.G.player.inv.filter((s) => s && [8, 11, 14].includes(s.id)).reduce((n, s) => n + s.count, 0));
+
   assert.ok(logs >= 3, `나무가 쓰러져 원목 ${logs}개`);
 
   // 가방 → "만들 수 있는 것" 에서 판자
