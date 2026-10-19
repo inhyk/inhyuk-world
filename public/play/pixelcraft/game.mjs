@@ -1,4 +1,4 @@
-import { makeJumpWorld, resetJumper } from './jump-world.mjs';
+import { makeJumpWorld, resetJumper, newJumpState, JUMP_COURSE } from './jump-world.mjs';
 import { absorbDamage } from './armor.mjs';
 import { account, saveKey, initAccount } from './account.mjs';
 import { newAdventure, packAdventure, unpackAdventure, createAdventureController } from './adventure.mjs';
@@ -78,7 +78,7 @@ function newGame(opts) {
   }
   const r = game.rng;
   if (opts.worldType === 'jump') {
-    game.jump = { checkpoint: 0, progress: 0, elapsed: 0, falls: 0, completed: false };
+    game.jump = newJumpState();
     resetJumper(game.player, 0);
     newAdventure(game, opts);
     resetJumper(game.companion, 0);
@@ -117,7 +117,7 @@ function loadGame(slot) {
   try {
     const d = JSON.parse(raw);
     const w = d.jump ? makeJumpWorld(d.seed) : generateWorld(d.seed);
-    restoreTerrain(w, d);
+    if (!d.jump) restoreTerrain(w, d);
     const game = baseGame(w, { name: d.name, mode: d.mode, diff: d.diff, slot });
     Object.assign(game.player, d.player);
     game.player.inv = Array.from({ length: 36 }, (_, k) => d.player.inv[k] ?? null);
@@ -126,12 +126,16 @@ function loadGame(slot) {
     game.day = d.day;
     game.playTime = d.playTime ?? 0;
     game.hint = d.hint ?? 0;
-    game.jump = d.jump;
+    game.jump = d.jump ? (d.jump.course === JUMP_COURSE ? d.jump : { ...newJumpState(), previousCourse: { elapsed: d.jump.elapsed, falls: d.jump.falls, completed: d.jump.completed, progress: d.jump.progress } }) : undefined;
     game.stats = d.stats ?? { mined: 0 };
     game.chests = new Map((d.chests ?? []).map(([i, v]) => [remapIndex(i, d.width ?? 640), v]));
     game.furnaces = new Map((d.furnaces ?? []).map(([i, v]) => [remapIndex(i, d.width ?? 640), v]));
     game.mobs = (d.mobs ?? []).map(m => Array.isArray(m) ? Object.assign(makeMob(m[0], m[1], m[2]), { hp: m[3] }) : Object.assign(makeMob(m.type, m.x, m.y), m));
     unpackAdventure(game, d.adventure);
+    if (d.jump && d.jump.course !== JUMP_COURSE) {
+      resetJumper(game.player, 0); resetJumper(game.companion, 0);
+      game.adventure.storySeen = false;
+    }
     game.cam = { x: game.player.x, y: game.player.y };
     // 흐르던 물은 불러온 뒤 다시 흐르게 깨운다
     for (let i = 0; i < W * H; i++) {
@@ -1617,6 +1621,7 @@ function startGame(game) {
   $('title').hidden = true;
   $('hud').hidden = false;
   $('touch').classList.toggle('creative', G.mode === 'creative');
+  $('touch').classList.toggle('jump-world', !!G.jump);
   hudDirty();
   G.hintHidden = false;
   resize();
@@ -1674,7 +1679,7 @@ function showTitle() {
   }
   const full = Array.from({ length: SLOTS }, (_, k) => !!load(SAVE_KEY(k))).every(Boolean);
   $('btnJumpWorld').disabled = full;
-  $('btnJumpWorld').textContent = full ? '점프맵 시작 · 저장 칸을 하나 비워 줘' : '☁ 점프맵 세계로 들어가기';
+  $('btnJumpWorld').textContent = full ? '점프맵 시작 · 저장 칸을 하나 비워 줘' : '☠ 극한 점프맵 세계로 들어가기';
 }
 let newSlot = 0;
 function updateWorldChoice() {
@@ -1687,7 +1692,7 @@ function openNewWorld(k, type = 'overworld') {
   updateWorldChoice();
   newSlot = k;
   $('newWorld').hidden = false;
-  $('nwName').value = type === 'jump' ? '하늘 점프맵' : `나의 세계 ${k + 1}`;
+  $('nwName').value = type === 'jump' ? '극한 점프맵' : `나의 세계 ${k + 1}`;
   $('nwSeed').value = '';
   if (account.user) $('nwPlayer').value = account.user.name;
   $('nwName').focus();

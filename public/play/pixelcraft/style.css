@@ -588,3 +588,7 @@ legend { font-size: 14px; margin-bottom: 6px; }
 .armor-cell small, .armor-rack > small { display: block; font-size: 10px; margin-top: 3px; }
 .armor-hud { color: #ddf5ff; text-shadow: 1px 2px #111; font-size: 12px; text-align: left; margin-bottom: 5px; }
 @media (max-width: 500px) { .armor-line { gap: 5px; } .armor-line > span { width: 65px; font-size: 10px; } }
+
+#touch .sprint { display: none; }
+#touch.jump-world .sprint { display: block; width: 70px; height: 52px; font-size: 14px; }
+#touch.jump-world .mode { display: none; }
