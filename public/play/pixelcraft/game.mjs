@@ -82,6 +82,7 @@ function newGame(opts) {
     resetJumper(game.player, 0);
     newAdventure(game, opts);
     resetJumper(game.companion, 0);
+    game.cam = { x: game.player.x, y: game.player.y };
     return game;
   }
   for (let x = 12; x < W - 12; x += 14) {
