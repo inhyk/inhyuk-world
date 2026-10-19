@@ -1,4 +1,4 @@
-import { makeJumpWorld, tickJumpWorld, drawJumpWorld, resetJumper, newJumpState, JUMP_LAST, checkpointNumber } from './jump-world.mjs';
+import { makeJumpWorld, tickJumpWorld, drawJumpWorld, resetJumper, newJumpState, JUMP_LAST, checkpointNumber, jumpGrip, themeAt } from './jump-world.mjs';
 import { absorbDamage } from './armor.mjs';
 import { B, I, ITEMS, HOSTILE } from './data.mjs';
 import { W, H, idx, moveBody, touching, computeLight, addItem, countItem, generateWorld } from './core.mjs';
@@ -76,7 +76,7 @@ export function createAdventureController(api) {
     const G = get();
     if (G.jump) {
       G.adventure.storySeen = true;
-      return show('극한 점프맵에 온 걸 환영해!', ['A·D 또는 방향키로 걷고 스페이스로 점프! 휴대폰에서는 화면 아래 이동·점프 버튼을 눌러 줘.', '61개 발판! 대부분 단 한 칸이고, 사이가 2~4칸 벌어져 있어. Shift를 누르고 달리다가 발판 끝에서 점프해! 2P는 오른쪽 Shift, 휴대폰은 ‘달리기’를 함께 눌러 줘.', '금 간 붉은 발판은 밟고 0.38초 뒤 무너져! 멈추지 말고 다음 발판으로 뛰어. 2.5초 뒤 다시 생겨. 체크포인트는 15발판마다 있어. 블록 캐기·놓기·날기는 잠겨 있어.']);
+      return show('극한 점프맵에 온 걸 환영해!', ['A·D 또는 방향키로 걷고 스페이스로 점프! 휴대폰에서는 화면 아래 이동·점프 버튼을 눌러 줘.', '61개 발판! 대부분 단 한 칸이고, 사이가 2~4칸 벌어져 있어. Shift를 누르고 달리다가 발판 끝에서 점프해! 2P는 오른쪽 Shift, 휴대폰은 ‘달리기’를 함께 눌러 줘.', '숲 → 얼음 절벽 → 화산 → 별빛섬! 얼음은 미끄럽고, 초록 화살표 발판은 자동으로 높이 튀어 올라. 금 간 붉은 발판은 밟고 0.38초 뒤 무너져! 멈추지 말고 다음 발판으로 뛰어. 2.5초 뒤 다시 생겨. 체크포인트는 15발판마다 있어. 블록 캐기·놓기·날기는 잠겨 있어.']);
     }
     show('깊은 숲에서 깨어나다', [
       `${G.adventure.name}, 학교에서 잠깐 잠들었을 뿐인데… 눈을 뜨니 깊은 숲, 네모난 세상이야.`,
@@ -180,7 +180,7 @@ export function createAdventureController(api) {
     p.invT = Math.max(0, p.invT - dt); p.hurtT = Math.max(0, p.hurtT - dt); p.swing = Math.max(0, p.swing - dt * 3.5); p.attackT -= dt;
     const move = api.UI.open ? 0 : Number(keys.has('ArrowRight')) - Number(keys.has('ArrowLeft'));
     const fluid = touching(G.w, p, t => t === B.LAVA || t === B.WATER);
-    p.vx += (move * (fluid ? 2.5 : G.jump && keys.has('ShiftRight') ? 5.6 : 4.3) - p.vx) * Math.min(1, dt * 14);
+    p.vx += (move * (fluid ? 2.5 : G.jump && keys.has('ShiftRight') ? 5.6 : 4.3) - p.vx) * Math.min(1, dt * jumpGrip(G, p, move, 14));
     p.vy = Math.min(28, p.vy + (fluid ? 9 : 30) * dt);
     if (keys.has('ArrowUp') && !api.UI.open && (p.onGround || fluid)) p.vy = fluid ? -4 : -9.4;
     if (move) p.face = move;
@@ -264,8 +264,8 @@ export function createAdventureController(api) {
     $('questHUD').hidden = !G;
     if (!a) return;
     if (G.jump) {
-      $('worldLine').textContent = `${G.jump.assisted ? '연습 · ' : ''}극한 점프맵 · ${G.jump.progress} / ${JUMP_LAST} · ${Math.floor(G.jump.elapsed)}초`;
-      $('questLine').textContent = G.jump.completed ? `★ 완주! · 떨어진 횟수 ${G.jump.falls} · R로 다시 도전` : `체크포인트 ${checkpointNumber(G.jump.checkpoint)} · 떨어지면 바로 재도전!`;
+      $('worldLine').textContent = `${G.jump.assisted ? '연습 · ' : ''}${themeAt(G.player.x).name} · ${G.jump.progress} / ${JUMP_LAST} · ${Math.floor(G.jump.elapsed)}초`;
+      $('questLine').textContent = G.jump.completed ? `★ 완주! · 떨어진 횟수 ${G.jump.falls} · R로 다시 도전` : `체크포인트 ${checkpointNumber(G.jump.checkpoint)} · ${themeAt(G.player.x).hint}`;
       $('interactButton').textContent = '기록 · 재도전 R';
       $('bossHUD').hidden = true; return;
     }

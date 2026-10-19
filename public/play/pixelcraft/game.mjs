@@ -1,5 +1,5 @@
 import { createCommandConsole } from './command-ui.mjs';
-import { makeJumpWorld, resetJumper, newJumpState, JUMP_COURSE } from './jump-world.mjs';
+import { makeJumpWorld, resetJumper, newJumpState, JUMP_COURSE, jumpGrip } from './jump-world.mjs';
 import { absorbDamage } from './armor.mjs';
 import { account, saveKey, initAccount } from './account.mjs';
 import { newAdventure, packAdventure, unpackAdventure, createAdventureController } from './adventure.mjs';
@@ -643,7 +643,7 @@ function updatePlayer(dt) {
   let speed = p.flying ? 9 : run ? 5.6 : 4.3;
   if (fluid && !p.flying) speed *= 0.55;
   if (move) p.face = move;
-  p.vx += (move * speed - p.vx) * Math.min(1, dt * (p.onGround || p.flying ? 14 : 7));
+  p.vx += (move * speed - p.vx) * Math.min(1, dt * jumpGrip(G, p, move, p.onGround || p.flying ? 14 : 7));
   const wasGround = p.onGround;
   if (p.flying) {
     const v = panel ? 0 : (down || run ? 1 : 0) - (jump ? 1 : 0);
