@@ -44,3 +44,9 @@ node games/pixelcraft/account-browser-check.mjs
 # node games/pixelcraft/dev-server.mjs 3051 실행 중일 때
 node games/pixelcraft/armor-browser-check.mjs
 ```
+
+### 하늘 점프맵
+
+첫 화면의 ‘점프맵 세계로 들어가기’ 또는 새 세계의 종류 선택에서 시작합니다. 31개 공중 발판, 6칸마다 공유 체크포인트, 낙하 즉시 재시작, 완주 시간과 낙하 횟수 저장, R로 기록 확인·처음부터 재도전을 지원합니다. 평화로운 서바이벌로 고정하며 블록 캐기·놓기·날기와 몬스터 등장은 제한합니다. 기존 생존 세계와 별도 저장 칸을 사용합니다.
+
+검증: `node --test games/pixelcraft/*.test.mjs`, `node games/pixelcraft/jump-browser-check.mjs` (3051 로컬 게임 서버).
