@@ -11,7 +11,7 @@ export const B = {
   TALL_GRASS: 39, POPPY: 40, DANDELION: 41, OBSIDIAN: 42, IRON_BLOCK: 43, GOLD_BLOCK: 44, DIAMOND_BLOCK: 45,
   LADDER: 46, DOOR_B: 47, DOOR_T: 48, BED_FOOT: 49, BED_HEAD: 50,
   SAPLING_OAK: 51, SAPLING_BIRCH: 52, SAPLING_SPRUCE: 53, PUMPKIN: 54, JACK: 55, DEAD_BUSH: 56,
-  COAL_BLOCK: 57, MOSSY_COBBLE: 58, NETHERRACK: 59, SOUL_SAND: 60, GLOWSTONE: 61, END_STONE: 62, PURPUR: 63,
+  COAL_BLOCK: 57, MOSSY_COBBLE: 58, NETHERRACK: 59, SOUL_SAND: 60, GLOWSTONE: 61, END_STONE: 62, PURPUR: 63, END_FRAME: 64,
 };
 
 export const I = {
@@ -26,6 +26,7 @@ export const I = {
   RAW_PORK: 140, COOKED_PORK: 141, RAW_BEEF: 142, STEAK: 143, RAW_CHICKEN: 144, COOKED_CHICKEN: 145,
   ROTTEN_FLESH: 146, APPLE: 147, GOLDEN_APPLE: 148,
   BONE: 150, GUNPOWDER: 151, LEATHER: 152, FEATHER: 153, STRING: 154,
+  ENDER_EYE: 155, BLAZE_ROD: 156,
   DOOR: 160, BED: 161,
   LEATHER_HELMET: 170, LEATHER_CHEST: 171, LEATHER_LEGS: 172, LEATHER_BOOTS: 173,
   IRON_HELMET: 174, IRON_CHEST: 175, IRON_LEGS: 176, IRON_BOOTS: 177,
@@ -51,6 +52,7 @@ block(B.GRASS, '잔디 블록', { hard: 0.6, tool: 'shovel', drop: B.DIRT, sound
 block(B.DIRT, '흙', { hard: 0.5, tool: 'shovel', sound: 'dirt' });
 block(B.STONE, '돌', { hard: 1.5, tool: 'pick', tier: 1, drop: B.COBBLE });
 block(B.COBBLE, '조약돌', { hard: 2, tool: 'pick', tier: 1 });
+block(B.END_FRAME, '엔드 포탈 틀', { hard: 3, tool: 'pick', tier: 2 });
 block(B.BEDROCK, '기반암', { hard: Infinity });
 block(B.SAND, '모래', { hard: 0.5, tool: 'shovel', gravity: true, sound: 'sand' });
 block(B.GRAVEL, '자갈', { hard: 0.6, tool: 'shovel', gravity: true, sound: 'sand', drop: (r) => (r < 0.15 ? [I.FLINT, 1] : [B.GRAVEL, 1]) });
@@ -192,6 +194,8 @@ item(I.LEATHER, '가죽');
 item(I.FEATHER, '깃털');
 item(I.STRING, '실');
 item(I.DOOR, '나무 문', { place: B.DOOR_B });
+item(I.ENDER_EYE, '엔더의 눈');
+item(I.BLAZE_ROD, '블레이즈 막대');
 item(I.BED, '침대', { stack: 1, place: B.BED_FOOT });
 // 자연에서만 생기는 블록은 아이템으로 갖고 다니지 않는다
 for (const id of [B.AIR, B.OAK_TRUNK, B.BIRCH_TRUNK, B.SPRUCE_TRUNK, B.FURNACE_LIT, B.WATER, B.LAVA, B.DOOR_B, B.DOOR_T, B.BED_FOOT, B.BED_HEAD, B.SNOW_GRASS]) delete ITEMS[id];
@@ -270,6 +274,8 @@ raw.push(
   { out: [I.GOLD_INGOT, 9], items: [B.GOLD_BLOCK] },
   { out: [I.DIAMOND, 9], items: [B.DIAMOND_BLOCK] },
   { out: [I.COAL, 9], items: [B.COAL_BLOCK] },
+  { out: [B.END_FRAME, 4], shape: [' O ', 'ODO', ' O '], key: { O: B.OBSIDIAN, D: I.DIAMOND } },
+  { out: [I.ENDER_EYE, 1], items: [I.DIAMOND, I.BLAZE_ROD] },
 );
 
 // 모양을 숫자 칸 배열로 바꿔 둔다. cells[r][c] 는 받아 주는 ID 목록 또는 null(빈 칸)
@@ -287,9 +293,12 @@ export const RECIPES = raw.map((r, index) => {
 // 2x2 안에 들어가지 않는 조합법은 제작대가 있어야 한다
 for (const r of RECIPES) r.table = r.items ? r.items.length > 4 : r.w > 2 || r.h > 2;
 
-export const HOSTILE = new Set(['zombie', 'skeleton', 'creeper', 'spider', 'summoner']);
+export const HOSTILE = new Set(['zombie', 'skeleton', 'creeper', 'spider', 'summoner', 'piglin', 'ghast', 'blaze']);
 export const MOBS = {
-  summoner: { name: '소환사 좀비', w: 1, h: 2.6, hp: 360, speed: 1.6, dmg: 5, drops: [[I.DIAMOND, 10, 10], [I.GOLDEN_APPLE, 3, 3]] },
+  piglin: { name: '피글린', w: .65, h: 1.85, hp: 24, speed: 2.7, dmg: 5, nether: true, drops: [[I.GOLD_INGOT, 1, 3]] },
+  ghast: { name: '가스트', w: 2.5, h: 2.8, hp: 32, speed: 1.8, dmg: 7, nether: true, flying: true, drops: [[I.GUNPOWDER, 2, 4]] },
+  blaze: { name: '블레이즈', w: .8, h: 1.8, hp: 28, speed: 2, dmg: 4, nether: true, flying: true, drops: [[I.BLAZE_ROD, 1, 2]] },
+  summoner: { name: '소환사 좀비', w: 1, h: 2.6, hp: 540, speed: 2.3, dmg: 8, drops: [[I.DIAMOND, 10, 10], [I.GOLDEN_APPLE, 3, 3]] },
   pig: { name: '돼지', w: 0.9, h: 0.85, hp: 10, speed: 1.5, drops: [[I.RAW_PORK, 1, 3]] },
   cow: { name: '소', w: 0.95, h: 1.3, hp: 10, speed: 1.3, drops: [[I.RAW_BEEF, 1, 3], [I.LEATHER, 0, 2]] },
   sheep: { name: '양', w: 0.9, h: 1.15, hp: 8, speed: 1.4, drops: [[B.WOOL, 1, 2]] },

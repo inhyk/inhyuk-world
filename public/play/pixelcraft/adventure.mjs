@@ -2,11 +2,11 @@ import { makeJumpWorld, tickJumpWorld, drawJumpWorld, resetJumper, newJumpState,
 import { absorbDamage } from './armor.mjs';
 import { B, I, ITEMS, HOSTILE } from './data.mjs';
 import { W, H, idx, moveBody, touching, computeLight, addItem, countItem, generateWorld } from './core.mjs';
-import { SKINS, BOSS_HP, bossPhase, makeVillage, makeNether, makeEnd, portalFrame, findPortal, terrainSave, restoreTerrain } from './adventure-world.mjs';
+import { SKINS, BOSS_HP, bossPhase, makeVillage, makeNether, addNetherFortress, makeEnd, portalFrame, findPortal, insidePortal, portalIntact, terrainSave, restoreTerrain } from './adventure-world.mjs';
 
 export function newAdventure(G, opts = {}) {
   G.adventure = { seed: G.w.seed, dimension: 'overworld', coop: !!opts.coop, skin: Number(opts.skin) || 0, name: opts.playerName || '여행자',
-    storySeen: false, bossDefeated: false, endingSeen: false, villagers: [], portals: [], worlds: {}, boss: null, achievements: [], trades: 0, visited: [] };
+    bedsVersion: 1, fortressVersion: 1, storySeen: false, bossDefeated: false, endingSeen: false, villagers: [], portals: [], worlds: {}, boss: null, achievements: [], trades: 0, visited: [] };
   G.player.skin = G.adventure.skin;
   G.companion = { ...G.player, armor: Array(4).fill(null), x: G.player.x + 1, inv: G.player.inv, spawn: { ...G.player.spawn }, skin: (G.adventure.skin + 1) % SKINS.length, attackT: 0 };
   if (G.jump) return;
@@ -14,13 +14,13 @@ export function newAdventure(G, opts = {}) {
   const x = Math.floor(W / 2) + 102;
   G.adventure.portals.push({ ...portalFrame(G.w, x, G.w.surface[x] - 1), kind: 'nether' });
   const ex = Math.floor(W / 2) + 145;
-  G.adventure.portals.push({ ...portalFrame(G.w, ex, G.w.surface[ex] - 1), kind: 'end' });
+  G.adventure.portals.push({ ...portalFrame(G.w, ex, G.w.surface[ex] - 1, 'end'), kind: 'end' });
   computeLight(G.w, 0, W - 1);
 }
-const WORLD_FIELDS = ['mobs', 'drops', 'arrows', 'tnts', 'falling', 'chests', 'furnaces', 'water', 'lava'];
+const WORLD_FIELDS = ['mobs', 'drops', 'arrows', 'tnts', 'falling', 'chests', 'furnaces', 'water', 'lava', 'fireballs'];
 function capture(G) {
   const d = { w: G.w, villagers: G.adventure.villagers, portals: G.adventure.portals, position: { x: G.player.x, y: G.player.y }, spawn: { ...G.player.spawn } };
-  for (const k of WORLD_FIELDS) d[k] = G[k];
+  for (const k of WORLD_FIELDS) d[k] = G[k] ?? [];
   return d;
 }
 export function packAdventure(G) {
@@ -54,7 +54,7 @@ export function createAdventureController(api) {
     dialog = false;
     const G = get();
     if (G) G.paused = false;
-    api.keys.clear();
+    api.keys.clear(); $('game').focus({ preventScroll: true });
   }
   function show(title, paragraphs, actions = []) {
     const G = get();
@@ -82,7 +82,8 @@ export function createAdventureController(api) {
       `${G.adventure.name}, 학교에서 잠깐 잠들었을 뿐인데… 눈을 뜨니 깊은 숲, 네모난 세상이야.`,
       '마을 주민: “이곳은 소환사 좀비가 잠가 놓은 세계야. 나무를 캐고 집을 지어서 살아남아. 동쪽 마을에서는 물건을 바꿀 수 있어.”',
       '“50일째, 소환사 좀비가 나타날 거야. 세 번 바뀌는 공격을 이겨 내면 현실로 돌아가는 포탈을 열 수 있어!”',
-      '나무 → 제작대 → 돌·철 도구 → 다이아몬드 장비. 네더 포탈 근처에서 R 또는 ‘대화·포탈’을 눌러 다른 차원도 탐험해 봐.',
+      '밤에는 마을 집의 침대 옆에서 R을 눌러 아침까지 잘 수 있어. 네더에서는 피글린·가스트·블레이즈와 검은 요새를 만날 수 있어.',
+      '나무 → 제작대 → 돌·철 도구 → 다이아몬드 장비. 포탈 한가운데로 걸어 들어가 잠깐 기다리면 다른 차원으로 이동해.',
     ]);
     G.adventure.storySeen = true;
   }
@@ -115,7 +116,7 @@ export function createAdventureController(api) {
     if (!d) {
       const w = destination === 'end' ? makeEnd(a.seed) : makeNether(a.seed);
       const x = W / 2, floor = w.surface[x] - 1;
-      const portal = { ...portalFrame(w, x, floor), kind: destination };
+      const portal = { ...portalFrame(w, x, floor, destination), kind: destination };
       // 포탈 양옆에 평평한 발판을 두어 용암으로 떨어지지 않는다.
       for (let dx = -5; dx <= 6; dx++) for (let dy = 0; dy < 5; dy++) {
         const i = idx(x + dx, floor + 1 + dy); w.tiles[i] = destination === 'end' ? B.END_STONE : B.NETHERRACK; w.meta[i] = 0;
@@ -124,11 +125,13 @@ export function createAdventureController(api) {
     }
     delete a.worlds[destination];
     G.w = d.w;
-    for (const k of WORLD_FIELDS) G[k] = d[k];
+    for (const k of WORLD_FIELDS) G[k] = d[k] ?? [];
     a.dimension = destination; a.visited = [...new Set([...(a.visited ?? []), destination])]; a.villagers = d.villagers; a.portals = d.portals;
     Object.assign(G.player, d.position, { spawn: d.spawn, vx: 0, vy: 0, fire: 0, invT: 2, fallTop: d.position.y });
     G.companion && Object.assign(G.companion, d.position, { x: d.position.x + 0.7, vx: 0, vy: 0, fallTop: d.position.y });
     G.cam = { ...d.position }; G.mining = null; G.target = null; G.dirty = [0, W - 1];
+    G.portalBlockedUntilExit = true; G.portalHold = 0;
+    if (destination === 'nether') api.populateNether();
     G.fade = 1; api.save(); api.toast(destination === 'nether' ? '네더에 도착했어. 붉은 땅과 용암을 조심해!' : destination === 'end' ? '엔드의 떠 있는 섬에 도착했어!' : '숲 세계로 돌아왔어!');
   }
   function interact() {
@@ -138,19 +141,78 @@ export function createAdventureController(api) {
     const a = G.adventure, p = G.player;
     const near = (e, r) => Math.hypot(e.x - p.x, e.y - p.y) < r;
     const v = a.villagers.find(v => near(v, 4));
+    const bed = nearestBed(G);
+    if (bed) return api.sleepInBed(bed.x, bed.y);
     if (v) return trade(v);
-    const portal = a.portals.find(e => near(e, 5));
-    if (portal?.kind === 'ending') return ending();
-    if (portal) return show(a.dimension !== 'overworld' ? '숲으로 돌아가는 포탈' : portal.kind === 'end' ? '엔드 포탈' : '네더 포탈', ['포탈을 지나면 함께 다른 차원으로 이동해. 지은 집과 가방은 보존돼.'], [['포탈로 들어가기', () => switchDimension(portal.kind)]]);
-    const frame = findPortal(G.w, p.x, p.y);
-    if (frame) {
-      if (G.player.inv[G.player.sel]?.id !== I.FLINT_STEEL) return api.toast('부싯돌과 부시를 손에 들고 R을 눌러 포탈을 켜 줘!');
-      a.portals.push({ ...frame, kind: 'nether' }); api.toast('네더 포탈이 켜졌어! 다시 R을 눌러 들어가 줘.'); return;
+    const piglin = G.mobs.find(m => m.type === 'piglin' && !m.dead && near(m, 3));
+    if (piglin) return show('피글린의 금 교환', ['금괴 4개를 주면 엔더의 눈을 줄게. 금 방어구를 입으면 피글린이 먼저 공격하지 않아.'], [['금괴 4개 → 엔더의 눈 1개', () => {
+      const copy = G.player.inv.map(s => s ? { ...s } : null);
+      if (countItem(copy, [I.GOLD_INGOT]) < 4) return api.toast('금괴가 4개 필요해!');
+      let left = 4;
+      for (let k = 0; k < copy.length && left; k++) if (copy[k]?.id === I.GOLD_INGOT) { const n = Math.min(left, copy[k].count); copy[k].count -= n; left -= n; if (!copy[k].count) copy[k] = null; }
+      if (addItem(copy, I.ENDER_EYE, 1)) return api.toast('가방을 비워 줘!');
+      G.player.inv.splice(0, 36, ...copy); api.hudDirty(); api.save(); close(); api.toast('엔더의 눈을 받았어!');
+    }]]);
+    const portal = a.portals.find(e => insidePortal(p, e)) ?? a.portals.find(e => near(e, 5));
+    if (portal) {
+      if (!portalIntact(G.w, portal)) { if (lightPortal()) return; return api.toast('포탈 틀이 부서졌어. 틀을 고치고 다시 켜 줘!'); }
+      const enter = () => {
+        if (!insidePortal(G.player, portal) || !portalIntact(G.w, portal)) return api.toast('포탈 한가운데로 걸어 들어가 줘!');
+        portal.kind === 'ending' ? ending() : switchDimension(portal.kind);
+      };
+      return show(a.dimension !== 'overworld' ? '숲으로 돌아가는 포탈' : portal.kind === 'end' ? '엔드 포탈' : '네더 포탈', ['포탈 한가운데로 걸어 들어가 잠깐 기다리면 이동해. 포탈 바깥에서는 이동하지 않아. 지은 집과 가방은 보존돼.'], insidePortal(p, portal) ? [['포탈로 들어가기', enter]] : []);
     }
-    api.toast('주민이나 보랏빛 포탈 가까이에서 사용해 줘. 동쪽 마을은 처음 자리에서 약 65칸이야.');
+    if (lightPortal()) return;
+    api.toast('주민이나 보랏빛 포탈 가까이에서 사용해 줘. 마을 침대·주민·포탈 가까이에서 R을 눌러 줘.');
+  }
+  function nearestBed(G) {
+    for (let x = Math.floor(G.player.x) - 2; x <= G.player.x + 2; x++) for (let y = Math.floor(G.player.y) - 1; y <= G.player.y + 3; y++) {
+      if (x < 0 || x >= W || y < 0 || y >= H) continue;
+      if ([B.BED_FOOT, B.BED_HEAD].includes(G.w.tiles[idx(x,y)]) && Math.hypot(x-G.player.x,y-G.player.y)<2.6) return {x,y};
+    }
+    return null;
+  }
+  function lightPortal() {
+    const G = get(); if (!G || G.jump) return false;
+    const id = G.player.inv[G.player.sel]?.id;
+    for (const kind of ['nether', 'end']) {
+      const frame = findPortal(G.w, G.player.x, G.player.y, kind);
+      if (!frame) continue;
+      if (G.adventure.portals.some(p => p.x === frame.x && p.y === frame.y && portalIntact(G.w,p))) return false;
+      if (id !== (kind === 'nether' ? I.FLINT_STEEL : I.ENDER_EYE)) { api.toast(kind === 'end' ? '엔더의 눈을 들고 R을 눌러 켜 줘!' : '부싯돌과 부시를 들고 R을 눌러 켜 줘!'); return true; }
+      G.adventure.portals = G.adventure.portals.filter(p => p.x !== frame.x || p.y !== frame.y);
+      G.adventure.portals.push({...frame,kind});
+      if (G.mode !== 'creative') {
+        if (kind === 'nether') api.wearTool(1);
+        else { const item = G.player.inv[G.player.sel]; if (--item.count === 0) G.player.inv[G.player.sel]=null; }
+      }
+      G.portalBlockedUntilExit = false; G.portalHold = 0; api.hudDirty(); api.save();
+      api.toast('포탈이 켜졌어! 한가운데로 걸어 들어가 줘.'); return true;
+    }
+    return false;
+  }
+  function defeated(m) {
+    const G = get(), a = G?.adventure;
+    if (!a || m.type !== 'summoner' || a.bossDefeated) return;
+    a.bossDefeated = true; a.pendingEnding = true; a.boss = { spawned: true, defeated: true };
+    const x = Math.max(3, Math.min(W-4, Math.floor(m.x))), floor = G.w.surface[x]-1;
+    a.portals.push({...portalFrame(G.w,x,floor),kind:'ending'});
+    G.dirty=[Math.max(0,x-10),Math.min(W-1,x+10)];
+    api.toast('소환사 좀비를 이겼어! 현실로 돌아가는 문이 열렸어.'); api.save();
+  }
+  function tickPortals(dt) {
+    const G=get(),a=G.adventure;
+    const portal=a.portals.find(p=>insidePortal(G.player,p)&&portalIntact(G.w,p));
+    if (!portal) { G.portalHold=0; G.portalBlockedUntilExit=false; return; }
+    if (G.portalBlockedUntilExit || G.dead || G.mobs.some(m=>m.type==='summoner'&&!m.dead)) return;
+    G.portalHold=(G.portalHold||0)+dt;
+    if (G.portalHold<.65) return;
+    G.portalHold=0; G.portalBlockedUntilExit=true;
+    if (portal.kind==='ending') ending(); else switchDimension(portal.kind);
   }
   function ending() {
     const G = get();
+    G.adventure.endingSeen = true; G.adventure.pendingEnding = false; api.save();
     show('현실로 돌아가는 길', ['소환사 좀비가 쓰러지자, 숲을 잠그던 어둠이 걷혔어.', '네가 만든 집, 함께 나눈 음식, 끝까지 싸운 용기. 그 기억을 안고 빛나는 포탈을 지나갔어.', '눈을 뜨니 다시 학교야. 책상 위에는 작은 다이아몬드 하나가 반짝이고 있었어.', '이야기 끝 · 네모난 세계는 언제든 다시 찾아갈 수 있어.'], [['엔딩을 보고 세계에 남기', () => { G.adventure.endingSeen = true; close(); api.save(); }]]);
   }
   function summonBoss() {
@@ -214,32 +276,36 @@ export function createAdventureController(api) {
     for (const [id, label, done] of achievementList(G)) if (done && !a.achievements.includes(id)) { a.achievements.push(id); api.toast(`도전과제 달성: ${label}`); }
 
     if (a.dimension === 'overworld' && G.day >= 50 && !a.bossDefeated && !a.boss?.spawned && !G.dead) summonBoss();
-    const m = G.mobs.find(m => m.type === 'summoner');
-    if (m && m.dead && !a.bossDefeated) {
-      a.bossDefeated = true;
-      const x = Math.max(3, Math.min(W - 4, Math.floor(m.x))), floor = G.w.surface[x] - 1;
-      a.portals.push({ ...portalFrame(G.w, x, floor), kind: 'ending' });
-      G.dirty = [x - 10, x + 10]; api.toast('소환사 좀비를 이겼어! 황금빛 포탈에서 R을 눌러 현실로 돌아가자.'); api.save();
-    }
+    let m = G.mobs.find(m => m.type === 'summoner');
+    if (!m && a.dimension === 'overworld' && a.boss?.spawned && !a.bossDefeated && !G.dead) { summonBoss(); m = G.mobs.find(m=>m.type==='summoner'); }
+    if (m?.dead && !a.bossDefeated) defeated(m);
+    if (a.pendingEnding && !G.dead) { ending(); return; }
+    const beforeWorld=G.w; tickPortals(dt);
+    if (G.paused || G.w !== beforeWorld) return;
     if (!m || m.dead || G.dead) return;
     if (m.y > H - 5) { m.x = Math.max(2, Math.min(W - 3, G.player.x + 12)); m.y = G.w.surface[Math.floor(m.x)] - m.h; m.vx = 0; m.vy = 0; }
     const phase = bossPhase(m.hp);
+    m.burstT = (m.burstT ?? 6) - dt;
+    if (m.burstT <= 0) {
+      for (const p of [G.player,...(a.coop&&!G.companion.spectator?[G.companion]:[])]) if (Math.hypot(p.x-m.x,p.y-m.y)<5) api.hurtPlayer(5+phase,'소환사 좀비',m.x,{player:p});
+      m.burstT = phase === 3 ? 4 : 6; G.shake=.3;
+    }
     if (phase !== m.phase) { m.phase = phase; m.summonT = 1; G.shake = 0.35; api.toast(`${phase}페이즈! ${phase === 2 ? '좀비 무리가 몰려온다!' : '스켈레톤 소환과 마법 화살!'} `); }
     m.summonT -= dt; m.volleyT -= dt;
     if (m.summonT <= 0) {
-      m.summonT = phase === 3 ? 7 : 10;
+      m.summonT = phase === 3 ? 4.5 : phase === 2 ? 6 : 7.5;
       const count = G.mobs.filter(e => e.summoned && !e.dead).length;
-      for (let k = 0; k < Math.min(phase + 1, 10 - count); k++) {
+      for (let k = 0; k < Math.min(phase + 1, 12 - count); k++) {
         const x = Math.max(2, Math.min(W - 3, m.x + (k % 2 ? -1 : 1) * (3 + k)));
         const type = phase === 3 && k % 2 === 0 ? 'skeleton' : 'zombie';
         const s = api.makeMob(type, x, G.w.surface[Math.floor(x)] - 1.85);
-        s.summoned = true; s.hp = phase === 1 ? 10 : 16; G.mobs.push(s);
+        s.summoned = true; s.hp = phase === 1 ? 16 : 24; G.mobs.push(s);
       }
     }
     if (m.volleyT <= 0 && phase >= 2) {
-      m.volleyT = phase === 3 ? 2.8 : 4;
+      m.volleyT = phase === 3 ? 2.2 : 3.2;
       const p = a.coop && !G.companion.spectator && Math.abs(G.companion.x - m.x) < Math.abs(G.player.x - m.x) ? G.companion : G.player;
-      api.shootArrow(m.x + 0.5, m.y + 0.6, p.x + 0.3, p.y + 0.6, 12 + phase, 'mob', phase);
+      for (const offset of phase === 3 ? [-.9, 0, .9] : [0]) api.shootArrow(m.x + .5, m.y + .6, p.x + .3, p.y + .6 + offset, 14 + phase, 'mob', phase + 2);
     }
     if (Math.abs(m.x - G.player.x) > 55 && a.dimension === 'overworld') {
       m.x = Math.max(2, Math.min(W - 3, G.player.x + 16)); m.y = G.w.surface[Math.floor(m.x)] - m.h; m.vx = 0; m.vy = 0;
@@ -249,7 +315,10 @@ export function createAdventureController(api) {
     const a = G.adventure;
     if (!a) return;
     if (G.jump) return drawJumpWorld(g, G, sx, sy, T);
+    const boss = G.mobs.find(m=>m.type==='summoner'&&!m.dead);
+    if (boss && boss.burstT < .9) { g.strokeStyle='#ffb450'; g.lineWidth=3; g.beginPath(); g.ellipse(sx(boss.x+.5),sy(boss.y+boss.h),T*5,T*.4,0,0,Math.PI*2); g.stroke(); }
     for (const p of a.portals) {
+      if (!portalIntact(G.w,p)) continue;
       const x = sx(p.x), y = sy(p.y), gold = p.kind === 'ending', end = p.kind === 'end';
       const gradient = g.createLinearGradient(x, y, x + T * 2, y + T * 4);
       gradient.addColorStop(0, gold ? '#f5d484' : end ? '#143e43' : '#361f6f'); gradient.addColorStop(0.5, gold ? '#fff8d8' : end ? '#68b8ab' : '#a266e0'); gradient.addColorStop(1, gold ? '#bc813d' : end ? '#1a535c' : '#421a75');
@@ -269,7 +338,7 @@ export function createAdventureController(api) {
       $('interactButton').textContent = '기록 · 재도전 R';
       $('bossHUD').hidden = true; return;
     }
-    $('interactButton').textContent = '대화·포탈 R';
+    $('interactButton').textContent = nearestBed(G) ? '침대에서 자기 R' : '대화·포탈 R';
     const p = G.player;
     $('questLine').textContent = a.bossDefeated ? (a.endingSeen ? '이야기 완료 · 자유롭게 세계를 탐험해!' : '황금빛 포탈에서 현실로 돌아가자') : G.day < 50 ? `소환사 좀비까지 ${50 - G.day}일 · 집과 장비를 준비하자` : '소환사 좀비를 쓰러뜨려 포탈을 열자';
     $('worldLine').textContent = `${a.dimension === 'nether' ? '네더' : a.dimension === 'end' ? '엔드' : '숲 세계'} · ${G.day}일째 · ${W}칸${a.coop ? ` · 2P ${G.companion.spectator ? '관전 중' : `HP ${Math.ceil(G.companion.hp)}/20`}` : ''}`;
@@ -297,6 +366,22 @@ export function createAdventureController(api) {
     const G = get();
     if (!G.adventure) newAdventure(G);
     G.drawAdventure = draw;
+    if (!G.jump) {
+      // 현재 차원과 보관 중인 차원의 구버전 마을·포탈도 함께 보완한다.
+      const a=G.adventure, dimensions=[[a.dimension,{w:G.w,villagers:a.villagers,portals:a.portals}],...Object.entries(a.worlds)];
+      for (const [kind,d] of dimensions) {
+        if (a.bedsVersion!==1) for (const v of d.villagers??[]) {
+          const x=Math.round(v.x-4.8), y=Math.round(v.y-.2);
+          if (d.w.tiles[idx(x,y)]===B.AIR && d.w.tiles[idx(x+1,y)]===B.AIR && d.w.tiles[idx(x,y+1)]===B.PLANKS) { d.w.tiles[idx(x,y)]=B.BED_FOOT; d.w.tiles[idx(x+1,y)]=B.BED_HEAD; }
+        }
+        for (const p of (d.portals??[]).filter(p=>p.kind==='end')) for(let dx=-1;dx<=2;dx++) for(let dy=-1;dy<=4;dy++) if(dx===-1||dx===2||dy===-1||dy===4) {const i=idx(p.x+dx,p.y+dy);if(d.w.tiles[i]===B.OBSIDIAN)d.w.tiles[i]=B.END_FRAME;}
+        if (kind==='nether' && a.fortressVersion!==1) addNetherFortress(d.w);
+      }
+      a.bedsVersion=1; a.fortressVersion=1;
+      if (G.adventure.bossDefeated && !G.adventure.portals.some(p=>p.kind==='ending') && G.adventure.dimension==='overworld') { const x=Math.max(3,Math.min(W-4,Math.floor(G.player.x+5))); G.adventure.portals.push({...portalFrame(G.w,x,G.w.surface[x]-1),kind:'ending'}); }
+      if (G.adventure.bossDefeated && !G.adventure.endingSeen) G.adventure.pendingEnding=true;
+    }
+    G.portalBlockedUntilExit=true; G.portalHold=0;
     if (!G.adventure.storySeen) story();
     hud();
   }
@@ -319,5 +404,5 @@ export function createAdventureController(api) {
   $('achievementButton').onclick = () => { const G = get(); if (G) show('도전과제', achievementList(G).map(([id, label, done]) => `${done || G.adventure.achievements?.includes(id) ? '◆ 달성' : '◇ 미달성'} · ${label}`)); };
   $('interactButton').onclick = interact;
   $('storyButton').onclick = story;
-  return { start, reset, key, tick, draw, hud, interact, switchDimension, summonBoss, hurtCompanion };
+  return { start, reset, key, tick, draw, hud, interact, lightPortal, defeated, switchDimension, summonBoss, hurtCompanion };
 }

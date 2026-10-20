@@ -1,4 +1,4 @@
-import { B, I } from './data.mjs';
+import { B, I, MOBS } from './data.mjs';
 import { W, H, idx, generateWorld, computeLight, noise1, rleDecode, rleEncode } from './core.mjs';
 
 export const SKINS = [
@@ -7,7 +7,7 @@ export const SKINS = [
   { name: '보랏빛 여행자', skin: '#93674d', shirt: '#a36bd1', pants: '#303c67', hair: '#201d2c' },
   { name: '노을 기사', skin: '#f1caa2', shirt: '#e39a43', pants: '#744451', hair: '#9c542b' },
 ];
-export const BOSS_HP = 360;
+export const BOSS_HP = MOBS.summoner.hp;
 export const bossPhase = (hp) => hp > BOSS_HP * 2 / 3 ? 1 : hp > BOSS_HP / 3 ? 2 : 3;
 
 // 구버전의 640칸 저장을 행 단위로 옮겨 기존 건축물과 좌표를 보존한다.
@@ -34,7 +34,7 @@ export function restoreTerrain(w, saved) {
 export const terrainSave = (w) => ({ width: W, tiles: rleEncode(w.tiles), meta: rleEncode(w.meta), bg: rleEncode(w.bg), surface: [...w.surface] });
 export const remapIndex = (i, width = W) => Math.floor(i / width) * W + i % width;
 
-function put(w, x, y, t) { if (x > 0 && x < W - 1 && y > 0 && y < H - 1) { w.tiles[idx(x, y)] = t; w.meta[idx(x, y)] = 0; } }
+export function put(w, x, y, t) { if (x > 0 && x < W - 1 && y > 0 && y < H - 1) { w.tiles[idx(x, y)] = t; w.meta[idx(x, y)] = 0; } }
 export function makeVillage(w, center) {
   const floor = w.surface[center];
   const villagers = [];
@@ -57,6 +57,7 @@ export function makeVillage(w, center) {
     put(w, x, floor - 4, B.GLASS); put(w, x + 8, floor - 4, B.GLASS);
     put(w, x + 3, floor - 2, n === 0 ? B.CRAFTING : n === 1 ? B.FURNACE : B.CHEST);
     put(w, x + 5, floor - 4, B.TORCH);
+    put(w, x + 5, floor - 2, B.BED_FOOT); put(w, x + 6, floor - 2, B.BED_HEAD);
     villagers.push({ x: x + 9.8, y: floor - 1.8, w: 0.6, h: 1.8, shop: n });
   }
   computeLight(w, center - 40, center + 40);
@@ -79,13 +80,29 @@ export function makeNether(seed) {
       if (Math.abs(x - W / 2) > 8 && x % 31 < 2 && y === floor - 1) w.tiles[i] = B.GLOWSTONE;
     }
   }
+  addNetherFortress(w);
   computeLight(w, 0, W - 1);
   w.seed = seed;
   return w;
 }
-export function portalFrame(w, x, floor) {
+export function addNetherFortress(w) {
+  const cx = W / 2 + 36, floor = w.surface[cx];
+  for (let x = cx - 13; x <= cx + 13; x++) {
+    w.surface[x] = floor;
+    for (let y = floor - 12; y < floor + 5; y++) {
+      put(w, x, y, y >= floor ? B.STONE_BRICKS : B.AIR);
+      if (y < floor && y >= floor - 8) w.bg[idx(x, y)] = B.NETHERRACK;
+    }
+    if ((x - cx) % 9 === 0) for (let y = floor - 7; y < floor; y++) put(w, x, y, B.OBSIDIAN);
+    put(w, x, floor - 8, B.STONE_BRICKS);
+    if (x % 5 === 0) put(w, x, floor - 7, B.GLOWSTONE);
+  }
+  computeLight(w, cx - 20, cx + 20);
+}
+export function portalFrame(w, x, floor, kind = 'nether') {
+  const material = kind === 'end' ? B.END_FRAME : B.OBSIDIAN;
   for (let dx = -1; dx <= 2; dx++) for (let dy = 0; dy <= 5; dy++) {
-    put(w, x + dx, floor - dy, dx === -1 || dx === 2 || dy === 0 || dy === 5 ? B.OBSIDIAN : B.AIR);
+    put(w, x + dx, floor - dy, dx === -1 || dx === 2 || dy === 0 || dy === 5 ? material : B.AIR);
   }
   return { x, y: floor - 4, w: 2, h: 4 };
 }
@@ -106,15 +123,30 @@ export function makeEnd(seed) {
   computeLight(w, 0, W - 1);
   return w;
 }
-export function findPortal(w, px, py) {
+export function findPortal(w, px, py, kind = 'nether') {
+  const material = kind === 'end' ? B.END_FRAME : B.OBSIDIAN;
   for (let x = Math.floor(px) - 5; x <= px + 5; x++) for (let y = Math.floor(py) - 6; y <= py + 3; y++) {
     if (x < 2 || x > W - 4 || y < 2 || y > H - 7) continue;
     let valid = true;
     for (let dx = -1; dx <= 2; dx++) for (let dy = 0; dy <= 5; dy++) {
       const t = w.tiles[idx(x + dx, y + dy)];
-      if ((dx === -1 || dx === 2 || dy === 0 || dy === 5) ? t !== B.OBSIDIAN : t !== B.AIR) valid = false;
+      if ((dx === -1 || dx === 2 || dy === 0 || dy === 5) ? t !== material : t !== B.AIR) valid = false;
     }
     if (valid) return { x, y: y + 1, w: 2, h: 4 };
   }
   return null;
+}
+
+export function insidePortal(player, portal) {
+  return player.x >= portal.x && player.x + player.w <= portal.x + portal.w && player.y + player.h > portal.y && player.y < portal.y + portal.h;
+}
+export function portalIntact(w, portal) {
+  const material = portal.kind === 'end' ? B.END_FRAME : B.OBSIDIAN;
+  for (let dx = -1; dx <= 2; dx++) for (let dy = -1; dy <= 4; dy++) {
+    const x = portal.x + dx, y = portal.y + dy;
+    if (x < 0 || x >= W || y < 0 || y >= H) return false;
+    const t = w.tiles[idx(x, y)];
+    if ((dx === -1 || dx === 2 || dy === -1 || dy === 4) ? t !== material : t !== B.AIR) return false;
+  }
+  return true;
 }

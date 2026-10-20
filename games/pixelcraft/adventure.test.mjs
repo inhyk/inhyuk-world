@@ -30,5 +30,5 @@ test('네더와 엔드는 고유 지형, 용암·발광석 및 떠 있는 섬을
  assert.equal(n.seed,7);
 });
 test('보스의 세 페이즈는 체력 경계에서 정확히 전환된다', () => {
- for (const [hp,phase] of [[360,1],[241,1],[240,2],[121,2],[120,3],[1,3]]) assert.equal(bossPhase(hp),phase);
+ for (const [hp,phase] of [[540,1],[361,1],[360,2],[181,2],[180,3],[1,3]]) assert.equal(bossPhase(hp),phase);
 });
