@@ -148,6 +148,7 @@ function metalBlock(seed, base, light, dark) {
 
 const BLOCK_ART = {
   [B.END_STONE]: (p) => { p.fill(['#d7dba5','#c7ce94','#e4e4b3','#b3be83']); for(let k=0;k<12;k++) p.rect((k*7)%16,(k*11)%16,2,1,'#a1ac79'); },
+  [B.END_FRAME]: p => { p.fill(['#184e47','#216257','#316c5c']); p.rect(1,1,14,3,'#bfd3a1'); p.rect(2,5,12,9,'#133e3c'); p.rect(4,7,8,5,'#83c6a0'); p.rect(7,7,2,5,'#152e38'); p.rect(0,14,16,2,'#9dae79'); },
   [B.PURPUR]: (p) => { p.fill(['#9e789c','#a682a3','#8b678b']); p.line(0,0,15,0,'#c39dbd');p.line(0,8,15,8,'#6f516e');p.line(7,0,7,7,'#6f516e');p.line(3,8,3,15,'#6f516e'); },
   [B.NETHERRACK]: (p) => { p.fill(['#743839', '#8e4746', '#633034', '#a14e46']); for(let k=0;k<8;k++) p.line(k*2, (k*7)%16, k*2+2, (k*7)%16+2, '#46252e'); },
   [B.SOUL_SAND]: (p) => { p.fill(['#625043','#726052','#564538']); for(let k=0;k<4;k++){ const x=2+(k%2)*8,y=2+Math.floor(k/2)*8; p.rect(x,y,2,2,'#312e2b');p.rect(x+3,y,2,2,'#312e2b');p.rect(x+1,y+4,3,1,'#312e2b');} },
@@ -440,6 +441,8 @@ const ITEM_ART = {
   [I.ROTTEN_FLESH]: (p) => meat(p, '#8a7a3a', '#5a6a2a', '#a8a050'),
   [I.APPLE]: (p) => apple(p, '#e02828', '#a01414', '#ff8a8a'),
   [I.GOLDEN_APPLE]: (p) => apple(p, '#f0c430', '#b88a10', '#fff6a0'),
+  [I.ENDER_EYE]: p => { p.map(['...gggggg...','..gllllllg..','.gllwwllflg.','.gllwfflflg.','.glllfflllg.','..gllllllg..','...gggggg...'],{g:'#23594d',l:'#74b293',w:'#d1efbc',f:'#112c36'},2,4); },
+  [I.BLAZE_ROD]: p => { p.line(4,13,11,3,'#a6541d'); p.line(5,13,12,3,'#f3b83d'); p.line(6,13,13,3,'#ffe789'); },
   [I.BONE]: (p) => {
     p.line(4, 11, 11, 4, '#f0ece0');
     p.line(5, 11, 12, 4, '#d8d2c0');
@@ -497,7 +500,7 @@ export const crack = [];    // 금 가는 10단계
 export const fluidFrames = { [B.WATER]: [], [B.LAVA]: [] };
 
 export function buildTextures() {
-  for (let id = 0; id < 64; id++) {
+  for (const id of Object.values(B)) {
     let c = null;
     if (id === B.OAK_LOG || id === B.OAK_TRUNK) c = log(id, PAL.oakBark);
     else if (id === B.BIRCH_LOG || id === B.BIRCH_TRUNK) c = log(id, PAL.birchBark, '#2a2a2a');

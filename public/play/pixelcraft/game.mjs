@@ -1,3 +1,4 @@
+import { spawnNether, tickNetherMob, updateFireballs } from './nether.mjs';
 import { createCommandConsole } from './command-ui.mjs';
 import { makeJumpWorld, resetJumper, newJumpState, JUMP_COURSE, jumpGrip } from './jump-world.mjs';
 import { absorbDamage } from './armor.mjs';
@@ -366,6 +367,7 @@ function respawn() {
 function hitMob(m, dmg, fromX) {
   if (m.dead) return;
   m.hp -= dmg;
+  if (m.type === 'piglin') m.provoked = true;
   m.hurtT = 0.35;
   m.vx = Math.sign(m.x + m.w / 2 - fromX || 1) * 7;
   m.vy = -4.5;
@@ -374,6 +376,7 @@ function hitMob(m, dmg, fromX) {
   if (m.hp <= 0) {
     m.dead = true;
     m.deadT = 0;
+    adventure.defeated(m);
     for (const [id, lo, hi] of MOBS[m.type].drops) {
       const n = lo + Math.floor(G.rng() * (hi - lo + 1));
       // 불타면서 쓰러진 동물은 고기가 익는다
@@ -438,6 +441,7 @@ function updateMobs(dt) {
     const mx = m.x + m.w / 2, my = m.y + m.h / 2;
     const p = G.adventure?.coop && !G.companion.spectator && Math.hypot(G.companion.x - mx, G.companion.y - my) < Math.hypot(px - mx, py - my) ? G.companion : G.player;
     const dx = p.x + p.w / 2 - mx, dy = p.y + p.h / 2 - my, dist = Math.hypot(dx, dy);
+    if (tickNetherMob(G,m,p,dt,{lineOfSight,shootFireball,hurtPlayer,hitMob})) continue;
     const hostile = HOSTILE.has(m.type);
     if (Math.abs(dx) > 80 && m.type !== 'summoner') {
       if (hostile) m.remove = true;
@@ -556,6 +560,10 @@ function updateMobs(dt) {
   }
   G.mobs = G.mobs.filter((m) => !m.remove);
 }
+function shootFireball(x,y,tx,ty,type) {
+  const d=Math.max(.1,Math.hypot(tx-x,ty-y)),speed=type==='ghast'?7:10;
+  (G.fireballs??=[]).push({x,y,vx:(tx-x)/d*speed,vy:(ty-y)/d*speed,type,life:7});
+}
 function shootArrow(x, y, tx, ty, speed, from, dmg) {
   const dx = tx - x, dy = ty - y;
   const d = Math.max(0.1, Math.hypot(dx, dy));
@@ -567,6 +575,8 @@ function shootArrow(x, y, tx, ty, speed, from, dmg) {
 }
 function spawnTick() {
   if (G.jump) return;
+  if (G.adventure?.dimension === 'nether') { spawnNether(G,makeMob); return; }
+  if (G.adventure?.dimension === 'end') return;
   const p = G.player;
   const day = dayFactor(G.time);
   const vw = G.view ? G.view.viewW / 2 + 2 : 18;
@@ -933,12 +943,13 @@ function toggleDoor(x, y) {
   sfx.door();
 }
 function sleepInBed(x, y) {
+  if (G.adventure?.dimension !== 'overworld') return toast('침대에서는 숲 세계에서 잘 수 있어!');
   const p = G.player;
   p.spawn = { x: x + 0.2, y: y - 1.85 + 1 - 0.01 };
   // 침대 위가 막혀 있으면 침대 옆을 다시 태어날 곳으로
   if (collides(G.w, p.spawn.x, p.spawn.y, p.w, p.h)) p.spawn = { x: p.x, y: p.y };
   if (!isNight(G.time)) {
-    toast('다시 태어날 곳을 여기로 정했어. 잠은 밤에만 잘 수 있어');
+    toast('다시 태어날 곳을 여기로 정했어. 잠은 밤에만 잘 수 있어'); saveGame(true);
     return;
   }
   if (G.mobs.some((m) => HOSTILE.has(m.type) && !m.dead && Math.hypot(m.x - x, m.y - y) < 9)) {
@@ -946,8 +957,10 @@ function sleepInBed(x, y) {
     return;
   }
   G.fade = 1.6;
-  G.time = 0.01;
+  G.time = 0.1;
   G.day++;
+  p.hp = Math.min(20,p.hp+6);
+  saveGame(true);
   toast(`좋은 아침! ${G.day}일째`);
 }
 function doUse() {
@@ -955,6 +968,7 @@ function doUse() {
   const p = G.player;
   const s = held();
   const id = s?.id ?? 0;
+  if ((id === I.FLINT_STEEL || id === I.ENDER_EYE) && adventure.lightPortal()) return;
   const tg = G.target && !G.target.place ? G.target : null;
   if (tg) {
     const i = tg.y * W + tg.x;
@@ -1336,6 +1350,7 @@ function update(dt) {
     }
   }
   updateMobs(dt);
+  updateFireballs(G,dt,{hurtPlayer,burst});
   updateWorld(dt);
   adventure.tick(dt);
   G.spawnT -= dt;
@@ -1791,8 +1806,8 @@ function boot() {
   window.addEventListener('pagehide', () => { if (G) saveGame(true); });
   requestAnimationFrame(frame);
   // 브라우저 확인 스크립트가 들여다볼 수 있게
-  window.__pixelcraft = { adventure, W, H, get G() { return G; }, startGame, newGame, loadGame, saveGame, serialize, keys, mouse, setTile, breakBlock, placeBlock, doUse, explode, makeMob, openPanel, closePanel, UI };
+  window.__pixelcraft = { adventure, W, H, get G() { return G; }, startGame, newGame, loadGame, saveGame, serialize, keys, mouse, setTile, breakBlock, placeBlock, doUse, hitMob, sleepInBed, explode, makeMob, openPanel, closePanel, UI };
 }
-const adventure = createAdventureController({ get: () => G, keys, UI, closePanel, toast, hudDirty, save: () => saveGame(true), makeMob, hitMob, shootArrow, breakInfo, breakBlock, wearTool });
+const adventure = createAdventureController({ get: () => G, keys, UI, closePanel, toast, hudDirty, save: () => saveGame(true), makeMob, hitMob, shootArrow, hurtPlayer, sleepInBed, populateNether: () => spawnNether(G,makeMob,true), breakInfo, breakBlock, wearTool });
 const commands = createCommandConsole({ get: () => G, closePanel, clearInput: () => { keys.clear(); mouse.left = mouse.right = false; }, changed: () => { hudDirty(); if (UI.open) renderPanel(); $('touch').classList.toggle('creative', G.mode === 'creative'); }, save: () => saveGame(true) });
 boot();

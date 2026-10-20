@@ -39,8 +39,8 @@ try {
  await ev(()=>{const G=window.__pixelcraft.G;G.day=50;});await page.waitForFunction(()=>window.__pixelcraft.G.mobs.some(m=>m.type==='summoner'));
  assert.equal(await page.locator('#bossHUD').isVisible(),true);
  const boss=await ev(()=>{const G=window.__pixelcraft.G,m=G.mobs.find(m=>m.type==='summoner');return{x:m.x-4,y:m.y};});await move(boss);await shot('07-boss-phase1');
- await ev(()=>{const m=window.__pixelcraft.G.mobs.find(m=>m.type==='summoner');m.hp=240;m.summonT=0;});await page.waitForFunction(()=>window.__pixelcraft.G.mobs.find(m=>m.type==='summoner').phase===2);
- await ev(()=>{const m=window.__pixelcraft.G.mobs.find(m=>m.type==='summoner');m.hp=120;m.summonT=0;});await page.waitForFunction(()=>window.__pixelcraft.G.mobs.some(m=>m.summoned&&m.type==='skeleton'));
+ await ev(()=>{const m=window.__pixelcraft.G.mobs.find(m=>m.type==='summoner');m.hp=360;m.summonT=0;});await page.waitForFunction(()=>window.__pixelcraft.G.mobs.find(m=>m.type==='summoner').phase===2);
+ await ev(()=>{const m=window.__pixelcraft.G.mobs.find(m=>m.type==='summoner');m.hp=180;m.summonT=0;});await page.waitForFunction(()=>window.__pixelcraft.G.mobs.some(m=>m.summoned&&m.type==='skeleton'));
  await shot('08-boss-phase3');
  // Save mid-boss and restore phase, HP, and simultaneous input. Defeat using real 2P attack.
  await ev(()=>window.__pixelcraft.saveGame(true));await page.reload();await page.click('#slots .play');assert.equal(await ev(()=>window.__pixelcraft.G.mobs.find(m=>m.type==='summoner').phase),3);

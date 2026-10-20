@@ -173,6 +173,11 @@ export function render(g, G, cw, ch, T) {
   for (const m of G.mobs) drawMob(g, G, m, sx, sy, T);
   drawPlayer(g, G, sx, sy, T);
   if (G.adventure?.coop && G.companion && !G.companion.spectator) drawPlayer(g, { ...G, player: G.companion, dead: false }, sx, sy, T);
+  for (const f of G.fireballs ?? []) {
+    const x=sx(f.x),y=sy(f.y),r=T*(f.type==='ghast'?.28:.14);
+    g.fillStyle='#f16e26';g.fillRect(x-r,y-r,r*2,r*2);g.fillStyle='#ffe894';g.fillRect(x-r*.5,y-r*.5,r,r);
+    for(let k=1;k<5;k++){g.fillStyle=`rgba(255,135,36,${.55-k*.1})`;g.fillRect(x-f.vx*k*.015*T-r*.3,y-f.vy*k*.015*T-r*.3,r*.6,r*.6);}
+  }
   for (const a of G.arrows) {
     const ang = Math.atan2(a.vy, a.vx);
     g.save();
@@ -468,6 +473,28 @@ function drawMob(g, G, m, sx, sy, T) {
       g.globalAlpha = 1;
       break;
     }
+    case 'piglin':
+      humanoid(g,u,{skin:'#cd9287',shirt:'#6b4939',pants:'#46352d',swing:walk,armAng:-.6,tint,eye:'#fff1d2',pupil:'#402e2a'});
+      box(g,u,-6,-29,3,5,'#e9b29c',tint); box(g,u,4,-29,3,5,'#e9b29c',tint);
+      box(g,u,-3,-25,7,4,'#e5ac96',tint);box(g,u,-2,-23,1,1,'#73463e',tint);box(g,u,2,-23,1,1,'#73463e',tint);
+      box(g,u,5,-18,2,12,'#e7bd4d',tint);box(g,u,3,-10,6,2,'#fff0a1',tint);break;
+    case 'ghast':
+      for(let k=0;k<7;k++){
+        const x=-13+k*4, y=-6+Math.sin(G.clock*2+k)*2;
+        box(g,u,x,y,2,9+(k%3)*2,'#c7bec2',tint);box(g,u,x,y,1,9,'#f1e8e6',tint);
+      }
+      box(g,u,-15,-34,30,27,'#e4dcda',tint);box(g,u,-15,-34,30,3,'#fff5eb',tint);box(g,u,10,-31,5,24,'#bab3b9',tint);
+      for(let k=0;k<9;k++)box(g,u,-12+(k%3)*8,-29+Math.floor(k/3)*7,3,2,'#d4c9ca',tint);
+      box(g,u,-9,-23,5,3,'#5b3b44',tint);box(g,u,4,-23,5,3,'#5b3b44',tint);
+      box(g,u,-3,-17,6,6,m.attackT<.7?'#f67439':'#6f4d57',tint);break;
+    case 'blaze':
+      for(let k=0;k<9;k++){
+        const a=G.clock*2+k*2.1, x=Math.cos(a)*(7+k%3),y=-5-Math.floor(k/3)*9+Math.sin(a)*2;
+        box(g,u,x,y,2,7,'#c17b21',tint);box(g,u,x,y,1,5,'#ffdf65',tint);
+      }
+      box(g,u,-5,-32,10,9,'#e9b445',tint);box(g,u,-5,-32,10,2,'#ffe796',tint);
+      box(g,u,-3,-28,2,2,'#422d23',tint);box(g,u,2,-28,2,2,'#422d23',tint);box(g,u,-2,-24,4,1,'#7f3e1f',tint);
+      flames(g,u,G.clock);break;
     case 'zombie':
       humanoid(g, u, { skin: '#4f8a3a', shirt: '#2a9aa8', pants: '#4a3a9a', swing: walk, armAng: -1.5, arm: '#4f8a3a', tint, eye: '#1a2a12', pupil: '#000000', mouth: '#2a3a1a' });
       break;
