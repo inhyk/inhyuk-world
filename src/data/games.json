@@ -1,5 +1,29 @@
 [
   {
+    "slug": "noraebang",
+    "title": "인혁 노래방 · 인혁 월드로 와!",
+    "description": "핑크 젤리와 파랑 젤리가 인혁 월드 주제가를 불러요. 가사 색이 글자마다 채워지는 노래방!",
+    "longDescription": "인혁 월드를 위해 새로 만든 주제가 「인혁 월드로 와!」를 부르는 노래방입니다. 무대 위 젤리 가수 둘이 가사를 직접 발음하며 노래합니다. 1절과 브릿지는 핑크 젤리, 2절은 한 옥타브 낮은 파랑 젤리가 부르고, 후렴은 둘이 같이, 마지막 후렴은 한 키 올라가며 파랑 젤리가 화음을 넣습니다. 가수 버튼으로 핑크 혼자, 파랑 혼자, 반주만(내가 부르기)을 고를 수 있습니다. 위아래 두 줄 가사에 부르는 사람 이름표가 붙고, 글자마다 색이 채워지며, 줄이 시작되기 전에는 ● 카운트다운이 나옵니다. 가사 전체 보기에서 줄을 누르면 그 부분부터 부릅니다. 드럼, 베이스, 화음과 젤리 목소리는 모두 브라우저에서 실시간으로 합성합니다.",
+    "emoji": "🎤",
+    "thumbnail": "/images/games/noraebang-thumb.png",
+    "screenshots": [
+      "/images/games/noraebang-thumb.png",
+      "/images/games/noraebang-1.png",
+      "/images/games/noraebang-2.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "리듬",
+    "playUrl": "/play/noraebang",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 62,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/noraebang"
+  },
+  {
     "slug": "kart-rider",
     "title": "카트라이더 · 포켓 그랑프리",
     "description": "세 코스를 달리며 점수를 모으는 3D 카트 토너먼트! 드리프트와 7종 아이템으로 종합 우승에 도전하세요.",
