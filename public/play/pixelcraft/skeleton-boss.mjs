@@ -1,10 +1,11 @@
+import { isBuildWorld } from './build-guide.mjs';
 import { W,H } from './core.mjs';
 import { MOBS } from './data.mjs';
 export const SKELETON_BOSS_HP=1200;
 export const isBoss=m=>['summoner','skeleton_summoner'].includes(m.type)&&!m.dead;
 export const skeletonPhase=hp=>hp>SKELETON_BOSS_HP*2/3?1:hp>SKELETON_BOSS_HP/3?2:3;
 export function tickSkeletonBoss(G,dt,api){
- const a=G.adventure;if(G.builder||G.jump||a.dimension!=='overworld'||G.dead)return;
+ const a=G.adventure;if(isBuildWorld(G)||G.jump||a.dimension!=='overworld'||G.dead)return;
  let m=G.mobs.find(m=>m.type==='skeleton_summoner'&&!m.dead);
  if(!m&&G.day>=100&&!a.skeletonDefeated){
   const x=Math.max(8,Math.min(W-10,G.player.x+13));m=api.makeMob('skeleton_summoner',x,G.w.surface[Math.floor(x)]-3.2);

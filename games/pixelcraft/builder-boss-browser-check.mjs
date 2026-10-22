@@ -21,7 +21,7 @@ try{
  const built=await ev(async()=>{const A=window.__pixelcraft,{guideCells,guideProgress}=await import('./build-guide.mjs');for(const c of guideCells(A.G)){A.G.player.inv[A.G.player.sel]={id:c.id,count:64};A.placeBlock(c.x,c.y,c.id);}return guideProgress(A.G);});assert.equal(built.done,built.total);
  await page.waitForFunction(()=>window.__pixelcraft.G.builder.completed.includes(0));await shot('04-complete');await ev(()=>window.__pixelcraft.saveGame(true));
  await page.reload();await page.click('#slots .play >> nth=0');assert.deepEqual(await ev(()=>window.__pixelcraft.G.builder.completed),[0]);assert.ok(await ev(()=>window.__pixelcraft.G.stats.placed)>1);
- await page.click('#blueprintButton');await page.click('#adventureActions button:nth-child(2)');assert.match(await page.textContent('#adventureTitle'),/작은 집/);
+ await page.click('#galleryButton');await page.click('[data-plan="1"]');assert.match(await page.textContent('#adventureTitle'),/작은 집/);
  await page.setViewportSize({width:390,height:844});await shot('05-mobile-blueprint');await page.click('#adventureActions button:last-child');await page.setViewportSize({width:1360,height:850});
  // 99일에는 새 보스가 없고 100일 명령 후 등장한다. 게스트 로컬 저장만 사용한다.
  await ev(()=>{const A=window.__pixelcraft,G=A.newGame({seed:1234,mode:'creative',diff:1,slot:1,name:'100일 시험'});G.adventure.storySeen=true;G.adventure.bossDefeated=true;G.day=99;A.startGame(G);});
