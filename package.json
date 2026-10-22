@@ -7,9 +7,9 @@
     "games/valorant"
   ],
   "scripts": {
-    "predev": "npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build",
+    "predev": "node games/pixelcraft/sync-net.mjs && npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build",
     "dev": "next dev",
-    "build": "npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build && next build",
+    "build": "node games/pixelcraft/sync-net.mjs && npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build && next build",
     "start": "next start",
     "lint": "eslint",
     "snowflow:dev": "npm run dev --workspace=@inhyuk/snowflow",
@@ -17,7 +17,9 @@
     "valorant:dev": "npm run dev --workspace=@inhyuk/valorant-protocol",
     "valorant:build": "npm run build --workspace=@inhyuk/valorant-protocol",
     "test:valorant": "npm run test --workspace=@inhyuk/valorant-protocol",
-    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\" \"games/sans/core.test.mjs\" \"games/orbit-breaker/*.test.mjs\" \"games/undertale/*.test.mjs\" \"games/valorant/tests/*.test.mjs\" \"games/deep-dig/*.test.mjs\" \"games/free-drive/*.test.mjs\" \"games/mineral-valley/*.test.mjs\" \"games/soccer/*.test.mjs\" \"games/puyo-puyo/*.test.mjs\" \"games/pad-shop/*.test.mjs\" \"games/sky-obby/*.test.mjs\" \"games/keycap-tower/*.test.mjs\" \"packages/net/*.test.mjs\" \"games/geometry-dash/*.test.mjs\" \"games/sword-forge/*.test.mjs\"",
+    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\" \"games/sans/core.test.mjs\" \"games/orbit-breaker/*.test.mjs\" \"games/undertale/*.test.mjs\" \"games/valorant/tests/*.test.mjs\" \"games/deep-dig/*.test.mjs\" \"games/free-drive/*.test.mjs\" \"games/mineral-valley/*.test.mjs\" \"games/soccer/*.test.mjs\" \"games/puyo-puyo/*.test.mjs\" \"games/pad-shop/*.test.mjs\" \"games/sky-obby/*.test.mjs\" \"games/keycap-tower/*.test.mjs\" \"packages/net/*.test.mjs\" \"games/geometry-dash/*.test.mjs\" \"games/sword-forge/*.test.mjs\" \"games/pixelcraft/*.test.mjs\"",
+    "test:pixelcraft": "node --test \"games/pixelcraft/*.test.mjs\"",
+    "pixelcraft:dev": "node games/pixelcraft/dev-server.mjs",
     "test:net": "node --test \"packages/net/*.test.mjs\" && npm test --prefix services/net",
     "test:orbit-breaker": "node --test \"games/orbit-breaker/*.test.mjs\"",
     "test:mettaton": "node --test \"games/mettaton/*.test.mjs\"",

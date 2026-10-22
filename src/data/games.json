@@ -20,8 +20,56 @@
     "playUrl": "/play/noraebang",
     "createdAt": "2026-10",
     "featured": true,
-    "order": 60,
+    "order": 62,
     "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/noraebang"
+  },
+  {
+    "slug": "kart-rider",
+    "title": "카트라이더 · 포켓 그랑프리",
+    "description": "세 코스를 달리며 점수를 모으는 3D 카트 토너먼트! 드리프트와 7종 아이템으로 종합 우승에 도전하세요.",
+    "longDescription": "직접 만든 카트와 코스로 즐기는 비공식 카트 레이싱 팬 게임입니다. AI 카트 다섯 대와 클로버 파크, 선셋 캐니언, 네온 하버를 차례로 달리는 3라운드 토너먼트에 도전하세요. 각 라운드 1~6위가 10·7·5·3·2·1점을 받고, 합계 점수로 최종 우승자를 정합니다. 7종 아이템, 드리프트 터보, 니트로, 아이템전·스피드전, 세 가지 카트, 색상 선택, 모바일 멀티터치 조작을 지원합니다.",
+    "emoji": "🏎️",
+    "thumbnail": "/images/games/kart-rider-thumb.png",
+    "screenshots": [
+      "/images/games/kart-rider-1.png",
+      "/images/games/kart-rider-2.png",
+      "/images/games/kart-rider-3.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Babylon.js",
+      "Web Audio"
+    ],
+    "category": "레이싱",
+    "playUrl": "https://kart-rider.vercel.app",
+    "githubUrl": "https://github.com/inhyk/kart-rider",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 61
+  },
+  {
+    "slug": "pixelcraft",
+    "title": "2D마인크레프트",
+    "description": "두 배 넓어진 블록 세계! 친구와 마을·네더·엔드를 탐험하고 50일째 소환사 좀비를 물리쳐 현실로 돌아오세요.",
+    "longDescription": "학교에서 잠들었다가 깊은 숲의 네모난 세계에 눈을 뜬 여행자. 1280×160칸 세계에서 나무를 캐고, 집과 도구를 만들고, 마을 주민과 물건을 거래하며 살아남으세요. 네더·엔드 포탈로 차원을 오가고, 50일째 등장하는 소환사 좀비의 3단계 소환술을 이겨 내면 현실로 돌아가는 황금 포탈이 열립니다. 한 컴퓨터에서 2인 협동(공유 가방), 캐릭터와 이름 선택, 가방·제작·화로, 서바이벌과 크리에이티브, 가죽·철·금·다이아몬드 방어구 16종과 장비별 내구도, 공용 계정 로그인과 계정별 세계 3칸 브라우저 자동 저장, 모바일 터치 조작, 도전과제 10개를 지원합니다. 하루 길이는 1분·2분·10분 중 고를 수 있어요. 그림과 소리는 모두 코드로 만들었습니다.",
+    "emoji": "⛏️",
+    "thumbnail": "/images/games/pixelcraft-thumb.png",
+    "screenshots": [
+      "/images/games/pixelcraft-thumb.png",
+      "/images/games/pixelcraft-1.png",
+      "/images/games/pixelcraft-2.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "샌드박스",
+    "playUrl": "/play/pixelcraft",
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/pixelcraft",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 60
   },
   {
     "slug": "crabcraft",

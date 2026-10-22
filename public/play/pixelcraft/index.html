@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1b1b1b">
+  <title>2D마인크레프트</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23865b3a'/%3E%3Crect width='16' height='5' fill='%235fa83b'/%3E%3Crect x='3' y='5' width='2' height='2' fill='%235fa83b'/%3E%3Crect x='10' y='5' width='3' height='1' fill='%235fa83b'/%3E%3C/svg%3E">
+  <link rel="preload" href="../undertale/fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <canvas id="game" tabindex="-1" aria-label="2D마인크레프트 게임 화면"></canvas>
+
+  <div id="hud" hidden>
+    <div id="hint" hidden><span></span><button aria-label="길잡이 닫기">✕</button></div>
+    <div id="toasts" aria-live="polite"></div>
+    <pre id="debug" hidden></pre>
+    <div id="heldInfo" hidden></div>
+    <div class="bottom">
+      <div id="heldName" hidden></div>
+      <div id="bars"></div>
+      <div id="hotbar"></div>
+    </div>
+  </div>
+
+  <div id="touch">
+    <div class="pad">
+      <button data-key="KeyA" aria-label="왼쪽">◀</button>
+      <button data-key="KeyS" aria-label="아래">▼</button>
+      <button data-key="KeyD" aria-label="오른쪽">▶</button>
+    </div>
+    <div class="tops">
+      <button data-act="fly" class="small fly">날기</button>
+      <button data-act="drop" class="small">버리기</button>
+      <button data-act="inv" class="small">가방</button>
+      <button data-act="menu" class="small">☰</button>
+    </div>
+    <div class="acts">
+      <button data-key="ShiftLeft" class="sprint" aria-label="달리기">달리기</button>
+      <button data-act="mode" class="mode">⛏ 캐기</button>
+      <button data-key="Space" class="jump" aria-label="점프">▲</button>
+    </div>
+  </div>
+
+  <div id="panel" hidden></div>
+  <div id="tip" hidden></div>
+  <div id="cursorItem" hidden></div>
+
+  <section id="title" hidden>
+    <a class="back" href="/games" target="_top">← 게임 목록</a>
+    <div class="logo">
+      <h1>2D마인크레프트</h1>
+      <p class="sub">숲의 비밀</p>
+      <span class="splash">깊은 숲과 소환사 좀비!</span>
+    </div>
+    <div class="menu">
+      <div class="account-bar">
+        <div><b id="accountName">손님으로 플레이 중</b><small id="accountNote">계정 확인 중…</small></div>
+        <button id="btnAccount" class="mc-btn" disabled>로그인 / 가입</button>
+        <button id="btnLogout" class="mc-btn" hidden>로그아웃</button>
+      </div>
+      <button id="btnJumpWorld" class="mc-btn green">☠ 극한 점프맵 세계로 들어가기</button>
+      <button id="btnBuildWorld" class="mc-btn">▧ 블록 따라 쌓기 · 집·성·우주선 만들기</button>
+      <div id="slots"></div>
+      <div class="row2">
+        <button id="btnHelp" class="mc-btn">조작법 보기</button>
+      </div>
+    </div>
+    <div id="newWorld" class="mc-dialog" hidden>
+      <h2>새 세계 만들기</h2>
+      <label>세계 종류 <select id="nwWorldType"><option value="overworld">숲 세계 · 생존과 모험</option><option value="builder">블록 따라 쌓기 · 완성 그림과 재료 안내</option><option value="jump">극한 점프맵 · 한 칸 발판과 붕괴 도전</option></select></label>
+      <small id="jumpWorldNote" hidden>점프맵은 평화로운 서바이벌로 시작해요. 61개 발판 · 2~4칸 간격 · 0.38초 붕괴 · 체크포인트 15발판마다!</small>
+      <small id="buildWorldNote" hidden>집·성·우주선 등 9가지 그림을 고르고 직접 블록을 놓아요. 우주선을 완성하면 달에 갈 수 있어요. 재료는 무제한! 반투명 자리를 채우고 R로 그림과 필요한 블록 수를 확인해요.</small>
+      <label>세계 이름 <input id="nwName" maxlength="20" autocomplete="off"></label>
+      <label>시드 (비워 두면 무작위) <input id="nwSeed" maxlength="24" autocomplete="off" placeholder="예: 인혁"></label>
+      <label>내 이름 <input id="nwPlayer" maxlength="16" autocomplete="off" value="여행자"></label>
+      <label>내 모습 <select id="nwSkin"><option value="0">하늘 탐험가</option><option value="1">숲의 모험가</option><option value="2">보랏빛 여행자</option><option value="3">노을 기사</option></select></label>
+      <label class="coop-pick"><input id="nwCoop" type="checkbox"> 한 컴퓨터에서 2인 플레이 (공유 가방)</label>
+      <label id="dayLengthChoice">하루 길이 <select id="nwDayLength"><option value="120">2분 · 빠른 모험</option><option value="600" selected>10분 · 느긋한 생존</option><option value="60">1분 · 이야기 여행</option></select></label>
+      <fieldset id="modeChoice">
+        <legend>게임 모드</legend>
+        <label class="pick"><input type="radio" name="mode" value="survival" checked><span>서바이벌<small>캐고, 만들고, 살아남기</small></span></label>
+        <label class="pick"><input type="radio" name="mode" value="creative"><span>크리에이티브<small>모든 블록 무한 · 날기</small></span></label>
+      </fieldset>
+      <fieldset id="diffChoice">
+        <legend>난이도</legend>
+        <label class="pick"><input type="radio" name="diff" value="0"><span>평화로움<small>몬스터 없음</small></span></label>
+        <label class="pick"><input type="radio" name="diff" value="1" checked><span>보통<small>밤에 몬스터</small></span></label>
+        <label class="pick"><input type="radio" name="diff" value="2"><span>어려움<small>더 많고 더 아파</small></span></label>
+      </fieldset>
+      <div class="row2">
+        <button id="nwCreate" class="mc-btn green">세계 만들기</button>
+        <button id="nwCancel" class="mc-btn">취소</button>
+      </div>
+    </div>
+    <p class="foot">비공식 팬 게임 · Minecraft는 Mojang Studios의 상표입니다 · 그림과 소리는 전부 코드로 만들었어요</p>
+  </section>
+
+  <section id="accountDialog" class="overlay" role="dialog" aria-modal="true" aria-labelledby="accountHeading" hidden>
+    <form id="accountForm" class="mc-dialog account-dialog">
+      <h2 id="accountHeading">로그인</h2>
+      <p>게임 월드의 공용 계정으로 로그인해요.</p>
+      <label>닉네임 <input id="accountUsername" name="username" autocomplete="username" minlength="2" maxlength="10" required pattern="[a-zA-Z0-9가-힣_]{2,10}" placeholder="한글·영문·숫자·밑줄 2~10자"></label>
+      <label>비밀번호 <input id="accountPassword" name="password" type="password" autocomplete="current-password" minlength="4" maxlength="16" required placeholder="4~16자"></label>
+      <label id="accountConfirmRow" hidden>비밀번호 확인 <input id="accountConfirm" name="confirm" type="password" autocomplete="new-password" minlength="4" maxlength="16"></label>
+      <p id="accountError" class="account-error" role="status" aria-live="polite"></p>
+      <div class="row2"><button id="accountSubmit" type="submit" class="mc-btn green">로그인</button><button id="accountCancel" type="button" class="mc-btn">취소</button></div>
+      <button id="accountSwitch" type="button" class="account-switch">처음 왔어요 · 계정 만들기</button>
+      <small>세계는 이 브라우저에 계정별로 저장돼요. 다른 게임에서도 같은 닉네임으로 로그인할 수 있어요. 비밀번호를 잊으면 복구할 수 없어요.</small>
+    </form>
+  </section>
+
+  <section id="help" class="overlay" hidden>
+    <div class="mc-dialog wide">
+      <h2>조작법</h2>
+      <div class="keys">
+        <p><kbd>A</kbd><kbd>D</kbd> 걷기 · <kbd>Shift</kbd> 달리기 · <kbd>스페이스</kbd>/<kbd>W</kbd> 점프 · <kbd>S</kbd> 사다리 내려가기</p>
+        <p><b>마우스 왼쪽</b> 꾹 누르기: 캐기 · 공격</p>
+        <p><b>마우스 오른쪽</b>: 블록 놓기 · 먹기 · 제작대/화로/상자/문/침대 쓰기 · 활 당기기</p>
+        <p><kbd>1</kbd>~<kbd>9</kbd> / 휠: 손에 들 것 고르기 · <kbd>Q</kbd> 버리기</p>
+        <p><kbd>E</kbd> 가방 (Shift+클릭: 빨리 옮기기, 오른쪽 클릭: 반만 집기)</p>
+        <p><kbd>Esc</kbd> 메뉴 · <kbd>M</kbd> 소리 · <kbd>+</kbd><kbd>-</kbd> 확대 · <kbd>O</kbd> 좌표 보기</p>
+        <p>크리에이티브: <kbd>F</kbd> 또는 스페이스 두 번 → 날기</p>
+      </div>
+      <p><kbd>/</kbd> 또는 <kbd>T</kbd>: 명령어 창 · /help로 목록. 2인 플레이에서는 T로 열기 (/는 2P 공격).</p>
+      <h3>함께하는 모험</h3>
+      <p>주민·포탈 가까이에서 <kbd>R</kbd> / 화면의 ‘대화·포탈’. 흑요석 4×6 테두리의 안을 비우고 부싯돌과 부시를 든 채 R로 직접 포탈을 켤 수도 있어요.</p>
+      <p>2인: 1P는 A·D·W/스페이스와 마우스, 2P는 방향키 이동·점프, <kbd>/</kbd> 공격, <kbd>.</kbd> 정면 캐기, <kbd>,</kbd> 정면 블록 놓기, <kbd>L</kbd> 2P 관전 모드 켜기·끄기, <kbd>B</kbd> 1P 곁으로 합류. 가방과 선택한 도구는 함께 사용해요. 서로 멀어지면 B로 합류해요.</p>
+      <p>50일째 소환사 좀비가 등장해요. 3페이즈를 이기고 황금 포탈에 들어가면 엔딩! 평화로움에서도 이야기 보스가 등장해요.</p>
+      <h3>살아남는 순서</h3>
+      <ol>
+        <li>나무 캐기 → 나무 판자 → 제작대</li>
+        <li>막대기 → 나무 곡괭이 → 돌 캐기</li>
+        <li>돌 곡괭이·화로 → 석탄으로 횃불</li>
+        <li>철 광석을 화로에 구워 철 곡괭이 → 깊은 곳에서 다이아몬드!</li>
+        <li>양털 3개 + 판자 3개 = 침대. 밤에 자면 아침이 돼</li>
+      </ol>
+      <button id="helpClose" class="mc-btn">닫기</button>
+    </div>
+  </section>
+
+  <section id="pause" class="overlay" hidden>
+    <div class="mc-dialog">
+      <h2>잠깐 멈춤</h2>
+      <p id="pauseInfo" class="dim"></p>
+      <button id="btnResume" class="mc-btn green">계속 하기</button>
+      <button id="btnSave" class="mc-btn">지금 저장</button>
+      <div class="row2"><button id="btnSound" class="mc-btn"></button><button id="btnMusic" class="mc-btn"></button></div>
+      <button id="btnQuit" class="mc-btn">저장하고 처음 화면으로</button>
+    </div>
+  </section>
+
+  <section id="death" class="overlay red" hidden>
+    <div class="mc-dialog clear">
+      <h2>쓰러졌어!</h2>
+      <p id="deathText"></p>
+      <p class="dim">가방 속 물건은 그대로 있어</p>
+      <button id="btnRespawn" class="mc-btn green">다시 태어나기</button>
+      <button id="btnDeathQuit" class="mc-btn">처음 화면으로</button>
+    </div>
+  </section>
+
+  <aside id="questHUD" hidden><b id="worldLine"></b><span id="questLine"></span><div><button id="interactButton">대화·포탈 R</button><button id="storyButton">이야기</button><button id="achievementButton">도전과제</button><button id="recordsButton">기록</button><button id="journalButton">모험책 J</button><button id="blueprintButton" hidden>완성 그림 R</button><button id="galleryButton" hidden>다른 그림 선택</button><button id="skipGuideButton" hidden>따라 쌓기 안 하기</button><button id="commandButton">명령어</button></div></aside>
+  <aside id="bossHUD" hidden><b id="bossLabel"></b><progress id="bossHealth" max="540" value="540" aria-label="소환사 좀비 체력"></progress></aside>
+  <section id="adventureDialog" class="overlay" hidden><div class="mc-dialog wide story-dialog"><span class="chapter">2D마인크레프트 · 숲의 비밀</span><h2 id="adventureTitle"></h2><div id="adventureBody"></div><div id="adventureActions"></div></div></section>
+  <section id="commandDialog" class="overlay" role="dialog" aria-modal="true" aria-labelledby="commandHeading" hidden>
+    <div class="mc-dialog wide command-dialog">
+      <h2 id="commandHeading">세계 명령어</h2>
+      <small>게임은 잠깐 멈춰 있어요. 점프맵에서 명령어로 바꾸면 ‘연습’으로 표시돼요.</small>
+      <div id="commandLog" role="log" aria-live="polite"></div>
+      <div class="command-examples"><button type="button" data-command="/help">도움말</button><button type="button" data-command="/give diamond_sword 1">다이아 검</button><button type="button" data-command="/gamemode creative">크리에이티브</button><button type="button" data-command="/checkpoint 1">체크포인트 1</button><button type="button" data-command="50day">50일째</button><button type="button" data-command="100day">100일째</button></div>
+      <form id="commandForm"><label for="commandInput">명령어</label><input id="commandInput" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="/help"><button type="submit" class="mc-btn green">실행</button></form>
+      <button id="commandClose" type="button" class="mc-btn">닫기 · Esc</button>
+    </div>
+  </section>
+  <div id="loading" class="overlay" hidden><div class="mc-dialog clear"><h2>세계를 만드는 중…</h2></div></div>
+
+  <script type="module" src="./game.mjs"></script>
+</body>
+</html>
