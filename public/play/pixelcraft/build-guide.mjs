@@ -9,7 +9,7 @@ export const BLUEPRINTS=[
  {name:'별빛 등대',rows:['    SSS    ','   SFFFS   ','   GFFFG   ','   SSSSS   ','    WWW    ','    RRR    ','    WWW    ','    RRR    ','    WGW    ','   SSSSS   ','SSSSSSSSSSS']},
  {name:'커다란 버섯 집',rows:['   RRRRR   ','  RRWRRRR  ',' RRRRRRWRR ','RRWRRRRRRRR','RRRRRRWRRRR','    WWW    ','    WGW    ','    WWW    ','SSSSSSSSSSS']},
  {name:'초록 나무',rows:['    LLL    ','  LLLLLLL  ',' LLLLLLLLL ','LLLLLLLLLLL',' LLLLLLLLL ','   LOOOL   ','    OOO    ','    OOO    ','SSSSSSSSSSS']},
- {name:'빛나는 다리',rows:['   FFFFF   ','  F     F  ',' F       F ','F         F','W         W','W         W','SSSSSSSSSSS']},
+ {name:'빛나는 다리',rows:['   FFFFF   ','  FF   FF  ',' FF     FF ','FF       FF','W         W','W         W','SSSSSSSSSSS']},
  {name:'바다의 돛단배',rows:['     O     ','     OPP   ','     OPPP  ','     OPPPP ','     O     ','WOOOOOOOOOW',' WWWWWWWWW ','  SSSSSSS  ']},
  {name:'하트 조형물',rows:['  RR   RR  ',' RRRR RRRR ',' RRRRRRRRR ','  RRRRRRR  ','   RRRRR   ','    RRR    ','     R     ','SSSSSSSSSSS']},
 ];
