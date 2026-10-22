@@ -606,3 +606,5 @@ legend { font-size: 14px; margin-bottom: 6px; }
 #commandForm label { grid-column: 1 / -1; font-size: 12px; }
 #commandInput { min-width: 0; width: 100%; border: 2px solid #87977b; background: #080f15; color: #fff4c3; font: inherit; font-size: 16px; padding: 8px; }
 #commandInput:focus { outline: 2px solid #e3c47c; outline-offset: 1px; }
+
+#blueprintPreview { width: min(352px,100%); height: auto; margin: 0 auto; display: block; image-rendering: pixelated; border: 2px solid #789b9b; }

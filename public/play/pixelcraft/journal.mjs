@@ -28,6 +28,7 @@ export function journalTasks(G,id){
  ['nether','네더 책을 읽고 네더로 떠나기',visited('nether')],
  ['end','엔드 책을 읽고 엔드 섬 탐험하기',visited('end')],
  ['boss','50일째 소환사 좀비를 이기고 황금 포탈 열기',a.bossDefeated],
+ ['day100','100일째 아주 강한 스켈레톤 소환사에게 도전하기',a.skeletonDefeated],
  ['school','황금 포탈 안으로 들어가 학교 세계로 돌아가기',visited('school')]];
 }
 export function updateJournal(G){

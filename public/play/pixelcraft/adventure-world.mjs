@@ -105,7 +105,22 @@ export function portalFrame(w, x, floor, kind = 'nether') {
   for (let dx = -1; dx <= 2; dx++) for (let dy = 0; dy <= 5; dy++) {
     put(w, x + dx, floor - dy, dx === -1 || dx === 2 || dy === 0 || dy === 5 ? material : B.AIR);
   }
-  return { x, y: floor - 4, w: 2, h: 4 };
+  const portal={ x, y: floor - 4, w: 2, h: 4 };
+  openPortalSides(w,{...portal,kind});
+  return portal;
+}
+export function openPortalSides(w,p) {
+  if(!portalIntact(w,p))return;
+  for(const dx of[-1,2])for(let dy=0;dy<4;dy++)w.meta[idx(p.x+dx,p.y+dy)]|=64;
+}
+export function openEndScenery(w) {
+  for(let x=W/2-85;x<=W/2+85;x++){
+    const top=w.surface[x];
+    if(Math.abs(x-W/2)>25&&x%17<3)for(let y=top-14;y<top;y++){
+      const i=idx(x,y);if([B.OBSIDIAN,B.GLOWSTONE].includes(w.tiles[i]))w.meta[i]|=64;
+    }
+    const i=idx(x,top-1);if(x>=W/2+10&&x<W/2+20&&w.tiles[i]===B.PURPUR)w.meta[i]|=64;
+  }
 }
 export function makeEnd(seed) {
   const w = generateWorld(seed);
@@ -122,6 +137,7 @@ export function makeEnd(seed) {
   addEndIslands(w);
   // 작은 중앙 유적과 발광석이 있는 탐험 목적지.
   for (let x = W / 2 + 10; x < W / 2 + 20; x++) w.tiles[idx(x, w.surface[x] - 1)] = B.PURPUR;
+  openEndScenery(w);
   computeLight(w, 0, W - 1);
   return w;
 }

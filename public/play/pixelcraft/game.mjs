@@ -1,3 +1,5 @@
+import { makeBuildWorld,initBuildGuide } from './build-guide.mjs';
+import { isBoss } from './skeleton-boss.mjs';
 import { populateEnd } from './end-exploration.mjs';
 import { spawnNether, tickNetherMob, updateFireballs } from './nether.mjs';
 import { createCommandConsole } from './command-ui.mjs';
@@ -68,17 +70,19 @@ function baseGame(w, opts) {
     chests: new Map(), furnaces: new Map(), water: new Set(), lava: new Set(),
     dirty: null, mining: null, target: null, placeAt: null, cam: { x: sp.x, y: sp.y }, spawnT: 0, saveT: 0, fluidT: 0, lavaT: 0,
     rng: makeRng((w.seed ^ 0x5bd1e995) >>> 0), dead: false, heldId: 0, view: null, shake: 0, fade: 0, hint: 0, attackT: 0, useT: 0, breakCool: 0,
-    stats: { mined: 0 },
+    stats: { mined: 0, placed: 0 },
   };
 }
 function newGame(opts) {
-  const w = opts.worldType === 'jump' ? makeJumpWorld(opts.seed) : generateWorld(opts.seed);
+  const w = opts.worldType==='builder'?makeBuildWorld(opts.seed):opts.worldType === 'jump' ? makeJumpWorld(opts.seed) : generateWorld(opts.seed);
+  if(opts.worldType==='builder')opts={...opts,mode:'creative',diff:0};
   if (opts.worldType === 'jump') opts = { ...opts, mode: 'survival', diff: 0 };
   const game = baseGame(w, opts);
   // 처음엔 맨손. 크리에이티브는 자주 쓰는 블록을 손에 쥐여 준다
   if (opts.mode === 'creative') {
     [B.GRASS, B.DIRT, B.STONE, B.PLANKS, B.GLASS, B.TORCH, B.OAK_LOG, B.STONE_BRICKS, B.TNT].forEach((id, k) => { game.player.inv[k] = newStack(id, maxStack(id)); });
   }
+  if(opts.worldType==='builder'){initBuildGuide(game);newAdventure(game,opts);return game;}
   const r = game.rng;
   if (opts.worldType === 'jump') {
     game.jump = newJumpState();
@@ -102,7 +106,7 @@ function newGame(opts) {
 function serialize(game) {
   const p = game.player;
   return JSON.stringify({
-    v: 2, width: W, jump: game.jump, adventure: packAdventure(game), stats: game.stats, seed: game.adventure?.seed ?? game.w.seed, name: game.name, mode: game.mode, diff: game.diff, time: game.time, day: game.day, playTime: game.playTime, hint: game.hint,
+    v: 2, width: W, builder:game.builder, jump: game.jump, adventure: packAdventure(game), stats: game.stats, seed: game.adventure?.seed ?? game.w.seed, name: game.name, mode: game.mode, diff: game.diff, time: game.time, day: game.day, playTime: game.playTime, hint: game.hint,
     player: { armor: p.armor, x: p.x, y: p.y, hp: p.hp, food: p.food, sat: p.sat, air: p.air, sel: p.sel, inv: p.inv, spawn: p.spawn, flying: p.flying, skin: p.skin },
     surface: [...game.w.surface], bg: rleEncode(game.w.bg), tiles: rleEncode(game.w.tiles), meta: rleEncode(game.w.meta),
     chests: [...game.chests], furnaces: [...game.furnaces],
@@ -131,6 +135,7 @@ function loadGame(slot) {
     game.hint = d.hint ?? 0;
     game.jump = d.jump ? (d.jump.course === JUMP_COURSE ? d.jump : { ...newJumpState(), previousCourse: { elapsed: d.jump.elapsed, falls: d.jump.falls, completed: d.jump.completed, progress: d.jump.progress } }) : undefined;
     game.stats = d.stats ?? { mined: 0 };
+    game.builder=d.builder;
     game.chests = new Map((d.chests ?? []).map(([i, v]) => [remapIndex(i, d.width ?? 640), v]));
     game.furnaces = new Map((d.furnaces ?? []).map(([i, v]) => [remapIndex(i, d.width ?? 640), v]));
     game.mobs = (d.mobs ?? []).map(m => Array.isArray(m) ? Object.assign(makeMob(m[0], m[1], m[2]), { hp: m[3] }) : Object.assign(makeMob(m.type, m.x, m.y), m));
@@ -444,11 +449,11 @@ function updateMobs(dt) {
     const dx = p.x + p.w / 2 - mx, dy = p.y + p.h / 2 - my, dist = Math.hypot(dx, dy);
     if (tickNetherMob(G,m,p,dt,{lineOfSight,shootFireball,hurtPlayer,hitMob})) continue;
     const hostile = HOSTILE.has(m.type);
-    if (Math.abs(dx) > 80 && m.type !== 'summoner') {
+    if (Math.abs(dx) > 80 && !isBoss(m)) {
       if (hostile) m.remove = true;
       continue;
     }
-    if (hostile && G.diff === 0 && m.type !== 'summoner' && !m.summoned) {
+    if (hostile && G.diff === 0 && !isBoss(m) && !m.summoned) {
       m.remove = true;
       smoke(mx, my, 8);
       continue;
@@ -575,6 +580,7 @@ function shootArrow(x, y, tx, ty, speed, from, dmg) {
   G.arrows.push({ x, y, vx: vx * Math.min(1.25, k), vy: vy * Math.min(1.25, k), from, dmg, life: 10, stuck: false });
 }
 function spawnTick() {
+  if(G.builder)return;
   if (G.jump) return;
   if (G.adventure?.dimension === 'nether') { spawnNether(G,makeMob); return; }
   if (['end','moon','school'].includes(G.adventure?.dimension)) return;
@@ -863,6 +869,7 @@ function updateMining(dt) {
   if (G.mode === 'creative') {
     if (G.breakCool <= 0) {
       breakBlock(tg.x, tg.y, { harvest: false });
+      G.stats.mined++;
       G.breakCool = 0.2;
     }
     G.mining = null;
@@ -926,6 +933,7 @@ function placeBlock(x, y, itemId) {
     if (blockId === B.CHEST) G.chests.set(i, Array(27).fill(null));
     if (blockId === B.FURNACE) G.furnaces.set(i, { slots: [null, null, null], burn: 0, burnMax: 0, cook: 0 });
   }
+  G.stats.placed=(G.stats.placed??0)+1;
   consumeHeld();
   sfx.place(BLOCKS[blockId].sound);
   G.player.swing = 1;
@@ -1303,7 +1311,7 @@ function has(ids) {
   return countItem(G.player.inv, ids) > 0;
 }
 function updateHint() {
-  if (G.jump || G.mode === 'creative' || G.adventure?.dimension!=='overworld') {
+  if (G.jump || G.builder || G.mode === 'creative' || G.adventure?.dimension!=='overworld') {
     $('hint').hidden = true;
     return;
   }
@@ -1399,7 +1407,7 @@ function draw() {
   const cam = G.cam;
   const keep = { x: cam.x, y: cam.y };
   // 세상 끝 밖은 보이지 않게
-  const drawT = T * (G.mobs.some(m => m.type === 'summoner' && !m.dead) ? 0.72 : G.adventure?.coop ? 0.85 : 1);
+  const drawT = T * (G.mobs.some(isBoss) ? 0.72 : G.adventure?.coop ? 0.85 : 1);
   const vw = cw / drawT, vh = ch / drawT;
   cam.x = Math.max(vw / 2, Math.min(W - vw / 2, cam.x)) + (G.rng() - 0.5) * shake / T;
   cam.y = Math.max(vh / 2 - 8, Math.min(H - vh / 2, cam.y)) + (G.rng() - 0.5) * shake / T;
@@ -1700,13 +1708,15 @@ function showTitle() {
     list.appendChild(row);
   }
   const full = Array.from({ length: SLOTS }, (_, k) => !!load(SAVE_KEY(k))).every(Boolean);
+  $('btnBuildWorld').disabled=full;
   $('btnJumpWorld').disabled = full;
   $('btnJumpWorld').textContent = full ? '점프맵 시작 · 저장 칸을 하나 비워 줘' : '☠ 극한 점프맵 세계로 들어가기';
 }
 let newSlot = 0;
 function updateWorldChoice() {
-  const jump = $('nwWorldType').value === 'jump';
-  for (const id of ['modeChoice', 'diffChoice', 'dayLengthChoice']) $(id).hidden = jump;
+  const jump = $('nwWorldType').value === 'jump',builder=$('nwWorldType').value==='builder';
+  for (const id of ['modeChoice', 'diffChoice', 'dayLengthChoice']) $(id).hidden = jump||builder;
+  $('buildWorldNote').hidden=!builder;
   $('jumpWorldNote').hidden = !jump;
 }
 function openNewWorld(k, type = 'overworld') {
@@ -1785,6 +1795,7 @@ function boot() {
   bindTouch();
   $('nwCreate').onclick = createWorld;
   $('nwWorldType').onchange = updateWorldChoice;
+  $('btnBuildWorld').onclick=()=>{if($('slots').inert)return;const slot=Array.from({length:SLOTS},(_,i)=>i).find(i=>!load(SAVE_KEY(i)));if(slot===undefined)return toast('저장 칸을 하나 비워 줘.');openNewWorld(slot,'builder');};
   $('btnJumpWorld').onclick = () => {
     if ($('slots').inert) return toast('계정 확인 중이야. 잠시만 기다려 줘!');
     const slot = Array.from({ length: SLOTS }, (_, i) => i).find(i => !load(SAVE_KEY(i)));

@@ -117,6 +117,8 @@ block(B.PURPUR, '퍼퍼 블록', { hard: 1.5, tool: 'pick', tier: 1 });
 
 // 문은 닫혔을 때만 몸을 막는다 (meta 의 1 비트가 열림)
 export function isSolid(t, m) {
+  // 켜진 포탈의 옆 틀과 엔드 장식 기둥은 2D에서 걸어서 통과한다.
+  if ((m & 64) && [B.OBSIDIAN,B.END_FRAME,B.PURPUR,B.GLOWSTONE].includes(t)) return false;
   if (t === B.DOOR_B || t === B.DOOR_T) return !(m & 1);
   return BLOCKS[t].solid;
 }
@@ -298,11 +300,12 @@ export const RECIPES = raw.map((r, index) => {
 // 2x2 안에 들어가지 않는 조합법은 제작대가 있어야 한다
 for (const r of RECIPES) r.table = r.items ? r.items.length > 4 : r.w > 2 || r.h > 2;
 
-export const HOSTILE = new Set(['zombie', 'skeleton', 'creeper', 'spider', 'summoner', 'piglin', 'ghast', 'blaze']);
+export const HOSTILE = new Set(['zombie', 'skeleton', 'creeper', 'spider', 'summoner', 'skeleton_summoner', 'piglin', 'ghast', 'blaze']);
 export const MOBS = {
   piglin: { name: '피글린', w: .65, h: 1.85, hp: 24, speed: 2.7, dmg: 5, nether: true, drops: [[I.GOLD_INGOT, 1, 3]] },
   ghast: { name: '가스트', w: 2.5, h: 2.8, hp: 32, speed: 1.8, dmg: 7, nether: true, flying: true, drops: [[I.GUNPOWDER, 2, 4]] },
   blaze: { name: '블레이즈', w: .8, h: 1.8, hp: 28, speed: 2, dmg: 4, nether: true, flying: true, drops: [[I.BLAZE_ROD, 1, 2]] },
+  skeleton_summoner: { name: '스켈레톤 소환사', w: 1.1, h: 3.2, hp: 1200, speed: 2.8, dmg: 12, drops: [[I.DIAMOND, 20, 20], [I.GOLDEN_APPLE, 6, 6]] },
   summoner: { name: '소환사 좀비', w: 1, h: 2.6, hp: 540, speed: 2.3, dmg: 8, drops: [[I.DIAMOND, 10, 10], [I.GOLDEN_APPLE, 3, 3]] },
   pig: { name: '돼지', w: 0.9, h: 0.85, hp: 10, speed: 1.5, drops: [[I.RAW_PORK, 1, 3]] },
   cow: { name: '소', w: 0.95, h: 1.3, hp: 10, speed: 1.3, drops: [[I.RAW_BEEF, 1, 3], [I.LEATHER, 0, 2]] },
