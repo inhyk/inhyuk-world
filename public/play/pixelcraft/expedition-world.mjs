@@ -67,7 +67,7 @@ export function drawRocket(g,G,sx,sy,T) {
  g.fillStyle='#4eb6d0';g.fillRect(-T*.38,-T*4.2,T*.76,T*.9);g.fillStyle='#c9f5ff';g.fillRect(-T*.3,-T*4.12,T*.2,T*.25);
  g.fillStyle='#bc4947';for(const d of[-1,1]){g.beginPath();g.moveTo(d*T*.65,-T*2);g.lineTo(d*T*1.5,-T*.1);g.lineTo(d*T*.65,-T*.4);g.fill();}
  g.fillStyle='#273342';g.fillRect(-T*.45,-T*.65,T*.9,T*.65);
- g.fillStyle='#f2ce79';g.font=`${Math.max(11,T*.27)}px Galmuri11`;g.textAlign='center';g.fillText(G.adventure.dimension==='moon'?'R · 지구로 귀환':'R · 달 탐사선',0,-T*6.3);g.restore();
+ g.fillStyle='#f2ce79';g.font=`${Math.max(11,T*.27)}px Galmuri11`;g.textAlign='center';g.fillText(G.adventure.dimension==='moon'?(G.builder&&!G.builder.survival?'R · 건축 세계로 귀환':'R · 지구로 귀환'):'R · 달 탐사선',0,-T*6.3);g.restore();
 }
 
 export function upgradeWaters(w) {

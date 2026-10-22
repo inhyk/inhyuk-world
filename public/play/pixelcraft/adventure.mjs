@@ -1,4 +1,4 @@
-import { BLUEPRINTS,guideProgress,guidePreview,tickBuildGuide,drawBuildGuide } from './build-guide.mjs';
+import { BLUEPRINTS,guideProgress,guidePreview,tickBuildGuide,drawBuildGuide,selectGuide,builtRocket,isBuildWorld,guideActive,stopGuide } from './build-guide.mjs';
 import { tickSkeletonBoss,isBoss,skeletonPhase,SKELETON_BOSS_HP } from './skeleton-boss.mjs';
 import { BOOK_IDS,bookForDimension,bookPages,updateJournal } from './journal.mjs';
 import { makeMoon, makeSchool, landingPad, drawRocket, addEndIslands, upgradeWaters } from './expedition-world.mjs';
@@ -13,7 +13,7 @@ export function newAdventure(G, opts = {}) {
     bedsVersion: 1, fortressVersion: 1, endVersion: 2, watersVersion: 1, storySeen: false, bossDefeated: false, endingSeen: false, villagers: [], portals: [], worlds: {}, boss: null, achievements: [], trades: 0, visited: [] };
   G.player.skin = G.adventure.skin;
   G.companion = { ...G.player, armor: Array(4).fill(null), x: G.player.x + 1, inv: G.player.inv, spawn: { ...G.player.spawn }, skin: (G.adventure.skin + 1) % SKINS.length, attackT: 0 };
-  if (G.jump||G.builder) return;
+  if (G.jump||isBuildWorld(G)) return;
   for (const center of [Math.floor(W / 2) + 65, ...(opts.legacy ? [] : [Math.floor(W / 2) - 215]), W - 130]) G.adventure.villagers.push(...makeVillage(G.w, center));
   const x = Math.floor(W / 2) + 102;
   G.adventure.portals.push({ ...portalFrame(G.w, x, G.w.surface[x] - 1), kind: 'nether' });
@@ -79,7 +79,7 @@ export function createAdventureController(api) {
   }
   function story() {
     const G = get();
-    if(G.builder){G.adventure.storySeen=true;return buildPlan();}
+    if(isBuildWorld(G)){G.adventure.storySeen=true;return buildPlan();}
     if (G.jump) {
       G.adventure.storySeen = true;
       return show('극한 점프맵에 온 걸 환영해!', ['A·D 또는 방향키로 걷고 스페이스로 점프! 휴대폰에서는 화면 아래 이동·점프 버튼을 눌러 줘.', '61개 발판! 대부분 단 한 칸이고, 사이가 2~4칸 벌어져 있어. Shift를 누르고 달리다가 발판 끝에서 점프해! 2P는 오른쪽 Shift, 휴대폰은 ‘달리기’를 함께 눌러 줘.', '숲 → 얼음 절벽 → 화산 → 별빛섬! 얼음은 미끄럽고, 초록 화살표 발판은 자동으로 높이 튀어 올라. 금 간 붉은 발판은 밟고 0.38초 뒤 무너져! 멈추지 말고 다음 발판으로 뛰어. 2.5초 뒤 다시 생겨. 체크포인트는 15발판마다 있어. 블록 캐기·놓기·날기는 잠겨 있어.']);
@@ -141,18 +141,23 @@ export function createAdventureController(api) {
     if (destination === 'nether') api.populateNether();
     if (destination === 'end') api.populateEnd();
     if(destination==='school')G.time=.15;
-    G.fade = 1; api.save(); api.toast(destination === 'school' ? '학교 세계에 도착했어! 교실을 걸어 보고, 오른쪽 포탈로 다시 모험을 떠날 수 있어.' : destination === 'moon' ? '달에 착륙했어! 낮은 중력으로 뛰어 보고, 하늘의 네모난 지구도 찾아봐!' : destination === 'nether' ? '네더에 도착했어. 붉은 땅과 용암을 조심해!' : destination === 'end' ? '엔드의 떠 있는 섬에 도착했어!' : '숲 세계로 돌아왔어!');
+    G.fade = 1; api.save(); api.toast(destination === 'school' ? '학교 세계에 도착했어! 교실을 걸어 보고, 오른쪽 포탈로 다시 모험을 떠날 수 있어.' : destination === 'moon' ? '달에 착륙했어! 낮은 중력으로 뛰어 보고, 하늘의 네모난 지구도 찾아봐!' : destination === 'nether' ? '네더에 도착했어. 붉은 땅과 용암을 조심해!' : destination === 'end' ? '엔드의 떠 있는 섬에 도착했어!' : isBuildWorld(G)?'건축 세계로 돌아왔어! 다른 그림에도 도전해 봐.':'숲 세계로 돌아왔어!');
   }
   function interact() {
     const G = get();
     if (!G || G.dead || G.paused || api.UI.open) return;
-    if(G.builder)return buildPlan();
+    if(G.builder&&G.adventure.dimension==='overworld'){
+      const rocket=builtRocket(G);
+      if(rocket&&Math.hypot(G.player.x-rocket.x,G.player.y+G.player.h-rocket.y)<7)return launchBuiltRocket();
+      if(isBuildWorld(G)&&guideActive(G))return buildPlan();
+    }
     if (G.jump) return show(G.jump.completed ? '점프맵 완주!' : '극한 점프맵 기록', [`진행: ${G.jump.progress} / ${JUMP_LAST} · 시간: ${Math.floor(G.jump.elapsed)}초 · 떨어진 횟수: ${G.jump.falls}`, '황금 발판에 도착하면 완주! R로 언제든 기록을 확인할 수 있어.'], [['처음부터 다시 도전', () => { G.jump = newJumpState(); G.w = makeJumpWorld(G.adventure.seed); G.jumpRuntime = undefined; resetJumper(G.player, 0); resetJumper(G.companion, 0); G.cam = { x: G.player.x, y: G.player.y }; close(); api.save(); }]]);
     const a = G.adventure, p = G.player;
     if(BOOK_IDS.includes(p.inv[p.sel]?.id))return readBook(p.inv[p.sel].id);
     const near = (e, r) => Math.hypot(e.x - p.x, e.y - p.y) < r;
     const rocket=a.rocketSites?.[a.dimension];
-    if(rocket&&Math.hypot(p.x-rocket.x,p.y+p.h-rocket.y)<5)return show(a.dimension==='moon'?'지구로 돌아가기':'달 탐사선', [a.dimension==='moon'?'네모난 지구가 기다려. 가방과 달에 지은 건물은 그대로 남아.':'우주선을 타고 달로 떠나자! 월석과 운석을 찾고, 낮은 중력으로 높이 뛰어 봐.'], [[a.dimension==='moon'?'지구로 귀환':'달로 발사!',()=>switchDimension('moon')]]);
+    if(rocket&&Math.hypot(p.x-rocket.x,p.y+p.h-rocket.y)<5)return show(a.dimension==='moon'?(isBuildWorld(G)?'건축 세계로 돌아가기':'지구로 돌아가기'):'달 탐사선', [a.dimension==='moon'?(isBuildWorld(G)?'직접 지은 우주선과 다른 그림들이 기다려. 건축 세계로 돌아가자!':'네모난 지구가 기다려. 가방과 달에 지은 건물은 그대로 남아.'):'우주선을 타고 달로 떠나자! 월석과 운석을 찾고, 낮은 중력으로 높이 뛰어 봐.'], [[a.dimension==='moon'?(isBuildWorld(G)?'건축 세계로 귀환':'지구로 귀환'):'달로 발사!',()=>switchDimension('moon')]]);
+    if(isBuildWorld(G)){if(guideActive(G))return buildPlan();return showGallery();}
     const v = a.villagers.find(v => near(v, 4));
     const bed = nearestBed(G);
     if (bed) return api.sleepInBed(bed.x, bed.y);
@@ -288,7 +293,8 @@ export function createAdventureController(api) {
     const G = get(), a = G.adventure;
     if (!a) return;
     tickCompanion(dt);
-    if(G.builder){tickBuildGuide(G,api.toast,api.save);return;}
+    if(G.builder&&a.dimension==='overworld')tickBuildGuide(G,api.toast,api.save);
+    if(isBuildWorld(G))return;
     if (G.jump) { tickJumpWorld(G, dt, api.toast, api.save); return; }
     a.achievements ??= [];
     for (const [id, label, done] of achievementList(G)) if (done && !a.achievements.includes(id)) { a.achievements.push(id); api.toast(`도전과제 달성: ${label}`); }
@@ -333,9 +339,9 @@ export function createAdventureController(api) {
   function draw(g, G, sx, sy, T) {
     const a = G.adventure;
     if (!a) return;
-    if(G.builder)return drawBuildGuide(g,G,sx,sy,T);
+    if(G.builder&&a.dimension==='overworld'){drawBuildGuide(g,G,sx,sy,T);if(isBuildWorld(G))return;}
     if (G.jump) return drawJumpWorld(g, G, sx, sy, T);
-    drawRocket(g,G,sx,sy,T);
+    if(a.dimension!=='overworld'||a.rocketSource!=='blueprint')drawRocket(g,G,sx,sy,T);
     if(a.dimension==='school'){g.save();g.fillStyle='#e3edcf';g.font=`${T*.3}px Galmuri11`;g.textAlign='left';g.fillText('다시 학교에 온 걸 환영해!',sx(619.4),sy(77.2));g.font=`${T*.22}px Galmuri11`;g.fillText('오늘의 수업 · 모험의 기억',sx(619.4),sy(78.2));g.restore();}
     const boss = G.mobs.find(isBoss);
     if (boss && boss.burstT < .9) { g.strokeStyle='#ffb450'; g.lineWidth=3; g.beginPath(); g.ellipse(sx(boss.x+.5),sy(boss.y+boss.h),T*5,T*.4,0,0,Math.PI*2); g.stroke(); }
@@ -354,8 +360,10 @@ export function createAdventureController(api) {
     const G = get(), a = G?.adventure;
     $('questHUD').hidden = !G;
     if (!a) return;
-    $('blueprintButton').hidden=!G.builder;$('journalButton').hidden=!!G.builder;
-    if(G.builder){const p=guideProgress(G);$('worldLine').textContent=`블록 따라 쌓기 · ${BLUEPRINTS[G.builder.plan].name}`;$('questLine').textContent=`완성 ${p.done} / ${p.total} · 반투명 자리에 블록 놓기 · 그림 R`;$('interactButton').textContent='그림·필요한 블록 R';$('bossHUD').hidden=true;return;}
+    const building=guideActive(G)&&a.dimension==='overworld';
+    $('blueprintButton').hidden=!building;$('skipGuideButton').hidden=!building;$('galleryButton').hidden=!!G.jump||a.dimension!=='overworld';$('journalButton').hidden=isBuildWorld(G);
+    if(isBuildWorld(G)&&!building&&a.dimension==='overworld'){ $('worldLine').textContent='자유 건축';$('questLine').textContent='다른 그림 선택으로 다시 따라 쌓을 수 있어';$('interactButton').textContent='그림 선택 R';$('bossHUD').hidden=true;return;}
+    if(building&&isBuildWorld(G)){const p=guideProgress(G);$('worldLine').textContent=`블록 따라 쌓기 · ${BLUEPRINTS[G.builder.plan].name}`;$('questLine').textContent=`완성 ${p.done} / ${p.total} · 반투명 자리에 블록 놓기 · 그림 R`;$('interactButton').textContent=builtRocket(G)&&Math.abs(G.player.x-builtRocket(G).x)<7?'완성한 우주선 타기 R':'그림·필요한 블록 R';$('bossHUD').hidden=true;return;}
     if (G.jump) {
       $('worldLine').textContent = `${G.jump.assisted ? '연습 · ' : ''}${themeAt(G.player.x).name} · ${G.jump.progress} / ${JUMP_LAST} · ${Math.floor(G.jump.elapsed)}초`;
       $('questLine').textContent = G.jump.completed ? `★ 완주! · 떨어진 횟수 ${G.jump.falls} · R로 다시 도전` : `체크포인트 ${checkpointNumber(G.jump.checkpoint)} · ${themeAt(G.player.x).hint}`;
@@ -365,6 +373,7 @@ export function createAdventureController(api) {
     $('interactButton').textContent = a.rocketSites?.[a.dimension]&&Math.abs(G.player.x-a.rocketSites[a.dimension].x)<5 ? '우주선 타기 R' : nearestBed(G) ? '침대에서 자기 R' : '대화·포탈 R';
     const p = G.player;
     $('questLine').textContent = a.bossDefeated ? (a.endingSeen ? '이야기 완료 · 자유롭게 세계를 탐험해!' : '황금빛 포탈에서 현실로 돌아가자') : G.day < 50 ? `소환사 좀비까지 ${50 - G.day}일 · 집과 장비를 준비하자` : '소환사 좀비를 쓰러뜨려 포탈을 열자';
+    if(building&&!isBuildWorld(G)){const p=guideProgress(G),distance=Math.round(G.builder.x+5-G.player.x);$('questLine').textContent+=` · ${BLUEPRINTS[G.builder.plan].name} ${p.done}/${p.total} · ${distance<0?'←':'→'} ${Math.abs(distance)}칸`;}
     if(a.dimension==='school')$('questLine').textContent='현실로 돌아왔어! 교실 오른쪽 포탈로 다시 모험하기';
     if(a.dimension==='moon')$('questLine').textContent='우주선 옆 R로 귀환 · 월석과 운석을 찾아봐!';
     if(a.dimension==='end')$('questLine').textContent='동쪽 바깥 섬의 보물과 탑을 찾아봐 · 모험책 J';
@@ -380,7 +389,7 @@ export function createAdventureController(api) {
     if (!G?.adventure) return false;
     if (dialog) { if (e.code === 'Escape') close(); return true; }
     if (G.paused || G.dead || api.UI.open) return false;
-    if(e.code==='KeyJ'&&!G.jump&&!G.builder){readBook();return true;}
+    if(e.code==='KeyJ'&&!G.jump&&!isBuildWorld(G)){readBook();return true;}
     if (e.code === 'KeyR') { interact(); return true; }
     if ((e.code === 'KeyL' || e.code === 'KeyB') && G.adventure.coop) {
       const p = G.companion, leader = G.player;
@@ -394,7 +403,7 @@ export function createAdventureController(api) {
     const G = get();
     if (!G.adventure) newAdventure(G);
     G.drawAdventure = draw;
-    if (!G.jump&&!G.builder) {
+    if (!G.jump&&!isBuildWorld(G)) {
       // 현재 차원과 보관 중인 차원의 구버전 마을·포탈도 함께 보완한다.
       const a=G.adventure, dimensions=[[a.dimension,{w:G.w,villagers:a.villagers,portals:a.portals}],...Object.entries(a.worlds)];
       for (const [kind,d] of dimensions) {
@@ -442,8 +451,40 @@ export function createAdventureController(api) {
       ['skeleton-boss', '100일의 뼈 왕을 꺾다', a.skeletonDefeated],
     ];
   }
-  function buildPlan(){const G=get(),p=guideProgress(G),plan=BLUEPRINTS[G.builder.plan];show(`블록 따라 쌓기 · ${plan.name}`,[`완성 ${p.done} / ${p.total} · 아래 완성 그림을 따라 직접 지어 봐!`,`남은 블록 · ${[...p.needs].map(([id,n])=>`${ITEMS[id].name} ${n}개`).join(' · ')||'모두 완성!'}`,'가방의 재료는 줄어들지 않아. 반투명 자리에 같은 블록을 놓아 줘. 노란 테두리가 다음 추천 자리야. F로 날기를 켜고 스페이스로 올라가면 지붕도 만들 수 있어.'],BLUEPRINTS.map((b,i)=>[`${b.name} 그림 선택`,()=>{if(G.builder.plan!==i){G.builder.plan=i;G.builder.x=W/2-5+i*22;Object.assign(G.player,{x:G.builder.x-3,y:85.1,vx:0,vy:0,fallTop:85.1});G.cam={x:G.player.x,y:G.player.y};}api.save();buildPlan();}]));$('adventureBody').prepend(guidePreview(G));}
+  function launchBuiltRocket(){
+    const G=get(),rocket=builtRocket(G);
+    if(!rocket)return api.toast('우주선 그림의 블록을 모두 채워 줘!');
+    G.adventure.rocketSites??={};G.adventure.rocketSites.overworld=rocket;
+    show('내가 만든 우주선',[ '블록 따라 쌓기로 우주선을 완성했어! 직접 만든 탐사선을 타고 달로 떠나자.', '달에서는 낮은 중력으로 뛰고 네모난 지구를 볼 수 있어. 달의 우주선 옆 R로 원래 세계에 돌아와.' ],[['달로 발사!',()=>switchDimension('moon')]]);
+  }
+  function buildPlan(){
+    const G=get();
+    if(G.adventure.dimension!=='overworld')return show('달 탐험 중',['달의 우주선 옆에서 R을 눌러 원래 세계로 돌아와. 돌아오면 다른 그림도 고를 수 있어.']);
+    const p=guideProgress(G),plan=BLUEPRINTS[G.builder.plan];
+    const actions=[['다른 그림 선택',showGallery],['안 하기',skipGuide]];
+    if(plan.kind==='rocket'&&!p.missing.length)actions.push(['완성한 우주선 타기',launchBuiltRocket]);
+    show(`블록 따라 쌓기 · ${plan.name}`,[`완성 ${p.done} / ${p.total} · 아래 완성 그림을 따라 직접 지어 봐!`,`남은 블록 · ${[...p.needs].map(([id,n])=>`${ITEMS[id].name} ${n}개`).join(' · ')||'모두 완성!'}`,
+      plan.kind==='rocket'?'우주선 블록을 모두 채우면 달로 떠날 수 있어! 완성한 우주선 옆 R 또는 아래 탑승 버튼을 눌러 줘.':(isBuildWorld(G)?'다른 그림을 고르면 옆 빈터로 이동해. 전에 만든 건물은 그대로 남아.':'야생에서 모은 재료로 지어 줘. 그림마다 가까운 건축 자리가 따로 남아. 땅이 울퉁불퉁하면 기초부터 받쳐 줘.'),
+      isBuildWorld(G)?'재료는 무제한이야. 반투명 자리에 같은 블록을 놓아 줘. 노란 테두리는 다음 추천 자리야. F로 날기를 켜고 스페이스로 올라가면 높은 곳도 만들 수 있어.':'야생의 재료와 난이도는 그대로야. 반투명 자리에 같은 블록을 놓아 줘. 안 하기를 누르면 안내만 사라지고 건물은 남아.'
+    ],actions);$('adventureBody').prepend(guidePreview(G));
+  }
+  function skipGuide(){const G=get();stopGuide(G);close();api.hudDirty();api.save();api.toast('따라 쌓기 안내를 껐어. 다른 그림 선택으로 다시 시작할 수 있어!');}
+  function showGallery(){
+    const G=get();if(!G||G.jump||G.adventure.dimension!=='overworld')return;
+    show('다른 그림 선택',['짓고 싶은 그림을 눌러 줘. 건축 자리와 진행 상황이 그림마다 따로 남아. 우주선을 완성하면 달 탐험도 할 수 있어!']);
+    const skip=document.createElement('button');skip.className='mc-btn';skip.textContent='안 하기';skip.onclick=skipGuide;$('adventureBody').append(skip);
+    const grid=document.createElement('div');grid.className='blueprint-gallery';
+    BLUEPRINTS.forEach((plan,number)=>{
+      const button=document.createElement('button');button.className='blueprint-card';button.dataset.plan=number;
+      const canvas=guidePreview(G,number);canvas.removeAttribute('id');
+      const label=document.createElement('b');label.textContent=plan.name;
+      const count=document.createElement('small');count.textContent=G.builder?.completed?.includes(number)?'◆ 완성한 그림':guideActive(G)&&number===G.builder.plan?'지금 만드는 그림':plan.kind==='rocket'?'직접 만들어 달에 가기':'이 그림 따라 짓기';
+      button.append(canvas,label,count);button.onclick=()=>{selectGuide(G,number);api.hudDirty();api.save();buildPlan();};grid.append(button);
+    });$('adventureBody').append(grid);
+  }
   $('blueprintButton').onclick=()=>buildPlan();
+  $('galleryButton').onclick=()=>showGallery();
+  $('skipGuideButton').onclick=skipGuide;
   function readBook(id){const G=get();if(!G||G.jump)return false;id??=bookForDimension(G.adventure.dimension);if(!BOOK_IDS.includes(id))return false;show(ITEMS[id].name,bookPages(G,id),BOOK_IDS.filter(other=>other!==id).map(other=>[ITEMS[other].name,()=>readBook(other)]));api.save();return true;}
   $('journalButton').onclick=()=>readBook();
   $('recordsButton').onclick=()=>{const G=get();if(!G)return;show('나의 세계 기록',[`설치한 블록 · ${G.stats.placed??0}회`,`부순 블록 · ${G.stats.mined??0}회`,`모험한 시간 · ${Math.floor((G.playTime??0)/60)}분`,`지금은 ${G.day}일째 · 기록은 이 세계에 저장돼.`]);};

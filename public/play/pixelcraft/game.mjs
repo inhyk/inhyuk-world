@@ -1,4 +1,4 @@
-import { makeBuildWorld,initBuildGuide } from './build-guide.mjs';
+import { makeBuildWorld,initBuildGuide,isBuildWorld } from './build-guide.mjs';
 import { isBoss } from './skeleton-boss.mjs';
 import { populateEnd } from './end-exploration.mjs';
 import { spawnNether, tickNetherMob, updateFireballs } from './nether.mjs';
@@ -580,7 +580,7 @@ function shootArrow(x, y, tx, ty, speed, from, dmg) {
   G.arrows.push({ x, y, vx: vx * Math.min(1.25, k), vy: vy * Math.min(1.25, k), from, dmg, life: 10, stuck: false });
 }
 function spawnTick() {
-  if(G.builder)return;
+  if(isBuildWorld(G))return;
   if (G.jump) return;
   if (G.adventure?.dimension === 'nether') { spawnNether(G,makeMob); return; }
   if (['end','moon','school'].includes(G.adventure?.dimension)) return;
@@ -1311,7 +1311,7 @@ function has(ids) {
   return countItem(G.player.inv, ids) > 0;
 }
 function updateHint() {
-  if (G.jump || G.builder || G.mode === 'creative' || G.adventure?.dimension!=='overworld') {
+  if (G.jump || isBuildWorld(G) || G.mode === 'creative' || G.adventure?.dimension!=='overworld') {
     $('hint').hidden = true;
     return;
   }

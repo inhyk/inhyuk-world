@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {B,isSolid} from '../../public/play/pixelcraft/data.mjs';
 import {idx,moveBody} from '../../public/play/pixelcraft/core.mjs';
-import {makeBuildWorld,guideCells,guideProgress,initBuildGuide,tickBuildGuide,BLUEPRINTS} from '../../public/play/pixelcraft/build-guide.mjs';
+import {makeBuildWorld,guideCells,guideProgress,initBuildGuide,tickBuildGuide,BLUEPRINTS,selectGuide,builtRocket,stopGuide,guideActive,isBuildWorld} from '../../public/play/pixelcraft/build-guide.mjs';
 import {portalFrame,makeEnd,portalIntact} from '../../public/play/pixelcraft/adventure-world.mjs';
 test('활성 포탈은 틀을 유지하면서 실제 물리 이동으로 옆에서 걸어 들어갈 수 있다',()=>{
  for(const kind of['nether','end','ending']){
@@ -25,5 +25,24 @@ test('건축 그림은 재료를 정확히 세고 실제 블록 일치로 완성
   for(const c of cells)G.w.tiles[idx(c.x,c.y)]=c.id;
   assert.equal(guideProgress(G).done,cells.length);tickBuildGuide(G,()=>{},()=>saves++);tickBuildGuide(G,()=>{},()=>saves++);
  }
- assert.deepEqual(G.builder.completed,[0,1]);assert.equal(saves,2);
+ assert.deepEqual(G.builder.completed,BLUEPRINTS.map((_,i)=>i));assert.equal(saves,BLUEPRINTS.length);
+});
+
+test('우주선은 건축 세계에서 실제 설계를 완성해야 탈 수 있고 다른 그림을 골라도 남는다',()=>{
+ const G={w:makeBuildWorld(42),player:{inv:Array(36).fill(null)},adventure:{dimension:'overworld'}};initBuildGuide(G);selectGuide(G,2);
+ assert.equal(builtRocket(G),null);const cells=guideCells(G);for(const c of cells)G.w.tiles[idx(c.x,c.y)]=c.id;
+ assert.ok(builtRocket(G));selectGuide(G,4);assert.ok(builtRocket(G));
+ const c=cells.find(c=>c.id===B.GLASS);G.w.tiles[idx(c.x,c.y)]=B.AIR;assert.equal(builtRocket(G),null);
+ G.adventure.dimension='moon';assert.equal(selectGuide(G,0),false);
+});
+
+test('야생 그림 선택과 안 하기는 재료·위치·난이도·지형과 완성한 우주선을 보존한다',()=>{
+ const G={w:makeBuildWorld(19),mode:'survival',diff:2,player:{x:610,y:86.2,inv:[{id:B.DIRT,count:7}]},adventure:{dimension:'overworld'}};
+ const before=JSON.stringify(G.player),tiles=G.w.tiles.slice();
+ assert.equal(builtRocket(G),null);selectGuide(G,2);
+ assert.equal(isBuildWorld(G),false);assert.equal(guideActive(G),true);assert.equal(G.mode,'survival');assert.equal(G.diff,2);assert.equal(JSON.stringify(G.player),before);assert.deepEqual(G.w.tiles,tiles);
+ const cells=guideCells(G);for(const c of cells)G.w.tiles[idx(c.x,c.y)]=c.id;const rocket=builtRocket(G);assert.ok(rocket);
+ selectGuide(G,8);assert.deepEqual(builtRocket(G),rocket);assert.ok(Math.abs(G.builder.x-cells[0].x)>=15);
+ stopGuide(G);assert.equal(guideActive(G),false);assert.deepEqual(builtRocket(G),rocket);selectGuide(G,2);assert.equal(guideActive(G),true);assert.equal(guideProgress(G).missing.length,0);
+ assert.equal(JSON.stringify(G.player),before);
 });
