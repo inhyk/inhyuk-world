@@ -461,6 +461,14 @@ function drawMob(g, G, m, sx, sy, T) {
   if (m.dead) g.rotate(Math.min(1.5, m.deadT * 4));
   const u = ux;
   switch (m.type) {
+    case 'skeleton_summoner': {
+      humanoid(g,u,{skin:'#e0e4db',shirt:'#42445e',pants:'#292a3e',arm:'#d4d8d4',swing:walk,armAng:-1.4,tint,thin:true,eye:'#20202c',pupil:'#70edff',held:icons[134],mouth:'#56596c'});
+      box(g,u,-6,-35,12,3,'#d3b16c',tint);
+      for(let k=0;k<3;k++)box(g,u,-5+k*4,-39,3,5,'#f1d494',tint);
+      box(g,u,-7,-22,14,2,'#9a93ba',tint);
+      for(let k=0;k<3;k++){const a=G.clock+k*2.1;box(g,u,Math.cos(a)*15,-21+Math.sin(a)*10,2,5,'#e6e8d8',tint);}
+      break;
+    }
     case 'summoner': {
       const phase = m.phase ?? 1;
       humanoid(g, u, { skin: '#5d975c', shirt: phase === 3 ? '#5c305d' : '#343452', pants: '#242338', hair: '#222637', swing: walk, armAng: -1.3, tint, eye: '#ecdfaf', pupil: '#f0bd59' });

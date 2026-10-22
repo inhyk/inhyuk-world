@@ -61,6 +61,7 @@
         <button id="btnLogout" class="mc-btn" hidden>로그아웃</button>
       </div>
       <button id="btnJumpWorld" class="mc-btn green">☠ 극한 점프맵 세계로 들어가기</button>
+      <button id="btnBuildWorld" class="mc-btn">▧ 블록 따라 쌓기 · 집과 성 만들기</button>
       <div id="slots"></div>
       <div class="row2">
         <button id="btnHelp" class="mc-btn">조작법 보기</button>
@@ -68,8 +69,9 @@
     </div>
     <div id="newWorld" class="mc-dialog" hidden>
       <h2>새 세계 만들기</h2>
-      <label>세계 종류 <select id="nwWorldType"><option value="overworld">숲 세계 · 생존과 모험</option><option value="jump">극한 점프맵 · 한 칸 발판과 붕괴 도전</option></select></label>
+      <label>세계 종류 <select id="nwWorldType"><option value="overworld">숲 세계 · 생존과 모험</option><option value="builder">블록 따라 쌓기 · 완성 그림과 재료 안내</option><option value="jump">극한 점프맵 · 한 칸 발판과 붕괴 도전</option></select></label>
       <small id="jumpWorldNote" hidden>점프맵은 평화로운 서바이벌로 시작해요. 61개 발판 · 2~4칸 간격 · 0.38초 붕괴 · 체크포인트 15발판마다!</small>
+      <small id="buildWorldNote" hidden>집과 성 그림을 보며 직접 블록을 놓아요. 재료는 무제한! 반투명 자리를 채우고 R로 그림과 필요한 블록 수를 확인해요.</small>
       <label>세계 이름 <input id="nwName" maxlength="20" autocomplete="off"></label>
       <label>시드 (비워 두면 무작위) <input id="nwSeed" maxlength="24" autocomplete="off" placeholder="예: 인혁"></label>
       <label>내 이름 <input id="nwPlayer" maxlength="16" autocomplete="off" value="여행자"></label>
@@ -159,7 +161,7 @@
     </div>
   </section>
 
-  <aside id="questHUD" hidden><b id="worldLine"></b><span id="questLine"></span><div><button id="interactButton">대화·포탈 R</button><button id="storyButton">이야기</button><button id="achievementButton">도전과제</button><button id="journalButton">모험책 J</button><button id="commandButton">명령어</button></div></aside>
+  <aside id="questHUD" hidden><b id="worldLine"></b><span id="questLine"></span><div><button id="interactButton">대화·포탈 R</button><button id="storyButton">이야기</button><button id="achievementButton">도전과제</button><button id="recordsButton">기록</button><button id="journalButton">모험책 J</button><button id="blueprintButton" hidden>완성 그림 R</button><button id="commandButton">명령어</button></div></aside>
   <aside id="bossHUD" hidden><b id="bossLabel"></b><progress id="bossHealth" max="540" value="540" aria-label="소환사 좀비 체력"></progress></aside>
   <section id="adventureDialog" class="overlay" hidden><div class="mc-dialog wide story-dialog"><span class="chapter">2D마인크레프트 · 숲의 비밀</span><h2 id="adventureTitle"></h2><div id="adventureBody"></div><div id="adventureActions"></div></div></section>
   <section id="commandDialog" class="overlay" role="dialog" aria-modal="true" aria-labelledby="commandHeading" hidden>
@@ -167,7 +169,7 @@
       <h2 id="commandHeading">세계 명령어</h2>
       <small>게임은 잠깐 멈춰 있어요. 점프맵에서 명령어로 바꾸면 ‘연습’으로 표시돼요.</small>
       <div id="commandLog" role="log" aria-live="polite"></div>
-      <div class="command-examples"><button type="button" data-command="/help">도움말</button><button type="button" data-command="/give diamond_sword 1">다이아 검</button><button type="button" data-command="/gamemode creative">크리에이티브</button><button type="button" data-command="/checkpoint 1">체크포인트 1</button><button type="button" data-command="50day">50일째</button></div>
+      <div class="command-examples"><button type="button" data-command="/help">도움말</button><button type="button" data-command="/give diamond_sword 1">다이아 검</button><button type="button" data-command="/gamemode creative">크리에이티브</button><button type="button" data-command="/checkpoint 1">체크포인트 1</button><button type="button" data-command="50day">50일째</button><button type="button" data-command="100day">100일째</button></div>
       <form id="commandForm"><label for="commandInput">명령어</label><input id="commandInput" maxlength="160" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="/help"><button type="submit" class="mc-btn green">실행</button></form>
       <button id="commandClose" type="button" class="mc-btn">닫기 · Esc</button>
     </div>
