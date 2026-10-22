@@ -11,7 +11,7 @@ try{
  await page.click('#btnBuildWorld');assert.equal(await page.inputValue('#nwWorldType'),'builder');await page.click('#nwCreate');await page.waitForSelector('#blueprintPreview');
  assert.match(await page.textContent('#adventureBody'),/남은 블록/);await shot('01-blueprint');await page.click('#adventureActions button:last-child');await page.waitForTimeout(400);await shot('02-guide');
  const first=await ev(async()=>{const {guideCells}=await import('./build-guide.mjs');return guideCells(window.__pixelcraft.G)[0];});
- 
+
  // 실제 마우스로 설치하고 캐서 기록이 늘어나는지 확인한다.
  await aim(first.x,first.y);await page.mouse.down({button:'right'});await page.waitForTimeout(150);await page.mouse.up({button:'right'});
  assert.equal(await ev(()=>window.__pixelcraft.G.stats.placed),1);
