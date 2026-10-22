@@ -147,6 +147,8 @@ function metalBlock(seed, base, light, dark) {
 }
 
 const BLOCK_ART = {
+  [B.MOON_STONE]: p => { p.fill(['#aaaeb8','#9399a7','#bfc4ce']); for(let k=0;k<6;k++){p.rect(k*7%14,k*11%14,3,2,'#737d8e');p.rect(k*7%14+1,k*11%14+1,2,1,'#c7cdd7');} },
+  [B.METEOR_ORE]: p => {p.fill(['#576373','#778394','#3c4c63']);for(let k=0;k<7;k++)p.rect(k*7%14,k*11%14,2,2,'#b1dfdf');},
   [B.END_STONE]: (p) => { p.fill(['#d7dba5','#c7ce94','#e4e4b3','#b3be83']); for(let k=0;k<12;k++) p.rect((k*7)%16,(k*11)%16,2,1,'#a1ac79'); },
   [B.END_FRAME]: p => { p.fill(['#184e47','#216257','#316c5c']); p.rect(1,1,14,3,'#bfd3a1'); p.rect(2,5,12,9,'#133e3c'); p.rect(4,7,8,5,'#83c6a0'); p.rect(7,7,2,5,'#152e38'); p.rect(0,14,16,2,'#9dae79'); },
   [B.PURPUR]: (p) => { p.fill(['#9e789c','#a682a3','#8b678b']); p.line(0,0,15,0,'#c39dbd');p.line(0,8,15,8,'#6f516e');p.line(7,0,7,7,'#6f516e');p.line(3,8,3,15,'#6f516e'); },
@@ -498,6 +500,8 @@ export const iconUrl = [];  // 아이템 ID → data URL (가방 화면)
 export const avgColor = []; // 블록 ID → 부서질 때 조각 색
 export const crack = [];    // 금 가는 10단계
 export const fluidFrames = { [B.WATER]: [], [B.LAVA]: [] };
+
+for(const [id,color]of[[I.OVERWORLD_BOOK,'#54824a'],[I.NETHER_BOOK,'#aa4b48'],[I.END_BOOK,'#8752a7']])ITEM_ART[id]=p=>{p.rect(2,2,12,13,'#322d3c');p.rect(3,2,11,12,color);p.rect(4,3,1,11,'#eed29e');p.rect(6,5,6,1,'#f2e9c8');p.rect(6,8,5,1,'#f2e9c8');p.rect(4,13,10,1,'#c9c4b1');};
 
 export function buildTextures() {
   for (const id of Object.values(B)) {

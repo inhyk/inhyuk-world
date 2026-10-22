@@ -1,3 +1,4 @@
+import { populateEnd } from './end-exploration.mjs';
 import { spawnNether, tickNetherMob, updateFireballs } from './nether.mjs';
 import { createCommandConsole } from './command-ui.mjs';
 import { makeJumpWorld, resetJumper, newJumpState, JUMP_COURSE, jumpGrip } from './jump-world.mjs';
@@ -576,7 +577,7 @@ function shootArrow(x, y, tx, ty, speed, from, dmg) {
 function spawnTick() {
   if (G.jump) return;
   if (G.adventure?.dimension === 'nether') { spawnNether(G,makeMob); return; }
-  if (G.adventure?.dimension === 'end') return;
+  if (['end','moon','school'].includes(G.adventure?.dimension)) return;
   const p = G.player;
   const day = dayFactor(G.time);
   const vw = G.view ? G.view.viewW / 2 + 2 : 18;
@@ -666,7 +667,7 @@ function updatePlayer(dt) {
     p.vy = Math.min(p.vy + 9 * dt, 2.6);
     if (jump && !panel) p.vy = Math.max(p.vy - 28 * dt, -4);
   } else {
-    p.vy = Math.min(p.vy + 30 * dt, 28);
+    p.vy = Math.min(p.vy + (G.adventure?.dimension==='moon'?7:30) * dt, 28);
     if (jump && !panel && p.onGround) {
       p.vy = -9.4;
       p.exhaust += run ? 0.2 : 0.05;
@@ -689,7 +690,7 @@ function updatePlayer(dt) {
   if (p.onGround || fluid || ladder || p.flying) {
     if (p.onGround && !wasGround && !fluid && !ladder) {
       const fall = p.y - p.fallTop;
-      if (fall > 3.5) hurtPlayer(Math.floor(fall - 3), 'fall', undefined, { pierce: true, raw: true });
+      if (fall > (G.adventure?.dimension==='moon'?14:3.5)) hurtPlayer(Math.floor((fall - 3)*(G.adventure?.dimension==='moon'?.25:1)), 'fall', undefined, { pierce: true, raw: true });
     }
     p.fallTop = p.y;
   } else p.fallTop = Math.min(p.fallTop, p.y);
@@ -959,6 +960,7 @@ function sleepInBed(x, y) {
   G.fade = 1.6;
   G.time = 0.1;
   G.day++;
+  G.adventure.slept=true;
   p.hp = Math.min(20,p.hp+6);
   saveGame(true);
   toast(`좋은 아침! ${G.day}일째`);
@@ -969,6 +971,7 @@ function doUse() {
   const s = held();
   const id = s?.id ?? 0;
   if ((id === I.FLINT_STEEL || id === I.ENDER_EYE) && adventure.lightPortal()) return;
+  if([I.OVERWORLD_BOOK,I.NETHER_BOOK,I.END_BOOK].includes(id)&&adventure.readBook(id))return;
   const tg = G.target && !G.target.place ? G.target : null;
   if (tg) {
     const i = tg.y * W + tg.x;
@@ -1300,7 +1303,7 @@ function has(ids) {
   return countItem(G.player.inv, ids) > 0;
 }
 function updateHint() {
-  if (G.jump || G.mode === 'creative') {
+  if (G.jump || G.mode === 'creative' || G.adventure?.dimension!=='overworld') {
     $('hint').hidden = true;
     return;
   }
@@ -1808,6 +1811,6 @@ function boot() {
   // 브라우저 확인 스크립트가 들여다볼 수 있게
   window.__pixelcraft = { adventure, W, H, get G() { return G; }, startGame, newGame, loadGame, saveGame, serialize, keys, mouse, setTile, breakBlock, placeBlock, doUse, hitMob, sleepInBed, explode, makeMob, openPanel, closePanel, UI };
 }
-const adventure = createAdventureController({ get: () => G, keys, UI, closePanel, toast, hudDirty, save: () => saveGame(true), makeMob, hitMob, shootArrow, hurtPlayer, sleepInBed, populateNether: () => spawnNether(G,makeMob,true), breakInfo, breakBlock, wearTool });
+const adventure = createAdventureController({ get: () => G, keys, UI, closePanel, toast, hudDirty, save: () => saveGame(true), makeMob, hitMob, shootArrow, hurtPlayer, sleepInBed, populateNether: () => spawnNether(G,makeMob,true), populateEnd: () => populateEnd(G,makeMob), breakInfo, breakBlock, wearTool });
 const commands = createCommandConsole({ get: () => G, closePanel, clearInput: () => { keys.clear(); mouse.left = mouse.right = false; }, changed: () => { hudDirty(); if (UI.open) renderPanel(); $('touch').classList.toggle('creative', G.mode === 'creative'); }, save: () => saveGame(true) });
 boot();

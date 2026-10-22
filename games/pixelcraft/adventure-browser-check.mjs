@@ -46,7 +46,7 @@ try {
  await ev(()=>window.__pixelcraft.saveGame(true));await page.reload();await page.click('#slots .play');assert.equal(await ev(()=>window.__pixelcraft.G.mobs.find(m=>m.type==='summoner').phase),3);
  await ev(()=>{const G=window.__pixelcraft.G,m=G.mobs.find(m=>m.type==='summoner');m.hp=1;m.vx=0;Object.assign(G.companion,{x:m.x-1,y:m.y+0.6,vx:0,vy:0});G.player.inv[0]={id:129,count:1,dur:1561};G.player.sel=0;});
  await page.keyboard.down('Slash');await page.waitForFunction(()=>window.__pixelcraft.G.adventure.bossDefeated);await page.keyboard.up('Slash');
- const gold=await ev(()=>window.__pixelcraft.G.adventure.portals.find(p=>p.kind==='ending'));await move({x:gold.x,y:gold.y+2});await page.keyboard.press('KeyR');await shot('09-ending');assert.ok((await page.locator('#adventureTitle').textContent()).includes('현실'));
+ const gold=await ev(()=>window.__pixelcraft.G.adventure.portals.find(p=>p.kind==='ending'));await move({x:gold.x,y:gold.y+2});await page.keyboard.press('KeyR');await page.click('#adventureActions button:first-child');await page.waitForFunction(()=>window.__pixelcraft.G.adventure.dimension==='school');await shot('09-ending');assert.ok((await page.locator('#adventureTitle').textContent()).includes('현실'));
  await page.click('#adventureActions button:first-child');assert.equal(await ev(()=>window.__pixelcraft.G.adventure.endingSeen),true);
  await page.click('#achievementButton');await shot('10-achievements');assert.ok((await page.locator('#adventureBody').textContent()).includes('학교로 돌아오다'));await page.click('#adventureActions button:last-child');
  // Mobile layout and reachable interactions.

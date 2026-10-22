@@ -5,8 +5,8 @@ import { B, BLOCKS, ITEMS, RECIPES, isSolid, maxStack } from './data.mjs';
 export const W = 1280;
 export const H = 160;
 export const SEA = 70;
-export const BIOME = { PLAINS: 0, FOREST: 1, DESERT: 2, SNOW: 3 };
-export const BIOME_NAMES = ['초원', '숲', '사막', '눈 덮인 숲'];
+export const BIOME = { PLAINS: 0, FOREST: 1, DESERT: 2, SNOW: 3, OCEAN: 4 };
+export const BIOME_NAMES = ['초원', '숲', '사막', '눈 덮인 숲', '바다'];
 
 // ---- 난수와 노이즈 ----
 export function makeRng(seed) {
@@ -78,6 +78,18 @@ export function generateWorld(seed) {
     if (mount > 0.6) h -= (mount - 0.6) * 90;
     if (b === BIOME.DESERT) h = lerp(h, 64, 0.45);
     surface[x] = Math.round(Math.max(26, Math.min(96, h)));
+  }
+  // 서쪽의 넓은 바다: 모래 해변에서 깊은 해저까지 부드럽게 낮아진다.
+  for(let x=95;x<=235;x++){
+    const depth=Math.min(x-95,235-x,26);
+    surface[x]=SEA+Math.round(depth*.65);biome[x]=BIOME.OCEAN;
+  }
+  // 다른 바이옴 안에는 드문 작은 물웅덩이가 있다. 수면 높이는 장소마다 다르다.
+  const ponds=[];
+  for(const center of [300,530,965]){
+    const water=surface[center]+1,half=4+Math.floor(noise1(seed+819,center)*4);
+    ponds.push({center,water,half});
+    for(let x=center-half;x<=center+half;x++)surface[x]=water+Math.max(1,Math.round((1-Math.abs(x-center)/(half+1))*3));
   }
   // 처음 서는 곳(가운데)은 물에 잠기지 않게 살짝 들어 올린다
   for (let x = W / 2 - 14; x < W / 2 + 14; x++) surface[x] = Math.min(surface[x], SEA - 4 + Math.round(Math.abs(x - W / 2) / 6));
@@ -168,6 +180,8 @@ export function generateWorld(seed) {
       meta[i] = tiles[i] === B.WATER ? 8 : 0;
     }
   }
+
+  for(const {center,water,half} of ponds)for(let x=center-half;x<=center+half;x++)for(let y=water;y<surface[x];y++){tiles[idx(x,y)]=B.WATER;meta[idx(x,y)]=8;}
 
   // 나무와 풀
   const put = (x, y, t) => {

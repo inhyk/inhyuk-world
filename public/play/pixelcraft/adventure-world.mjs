@@ -1,3 +1,4 @@
+import { addEndIslands } from './expedition-world.mjs';
 import { B, I, MOBS } from './data.mjs';
 import { W, H, idx, generateWorld, computeLight, noise1, rleDecode, rleEncode } from './core.mjs';
 
@@ -118,6 +119,7 @@ export function makeEnd(seed) {
     for (let y = top; y < top + 5 + Math.floor((85 - d) / 4); y++) { w.tiles[idx(x, y)] = B.END_STONE; w.bg[idx(x, y)] = B.END_STONE; }
     if (d > 25 && x % 17 < 3) for (let y = top - 14; y < top; y++) w.tiles[idx(x, y)] = y === top - 14 ? B.GLOWSTONE : B.OBSIDIAN;
   }
+  addEndIslands(w);
   // 작은 중앙 유적과 발광석이 있는 탐험 목적지.
   for (let x = W / 2 + 10; x < W / 2 + 20; x++) w.tiles[idx(x, w.surface[x] - 1)] = B.PURPUR;
   computeLight(w, 0, W - 1);

@@ -11,7 +11,7 @@ export const B = {
   TALL_GRASS: 39, POPPY: 40, DANDELION: 41, OBSIDIAN: 42, IRON_BLOCK: 43, GOLD_BLOCK: 44, DIAMOND_BLOCK: 45,
   LADDER: 46, DOOR_B: 47, DOOR_T: 48, BED_FOOT: 49, BED_HEAD: 50,
   SAPLING_OAK: 51, SAPLING_BIRCH: 52, SAPLING_SPRUCE: 53, PUMPKIN: 54, JACK: 55, DEAD_BUSH: 56,
-  COAL_BLOCK: 57, MOSSY_COBBLE: 58, NETHERRACK: 59, SOUL_SAND: 60, GLOWSTONE: 61, END_STONE: 62, PURPUR: 63, END_FRAME: 64,
+  COAL_BLOCK: 57, MOSSY_COBBLE: 58, NETHERRACK: 59, SOUL_SAND: 60, GLOWSTONE: 61, END_STONE: 62, PURPUR: 63, END_FRAME: 64, MOON_STONE: 65, METEOR_ORE: 66,
 };
 
 export const I = {
@@ -26,7 +26,7 @@ export const I = {
   RAW_PORK: 140, COOKED_PORK: 141, RAW_BEEF: 142, STEAK: 143, RAW_CHICKEN: 144, COOKED_CHICKEN: 145,
   ROTTEN_FLESH: 146, APPLE: 147, GOLDEN_APPLE: 148,
   BONE: 150, GUNPOWDER: 151, LEATHER: 152, FEATHER: 153, STRING: 154,
-  ENDER_EYE: 155, BLAZE_ROD: 156,
+  ENDER_EYE: 155, BLAZE_ROD: 156, OVERWORLD_BOOK: 157, NETHER_BOOK: 158, END_BOOK: 159,
   DOOR: 160, BED: 161,
   LEATHER_HELMET: 170, LEATHER_CHEST: 171, LEATHER_LEGS: 172, LEATHER_BOOTS: 173,
   IRON_HELMET: 174, IRON_CHEST: 175, IRON_LEGS: 176, IRON_BOOTS: 177,
@@ -52,6 +52,8 @@ block(B.GRASS, '잔디 블록', { hard: 0.6, tool: 'shovel', drop: B.DIRT, sound
 block(B.DIRT, '흙', { hard: 0.5, tool: 'shovel', sound: 'dirt' });
 block(B.STONE, '돌', { hard: 1.5, tool: 'pick', tier: 1, drop: B.COBBLE });
 block(B.COBBLE, '조약돌', { hard: 2, tool: 'pick', tier: 1 });
+block(B.MOON_STONE, '월석', {hard:1.8,tool:'pick',tier:1});
+block(B.METEOR_ORE, '운석 광석', {hard:3,tool:'pick',tier:2,drop:I.IRON_INGOT});
 block(B.END_FRAME, '엔드 포탈 틀', { hard: 3, tool: 'pick', tier: 2 });
 block(B.BEDROCK, '기반암', { hard: Infinity });
 block(B.SAND, '모래', { hard: 0.5, tool: 'shovel', gravity: true, sound: 'sand' });
@@ -194,6 +196,9 @@ item(I.LEATHER, '가죽');
 item(I.FEATHER, '깃털');
 item(I.STRING, '실');
 item(I.DOOR, '나무 문', { place: B.DOOR_B });
+item(I.OVERWORLD_BOOK, '오버월드 책', {stack:1});
+item(I.NETHER_BOOK, '네더 책', {stack:1});
+item(I.END_BOOK, '엔드 책', {stack:1});
 item(I.ENDER_EYE, '엔더의 눈');
 item(I.BLAZE_ROD, '블레이즈 막대');
 item(I.BED, '침대', { stack: 1, place: B.BED_FOOT });
