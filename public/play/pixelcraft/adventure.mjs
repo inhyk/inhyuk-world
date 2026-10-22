@@ -1,3 +1,5 @@
+import { BOOK_IDS,bookForDimension,bookPages,updateJournal } from './journal.mjs';
+import { makeMoon, makeSchool, landingPad, drawRocket, addEndIslands, upgradeWaters } from './expedition-world.mjs';
 import { makeJumpWorld, tickJumpWorld, drawJumpWorld, resetJumper, newJumpState, JUMP_LAST, checkpointNumber, jumpGrip, themeAt } from './jump-world.mjs';
 import { absorbDamage } from './armor.mjs';
 import { B, I, ITEMS, HOSTILE } from './data.mjs';
@@ -6,7 +8,7 @@ import { SKINS, BOSS_HP, bossPhase, makeVillage, makeNether, addNetherFortress, 
 
 export function newAdventure(G, opts = {}) {
   G.adventure = { seed: G.w.seed, dimension: 'overworld', coop: !!opts.coop, skin: Number(opts.skin) || 0, name: opts.playerName || '여행자',
-    bedsVersion: 1, fortressVersion: 1, storySeen: false, bossDefeated: false, endingSeen: false, villagers: [], portals: [], worlds: {}, boss: null, achievements: [], trades: 0, visited: [] };
+    bedsVersion: 1, fortressVersion: 1, endVersion: 2, watersVersion: 1, storySeen: false, bossDefeated: false, endingSeen: false, villagers: [], portals: [], worlds: {}, boss: null, achievements: [], trades: 0, visited: [] };
   G.player.skin = G.adventure.skin;
   G.companion = { ...G.player, armor: Array(4).fill(null), x: G.player.x + 1, inv: G.player.inv, spawn: { ...G.player.spawn }, skin: (G.adventure.skin + 1) % SKINS.length, attackT: 0 };
   if (G.jump) return;
@@ -37,7 +39,7 @@ export function unpackAdventure(G, saved) {
   if (!saved) { newAdventure(G, { legacy: true }); G.adventure.storySeen = true; return; }
   G.adventure = { ...saved, worlds: {} };
   for (const [key, d] of Object.entries(saved.worlds ?? {})) {
-    const w = key === 'nether' ? makeNether(saved.seed ?? G.w.seed) : key === 'end' ? makeEnd(saved.seed ?? G.w.seed) : generateWorld(saved.seed ?? G.w.seed);
+    const w = key === 'nether' ? makeNether(saved.seed ?? G.w.seed) : key === 'end' ? makeEnd(saved.seed ?? G.w.seed) : key === 'moon' ? makeMoon(saved.seed ?? G.w.seed) : key === 'school' ? makeSchool(saved.seed ?? G.w.seed) : generateWorld(saved.seed ?? G.w.seed);
     restoreTerrain(w, d.terrain);
     G.adventure.worlds[key] = { ...d, w, chests: new Map(d.chests), furnaces: new Map(d.furnaces), water: new Set(), lava: new Set(), drops: [], arrows: [], tnts: [], falling: [] };
   }
@@ -70,7 +72,8 @@ export function createAdventureController(api) {
       const b = document.createElement('button'); b.className = 'mc-btn'; b.textContent = label; b.onclick = act; buttons.append(b);
     }
     $('adventureDialog').hidden = false;
-    buttons.querySelector('button')?.focus();
+    buttons.querySelector('button')?.focus({preventScroll:true});
+    $('adventureDialog').querySelector('.story-dialog').scrollTop=0;
   }
   function story() {
     const G = get();
@@ -114,14 +117,15 @@ export function createAdventureController(api) {
     a.worlds[a.dimension] = capture(G);
     let d = a.worlds[destination];
     if (!d) {
-      const w = destination === 'end' ? makeEnd(a.seed) : makeNether(a.seed);
-      const x = W / 2, floor = w.surface[x] - 1;
-      const portal = { ...portalFrame(w, x, floor, destination), kind: destination };
+      const w = destination === 'school' ? makeSchool(a.seed) : destination === 'moon' ? makeMoon(a.seed) : destination === 'end' ? makeEnd(a.seed) : makeNether(a.seed);
+      const x = destination==='school'?660:W / 2, floor = w.surface[x] - 1;
+      const portal = destination === 'moon' ? null : { ...portalFrame(w, x, floor, destination), kind: destination };
+      if(destination==='moon'){a.rocketSites??={};a.rocketSites.moon=landingPad(w,x);}
       // 포탈 양옆에 평평한 발판을 두어 용암으로 떨어지지 않는다.
       for (let dx = -5; dx <= 6; dx++) for (let dy = 0; dy < 5; dy++) {
-        const i = idx(x + dx, floor + 1 + dy); w.tiles[i] = destination === 'end' ? B.END_STONE : B.NETHERRACK; w.meta[i] = 0;
+        const i = idx(x + dx, floor + 1 + dy); w.tiles[i] = ['moon','school'].includes(destination) ? B.STONE_BRICKS : destination === 'end' ? B.END_STONE : B.NETHERRACK; w.meta[i] = 0;
       }
-      d = { w, position: { x, y: floor - 1.85 }, spawn: { x, y: floor - 1.85 }, villagers: [], portals: [portal], mobs: [], drops: [], arrows: [], tnts: [], falling: [], chests: new Map(), furnaces: new Map(), water: new Set(), lava: new Set() };
+      d = { w, position: { x, y: floor - 1.85 }, spawn: { x, y: floor - 1.85 }, villagers: [], portals: portal?[portal]:[], mobs: [], drops: [], arrows: [], tnts: [], falling: [], chests: new Map(), furnaces: new Map(), water: new Set(), lava: new Set() };
     }
     delete a.worlds[destination];
     G.w = d.w;
@@ -132,14 +136,19 @@ export function createAdventureController(api) {
     G.cam = { ...d.position }; G.mining = null; G.target = null; G.dirty = [0, W - 1];
     G.portalBlockedUntilExit = true; G.portalHold = 0;
     if (destination === 'nether') api.populateNether();
-    G.fade = 1; api.save(); api.toast(destination === 'nether' ? '네더에 도착했어. 붉은 땅과 용암을 조심해!' : destination === 'end' ? '엔드의 떠 있는 섬에 도착했어!' : '숲 세계로 돌아왔어!');
+    if (destination === 'end') api.populateEnd();
+    if(destination==='school')G.time=.15;
+    G.fade = 1; api.save(); api.toast(destination === 'school' ? '학교 세계에 도착했어! 교실을 걸어 보고, 오른쪽 포탈로 다시 모험을 떠날 수 있어.' : destination === 'moon' ? '달에 착륙했어! 낮은 중력으로 뛰어 보고, 하늘의 네모난 지구도 찾아봐!' : destination === 'nether' ? '네더에 도착했어. 붉은 땅과 용암을 조심해!' : destination === 'end' ? '엔드의 떠 있는 섬에 도착했어!' : '숲 세계로 돌아왔어!');
   }
   function interact() {
     const G = get();
     if (!G || G.dead || G.paused || api.UI.open) return;
     if (G.jump) return show(G.jump.completed ? '점프맵 완주!' : '극한 점프맵 기록', [`진행: ${G.jump.progress} / ${JUMP_LAST} · 시간: ${Math.floor(G.jump.elapsed)}초 · 떨어진 횟수: ${G.jump.falls}`, '황금 발판에 도착하면 완주! R로 언제든 기록을 확인할 수 있어.'], [['처음부터 다시 도전', () => { G.jump = newJumpState(); G.w = makeJumpWorld(G.adventure.seed); G.jumpRuntime = undefined; resetJumper(G.player, 0); resetJumper(G.companion, 0); G.cam = { x: G.player.x, y: G.player.y }; close(); api.save(); }]]);
     const a = G.adventure, p = G.player;
+    if(BOOK_IDS.includes(p.inv[p.sel]?.id))return readBook(p.inv[p.sel].id);
     const near = (e, r) => Math.hypot(e.x - p.x, e.y - p.y) < r;
+    const rocket=a.rocketSites?.[a.dimension];
+    if(rocket&&Math.hypot(p.x-rocket.x,p.y+p.h-rocket.y)<5)return show(a.dimension==='moon'?'지구로 돌아가기':'달 탐사선', [a.dimension==='moon'?'네모난 지구가 기다려. 가방과 달에 지은 건물은 그대로 남아.':'우주선을 타고 달로 떠나자! 월석과 운석을 찾고, 낮은 중력으로 높이 뛰어 봐.'], [[a.dimension==='moon'?'지구로 귀환':'달로 발사!',()=>switchDimension('moon')]]);
     const v = a.villagers.find(v => near(v, 4));
     const bed = nearestBed(G);
     if (bed) return api.sleepInBed(bed.x, bed.y);
@@ -193,8 +202,9 @@ export function createAdventureController(api) {
   }
   function defeated(m) {
     const G = get(), a = G?.adventure;
-    if (!a || m.type !== 'summoner' || a.bossDefeated) return;
-    a.bossDefeated = true; a.pendingEnding = true; a.boss = { spawned: true, defeated: true };
+    if(!a)return;
+    if (m.type !== 'summoner' || a.bossDefeated) return;
+    a.bossDefeated = true; a.pendingEnding = false; a.boss = { spawned: true, defeated: true };
     const x = Math.max(3, Math.min(W-4, Math.floor(m.x))), floor = G.w.surface[x]-1;
     a.portals.push({...portalFrame(G.w,x,floor),kind:'ending'});
     G.dirty=[Math.max(0,x-10),Math.min(W-1,x+10)];
@@ -212,8 +222,9 @@ export function createAdventureController(api) {
   }
   function ending() {
     const G = get();
-    G.adventure.endingSeen = true; G.adventure.pendingEnding = false; api.save();
-    show('현실로 돌아가는 길', ['소환사 좀비가 쓰러지자, 숲을 잠그던 어둠이 걷혔어.', '네가 만든 집, 함께 나눈 음식, 끝까지 싸운 용기. 그 기억을 안고 빛나는 포탈을 지나갔어.', '눈을 뜨니 다시 학교야. 책상 위에는 작은 다이아몬드 하나가 반짝이고 있었어.', '이야기 끝 · 네모난 세계는 언제든 다시 찾아갈 수 있어.'], [['엔딩을 보고 세계에 남기', () => { G.adventure.endingSeen = true; close(); api.save(); }]]);
+    if(G.adventure.dimension==='overworld')switchDimension('school');
+    G.adventure.endingSeen = true; G.adventure.pendingEnding = false; updateJournal(G); api.save();
+    show('현실로 돌아가는 길', ['소환사 좀비가 쓰러지자, 숲을 잠그던 어둠이 걷혔어.', '네가 만든 집, 함께 나눈 음식, 끝까지 싸운 용기. 그 기억을 안고 빛나는 포탈을 지나갔어.', '눈을 뜨니 다시 학교야. 이제 진짜 교실 안을 걸어 다닐 수 있어. 오른쪽 포탈로 모험 세계에 다시 돌아갈 수도 있어.', '이야기 끝 · 네모난 세계는 언제든 다시 찾아갈 수 있어.'], [['학교 세계 둘러보기', () => { G.adventure.endingSeen = true; close(); api.save(); }]]);
   }
   function summonBoss() {
     const G = get(), a = G.adventure;
@@ -243,11 +254,11 @@ export function createAdventureController(api) {
     const move = api.UI.open ? 0 : Number(keys.has('ArrowRight')) - Number(keys.has('ArrowLeft'));
     const fluid = touching(G.w, p, t => t === B.LAVA || t === B.WATER);
     p.vx += (move * (fluid ? 2.5 : G.jump && keys.has('ShiftRight') ? 5.6 : 4.3) - p.vx) * Math.min(1, dt * jumpGrip(G, p, move, 14));
-    p.vy = Math.min(28, p.vy + (fluid ? 9 : 30) * dt);
+    p.vy = Math.min(28, p.vy + (fluid ? 9 : G.adventure?.dimension==='moon'?7:30) * dt);
     if (keys.has('ArrowUp') && !api.UI.open && (p.onGround || fluid)) p.vy = fluid ? -4 : -9.4;
     if (move) p.face = move;
     moveBody(G.w, p, dt); p.stepLift *= Math.exp(-dt * 18); p.walkT += dt * Math.abs(p.vx) * 0.3;
-    if (p.onGround) { if (p.y - p.fallTop > 3.5) hurtCompanion(Math.floor(p.y - p.fallTop - 3), 'fall'); p.fallTop = p.y; }
+    if (p.onGround) { if (p.y - p.fallTop > (G.adventure?.dimension==='moon'?14:3.5)) hurtCompanion(Math.floor((p.y - p.fallTop - 3)*(G.adventure?.dimension==='moon'?.25:1)), 'fall'); p.fallTop = p.y; }
     else p.fallTop = Math.min(p.fallTop, p.y);
     if (fluid === B.LAVA || p.y > H) hurtCompanion(4, p.y > H ? 'void' : 'lava');
     if (keys.has('Slash') && !api.UI.open && p.attackT <= 0) {
@@ -279,7 +290,7 @@ export function createAdventureController(api) {
     let m = G.mobs.find(m => m.type === 'summoner');
     if (!m && a.dimension === 'overworld' && a.boss?.spawned && !a.bossDefeated && !G.dead) { summonBoss(); m = G.mobs.find(m=>m.type==='summoner'); }
     if (m?.dead && !a.bossDefeated) defeated(m);
-    if (a.pendingEnding && !G.dead) { ending(); return; }
+    updateJournal(G);
     const beforeWorld=G.w; tickPortals(dt);
     if (G.paused || G.w !== beforeWorld) return;
     if (!m || m.dead || G.dead) return;
@@ -315,11 +326,13 @@ export function createAdventureController(api) {
     const a = G.adventure;
     if (!a) return;
     if (G.jump) return drawJumpWorld(g, G, sx, sy, T);
+    drawRocket(g,G,sx,sy,T);
+    if(a.dimension==='school'){g.save();g.fillStyle='#e3edcf';g.font=`${T*.3}px Galmuri11`;g.textAlign='left';g.fillText('다시 학교에 온 걸 환영해!',sx(619.4),sy(77.2));g.font=`${T*.22}px Galmuri11`;g.fillText('오늘의 수업 · 모험의 기억',sx(619.4),sy(78.2));g.restore();}
     const boss = G.mobs.find(m=>m.type==='summoner'&&!m.dead);
     if (boss && boss.burstT < .9) { g.strokeStyle='#ffb450'; g.lineWidth=3; g.beginPath(); g.ellipse(sx(boss.x+.5),sy(boss.y+boss.h),T*5,T*.4,0,0,Math.PI*2); g.stroke(); }
     for (const p of a.portals) {
       if (!portalIntact(G.w,p)) continue;
-      const x = sx(p.x), y = sy(p.y), gold = p.kind === 'ending', end = p.kind === 'end';
+      const x = sx(p.x), y = sy(p.y), gold = ['ending','school'].includes(p.kind), end = p.kind === 'end';
       const gradient = g.createLinearGradient(x, y, x + T * 2, y + T * 4);
       gradient.addColorStop(0, gold ? '#f5d484' : end ? '#143e43' : '#361f6f'); gradient.addColorStop(0.5, gold ? '#fff8d8' : end ? '#68b8ab' : '#a266e0'); gradient.addColorStop(1, gold ? '#bc813d' : end ? '#1a535c' : '#421a75');
       g.fillStyle = gradient; g.fillRect(x, y, T * 2, T * 4);
@@ -338,21 +351,25 @@ export function createAdventureController(api) {
       $('interactButton').textContent = '기록 · 재도전 R';
       $('bossHUD').hidden = true; return;
     }
-    $('interactButton').textContent = nearestBed(G) ? '침대에서 자기 R' : '대화·포탈 R';
+    $('interactButton').textContent = a.rocketSites?.[a.dimension]&&Math.abs(G.player.x-a.rocketSites[a.dimension].x)<5 ? '우주선 타기 R' : nearestBed(G) ? '침대에서 자기 R' : '대화·포탈 R';
     const p = G.player;
     $('questLine').textContent = a.bossDefeated ? (a.endingSeen ? '이야기 완료 · 자유롭게 세계를 탐험해!' : '황금빛 포탈에서 현실로 돌아가자') : G.day < 50 ? `소환사 좀비까지 ${50 - G.day}일 · 집과 장비를 준비하자` : '소환사 좀비를 쓰러뜨려 포탈을 열자';
-    $('worldLine').textContent = `${a.dimension === 'nether' ? '네더' : a.dimension === 'end' ? '엔드' : '숲 세계'} · ${G.day}일째 · ${W}칸${a.coop ? ` · 2P ${G.companion.spectator ? '관전 중' : `HP ${Math.ceil(G.companion.hp)}/20`}` : ''}`;
+    if(a.dimension==='school')$('questLine').textContent='현실로 돌아왔어! 교실 오른쪽 포탈로 다시 모험하기';
+    if(a.dimension==='moon')$('questLine').textContent='우주선 옆 R로 귀환 · 월석과 운석을 찾아봐!';
+    if(a.dimension==='end')$('questLine').textContent='동쪽 바깥 섬의 보물과 탑을 찾아봐 · 모험책 J';
+    $('worldLine').textContent = `${a.dimension === 'school' ? '학교 세계' : a.dimension === 'moon' ? '달 · 낮은 중력' : a.dimension === 'nether' ? '네더' : a.dimension === 'end' ? '엔드' : '숲 세계'} · ${G.day}일째 · ${W}칸${a.coop ? ` · 2P ${G.companion.spectator ? '관전 중' : `HP ${Math.ceil(G.companion.hp)}/20`}` : ''}`;
     const nearby = [...a.villagers, ...a.portals].some(e => Math.hypot(e.x - p.x, e.y - p.y) < 5);
     $('interactButton').classList.toggle('near', nearby);
     const m = G.mobs.find(m => m.type === 'summoner' && !m.dead);
     $('bossHUD').hidden = !m;
-    if (m) { $('bossLabel').textContent = `소환사 좀비 · ${bossPhase(m.hp)}페이즈 · ${Math.ceil(m.hp)} / ${BOSS_HP}`; $('bossHealth').value = m.hp; }
+    if (m) { $('bossHealth').max=BOSS_HP; $('bossLabel').textContent = `소환사 좀비 · ${bossPhase(m.hp)}페이즈 · ${Math.ceil(m.hp)} / ${BOSS_HP}`; $('bossHealth').value = m.hp; }
   }
   function key(e) {
     const G = get();
     if (!G?.adventure) return false;
     if (dialog) { if (e.code === 'Escape') close(); return true; }
     if (G.paused || G.dead || api.UI.open) return false;
+    if(e.code==='KeyJ'&&!G.jump){readBook();return true;}
     if (e.code === 'KeyR') { interact(); return true; }
     if ((e.code === 'KeyL' || e.code === 'KeyB') && G.adventure.coop) {
       const p = G.companion, leader = G.player;
@@ -375,11 +392,21 @@ export function createAdventureController(api) {
           if (d.w.tiles[idx(x,y)]===B.AIR && d.w.tiles[idx(x+1,y)]===B.AIR && d.w.tiles[idx(x,y+1)]===B.PLANKS) { d.w.tiles[idx(x,y)]=B.BED_FOOT; d.w.tiles[idx(x+1,y)]=B.BED_HEAD; }
         }
         for (const p of (d.portals??[]).filter(p=>p.kind==='end')) for(let dx=-1;dx<=2;dx++) for(let dy=-1;dy<=4;dy++) if(dx===-1||dx===2||dy===-1||dy===4) {const i=idx(p.x+dx,p.y+dy);if(d.w.tiles[i]===B.OBSIDIAN)d.w.tiles[i]=B.END_FRAME;}
+        if(kind==='overworld'&&a.watersVersion!==1)upgradeWaters(d.w);
+        if(kind==='end'&&a.endVersion!==2)addEndIslands(d.w);
         if (kind==='nether' && a.fortressVersion!==1) addNetherFortress(d.w);
       }
-      a.bedsVersion=1; a.fortressVersion=1;
+      a.bedsVersion=1; a.fortressVersion=1; a.endVersion=2; a.watersVersion=1;
+      a.rocketSites??={};
+      if(a.dimension==='overworld'&&!a.rocketSites.overworld){
+        // 착륙장은 플레이어가 지은 블록을 피해서 고른다.
+        const natural=new Set([B.AIR,B.GRASS,B.DIRT,B.STONE,B.SNOW_GRASS,B.SAND,B.TALL_GRASS,B.POPPY,B.DANDELION,B.OAK_TRUNK,B.BIRCH_TRUNK,B.SPRUCE_TRUNK,B.OAK_LEAVES,B.BIRCH_LEAVES,B.SPRUCE_LEAVES]);
+        for(let x=W/2-32;x>W/2-150;x-=12){let clear=true;const floor=G.w.surface[x];for(let xx=x-5;xx<=x+5;xx++)for(let y=floor-10;y<=floor;y++)if(!natural.has(G.w.tiles[idx(xx,y)]))clear=false;if(clear){a.rocketSites.overworld=landingPad(G.w,x);G.dirty=[0,W-1];break;}}
+      }
+      if(a.dimension==='end')api.populateEnd();
       if (G.adventure.bossDefeated && !G.adventure.portals.some(p=>p.kind==='ending') && G.adventure.dimension==='overworld') { const x=Math.max(3,Math.min(W-4,Math.floor(G.player.x+5))); G.adventure.portals.push({...portalFrame(G.w,x,G.w.surface[x]-1),kind:'ending'}); }
-      if (G.adventure.bossDefeated && !G.adventure.endingSeen) G.adventure.pendingEnding=true;
+      G.adventure.pendingEnding=false;
+      if(!a.booksGiven){for(const id of BOOK_IDS){const slot=G.player.inv.lastIndexOf(null);if(slot>=0)G.player.inv[slot]={id,count:1};}a.booksGiven=true;}
     }
     G.portalBlockedUntilExit=true; G.portalHold=0;
     if (!G.adventure.storySeen) story();
@@ -401,8 +428,10 @@ export function createAdventureController(api) {
       ['ending', '학교로 돌아오다', a.endingSeen],
     ];
   }
+  function readBook(id){const G=get();if(!G||G.jump)return false;id??=bookForDimension(G.adventure.dimension);if(!BOOK_IDS.includes(id))return false;show(ITEMS[id].name,bookPages(G,id),BOOK_IDS.filter(other=>other!==id).map(other=>[ITEMS[other].name,()=>readBook(other)]));api.save();return true;}
+  $('journalButton').onclick=()=>readBook();
   $('achievementButton').onclick = () => { const G = get(); if (G) show('도전과제', achievementList(G).map(([id, label, done]) => `${done || G.adventure.achievements?.includes(id) ? '◆ 달성' : '◇ 미달성'} · ${label}`)); };
   $('interactButton').onclick = interact;
   $('storyButton').onclick = story;
-  return { start, reset, key, tick, draw, hud, interact, lightPortal, defeated, switchDimension, summonBoss, hurtCompanion };
+  return { start, reset, readBook, key, tick, draw, hud, interact, lightPortal, defeated, switchDimension, summonBoss, hurtCompanion };
 }

@@ -1,3 +1,4 @@
+import { drawMoonSky } from './expedition-world.mjs';
 import { drawJumpSky } from './jump-world.mjs';
 // 화면 그리기: 하늘 → 뒷벽 → 블록 → 생물 → 물 → 빛 → 금·선택 칸 → 조각
 import { B, I, BLOCKS, ITEMS } from './data.mjs';
@@ -29,6 +30,7 @@ const css = (c) => `rgb(${c.map(Math.round).join(',')})`;
 const hash = (k) => Math.abs(Math.sin(k * 12.9898 + 78.233) * 43758.5453) % 1;
 
 function drawSky(g, G, cw, ch, view) {
+  if(G.adventure?.dimension==='moon')return drawMoonSky(g,G,cw,ch);
   if (G.jump) return drawJumpSky(g, G, cw, ch);
   if (G.adventure?.dimension === 'end') {
     g.fillStyle = '#171528'; g.fillRect(0, 0, cw, ch);
@@ -278,7 +280,7 @@ function drawLight(g, G, x0, x1, y0, y1, sx, sy) {
         opaque[k] = 1;
         continue;
       }
-      let v = Math.max(w.sky[i] * day, w.blk[i], G.adventure?.dimension === 'nether' ? 8 : G.adventure?.dimension === 'end' ? 7 : 0);
+      let v = Math.max(w.sky[i] * (G.adventure?.dimension==='moon'?1:day), w.blk[i], G.adventure?.dimension === 'school' ? 13 : G.adventure?.dimension === 'nether' ? 8 : G.adventure?.dimension === 'end' ? 7 : 0);
       if (w.sky[i] === 15 && !w.bg[i]) v = Math.max(v, 15 * (0.62 + 0.38 * day));
       L[k] = v;
     }
