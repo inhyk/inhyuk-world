@@ -100,7 +100,7 @@ export function createAdventureController(api) {
   function trade(v) {
     const G = get();
     show(['숲 마을 농부', '돌 마을 대장장이', '여행 상인'][v.shop], ['필요한 물건을 골라 줘. 2인 플레이에서는 가방을 함께 써!', '50일째의 소환사 좀비는 2단계에 좀비 무리, 3단계에 스켈레톤까지 불러내. 황금 사과를 준비해.'],
-      TRADES.slice(v.shop * 2, v.shop * 2 + 2).map(([from, amount, to, qty]) => [
+      [...TRADES.slice(v.shop * 2, v.shop * 2 + 2),[I.GOLD_INGOT,1,I.LAPIS,4],[I.LEATHER,1,I.BOOK,1]].map(([from, amount, to, qty]) => [
         `${ITEMS[from].name} ${amount} → ${ITEMS[to].name} ${qty}`,
         () => {
           if (countItem(G.player.inv, [from]) < amount) return api.toast('재료가 부족해!');
@@ -361,6 +361,7 @@ export function createAdventureController(api) {
     $('questHUD').hidden = !G;
     if (!a) return;
     const building=guideActive(G)&&a.dimension==='overworld';
+    $('blockCatalogButton').hidden=!!G.jump;$('enchantButton').hidden=!!G.jump;
     $('blueprintButton').hidden=!building;$('skipGuideButton').hidden=!building;$('galleryButton').hidden=!!G.jump||a.dimension!=='overworld';$('journalButton').hidden=isBuildWorld(G);
     if(isBuildWorld(G)&&!building&&a.dimension==='overworld'){ $('worldLine').textContent='자유 건축';$('questLine').textContent='다른 그림 선택으로 다시 따라 쌓을 수 있어';$('interactButton').textContent='그림 선택 R';$('bossHUD').hidden=true;return;}
     if(building&&isBuildWorld(G)){const p=guideProgress(G);$('worldLine').textContent=`블록 따라 쌓기 · ${BLUEPRINTS[G.builder.plan].name}`;$('questLine').textContent=`완성 ${p.done} / ${p.total} · 반투명 자리에 블록 놓기 · 그림 R`;$('interactButton').textContent=builtRocket(G)&&Math.abs(G.player.x-builtRocket(G).x)<7?'완성한 우주선 타기 R':'그림·필요한 블록 R';$('bossHUD').hidden=true;return;}

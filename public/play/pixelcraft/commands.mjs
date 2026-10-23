@@ -1,4 +1,5 @@
-import { B, I, ITEMS, durabilityOf } from './data.mjs';
+import { applyEnchant } from './enchantments.mjs';
+import { B, I, ITEMS, MC_BLOCK_IDS, durabilityOf } from './data.mjs';
 import { W, H, addItem, collides, findSpawn } from './core.mjs';
 import { JUMP_LAST, CHECKPOINT_EVERY, jumpSpawn } from './jump-world.mjs';
 
@@ -8,6 +9,7 @@ export const COMMAND_HELP = [
   '/spawn · 저장된 출발점으로 돌아가기', '/heal · 체력과 배고픔 회복',
   '/time set day 또는 night · 낮/밤 바꾸기 (숲 세계)', '50day 또는 /day 50 · 날짜 바꾸기',
   '/difficulty peaceful 또는 normal 또는 hard · 난이도 (숲 세계)',
+  '/enchant sharpness 5 · 손의 장비에 인챈트', '/xp add 30 levels · 경험치 30레벨 받기',
   '/checkpoint 0~4 · 점프맵 체크포인트 이동', '/where · 현재 좌표',
 ];
 const ok = (text, changed = false) => ({ ok: true, text, changed });
@@ -31,6 +33,8 @@ export function runCommand(G, input) {
   if (dayShortcut && !args.length) { name = 'day'; args.push(dayShortcut[1]); }
   if (name === 'help' || name === '도움말' || name === '?') return ok(COMMAND_HELP.join('\n'));
   if (name === 'where' || name === '좌표') return ok(`현재 좌표: ${G.player.x.toFixed(2)}, ${G.player.y.toFixed(2)} · ${G.adventure?.dimension ?? 'overworld'}`);
+  if(name==='enchant'){if(['@s','@p'].includes(args[0]))args.shift();if(args.length<1||args.length>2)return fail('사용법: /enchant sharpness 5');const result=applyEnchant(G,G.player.inv[G.player.sel],(args[0]??'').replace('minecraft:',''),args[1]===undefined?1:Number(args[1]),{command:true});return result.ok?ok(result.text,true):fail(result.text);}
+  if(name==='xp'){if(args[0]==='add')args.shift();if(['@s','@p'].includes(args[0]))args.shift();if(!integer(args[0],1,1000)||args.length>2||args[1]&&!['levels','points'].includes(args[1]))return fail('사용법: /xp add 30 levels 또는 /xp add 100 points');const n=Number(args[0]);G.player.xp=args[1]==='levels'?7*(Math.floor(Math.sqrt((G.player.xp??0)/7))+n)**2:(G.player.xp??0)+n;return ok('경험치를 받았어!',true);}
   if (name === 'give' || name === '지급') {
     if (args[0] === '@s' || args[0] === '@p') args.shift();
     if (!args.length) return fail('사용법: /give diamond 64 또는 /give 다이아몬드 64');
@@ -41,7 +45,7 @@ export function runCommand(G, input) {
       count = Number(raw);
     }
     const word = args.join('').replace(/["']/g, '').replace(/^minecraft:/i, '');
-    const id = /^\d+$/.test(word) ? Number(word) : I[word.toUpperCase()] ?? B[word.toUpperCase()] ?? ITEMS.find(it => it?.name.replace(/\s/g, '') === word)?.id;
+    const id = /^\d+$/.test(word) ? Number(word) : I[word.toUpperCase()] ?? MC_BLOCK_IDS[word.toLowerCase()] ?? B[word.toUpperCase()] ?? ITEMS.find(it => it?.name.replace(/\s/g, '') === word)?.id;
     if (!ITEMS[id] || id === B.AIR) return fail('아이템을 찾지 못했어. 예: diamond, diamond_sword, iron_helmet, stone 또는 한글 이름');
     const left = addItem(G.player.inv, id, count, durabilityOf(id));
     return left === count ? fail('가방이 가득 찼어. 빈 칸을 만들어 줘.') : ok(`${ITEMS[id].name} ${count - left}개를 받았어.${left ? ` 가방이 차서 ${left}개는 받지 못했어.` : ''}`, true);

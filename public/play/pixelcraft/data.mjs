@@ -1,3 +1,4 @@
+import { VANILLA_BLOCKS } from './block-catalog.mjs';
 // 블록, 아이템, 조합법, 화로 굽기 목록.
 // 숫자 ID 는 저장 파일에 그대로 들어가므로 한 번 정하면 바꾸지 않는다.
 
@@ -15,6 +16,7 @@ export const B = {
 };
 
 export const I = {
+  BOOK: 200, LAPIS: 201, PAPER: 202, EXPERIENCE_BOTTLE: 203,
   STICK: 100, COAL: 101, IRON_INGOT: 102, GOLD_INGOT: 103, DIAMOND: 104, REDSTONE: 105, FLINT: 106,
   WOOD_PICK: 110, WOOD_AXE: 111, WOOD_SHOVEL: 112, WOOD_SWORD: 113,
   STONE_PICK: 114, STONE_AXE: 115, STONE_SHOVEL: 116, STONE_SWORD: 117,
@@ -115,6 +117,21 @@ block(B.GLOWSTONE, '발광석', { hard: 0.4, light: 15, sound: 'glass' });
 block(B.END_STONE, '엔드 돌', { hard: 3, tool: 'pick', tier: 1 });
 block(B.PURPUR, '퍼퍼 블록', { hard: 1.5, tool: 'pick', tier: 1 });
 
+// Registry aliases retain every existing saved block/item ID. New IDs start at 1000.
+export const MC_BLOCK_IDS={};
+const legacyNames={air:B.AIR,grass_block:B.GRASS,cobblestone:B.COBBLE,oak_planks:B.PLANKS,crafting_table:B.CRAFTING,short_grass:B.TALL_GRASS,snow_block:B.SNOW,snow:B.SNOW,white_wool:B.WOOL,oak_door:B.DOOR_B,white_bed:B.BED_FOOT,oak_sapling:B.SAPLING_OAK,birch_sapling:B.SAPLING_BIRCH,spruce_sapling:B.SAPLING_SPRUCE,carved_pumpkin:B.PUMPKIN,jack_o_lantern:B.JACK,mossy_cobblestone:B.MOSSY_COBBLE,purpur_block:B.PURPUR,end_portal_frame:B.END_FRAME,coal_block:B.COAL_BLOCK};
+for(const [rawId,key,name,hard,solid,opaque,light,material] of VANILLA_BLOCKS){
+ const id=(['snow','pumpkin','tall_grass'].includes(key)?1000+rawId:legacyNames[key])??B[key.toUpperCase()]??(1000+rawId);MC_BLOCK_IDS[key]=id;B[key.toUpperCase()]??=id;
+ if(!BLOCKS[id]){
+  const wood=/wood|log|planks|bamboo|hyphae|stem|bookshelf|chest|barrel/.test(key),plant=!solid&&/flower|grass|bush|sapling|fungus|roots|vine|fern|tulip|coral|mushroom|crop|torch|lichen|petals|lily|tendrils/.test(key);
+  const tool=wood||material.includes('axe')&&!material.includes('pickaxe')?'axe':material.includes('shovel')?'shovel':solid||material.includes('pickaxe')?'pick':null;
+  block(id,name,{hard:hard===null||hard<0?Infinity:hard,solid,opaque,light,atten:opaque?0:1,tool,tier:tool==='pick'?(/obsidian/.test(key)?4:/diamond|emerald|gold|redstone/.test(key)?3:1):0,plant,replace:/^(cave_air|void_air|fire|soul_fire)$/.test(key),hurt:/fire|magma|wither_rose|sweet_berry_bush/.test(key)?1:0,gravity:/^(red_sand|suspicious_sand|suspicious_gravel|.*_concrete_powder)$/.test(key),climb:/vine|scaffolding|ladder/.test(key),sound:wood?'wood':plant?'grass':/wool|carpet/.test(key)?'wool':/glass|ice/.test(key)?'glass':'stone'});
+ }
+ BLOCKS[id].mcName??=key;
+}
+BLOCKS[B.LAPIS_ORE].drop=I.LAPIS;BLOCKS[B.DEEPSLATE_LAPIS_ORE].drop=I.LAPIS;
+BLOCKS[B.BOOKSHELF].bookshelf=true;BLOCKS[B.CHISELED_BOOKSHELF].bookshelf=true;
+
 // 문은 닫혔을 때만 몸을 막는다 (meta 의 1 비트가 열림)
 export function isSolid(t, m) {
   // 켜진 포탈의 옆 틀과 엔드 장식 기둥은 2D에서 걸어서 통과한다.
@@ -128,7 +145,7 @@ export const ITEMS = [];
 function item(id, name, props = {}) {
   ITEMS[id] = { id, name, stack: 64, ...props };
 }
-for (const b of BLOCKS) if (b) item(b.id, b.name, { place: b.id });
+for (const b of BLOCKS) if (b) item(b.id, b.name, { place: b.id, mcName:b.mcName });
 
 export const MATERIALS = {
   wood: { name: '나무', tier: 1, speed: 2, dur: 59, dmg: 4 },
@@ -168,6 +185,7 @@ for (const [mat, def] of Object.entries(ARMOR_MATERIALS)) def.ids.forEach((id, s
   item(id, `${def.name} ${['투구', '흉갑', '바지', '신발'][slot]}`, { stack: 1, armor: { slot, mat, points: def.points[slot], color: def.color }, uses: [11, 16, 15, 13][slot] * def.dur });
 });
 
+item(I.BOOK,'책');item(I.LAPIS,'청금석');item(I.PAPER,'종이');item(I.EXPERIENCE_BOTTLE,'경험치 병');
 item(I.STICK, '막대기');
 item(I.COAL, '석탄');
 item(I.IRON_INGOT, '철 주괴');
@@ -205,7 +223,7 @@ item(I.ENDER_EYE, '엔더의 눈');
 item(I.BLAZE_ROD, '블레이즈 막대');
 item(I.BED, '침대', { stack: 1, place: B.BED_FOOT });
 // 자연에서만 생기는 블록은 아이템으로 갖고 다니지 않는다
-for (const id of [B.AIR, B.OAK_TRUNK, B.BIRCH_TRUNK, B.SPRUCE_TRUNK, B.FURNACE_LIT, B.WATER, B.LAVA, B.DOOR_B, B.DOOR_T, B.BED_FOOT, B.BED_HEAD, B.SNOW_GRASS]) delete ITEMS[id];
+for (const id of [B.AIR, B.OAK_TRUNK, B.BIRCH_TRUNK, B.SPRUCE_TRUNK, B.FURNACE_LIT, B.DOOR_T, B.BED_HEAD, B.SNOW_GRASS]) delete ITEMS[id];
 
 export function maxStack(id) {
   return ITEMS[id]?.stack ?? 64;
@@ -285,6 +303,14 @@ raw.push(
   { out: [I.ENDER_EYE, 1], items: [I.DIAMOND, I.BLAZE_ROD] },
 );
 
+raw.push(
+ {out:[I.PAPER,3],shape:['SSS'],key:{S:B.SUGAR_CANE}},
+ {out:[I.BOOK,1],items:[I.PAPER,I.PAPER,I.PAPER,I.LEATHER]},
+ {out:[B.BOOKSHELF,1],shape:['PPP','BBB','PPP'],key:{P:B.PLANKS,B:I.BOOK}},
+ {out:[B.ENCHANTING_TABLE,1],shape:[' B ','DOD','OOO'],key:{B:I.BOOK,D:I.DIAMOND,O:B.OBSIDIAN}},
+ {out:[I.LAPIS,9],items:[B.LAPIS_BLOCK]},
+ {out:[B.LAPIS_BLOCK,1],shape:['LLL','LLL','LLL'],key:{L:I.LAPIS}},
+);
 // 모양을 숫자 칸 배열로 바꿔 둔다. cells[r][c] 는 받아 주는 ID 목록 또는 null(빈 칸)
 export const RECIPES = raw.map((r, index) => {
   if (r.items) return { index, out: r.out, items: r.items.map((v) => (Array.isArray(v) ? v : [v])), w: 1, h: 1 };

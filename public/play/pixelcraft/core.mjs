@@ -59,8 +59,8 @@ export function seedFromText(text) {
 export const idx = (x, y) => y * W + x;
 
 export function generateWorld(seed) {
-  const tiles = new Uint8Array(W * H);
-  const bg = new Uint8Array(W * H);
+  const tiles = new Uint16Array(W * H);
+  const bg = new Uint16Array(W * H);
   const meta = new Uint8Array(W * H);
   const surface = new Int16Array(W);
   const biome = new Uint8Array(W);
@@ -218,6 +218,14 @@ export function generateWorld(seed) {
     }
   }
 
+  // Cane on water banks makes paper and books obtainable in new survival worlds.
+  for(let x=3;x<W-3;x++)for(let y=SEA-6;y<=SEA+8;y++){
+    if([B.GRASS,B.DIRT,B.SAND].includes(tiles[idx(x,y)])&&tiles[idx(x,y-1)]===B.AIR&&[tiles[idx(x-1,y)],tiles[idx(x+1,y)]].includes(B.WATER)&&hash2(seed+1001,x,y)>.35){
+      for(let k=1;k<=1+Math.floor(hash2(seed+1002,x,y)*3);k++)if(tiles[idx(x,y-k)]===B.AIR)tiles[idx(x,y-k)]=B.SUGAR_CANE;
+      break;
+    }
+  }
+  for(let x=5;x<W-5;x+=7)for(let y=90;y<H-5;y+=7)if(tiles[idx(x,y)]===B.STONE&&hash2(seed+999,x,y)>.78)tiles[idx(x,y)]=B.LAPIS_ORE;
   const w = { seed, tiles, bg, meta, surface, biome, sky: new Uint8Array(W * H), blk: new Uint8Array(W * H) };
   computeLight(w, 0, W - 1);
   return w;
@@ -472,7 +480,7 @@ export const stackOf = (id, count = 1, dur) => {
   if (dur !== undefined) s.dur = dur;
   return s;
 };
-export function addItem(slots, id, count, dur, from = 0, to = slots.length) {
+export function addItem(slots, id, count, dur, from = 0, to = slots.length, metadata = null) {
   const cap = maxStack(id);
   let left = count;
   if (cap > 1) {
@@ -489,6 +497,7 @@ export function addItem(slots, id, count, dur, from = 0, to = slots.length) {
     if (slots[k]) continue;
     const n = Math.min(cap, left);
     slots[k] = stackOf(id, n, dur);
+    if(metadata?.enchants)slots[k].enchants={...metadata.enchants};
     left -= n;
   }
   return left;
@@ -578,7 +587,7 @@ export function craftFromSlots(slots, rec) {
 
 // ---- 캐는 시간 ----
 // 맞는 도구면 빠르고, 필요한 등급보다 약하면 오래 걸리고 아무것도 안 나온다
-export function breakInfo(blockId, heldId) {
+export function breakInfo(blockId, heldId, enchant={}) {
   const b = BLOCKS[blockId];
   const tool = ITEMS[heldId]?.tool;
   const right = Boolean(tool && b.tool && tool.type === b.tool);
@@ -586,31 +595,34 @@ export function breakInfo(blockId, heldId) {
   if (b.hard === 0) return { time: 0.05, harvest: true, right };
   if (!Number.isFinite(b.hard)) return { time: Infinity, harvest: false, right };
   let time = b.hard * (harvest ? 1.5 : 5);
-  if (right) time /= tool.speed;
+  if (right) time /= tool.speed + (enchant.efficiency ? enchant.efficiency**2+1 : 0);
   if (tool?.type === 'sword' && (b.id === B.OAK_LEAVES || b.id === B.BIRCH_LEAVES || b.id === B.SPRUCE_LEAVES || b.id === B.CACTUS)) time /= 1.5;
   return { time: Math.max(0.05, time), harvest, right };
 }
 
 // ---- 저장 압축 (같은 값이 이어지는 구간을 [값, 길이] 로) ----
 export function rleEncode(bytes) {
+  const wide=bytes instanceof Uint16Array;
   const out = [];
   let k = 0;
   while (k < bytes.length) {
     const v = bytes[k];
     let n = 1;
     while (n < 255 && k + n < bytes.length && bytes[k + n] === v) n++;
-    out.push(v, n);
+    if(wide)out.push(v&255,v>>>8,n);else out.push(v,n);
     k += n;
   }
-  return toBase64(Uint8Array.from(out));
+  return (wide?'u16:':'')+toBase64(Uint8Array.from(out));
 }
 export function rleDecode(text, length) {
-  const data = fromBase64(text);
-  const out = new Uint8Array(length);
+  const wide=text.startsWith('u16:');
+  const data = fromBase64(wide?text.slice(4):text);
+  const out = wide?new Uint16Array(length):new Uint8Array(length);
   let o = 0;
-  for (let k = 0; k + 1 < data.length && o < length; k += 2) {
-    out.fill(data[k], o, Math.min(length, o + data[k + 1]));
-    o += data[k + 1];
+  for (let k = 0; k + (wide?2:1) < data.length && o < length; k += wide?3:2) {
+    const value=wide?data[k]|(data[k+1]<<8):data[k],n=data[k+(wide?2:1)];
+    out.fill(value,o,Math.min(length,o+n));
+    o+=n;
   }
   return out;
 }

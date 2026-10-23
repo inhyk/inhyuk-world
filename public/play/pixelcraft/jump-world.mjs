@@ -55,7 +55,7 @@ function putPlatform(w, p, present) {
   }
 }
 export function makeJumpWorld(seed) {
-  const w = { seed, sky: new Uint8Array(W * H), blk: new Uint8Array(W * H), tiles: new Uint8Array(W * H), bg: new Uint8Array(W * H), meta: new Uint8Array(W * H), surface: new Int16Array(W).fill(H - 1), biome: new Uint8Array(W) };
+  const w = { seed, sky: new Uint8Array(W * H), blk: new Uint8Array(W * H), tiles: new Uint16Array(W * H), bg: new Uint16Array(W * H), meta: new Uint8Array(W * H), surface: new Int16Array(W).fill(H - 1), biome: new Uint8Array(W) };
   for (let x = 0; x < W; x++) w.tiles[idx(x, H - 1)] = B.BEDROCK;
   for (const p of JUMP_PLATFORMS) {
     putPlatform(w, p, true);
