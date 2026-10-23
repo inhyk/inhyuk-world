@@ -1471,7 +1471,7 @@ window.addEventListener('keydown', (e) => {
   if (GAME_KEYS.has(e.code)) e.preventDefault();
   if (!G) return;
   if(!$('onlineDialog').hidden)return;
-  if(online.guest&&guestKey(e)){online.inputNow();return;}
+  if(online.guest&&guestKey(e)){if(!e.repeat)online.inputNow();return;}
   if (e.repeat && !['KeyQ'].includes(e.code)) {
     keys.add(e.code);
     return;
