@@ -4,6 +4,7 @@ import { BOOK_IDS,bookForDimension,bookPages,updateJournal } from './journal.mjs
 import { makeMoon, makeSchool, landingPad, drawRocket, addEndIslands, upgradeWaters } from './expedition-world.mjs';
 import { makeJumpWorld, tickJumpWorld, drawJumpWorld, resetJumper, newJumpState, JUMP_LAST, checkpointNumber, jumpGrip, themeAt } from './jump-world.mjs';
 import { absorbDamage } from './armor.mjs';
+import { meleeDamage,enchantLevel } from './enchantments.mjs';
 import { B, I, ITEMS, HOSTILE } from './data.mjs';
 import { W, H, idx, moveBody, touching, computeLight, addItem, countItem, generateWorld } from './core.mjs';
 import { SKINS, BOSS_HP, bossPhase, makeVillage, makeNether, addNetherFortress, makeEnd, portalFrame, findPortal, insidePortal, portalIntact, openPortalSides, openEndScenery, terrainSave, restoreTerrain } from './adventure-world.mjs';
@@ -275,19 +276,24 @@ export function createAdventureController(api) {
     if (keys.has('Slash') && !api.UI.open && p.attackT <= 0) {
       p.attackT = 0.4; p.swing = 1;
       const m = G.mobs.find(m => !m.dead && HOSTILE.has(m.type) && Math.hypot(m.x - p.x, m.y - p.y) < 3.5);
-      if (m) { api.hitMob(m, ITEMS[G.player.inv[G.player.sel]?.id]?.tool?.dmg ?? 1, p.x); api.wearTool(1); }
+      if (m) {
+        const stack = G.player.inv[G.player.sel];
+        api.hitMob(m, meleeDamage(stack, ITEMS[stack?.id]?.tool?.dmg ?? 1), p.x);
+        m.vx *= 1 + enchantLevel(stack, 'knockback') * .5;
+        api.wearTool(1);
+      }
     }
     if (keys.has('Period') && !api.UI.open && p.attackT <= 0) {
       const x = Math.floor(p.x + (p.face > 0 ? 1.4 : -0.7)), y = Math.floor(p.y + 0.8), t = G.w.tiles[idx(x, y)];
       if (x > 0 && x < W - 1 && y > 0 && y < H - 1 && t !== B.AIR) {
-        const info = api.breakInfo(t, G.player.inv[G.player.sel]?.id ?? 0);
+        const info = api.breakInfo(t, G.player.inv[G.player.sel]?.id ?? 0, G.player.inv[G.player.sel]?.enchants);
         p.mineT = (p.mineX === x && p.mineY === y ? p.mineT : 0) + dt;
         p.mineX = x; p.mineY = y; p.swing = 1;
         if (p.mineT >= info.time) { api.breakBlock(x, y, { harvest: info.harvest }); api.wearTool(1); G.stats.mined++; p.mineT = 0; }
       }
     } else p.mineT = 0;
     // 2P가 획득한 재료도 공유 가방으로 들어간다.
-    for (const d of G.drops) if (!d.remove && d.age > 0.5 && Math.hypot(d.x - p.x, d.y - p.y) < 1.4) { d.count = addItem(G.player.inv, d.id, d.count, d.dur); if (!d.count) d.remove = true; api.hudDirty(); }
+    for (const d of G.drops) if (!d.remove && d.age > 0.5 && Math.hypot(d.x - p.x, d.y - p.y) < 1.4) { d.count = addItem(G.player.inv, d.id, d.count, d.dur, 0, G.player.inv.length, d); if (!d.count) d.remove = true; api.hudDirty(); }
   }
   function tick(dt) {
     const G = get(), a = G.adventure;

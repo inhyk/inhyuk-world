@@ -231,7 +231,7 @@ function breakBlock(x, y, { harvest = true, quiet = false, chance = 1 } = {}) {
   burst(x + 0.5, y + 0.5, avgColor[t] ?? '#888', quiet ? 4 : 10);
   if (harvest && G.mode !== 'creative' && G.rng() < chance) {
     let d = enchantedDrop(held(),t,dropOf(t),G.rng);
-    if(BLOCKS[t].mcName?.endsWith('_ore')&&!enchantLevel(held(),'silk_touch')&&d?.[0]!==t)gainExperience(G.player,3);
+    if(BLOCKS[t].mcName?.endsWith('_ore')&&!enchantLevel(held(),'silk_touch')&&d?.[0]!==t)gainXP(3);
     if (t === B.DOOR_T) d = [I.DOOR, 1];
     if (t === B.BED_HEAD) d = [I.BED, 1];
     if (d) spawnDrop(x + 0.5, y + 0.5, d[0], d[1]);
@@ -372,6 +372,9 @@ function respawn() {
   $('death').hidden = true;
   hudDirty();
 }
+function gainXP(points) {
+  gainExperience(G.player, points, G.adventure?.coop ? G.companion?.armor ?? [] : []);
+}
 function hitMob(m, dmg, fromX) {
   if (m.dead) return;
   m.hp -= dmg;
@@ -384,7 +387,7 @@ function hitMob(m, dmg, fromX) {
   if (m.hp <= 0) {
     m.dead = true;
     m.deadT = 0;
-    gainExperience(G.player,HOSTILE.has(m.type)?7:3);
+    gainXP(HOSTILE.has(m.type)?7:3);
     adventure.defeated(m);
     for (const [id, lo, hi] of MOBS[m.type].drops) {
       const n = lo + Math.floor(G.rng() * (hi - lo + 1));
@@ -983,7 +986,7 @@ function doUse() {
   const s = held();
   const id = s?.id ?? 0;
   if ((id === I.FLINT_STEEL || id === I.ENDER_EYE) && adventure.lightPortal()) return;
-  if(id===I.EXPERIENCE_BOTTLE){gainExperience(p,21);consumeHeld();hudDirty();toast('경험치를 얻었어!');return;}
+  if(id===I.EXPERIENCE_BOTTLE){gainXP(21);consumeHeld();hudDirty();toast('경험치를 얻었어!');return;}
   if([I.OVERWORLD_BOOK,I.NETHER_BOOK,I.END_BOOK].includes(id)&&adventure.readBook(id))return;
   const tg = G.target && !G.target.place ? G.target : null;
   if (tg) {
