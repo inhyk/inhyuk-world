@@ -62,6 +62,7 @@
       </div>
       <button id="btnJumpWorld" class="mc-btn green">☠ 극한 점프맵 세계로 들어가기</button>
       <button id="btnBuildWorld" class="mc-btn">▧ 블록 따라 쌓기 · 집·성·우주선 만들기</button>
+      <button id="btnOnline" class="mc-btn green">🌐 온라인 · 친구 방에 들어가기</button>
       <div id="slots"></div>
       <div class="row2">
         <button id="btnHelp" class="mc-btn">조작법 보기</button>
@@ -97,6 +98,19 @@
     <p class="foot">비공식 팬 게임 · Minecraft는 Mojang Studios의 상표입니다 · 그림과 소리는 전부 코드로 만들었어요</p>
   </section>
 
+  <aside id="onlineBadge" hidden></aside>
+  <section id="onlineDialog" class="overlay" role="dialog" aria-modal="true" aria-labelledby="onlineHeading" hidden>
+    <div class="mc-dialog online-dialog">
+      <h2 id="onlineHeading">🌐 친구와 온라인</h2>
+      <p id="onlineStatus" role="status" aria-live="polite"></p>
+      <p id="onlineHelp"></p>
+      <button id="onlineHost" class="mc-btn green">지금 세계로 방 열기 · 2명</button>
+      <div id="onlineJoinRow"><form id="onlineJoinForm"><label for="onlineInput">친구의 방 코드</label><input id="onlineInput" maxlength="6" minlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC234" required><button id="onlineJoin" class="mc-btn green" type="submit">친구 방 입장</button></form></div>
+      <div id="onlineCodeRow" hidden><strong id="onlineCode"></strong><button id="onlineCopy" class="mc-btn">코드 복사</button></div>
+      <button id="onlineLeave" class="mc-btn" hidden>온라인 방 나가기</button>
+      <button id="onlineClose" class="mc-btn">닫기</button>
+    </div>
+  </section>
   <section id="accountDialog" class="overlay" role="dialog" aria-modal="true" aria-labelledby="accountHeading" hidden>
     <form id="accountForm" class="mc-dialog account-dialog">
       <h2 id="accountHeading">로그인</h2>
@@ -125,6 +139,7 @@
       </div>
       <p><kbd>/</kbd> 또는 <kbd>T</kbd>: 명령어 창 · /help로 목록. 2인 플레이에서는 T로 열기 (/는 2P 공격).</p>
       <h3>함께하는 모험</h3>
+      <p>온라인 2인: 방장은 세계에서 ‘온라인 → 방 열기’, 친구는 첫 화면 ‘온라인’에서 6자리 코드 입력! 각자 가방·장비를 쓰며 B로 방장 곁에 합류해요. 차원 이동·이야기는 방장이 진행하고, 세계와 친구 장비도 방장 브라우저에 저장돼요. 방장이 나가면 함께 종료돼요.</p>
       <p>주민·포탈 가까이에서 <kbd>R</kbd> / 화면의 ‘대화·포탈’. 흑요석 4×6 테두리의 안을 비우고 부싯돌과 부시를 든 채 R로 직접 포탈을 켤 수도 있어요.</p>
       <p>2인: 1P는 A·D·W/스페이스와 마우스, 2P는 방향키 이동·점프, <kbd>/</kbd> 공격, <kbd>.</kbd> 정면 캐기, <kbd>,</kbd> 정면 블록 놓기, <kbd>L</kbd> 2P 관전 모드 켜기·끄기, <kbd>B</kbd> 1P 곁으로 합류. 가방과 선택한 도구는 함께 사용해요. 서로 멀어지면 B로 합류해요.</p>
       <p>50일째 소환사 좀비가 등장해요. 3페이즈를 이기고 황금 포탈에 들어가면 엔딩! 평화로움에서도 이야기 보스가 등장해요.</p>
@@ -161,7 +176,7 @@
     </div>
   </section>
 
-  <aside id="questHUD" hidden><b id="worldLine"></b><span id="questLine"></span><div><button id="interactButton">대화·포탈 R</button><button id="storyButton">이야기</button><button id="achievementButton">도전과제</button><button id="recordsButton">기록</button><button id="journalButton">모험책 J</button><button id="blueprintButton" hidden>완성 그림 R</button><button id="galleryButton" hidden>다른 그림 선택</button><button id="skipGuideButton" hidden>따라 쌓기 안 하기</button><button id="blockCatalogButton">블록 도감</button><button id="enchantButton">인챈트</button><button id="commandButton">명령어</button></div></aside>
+  <aside id="questHUD" hidden><b id="worldLine"></b><span id="questLine"></span><div><button id="interactButton">대화·포탈 R</button><button id="storyButton">이야기</button><button id="achievementButton">도전과제</button><button id="recordsButton">기록</button><button id="journalButton">모험책 J</button><button id="blueprintButton" hidden>완성 그림 R</button><button id="galleryButton" hidden>다른 그림 선택</button><button id="skipGuideButton" hidden>따라 쌓기 안 하기</button><button id="blockCatalogButton">블록 도감</button><button id="enchantButton">인챈트</button><button id="commandButton">명령어</button><button id="onlineButton">온라인</button></div></aside>
   <aside id="bossHUD" hidden><b id="bossLabel"></b><progress id="bossHealth" max="540" value="540" aria-label="소환사 좀비 체력"></progress></aside>
   <section id="adventureDialog" class="overlay" hidden><div class="mc-dialog wide story-dialog"><span class="chapter">2D마인크레프트 · 숲의 비밀</span><h2 id="adventureTitle"></h2><div id="adventureBody"></div><div id="adventureActions"></div></div></section>
   <section id="commandDialog" class="overlay" role="dialog" aria-modal="true" aria-labelledby="commandHeading" hidden>

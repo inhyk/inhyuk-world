@@ -174,7 +174,7 @@ export function render(g, G, cw, ch, T) {
   }
   for (const m of G.mobs) drawMob(g, G, m, sx, sy, T);
   drawPlayer(g, G, sx, sy, T);
-  if (G.adventure?.coop && G.companion && !G.companion.spectator) drawPlayer(g, { ...G, player: G.companion, dead: false }, sx, sy, T);
+  if (G.adventure?.coop && G.companion && !G.companion.spectator) drawPlayer(g, { ...G, player: G.companion, heldId:G.onlineSession?(G.companion.inv[G.companion.sel]?.id??0):G.heldId, dead: false }, sx, sy, T);
   for (const f of G.fireballs ?? []) {
     const x=sx(f.x),y=sy(f.y),r=T*(f.type==='ghast'?.28:.14);
     g.fillStyle='#f16e26';g.fillRect(x-r,y-r,r*2,r*2);g.fillStyle='#ffe894';g.fillRect(x-r*.5,y-r*.5,r,r);
@@ -438,7 +438,7 @@ function drawPlayer(g, G, sx, sy, T) {
   g.restore();
   if (G.adventure?.coop) {
     g.save(); g.font = `${Math.max(10, T * 0.23)}px Galmuri11`; g.textAlign = 'center';
-    const label = p === G.companion ? '2P · 동료' : `1P · ${G.adventure.name}`;
+    const label = G.onlineSession ? (p===G.companion?(G.remoteReplica?'방장':'친구'):'나') : p === G.companion ? '2P · 동료' : `1P · ${G.adventure.name}`;
     const x = sx(p.x + p.w / 2), y = sy(p.y - 0.3);
     g.fillStyle = '#17232bcc'; g.fillRect(x - g.measureText(label).width / 2 - 5, y - T * 0.25, g.measureText(label).width + 10, T * 0.34);
     g.fillStyle = p === G.companion ? '#ffd99c' : '#d7c2ff'; g.fillText(label, x, y); g.restore();
