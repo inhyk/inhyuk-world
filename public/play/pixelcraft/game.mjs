@@ -1,4 +1,6 @@
 import { enchantLines,enchantLevel,wearAmount,meleeDamage,gainExperience,enchantedDrop } from './enchantments.mjs';
+import { createOnline } from './online.mjs';
+import { INPUT_KEYS } from './online-codec.mjs';
 import { makeBuildWorld,initBuildGuide,isBuildWorld } from './build-guide.mjs';
 import { isBoss } from './skeleton-boss.mjs';
 import { populateEnd } from './end-exploration.mjs';
@@ -17,7 +19,7 @@ import {
 } from './core.mjs';
 import { buildTextures, avgColor } from './textures.mjs';
 import { render, dayFactor, isNight } from './render.mjs';
-import { UI, initUI, openPanel, closePanel, renderPanel, renderHUD, hudDirty, tickPanel, newStack } from './ui.mjs';
+import { UI, initUI, openPanel, closePanel, renderPanel, renderHUD, hudDirty, tickPanel, newStack, panelState, installPanelState, syncOnlinePanel, replayPanelAction } from './ui.mjs';
 import { sfx, sound, unlockAudio, tickMusic } from './audio.mjs';
 
 const $ = (id) => document.getElementById(id);
@@ -107,7 +109,7 @@ function newGame(opts) {
 function serialize(game) {
   const p = game.player;
   return JSON.stringify({
-    v: 2, width: W, builder:game.builder, jump: game.jump, adventure: packAdventure(game), stats: game.stats, seed: game.adventure?.seed ?? game.w.seed, name: game.name, mode: game.mode, diff: game.diff, time: game.time, day: game.day, playTime: game.playTime, hint: game.hint,
+    v: 2, width: W, onlinePartner:game.onlinePartner, builder:game.builder, jump: game.jump, adventure: game.onlineSession ? {...packAdventure(game),coop:game.offlineCoop??false,companion:game.offlineCompanion??null} : packAdventure(game), stats: game.stats, seed: game.adventure?.seed ?? game.w.seed, name: game.name, mode: game.mode, diff: game.diff, time: game.time, day: game.day, playTime: game.playTime, hint: game.hint,
     player: { xp:p.xp??0, armor: p.armor, x: p.x, y: p.y, hp: p.hp, food: p.food, sat: p.sat, air: p.air, sel: p.sel, inv: p.inv, spawn: p.spawn, flying: p.flying, skin: p.skin },
     surface: [...game.w.surface], bg: rleEncode(game.w.bg), tiles: rleEncode(game.w.tiles), meta: rleEncode(game.w.meta),
     chests: [...game.chests], furnaces: [...game.furnaces],
@@ -115,13 +117,16 @@ function serialize(game) {
   });
 }
 function saveGame(quiet) {
-  if (!G) return;
+  if (!G || G.remoteReplica || G.remoteActor) return;
   const ok = store(SAVE_KEY(G.slot), serialize(G));
   if (!quiet) toast(ok ? '저장했어!' : '저장 공간이 모자라서 저장하지 못했어');
 }
 function loadGame(slot) {
   const raw = load(SAVE_KEY(slot));
   if (!raw) return null;
+  return decodeGame(raw,slot);
+}
+function decodeGame(raw,slot=-1) {
   try {
     const d = JSON.parse(raw);
     const w = d.jump ? makeJumpWorld(d.seed) : generateWorld(d.seed);
@@ -137,6 +142,7 @@ function loadGame(slot) {
     game.jump = d.jump ? (d.jump.course === JUMP_COURSE ? d.jump : { ...newJumpState(), previousCourse: { elapsed: d.jump.elapsed, falls: d.jump.falls, completed: d.jump.completed, progress: d.jump.progress } }) : undefined;
     game.stats = d.stats ?? { mined: 0 };
     game.builder=d.builder;
+    game.onlinePartner=d.onlinePartner;
     game.chests = new Map((d.chests ?? []).map(([i, v]) => [remapIndex(i, d.width ?? 640), v]));
     game.furnaces = new Map((d.furnaces ?? []).map(([i, v]) => [remapIndex(i, d.width ?? 640), v]));
     game.mobs = (d.mobs ?? []).map(m => Array.isArray(m) ? Object.assign(makeMob(m[0], m[1], m[2]), { hp: m[3] }) : Object.assign(makeMob(m.type, m.x, m.y), m));
@@ -300,6 +306,7 @@ function smoke(x, y, n = 12, color = 'rgba(220,220,220,0.8)') {
   for (let k = 0; k < n; k++) G.particles.push({ x: x + (G.rng() - 0.5), y: y + (G.rng() - 0.5), vx: (G.rng() - 0.5) * 2, vy: -1 - G.rng() * 2, life: 0.6 + G.rng() * 0.6, color, size: 0.18 + G.rng() * 0.15, grav: -1 });
 }
 function toast(text) {
+  if(G?.remoteActor){online.note(text);return;}
   const box = $('toasts');
   const el = document.createElement('div');
   el.className = 'toast';
@@ -351,6 +358,7 @@ const DEATH_TEXT = {
   cactus: '선인장에 찔렸어', boom: '폭발에 휘말렸어', 좀비: '좀비에게 당했어', 스켈레톤: '스켈레톤 화살에 맞았어', 거미: '거미에게 당했어', 크리퍼: '크리퍼가 터졌어',
 };
 function die(cause) {
+  if(G.remoteActor){const p=G.player;Object.assign(p,{x:G.companion.x+1,y:G.companion.y,vx:0,vy:0,hp:20,food:20,air:10,fire:0,invT:3,fallTop:G.companion.y});toast('쓰러져서 친구 곁에서 다시 태어났어. 가방은 그대로야!');return;}
   G.dead = true;
   G.player.hp = 0;
   G.mining = null;
@@ -373,7 +381,7 @@ function respawn() {
   hudDirty();
 }
 function gainXP(points) {
-  gainExperience(G.player, points, G.adventure?.coop ? G.companion?.armor ?? [] : []);
+  gainExperience(G.player, points, G.adventure?.coop&&!G.onlineSession ? G.companion?.armor ?? [] : []);
 }
 function hitMob(m, dmg, fromX) {
   if (m.dead) return;
@@ -786,6 +794,7 @@ function updatePlayer(dt) {
 
 // 마우스가 가리키는 블록 찾기. 몸에서 마우스까지 가는 길에 벽이 있으면 그 벽을 고른다
 function mouseWorld() {
+  if(G.remoteActor)return remoteInput.target;
   const v = G.view;
   if (!v) return null;
   return { x: v.left + (mouse.x * devicePixelRatioSafe()) / v.T, y: v.top + (mouse.y * devicePixelRatioSafe()) / v.T };
@@ -1077,7 +1086,7 @@ function releaseBow() {
   const ex = p.x + p.w / 2, ey = p.y + 0.5;
   const dx = m.x - ex, dy = m.y - ey, d = Math.max(0.1, Math.hypot(dx, dy));
   const sp = 12 + power * 22;
-  G.arrows.push({ x: ex, y: ey, vx: (dx / d) * sp, vy: (dy / d) * sp, from: 'player', dmg: Math.round((2 + power * 7)*(1+.25*enchantLevel(held(),'power'))), flame:!!enchantLevel(held(),'flame'),infinite:!!enchantLevel(held(),'infinity'),life: 10, stuck: false });
+  G.arrows.push({ x: ex, y: ey, vx: (dx / d) * sp, vy: (dy / d) * sp, from: 'player', onlineOwner:!!G.remoteActor, dmg: Math.round((2 + power * 7)*(1+.25*enchantLevel(held(),'power'))), flame:!!enchantLevel(held(),'flame'),infinite:!!enchantLevel(held(),'infinity'),life: 10, stuck: false });
   sfx.bow();
   wearTool(1);
   hudDirty();
@@ -1153,7 +1162,8 @@ function updateWorld(dt) {
         for (const m of G.mobs) {
           if (m.dead || a.x < m.x || a.x > m.x + m.w || a.y < m.y || a.y > m.y + m.h) continue;
           if(a.flame)m.fire=Math.max(m.fire,4);
-          hitMob(m, a.dmg, a.x - a.vx);
+          if(a.onlineOwner&&G.onlineSession)withRemote(()=>hitMob(m,a.dmg,a.x-a.vx));
+          else hitMob(m, a.dmg, a.x - a.vx);
           a.life = 0;
           break;
         }
@@ -1371,6 +1381,7 @@ function update(dt) {
     }
   }
   updateMobs(dt);
+  if(online.host&&online.peer)tickRemote(dt);
   updateFireballs(G,dt,{hurtPlayer,burst});
   updateWorld(dt);
   adventure.tick(dt);
@@ -1386,7 +1397,7 @@ function update(dt) {
   }
   const p = G.player;
   const k = 1 - Math.exp(-dt * 9);
-  const cameraX = G.adventure?.coop && !G.companion.spectator && Math.abs(G.companion.x - p.x) < 22 ? (p.x + G.companion.x) / 2 : p.x;
+  const cameraX = !G.onlineSession && G.adventure?.coop && !G.companion.spectator && Math.abs(G.companion.x - p.x) < 22 ? (p.x + G.companion.x) / 2 : p.x;
   G.cam.x += (cameraX + p.w / 2 - G.cam.x) * k;
   G.cam.y += (p.y + p.stepLift + p.h / 2 - 0.4 - G.cam.y) * k;
   G.shake = Math.max(0, G.shake - dt);
@@ -1456,9 +1467,11 @@ setInterval(() => {
 const GAME_KEYS = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'F3']);
 window.addEventListener('keydown', (e) => {
   if (commands.isOpen() || e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-  if (G && !G.paused && !G.dead && (e.code === 'KeyT' || (e.code === 'Slash' && !G.adventure?.coop))) { e.preventDefault(); commands.open(); return; }
+  if (G && !online.guest && !G.paused && !G.dead && (e.code === 'KeyT' || (e.code === 'Slash' && !G.adventure?.coop))) { e.preventDefault(); commands.open(); return; }
   if (GAME_KEYS.has(e.code)) e.preventDefault();
   if (!G) return;
+  if(!$('onlineDialog').hidden)return;
+  if(online.guest&&guestKey(e)){if(!e.repeat)online.inputNow();return;}
   if (e.repeat && !['KeyQ'].includes(e.code)) {
     keys.add(e.code);
     return;
@@ -1466,7 +1479,7 @@ window.addEventListener('keydown', (e) => {
   keys.add(e.code);
   unlockAudio();
   if (adventure.key(e)) return;
-  if (e.code === 'Comma' && G.adventure?.coop && !G.companion.spectator && !G.paused && !G.dead && !UI.open) {
+  if (e.code === 'Comma' && !G.onlineSession && G.adventure?.coop && !G.companion.spectator && !G.paused && !G.dead && !UI.open) {
     const p = G.player;
     G.companion.sel = p.sel;
     G.partnerDuringPlace = p;
@@ -1504,12 +1517,13 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Equal' || e.code === 'NumpadAdd') { zoom = Math.min(4, zoom + 1); resize(); }
   if (e.code === 'Minus' || e.code === 'NumpadSubtract') { zoom = Math.max(-2, zoom - 1); resize(); }
 });
-window.addEventListener('keyup', (e) => keys.delete(e.code));
+window.addEventListener('keyup', (e) => { keys.delete(e.code); if(online.guest)online.inputNow(); });
 window.addEventListener('blur', () => {
   keys.clear();
   mouse.left = mouse.right = false;
 });
 function selectSlot(n) {
+  if(online.guest)guestSelection=n;
   G.player.sel = n;
   G.player.bowT = -1;
   showHeldName();
@@ -1529,6 +1543,7 @@ function showHeldName() {
   heldNameTimer = setTimeout(() => { el.hidden = true; }, 1600);
 }
 function dropHeld(all) {
+  if(online.guest){online.action({op:'drop',all:!!all});return;}
   const s = held();
   if (!s) return;
   const p = G.player;
@@ -1564,6 +1579,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (UI.open || G.dead) return;
   updateTarget();
   const isRight = e.button === 2 || (mouse.touch && touchMode === 'place');
+  if(online.guest){if(isRight)mouse.right=true;else if(e.button===0)mouse.left=true;online.inputNow();return;}
   if (isRight) {
     mouse.right = true;
     if (held()?.id === I.BOW) G.player.bowT = 0;
@@ -1580,10 +1596,11 @@ window.addEventListener('pointerup', (e) => {
   if (!G) return;
   if (e.button === 2 || (mouse.touch && mouse.right)) {
     mouse.right = false;
-    releaseBow();
+    if(!online.guest)releaseBow();
   }
   if (e.button === 0) mouse.left = false;
   if (mouse.touch) mouse.inside = false;
+  if(online.guest)online.inputNow();
 });
 
 // 터치 버튼
@@ -1595,6 +1612,7 @@ function bindTouch() {
       if (on) keys.add(k);
       else keys.delete(k);
       el.classList.toggle('on', on);
+      if(online.guest)online.inputNow();
     }
   };
   box.addEventListener('pointerdown', (e) => {
@@ -1613,7 +1631,7 @@ function bindTouch() {
     }
     if (act === 'drop') dropHeld(false);
     if (act === 'menu') togglePause();
-    if (act === 'fly' && G.mode === 'creative') G.player.flying = !G.player.flying;
+    if (act === 'fly' && G.mode === 'creative') {if(online.guest)online.action({op:'fly'});else G.player.flying = !G.player.flying;}
   });
   const up = (e) => {
     const el = e.target.closest('button');
@@ -1631,6 +1649,7 @@ function togglePause(force) {
   const show = force ?? el.hidden;
   el.hidden = !show;
   G.paused = show;
+  keys.clear();mouse.left=mouse.right=false;
   if (show) {
     $('pauseInfo').textContent = `${G.name} · ${G.mode === 'creative' ? '크리에이티브' : `서바이벌 (${DIFF_NAMES[G.diff]})`} · ${G.day}일째 · 시드 ${G.w.seed}`;
     saveGame(true);
@@ -1647,7 +1666,8 @@ function updateSoundButtons() {
   store('pixelcraft.sound', JSON.stringify(sound));
 }
 
-function startGame(game) {
+function startGame(game,onlineLoad=false) {
+  if(online.active&&!onlineLoad)online.end('',false);
   commands.reset();
   G = game;
   keys.clear(); mouse.left = mouse.right = false;
@@ -1655,6 +1675,7 @@ function startGame(game) {
   initUI(G, {
     drop: (id, count, dur, enchants) => spawnDrop(G.player.x + G.player.w / 2, G.player.y + 0.5, id, count, dur, enchants),
     onSelect: () => showHeldName(),
+    onlineAction:action=>{if(online.guest&&action.op==='select')guestSelection=action.slot;return online.action(action);},
     onCraft: () => { hudDirty(); }, toast, save:()=>saveGame(true),
   });
   $('title').hidden = true;
@@ -1665,9 +1686,10 @@ function startGame(game) {
   G.hintHidden = false;
   resize();
   if (G.day === 1 && G.playTime < 1) toast(`${G.name}에 온 걸 환영해!`);
-  adventure.start();
+  if(!G.remoteReplica)adventure.start();else{G.drawAdventure=adventure.draw;adventure.hud();}
 }
 function quitToTitle() {
+  if(online.active)online.end('',false);
   saveGame(true);
   closePanel();
   adventure.reset();
@@ -1781,7 +1803,8 @@ function frame(now) {
   last = now;
   try {
     if (G) {
-      if (!G.paused) update(dt);
+      if(G.remoteReplica)tickReplica(dt);
+      else if (!G.paused||online.host) update(dt);
       draw();
     } else if (demo) drawDemo(dt);
   } catch (err) {
@@ -1832,8 +1855,153 @@ function boot() {
   window.addEventListener('pagehide', () => { if (G) saveGame(true); });
   requestAnimationFrame(frame);
   // 브라우저 확인 스크립트가 들여다볼 수 있게
-  window.__pixelcraft = { adventure, W, H, get G() { return G; }, startGame, newGame, loadGame, saveGame, serialize, keys, mouse, setTile, breakBlock, placeBlock, doUse, hitMob, sleepInBed, explode, makeMob, openPanel, closePanel, UI };
+  window.__pixelcraft = { online, adventure, W, H, get G() { return G; }, startGame, newGame, loadGame, saveGame, serialize, keys, mouse, setTile, breakBlock, placeBlock, doUse, hitMob, sleepInBed, explode, makeMob, openPanel, closePanel, UI };
 }
 const adventure = createAdventureController({ get: () => G, keys, UI, closePanel, toast, hudDirty, save: () => saveGame(true), makeMob, hitMob, shootArrow, hurtPlayer, sleepInBed, populateNether: () => spawnNether(G,makeMob,true), populateEnd: () => populateEnd(G,makeMob), breakInfo, breakBlock, wearTool });
 const commands = createCommandConsole({ get: () => G, closePanel, clearInput: () => { keys.clear(); mouse.left = mouse.right = false; }, changed: () => { hudDirty(); if (UI.open) renderPanel(); $('touch').classList.toggle('creative', G.mode === 'creative'); }, save: () => saveGame(true) });
+
+// The host owns physics and all item transactions. Guests send input and UI intents.
+const blankRemotePanel=()=>({open:null,ref:-1,cursor:null,grid:Array(9).fill(null),enchantTarget:null,message:''});
+let remotePanel=blankRemotePanel(),remoteInput={keys:[],sel:0,target:null,left:false,right:false},remoteInputAt=0;
+let remoteFields={},terrainBase=null,previousLocalGame=null,guestSelection=0,replicaPanelKey='',replicaDimension='';
+const REMOTE_FIELDS=['heldId','mining','target','placeAt','attackT','useT','breakCool','lastSpace','dead'];
+function withRemote(fn){
+  if(!G?.companion)return;
+  const host=G.player,friend=G.companion,fields=Object.fromEntries(REMOTE_FIELDS.map(k=>[k,G[k]])),panel={...UI},input=[...keys],pointer={...mouse},paused=G.paused;
+  G.player=friend;G.companion=host;G.remoteActor=true;G.paused=false;
+  for(const k of REMOTE_FIELDS)G[k]=remoteFields[k]??(['attackT','useT','breakCool','lastSpace'].includes(k)?0:null);
+  G.dead=false;G.heldId=held()?.id??0;
+  installPanelState(remotePanel);UI.silent=true;
+  keys.clear();for(const key of remoteInput.keys)keys.add(key);
+  Object.assign(mouse,{inside:!!remoteInput.target,left:remoteInput.left,right:remoteInput.right});
+  try{return fn();}
+  finally{
+    remotePanel=panelState();remoteFields=Object.fromEntries(REMOTE_FIELDS.map(k=>[k,G[k]]));
+    G.player=host;G.companion=friend;G.remoteActor=false;G.paused=paused;Object.assign(G,fields);
+    for(const key of Object.keys(UI))delete UI[key];Object.assign(UI,panel);
+    keys.clear();for(const key of input)keys.add(key);Object.assign(mouse,pointer);
+  }
+}
+let remoteWasRight=false;
+function tickRemote(dt){
+  if(!G.companion||G.companion.spectator)return;
+  if(performance.now()-remoteInputAt>600){remoteInput={...remoteInput,keys:[],left:false,right:false,target:null};G.companion.bowT=-1;remoteWasRight=false;}
+  withRemote(()=>{
+    G.player.sel=remoteInput.sel;
+    // Closing a removed station returns cursor/crafting items exactly once.
+    if(remotePanel.open==='chest'&&!G.chests.has(remotePanel.ref)||remotePanel.open==='furnace'&&!G.furnaces.has(remotePanel.ref))closePanel();
+    if(UI.ref>=0&&UI.open&&!['inv','catalog'].includes(UI.open)&&Math.hypot(G.player.x-UI.ref%W,G.player.y-Math.floor(UI.ref/W))>6)closePanel();
+    updateTarget();updatePlayer(dt);updateMining(dt);
+    if(mouse.right&&!UI.open){
+      if(held()?.id===I.BOW){if(!remoteWasRight)G.player.bowT=0;G.player.bowT+=dt;}
+      else{G.useT-=dt;if(G.useT<=0){G.useT=.22;doUse();}}
+    }
+    if(remoteWasRight&&!mouse.right&&!UI.open)releaseBow();
+    remoteWasRight=mouse.right;
+    for(const d of G.drops)if(!d.remove&&d.age>.5&&Math.hypot(d.x-G.player.x,d.y-G.player.y)<1.4){d.count=addItem(G.player.inv,d.id,d.count,d.dur,0,36,d);if(!d.count)d.remove=true;}
+  });
+}
+function guestKey(e){
+  if(e.repeat&&e.code!=='KeyQ'){keys.add(e.code);return true;}
+  keys.add(e.code);unlockAudio();
+  if(e.code==='Escape'){e.preventDefault();if(UI.open)closePanel();else togglePause();return true;}
+  if(!$('onlineDialog').hidden||!$('pause').hidden)return true;
+  if(e.code==='KeyE'){if(UI.open)closePanel();else openPanel('inv');}
+  if(e.code.startsWith('Digit')){const n=Number(e.code.slice(5));if(n>=1&&n<=9)selectSlot(n-1);}
+  if(e.code==='KeyQ'&&!UI.open)online.action({op:'drop',all:e.ctrlKey||e.metaKey});
+  if(e.code==='KeyF')online.action({op:'fly'});
+  if(e.code==='Space'&&G.mode==='creative'){const now=performance.now();if(now-(G.lastSpace??0)<300)online.action({op:'fly'});G.lastSpace=now;}
+  if(e.code==='KeyR')online.action({op:'interact'});
+  if(e.code==='KeyB')online.action({op:'regroup'});
+  if(e.code==='KeyT'||e.code==='Slash')toast('세계 명령어는 방장이 사용해. 장비는 가방·제작·인챈트로 만들 수 있어!');
+  if(e.code==='KeyO'||e.code==='F3')$('debug').hidden=!$('debug').hidden;
+  if(e.code==='KeyM'){sound.on=!sound.on;updateSoundButtons();}
+  if(e.code==='Equal'){zoom=Math.min(4,zoom+1);resize();}if(e.code==='Minus'){zoom=Math.max(-2,zoom-1);resize();}
+  return true;
+}
+function tickReplica(dt){
+  if(!G)return;
+  const p=G.player,k=1-Math.exp(-dt*12);
+  G.cam.x+=(p.x+p.w/2-G.cam.x)*k;G.cam.y+=(p.y+p.h/2-.4-G.cam.y)*k;
+  G.clock+=dt;G.heldId=held()?.id??0;updateTarget();
+}
+function networkState(){
+  const a=G.adventure,{worlds,name,...adventureState}=a,p=G.companion;
+  const near=list=>(list??[]).filter(e=>Math.abs(e.x-p.x)<85);
+  return {player:p,companion:G.player,adventure:{...adventureState,name:'친구'},mode:G.mode,diff:G.diff,time:G.time,day:G.day,clock:G.clock,playTime:G.playTime,stats:G.stats,builder:G.builder,jump:G.jump,mobs:near(G.mobs),drops:near(G.drops),arrows:near(G.arrows),tnts:near(G.tnts),falling:near(G.falling),fireballs:near(G.fireballs),chests:[...G.chests],furnaces:[...G.furnaces],panel:remotePanel};
+}
+function networkSnapshot(full){
+  if(!terrainBase||terrainBase.world!==G.w)full=true;
+  const delta=[];
+  if(!full)for(let i=0;i<G.w.tiles.length;i++)if(G.w.tiles[i]!==terrainBase.tiles[i]||G.w.meta[i]!==terrainBase.meta[i]||G.w.bg[i]!==terrainBase.bg[i]){
+    delta.push(i,G.w.tiles[i],G.w.meta[i],G.w.bg[i]);
+    if(delta.length>8000){full=true;break;}
+  }
+  let save;
+  if(full){terrainBase={world:G.w,tiles:G.w.tiles.slice(),meta:G.w.meta.slice(),bg:G.w.bg.slice()};const data=JSON.parse(serialize(G));data.name='친구의 세계';data.adventure.name='친구';save=JSON.stringify(data);}
+  else for(let k=0;k<delta.length;k+=4){terrainBase.tiles[delta[k]]=delta[k+1];terrainBase.meta[delta[k]]=delta[k+2];terrainBase.bg[delta[k]]=delta[k+3];}
+  return {full,save,delta:full?[]:delta,state:networkState()};
+}
+function applyNetworkSnapshot(packet){
+  const s=packet.state;
+  if(!s||!s.player||!s.companion||!Array.isArray(s.player.inv)||s.player.inv.length!==36||!Number.isFinite(s.player.x)||!Number.isFinite(s.player.y)||!s.panel||!Array.isArray(packet.delta)||packet.delta.length%4)throw Error('잘못된 세계 정보');
+  let game=G;
+  if(packet.full){if(typeof packet.save!=='string')throw Error('세계 정보 없음');game=decodeGame(packet.save,-1);if(!game)throw Error('세계 불러오기 실패');}
+  if(!game)throw Error('세계가 아직 없어');
+  game.player=s.player;game.companion=s.companion;game.adventure={...s.adventure,worlds:{},coop:true,storySeen:true};
+  for(const key of ['mode','diff','time','day','clock','playTime','stats','builder','jump','mobs','drops','arrows','tnts','falling','fireballs'])game[key]=s[key];
+  game.chests=new Map(s.chests);game.furnaces=new Map(s.furnaces);game.remoteReplica=true;game.onlineSession=true;game.dead=false;game.slot=-1;
+  let x0=W,x1=-1;
+  for(let k=0;k<packet.delta.length;k+=4){const [i,t,m,b]=packet.delta.slice(k,k+4);if(!Number.isInteger(i)||i<0||i>=W*H||!BLOCKS[t]||!BLOCKS[b]||!Number.isInteger(m)||m<0||m>255)throw Error('잘못된 블록');game.w.tiles[i]=t;game.w.meta[i]=m;game.w.bg[i]=b;x0=Math.min(x0,i%W);x1=Math.max(x1,i%W);}
+  if(x1>=0)computeLight(game.w,x0-16,x1+16);
+  if(packet.full){guestSelection=game.player.sel;game.cam={x:game.player.x,y:game.player.y};startGame(game,true);replicaPanelKey='';}
+  G.player.sel=guestSelection;
+  const dimension=G.adventure.dimension;
+  if(replicaDimension!==dimension){G.cam={x:G.player.x,y:G.player.y};replicaDimension=dimension;}
+  const key=JSON.stringify([s.panel,G.player.inv,G.player.armor,s.panel.open==='chest'?s.chests:null,s.panel.open==='furnace'?s.furnaces:null,G.player.xp]);
+  if(key!==replicaPanelKey){syncOnlinePanel(s.panel);replicaPanelKey=key;}
+  $('commandButton').disabled=true;hudDirty();
+}
+$('questHUD').addEventListener('click',e=>{if(online.guest&&e.target.closest('#interactButton,#storyButton,#blueprintButton,#galleryButton,#skipGuideButton')){e.preventDefault();e.stopImmediatePropagation();toast('그림 선택·차원 이동·이야기 진행은 방장이 해. B를 누르면 방장 곁에 합류해!');}},true);
+const online=createOnline({
+  canHost:()=>!!G&&!G.remoteReplica,
+  clearInput(){keys.clear();mouse.left=mouse.right=false;},
+  beginHost(){
+    closePanel();G.offlineCoop=G.adventure.coop;G.offlineCompanion=G.companion;
+    const friend=G.onlinePartner??makePlayer({x:G.player.x+1,y:G.player.y});
+    if(!G.onlinePartner&&G.mode==='creative')for(const [k,id]of[B.GRASS,B.DIRT,B.STONE,B.PLANKS,B.GLASS,B.TORCH,B.OAK_LOG,B.STONE_BRICKS,B.TNT].entries())friend.inv[k]=newStack(id,maxStack(id));
+    friend.skin=((G.player.skin??0)+1)%4;friend.spectator=true;G.companion=friend;G.onlinePartner=friend;G.onlineSession=true;G.adventure.coop=true;
+    G.paused=false;keys.clear();mouse.left=mouse.right=false;terrainBase=null;remotePanel=blankRemotePanel();remoteFields={};remoteWasRight=false;
+  },
+  beginGuest(){if(G){closePanel();saveGame(true);previousLocalGame=G;G.paused=true;}else previousLocalGame=null;keys.clear();mouse.left=mouse.right=false;replicaDimension='';},
+  attachPeer(){const p=G.companion;p.spectator=false;if(Math.hypot(p.x-G.player.x,p.y-G.player.y)>45||collides(G.w,p.x,p.y,p.w,p.h))Object.assign(p,{x:G.player.x+.8,y:G.player.y,vx:0,vy:0,fallTop:G.player.y});p.invT=3;remotePanel=blankRemotePanel();remoteInput={keys:[],sel:p.sel??0,target:null,left:false,right:false};remoteInputAt=performance.now();terrainBase=null;},
+  detachPeer(){withRemote(()=>closePanel());G.companion.spectator=true;remoteInput={...remoteInput,keys:[],left:false,right:false};saveGame(true);},
+  input(input){remoteInput=input;remoteInputAt=performance.now();},
+  localInput(){const disabled=!G||UI.open||G.paused||!$('onlineDialog').hidden||!$('adventureDialog').hidden;const map={ArrowLeft:'KeyA',ArrowRight:'KeyD',ArrowUp:'KeyW',ArrowDown:'KeyS'};let target=!disabled&&mouse.inside?mouseWorld():null;if(target&&(target.x<0||target.x>=W||target.y< -16||target.y>=H))target=null;return {keys:disabled?[]:[...new Set([...keys].map(k=>map[k]??k).filter(k=>INPUT_KEYS.includes(k)))],sel:guestSelection,target,left:!disabled&&mouse.left,right:!disabled&&mouse.right};},
+  action(action){
+    if(!G||!online.host||!online.peer)return;
+    withRemote(()=>{
+      if(action.op==='select'&&Number.isInteger(action.slot)&&action.slot>=0&&action.slot<9){G.player.sel=remoteInput.sel=action.slot;return;}
+      if(action.op==='drop'&&!UI.open){dropHeld(action.all===true);return;}
+      if(action.op==='fly'&&G.mode==='creative'){G.player.flying=!G.player.flying;return;}
+      if(action.op==='regroup'){Object.assign(G.player,{x:G.companion.x+.8,y:G.companion.y,vx:0,vy:0,fallTop:G.companion.y,invT:2});return;}
+      if(action.op==='interact'){adventure.lightPortal();toast('차원 이동·주민 거래·이야기 진행은 방장이 해. B를 누르면 친구 곁에 합류해!');return;}
+      replayPanelAction(action);
+    });
+    saveGame(true);
+  },
+  snapshot:networkSnapshot,apply:applyNetworkSnapshot,note:toast,
+  background(){if(online.host&&document.hidden&&G)update(.03);},
+  end(role){
+    keys.clear();mouse.left=mouse.right=false;
+    if(role==='host'&&G?.onlineSession){withRemote(()=>closePanel());G.onlinePartner=G.companion;G.companion=G.offlineCompanion;G.adventure.coop=G.offlineCoop;G.onlineSession=false;delete G.offlineCompanion;delete G.offlineCoop;saveGame(true);hudDirty();}
+    if(role==='guest'){
+      // Never write a friend's world over any local save slot.
+      UI.open=null;UI.cursor=null;UI.grid=Array(9).fill(null);$('panel').hidden=true;
+      $('commandButton').disabled=false;commands.reset();adventure.reset();G=null;
+      $('pause').hidden=$('death').hidden=$('hud').hidden=$('hint').hidden=$('questHUD').hidden=$('bossHUD').hidden=true;
+      if(previousLocalGame){const old=previousLocalGame;previousLocalGame=null;startGame(old,true);}else showTitle();
+    }
+  },
+});
 boot();

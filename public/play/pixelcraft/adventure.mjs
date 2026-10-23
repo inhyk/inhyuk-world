@@ -259,7 +259,7 @@ export function createAdventureController(api) {
   }
   function tickCompanion(dt) {
     const G = get(), p = G.companion, keys = api.keys;
-    if (!G.adventure.coop || !p || G.dead) return;
+    if (G.onlineSession || !G.adventure.coop || !p || G.dead) return;
     p.inv = G.player.inv;
     if (p.spectator) { Object.assign(p, { x: G.player.x, y: G.player.y, vx: 0, vy: 0, invT: 2 }); return; }
     p.invT = Math.max(0, p.invT - dt); p.hurtT = Math.max(0, p.hurtT - dt); p.swing = Math.max(0, p.swing - dt * 3.5); p.attackT -= dt;
@@ -398,7 +398,7 @@ export function createAdventureController(api) {
     if (G.paused || G.dead || api.UI.open) return false;
     if(e.code==='KeyJ'&&!G.jump&&!isBuildWorld(G)){readBook();return true;}
     if (e.code === 'KeyR') { interact(); return true; }
-    if ((e.code === 'KeyL' || e.code === 'KeyB') && G.adventure.coop) {
+    if (!G.onlineSession && (e.code === 'KeyL' || e.code === 'KeyB') && G.adventure.coop) {
       const p = G.companion, leader = G.player;
       if (e.code === 'KeyL') p.spectator = !p.spectator;
       Object.assign(p, { x: leader.x, y: leader.y, vx: 0, vy: 0, fallTop: leader.y, invT: 2 }); api.toast(p.spectator ? '2P 관전 모드: 동료의 모험을 지켜봐! L로 다시 참가해.' : '2P가 동료 곁에서 모험에 참가했어!'); return true;

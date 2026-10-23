@@ -65,12 +65,13 @@ export function initUI(game, hooks) {
   // 눌러서 집고 다른 칸을 눌러 놓아도 되고, 꾹 누른 채 끌어다 놓아도 된다
   let drag = null;
   panel.addEventListener('pointerdown', (e) => {
-    const target=e.target.closest('[data-enchant-target]');if(target){UI.enchantTarget=target.dataset.enchantTarget;UI.message='';renderPanel();return;}
-    const enchant=e.target.closest('[data-enchant]');if(enchant){const slot=resolve(UI.enchantTarget??'i:0'),stack=slot?.arr?.[slot.k];const r=applyEnchant(G,stack,enchant.dataset.enchant,Number(enchant.dataset.level),{x:UI.ref>=0?UI.ref%W:Math.floor(G.player.x),y:UI.ref>=0?Math.floor(UI.ref/W):Math.floor(G.player.y)});UI.message=r.text;api.onCraft();api.save?.();renderPanel();return;}
+    const target=e.target.closest('[data-enchant-target]');if(target){if(api.onlineAction?.({op:'target',ref:target.dataset.enchantTarget}))return;UI.enchantTarget=target.dataset.enchantTarget;UI.message='';renderPanel();return;}
+    const enchant=e.target.closest('[data-enchant]');if(enchant){if(api.onlineAction?.({op:'enchant',key:enchant.dataset.enchant,level:Number(enchant.dataset.level)}))return;const slot=resolve(UI.enchantTarget??'i:0'),stack=slot?.arr?.[slot.k];const r=applyEnchant(G,stack,enchant.dataset.enchant,Number(enchant.dataset.level),{x:UI.ref>=0?UI.ref%W:Math.floor(G.player.x),y:UI.ref>=0?Math.floor(UI.ref/W):Math.floor(G.player.y)});UI.message=r.text;api.onCraft();api.save?.();renderPanel();return;}
     const pager=e.target.closest('[data-page]');if(pager){UI.page=Number(pager.dataset.page);renderPanel();return;}
     const el = e.target.closest('[data-s]');
     if (el) {
       e.preventDefault();
+      if(api.onlineAction?.({op:'slot',ref:el.dataset.s,button:e.button===2?2:0,shift:e.shiftKey}))return;
       const carrying = !!UI.cursor;
       clickSlot(el.dataset.s, e.button === 2 ? 2 : 0, e.shiftKey);
       drag = !carrying && UI.cursor && !e.shiftKey ? { from: el.dataset.s, x: e.clientX, y: e.clientY } : null;
@@ -121,6 +122,7 @@ export function initUI(game, hooks) {
     if (!el) return;
     e.preventDefault();
     G.player.sel = Number(el.dataset.hot);
+    api.onlineAction?.({op:'select',slot:G.player.sel});
     api.onSelect();
   });
 }
@@ -299,12 +301,15 @@ function craftFromBook(index, shift) {
 
 // ---- 열고 닫기 ----
 export function openPanel(kind, ref = -1) {
+  if(!UI.silent&&api?.onlineAction?.({op:'open',kind,ref}))return;
   UI.open = kind;
   UI.ref = ref;UI.message='';if(kind==='enchant')UI.enchantTarget=`i:${G.player.sel}`;
+  if(UI.silent){if(kind==='enchant'){const eligible=s=>s&&(ITEMS[s.id]?.tool||ITEMS[s.id]?.armor||s.id===I.BOW);if(!eligible(G.player.inv[G.player.sel])){const i=G.player.inv.findIndex(eligible),a=G.player.armor.findIndex(eligible);UI.enchantTarget=i>=0?`i:${i}`:a>=0?`a:${a}`:null;}}return;}
   $('panel').hidden = false;
   renderPanel();
 }
 export function closePanel() {
+  if(!UI.silent&&api?.onlineAction?.({op:'close'}))return;
   if (!UI.open) return;
   const inv = G.player.inv;
   for (let k = 0; k < 9; k++) {
@@ -321,6 +326,7 @@ export function closePanel() {
     UI.cursor = null;
   }
   UI.open = null;
+  if(UI.silent)return;
   $('panel').hidden = true;
   showTip('');
   renderCursor();
@@ -381,7 +387,7 @@ function creativeHtml() {
  return `<div class="catalog-heading"><b>블록 도감 · 자바 ${BLOCK_VERSION}</b><small>등록 블록 ${VANILLA_BLOCKS.length}종 · ${G.mode==='creative'?'Shift+클릭으로 가방에 받기':'야생에서는 구경하기 · 재료를 모아 제작해 줘'}</small></div><div class="tabs">${tabs}${G.mode==='creative'?'<div class="slot trash" data-s="trash" title="버리기">🗑</div>':''}</div><div class="catalog-controls"><input id="catalogSearch" aria-label="블록·아이템 검색" placeholder="한글 이름 / 영어 ID 검색" value="${esc(UI.search??'')}">${tab===0?`<select id="catalogCategory" aria-label="블록 분류">${['전체','자연','나무','색깔','건축','유리·얼음','식물','차원','기능·장식'].map(c=>`<option ${UI.category===c?'selected':''}>${c}</option>`).join('')}</select>`:''}</div><div class="catalog-pager"><button data-page="${UI.page-1}" ${UI.page===0?'disabled':''}>← 이전</button><span>검색 ${ids.length}종 · ${UI.page+1}/${pages}</span><button data-page="${UI.page+1}" ${UI.page>=pages-1?'disabled':''}>다음 →</button></div><div class="crgrid catalog-grid">${items||'<p>이름을 찾지 못했어.</p>'}</div><small class="catalog-note">모든 블록은 2D 타일로 설치해. 회로·자동화·3D 전용 상태는 단순화되어 있어.</small>`;
 }
 function enchantHtml(){
- const candidates=[...G.player.inv.map((s,i)=>({s,ref:`i:${i}`})),...(G.player.armor??[]).map((s,i)=>({s,ref:`a:${i}`})),...(G.adventure?.coop?(G.companion?.armor??[]).map((s,i)=>({s,ref:`a:${i+4}`})):[])].filter(({s})=>s&&(ITEMS[s.id].tool||ITEMS[s.id].armor||s.id===I.BOW));
+ const candidates=[...G.player.inv.map((s,i)=>({s,ref:`i:${i}`})),...(G.player.armor??[]).map((s,i)=>({s,ref:`a:${i}`})),...(G.adventure?.coop&&!G.onlineSession?(G.companion?.armor??[]).map((s,i)=>({s,ref:`a:${i+4}`})):[])].filter(({s})=>s&&(ITEMS[s.id].tool||ITEMS[s.id].armor||s.id===I.BOW));
  if(!candidates.some(c=>c.ref===UI.enchantTarget))UI.enchantTarget=candidates[0]?.ref;
  const selected=candidates.find(c=>c.ref===UI.enchantTarget)?.s,creative=G.mode==='creative',power=creative?{shelves:0,maxLevel:5}:bookshelfPower(G,UI.ref%W,Math.floor(UI.ref/W));
  const targets=candidates.map(({s,ref})=>`<button class="enchant-target ${ref===UI.enchantTarget?'selected':''}" data-enchant-target="${ref}"><img src="${iconUrl[s.id]}" alt=""><span>${ref.startsWith('a:')?(Number(ref.slice(2))>=4?'2P 착용 · ':'1P 착용 · '):''}${ITEMS[s.id].name}<small>${enchantLines(s).join(' · ')||'인챈트 없음'}</small></span></button>`).join('');
@@ -406,9 +412,10 @@ function chestHtml() {
 
 function armorHtml() {
   const row = (player, offset, label) => `<div class="armor-line"><span>${label}<br><small>방어 ${armorPoints(player)}/20</small></span>${ARMOR_SLOTS.map((name, k) => `<div class="armor-cell">${slotHtml(`a:${offset+k}`, player.armor?.[k])}<small>${name}</small></div>`).join('')}</div>`;
-  return `<div class="armor-rack">${row(G.player, 0, G.adventure?.coop ? '1P 방어구' : '방어구')}${G.adventure?.coop ? row(G.companion, 4, '2P 방어구') : ''}<small>가방에서 집어 맞는 부위에 놓기 · Shift+클릭: 1P 빠른 착용</small></div>`;
+  return `<div class="armor-rack">${row(G.player, 0, G.onlineSession?'내 방어구':G.adventure?.coop ? '1P 방어구' : '방어구')}${G.adventure?.coop&&!G.onlineSession ? row(G.companion, 4, '2P 방어구') : ''}<small>가방에서 집어 맞는 부위에 놓기 · Shift+클릭: 내 장비 빠른 착용</small></div>`;
 }
 export function renderPanel() {
+  if(UI.silent)return;
   if (!UI.open) return;
   const panel = $('panel');
   let top = '';
@@ -522,4 +529,54 @@ export function hudDirty() {
 // 화로가 열려 있으면 불 게이지를 자주 다시 그린다
 export function tickPanel() {
   if (UI.open === 'furnace' && performance.now() - UI.lastRender > 200) renderPanel();
+}
+
+// Replay a guest's UI intents on the host, using the same crafting/stacking rules.
+// The host supplies a separate UI context and its authoritative guest player.
+const UI_STATE_KEYS = ['open','ref','cursor','grid','enchantTarget','message'];
+export function panelState() { return Object.fromEntries(UI_STATE_KEYS.map(k=>[k,UI[k]])); }
+export function installPanelState(state) { for(const k of UI_STATE_KEYS)if(k in state)UI[k]=state[k]; }
+export function syncOnlinePanel(state) {
+  installPanelState(state);
+  $('panel').hidden=!UI.open;
+  if(UI.open)renderPanel();
+  else { showTip('');renderCursor(); }
+}
+function validRef(ref) {
+  if(typeof ref!=='string'||ref.length>16)return false;
+  if(ref==='o')return ['inv','table'].includes(UI.open)&&!!currentRecipe();
+  if(ref==='trash')return G.mode==='creative';
+  const m=/^(i|a|g|c|f|cr|rb):(\d{1,4})$/.exec(ref);if(!m)return false;
+  const n=Number(m[2]);
+  if(m[1]==='i')return n<36;
+  if(m[1]==='a')return n<4;
+  if(m[1]==='g')return n<9&&['inv','table'].includes(UI.open);
+  if(m[1]==='c')return UI.open==='chest'&&n<27&&!!chestSlots();
+  if(m[1]==='f')return UI.open==='furnace'&&n<3&&!!furnace();
+  if(m[1]==='cr')return G.mode==='creative'&&!!ITEMS[n];
+  return !!RECIPES[n]&&['inv','table'].includes(UI.open);
+}
+export function replayPanelAction(action) {
+  if(!action||typeof action!=='object')return;
+  if(action.op==='close'){closePanel();return;}
+  if(action.op==='open'){
+    const kind=action.kind,ref=action.ref;
+    if(!['inv','catalog','enchant','table','chest','furnace'].includes(kind))return;
+    if(!['inv','catalog'].includes(kind)&&!(kind==='enchant'&&G.mode==='creative')){
+      if(!Number.isInteger(ref)||ref<0||ref>=G.w.tiles.length||Math.hypot(G.player.x-ref%W,G.player.y-Math.floor(ref/W))>6)return;
+      const block=G.w.tiles[ref],valid=kind==='enchant'?block===B.ENCHANTING_TABLE:kind==='table'?block===B.CRAFTING:kind==='chest'?block===B.CHEST:[B.FURNACE,B.FURNACE_LIT].includes(block);
+      if(!valid)return;
+      if(kind==='chest'&&!G.chests.has(ref))G.chests.set(ref,Array(27).fill(null));
+    }
+    if(UI.open)closePanel();
+    openPanel(kind,Number.isInteger(ref)?ref:-1);return;
+  }
+  if(!UI.open)return;
+  if(action.op==='slot'&&validRef(action.ref))clickSlot(action.ref,action.button===2?2:0,action.shift===true);
+  if(action.op==='target'&&UI.open==='enchant'&&/^[ia]:\d+$/.test(action.ref)&&validRef(action.ref)){UI.enchantTarget=action.ref;UI.message='';}
+  if(action.op==='enchant'&&UI.open==='enchant'&&Object.hasOwn(ENCHANTMENTS,action.key)){
+    // A station may have been mined while its panel was open.
+    const slot=resolve(UI.enchantTarget??`i:${G.player.sel}`),stack=slot?.arr?.[slot.k];
+    UI.message=applyEnchant(G,stack,action.key,action.level,{x:UI.ref%W,y:Math.floor(UI.ref/W)}).text;
+  }
 }

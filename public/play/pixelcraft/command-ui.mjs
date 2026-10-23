@@ -15,7 +15,7 @@ export function createCommandConsole(api) {
     api.clearInput(); document.getElementById('game').focus({ preventScroll: true });
   }
   function open() {
-    const G = api.get(); if (!G || G.dead || G.paused || isOpen()) return;
+    const G = api.get(); if (!G || G.remoteReplica || G.dead || G.paused || isOpen()) return;
     api.closePanel(); api.clearInput();
     G.paused = true; dialog.hidden = false; input.value = '/'; cursor = history.length; draft = '/'; input.focus();
     if (!log.children.length) print('명령어를 입력하고 실행! /help로 목록 보기. ↑↓로 이전 명령어. Esc로 닫기.');
