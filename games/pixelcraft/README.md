@@ -68,3 +68,10 @@ node games/pixelcraft/armor-browser-check.mjs
 - 야생: 제작대에서 책 1개 + 다이아몬드 2개 + 흑요석 4개로 마법 부여대 제작, 가까이서 우클릭 또는 인챈트 버튼. 부여 레벨 L마다 경험치 3L레벨 + 청금석 L개가 든다. 책장 3개마다 허용 레벨 +1(기본 1, 최대 5). 새 세계 물가는 사탕수수, 깊은 돌층은 청금석 광석을 생성한다. 기존 마을에서도 금 1개→청금석 4개, 가죽 1개→책 1개 거래를 제공한다.
 - 크리에이티브는 부여대·재료 없이 인챈트 버튼으로 무료 부여. `/enchant sharpness 5`, `/xp add 30 levels` 명령어도 제공한다. 경험치를 얻을 때 수선 장비를 먼저 고친다.
 - 검증: `npm run test:pixelcraft`, `node games/pixelcraft/blocks-enchant-browser-check.mjs` (기본 3055, PIXELCRAFT_TEST_URL / PIXELCRAFT_ARTIFACTS 지정 가능). 브라우저 검사는 새 손님 프로필의 로컬 저장만 쓴다.
+
+### 인챈트 마무리 · 협동과 비용 안내
+
+- 각 부여 항목에서 다음 레벨에 필요한 경험치·청금석과 부족한 책장 수를 확인한다.
+- 2P가 착용한 방어구도 인챈트 창에서 직접 선택한다. 착용자 표시는 1P/2P로 구분한다.
+- 2P의 공유 도구에도 날카로움·밀치기·효율이 적용된다. 2P가 주운 장비의 인챈트·내구도를 보존하고, 공유 경험치로 2P의 수선 방어구도 수리한다.
+- 검증: `npm run test:pixelcraft` 51개 통과(공용 계정 검사 포함). `node games/pixelcraft/blocks-enchant-browser-check.mjs`에서 기존 부여·자원·저장 검사에 2P 전투·채굴·획득·수선·착용 장비 부여·재접속을 추가했다. PC와 휴대폰 화면 확인 결과는 `artifacts/pixelcraft-enchant-finish-20261023/`에 있다.

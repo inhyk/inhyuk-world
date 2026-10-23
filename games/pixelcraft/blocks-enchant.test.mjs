@@ -36,3 +36,8 @@ test('명령어로 새 블록·인챈트·경험치를 받고 부여대와 책�
  const G=fixture();assert.equal(runCommand(G,'/give cherry_planks 4').ok,true);assert.ok(G.player.inv.some(s=>s?.id===MC_BLOCK_IDS.cherry_planks&&s.count===4));assert.equal(runCommand(G,'/enchant minecraft:efficiency 5').ok,true);assert.equal(G.player.inv[0].enchants.efficiency,5);assert.equal(runCommand(G,'/enchant sharpness 5').ok,false);const before=experienceLevel(G.player);assert.equal(runCommand(G,'/xp add 30 levels').ok,true);assert.equal(experienceLevel(G.player),before+30);assert.equal(runCommand(G,'/xp add -1 levels').ok,false);
  for(const id of [I.BOOK,I.PAPER,B.BOOKSHELF,B.ENCHANTING_TABLE])assert.ok(RECIPES.some(r=>r.out[0]===id),`recipe ${id}`);
 });
+
+test('공유 경험치로 2P의 수선 방어구를 고치고 남은 경험치만 저장한다',()=>{
+ const G=fixture(),helmet=stack(I.DIAMOND_HELMET);helmet.enchants={mending:1};helmet.dur-=3;G.player.xp=0;
+ gainExperience(G.player,5,[helmet]);assert.equal(helmet.dur,durabilityOf(helmet.id));assert.equal(G.player.xp,3);
+});

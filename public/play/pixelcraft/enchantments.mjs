@@ -19,9 +19,9 @@ export const ENCHANTMENTS={
 export const enchantLevel=(stack,key)=>Math.min(ENCHANTMENTS[key]?.max??0,Math.max(0,Math.floor(stack?.enchants?.[key]??0)));
 export const enchantLines=stack=>Object.entries(stack?.enchants??{}).filter(([k])=>ENCHANTMENTS[k]).map(([k])=>`${ENCHANTMENTS[k].name} ${enchantLevel(stack,k)}`);
 export const experienceLevel=p=>Math.floor(Math.sqrt(Math.max(0,p.xp??0)/7));
-export function gainExperience(player,points){
+export function gainExperience(player,points,extraEquipment=[]){
  let left=Math.max(0,Math.floor(points));
- for(const s of [...(player.armor??[]),...player.inv]){
+ for(const s of [...(player.armor??[]),...player.inv,...extraEquipment]){
   if(!left||!s||!enchantLevel(s,'mending'))continue;
   const max=durabilityOf(s.id),missing=max-(s.dur??max),used=Math.min(left,Math.ceil(missing/2));
   if(used>0){s.dur=Math.min(max,(s.dur??max)+used*2);left-=used;}
