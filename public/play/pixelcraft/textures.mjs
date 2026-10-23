@@ -1,5 +1,6 @@
 // 16x16 픽셀 그림을 코드로 그린다. 그림 파일은 하나도 쓰지 않는다.
-import { B, I, ITEMS } from './data.mjs';
+import { catalogArt } from './catalog-art.mjs';
+import { B, I, ITEMS, BLOCKS } from './data.mjs';
 import { makeRng } from './core.mjs';
 
 const S = 16;
@@ -503,8 +504,9 @@ export const fluidFrames = { [B.WATER]: [], [B.LAVA]: [] };
 
 for(const [id,color]of[[I.OVERWORLD_BOOK,'#54824a'],[I.NETHER_BOOK,'#aa4b48'],[I.END_BOOK,'#8752a7']])ITEM_ART[id]=p=>{p.rect(2,2,12,13,'#322d3c');p.rect(3,2,11,12,color);p.rect(4,3,1,11,'#eed29e');p.rect(6,5,6,1,'#f2e9c8');p.rect(6,8,5,1,'#f2e9c8');p.rect(4,13,10,1,'#c9c4b1');};
 
+for(const id of[I.BOOK,I.LAPIS,I.PAPER,I.EXPERIENCE_BOTTLE])ITEM_ART[id]=p=>{if(id===I.LAPIS){p.map(['...LL...','..LLLL..','.LLLLLL.','..LLLL..','...LL...'],{L:'#4164d9'},4,4);}else if(id===I.EXPERIENCE_BOTTLE){p.rect(6,1,4,3,'#d8bb74');p.rect(4,4,8,10,'#9fe1a1');p.rect(5,7,6,6,'#72bd43');}else{p.rect(3,2,10,12,id===I.BOOK?'#7f4e35':'#efdfbc');p.rect(5,3,7,9,'#efe3be');p.rect(6,5,5,1,'#afaa8b');}};
 export function buildTextures() {
-  for (const id of Object.values(B)) {
+  for (const id of BLOCKS.filter(Boolean).map(b=>b.id)) {
     let c = null;
     if (id === B.OAK_LOG || id === B.OAK_TRUNK) c = log(id, PAL.oakBark);
     else if (id === B.BIRCH_LOG || id === B.BIRCH_TRUNK) c = log(id, PAL.birchBark, '#2a2a2a');
@@ -523,6 +525,7 @@ export function buildTextures() {
       const out = BLOCK_ART[id](p);
       c = out instanceof HTMLCanvasElement ? out : p.c;
     }
+    if(!c&&BLOCKS[id])c=catalogArt(painter(id),BLOCKS[id]);
     if (!c) continue;
     tex[id] = c;
     const d = canvas();

@@ -1,3 +1,4 @@
+import { enchantLines,enchantLevel,wearAmount,meleeDamage,gainExperience,enchantedDrop } from './enchantments.mjs';
 import { makeBuildWorld,initBuildGuide,isBuildWorld } from './build-guide.mjs';
 import { isBoss } from './skeleton-boss.mjs';
 import { populateEnd } from './end-exploration.mjs';
@@ -57,7 +58,7 @@ function load(key) {
 function makePlayer(sp) {
   return {
     x: sp.x, y: sp.y, w: 0.6, h: 1.8, vx: 0, vy: 0, onGround: false, step: true,
-    hp: 20, food: 20, sat: 5, exhaust: 0, air: 10, face: 1, fallTop: sp.y, hurtT: 0, invT: 0, fire: 0,
+    hp: 20, xp:0, food: 20, sat: 5, exhaust: 0, air: 10, face: 1, fallTop: sp.y, hurtT: 0, invT: 0, fire: 0,
     sel: 0, inv: Array(36).fill(null), armor: Array(4).fill(null), spawn: { x: sp.x, y: sp.y }, flying: false, swing: 0, walkT: 0,
     regenT: 0, starveT: 0, hazardT: 0, drownT: 0, stepT: 0, bowT: -1, stepLift: 0,
   };
@@ -107,7 +108,7 @@ function serialize(game) {
   const p = game.player;
   return JSON.stringify({
     v: 2, width: W, builder:game.builder, jump: game.jump, adventure: packAdventure(game), stats: game.stats, seed: game.adventure?.seed ?? game.w.seed, name: game.name, mode: game.mode, diff: game.diff, time: game.time, day: game.day, playTime: game.playTime, hint: game.hint,
-    player: { armor: p.armor, x: p.x, y: p.y, hp: p.hp, food: p.food, sat: p.sat, air: p.air, sel: p.sel, inv: p.inv, spawn: p.spawn, flying: p.flying, skin: p.skin },
+    player: { xp:p.xp??0, armor: p.armor, x: p.x, y: p.y, hp: p.hp, food: p.food, sat: p.sat, air: p.air, sel: p.sel, inv: p.inv, spawn: p.spawn, flying: p.flying, skin: p.skin },
     surface: [...game.w.surface], bg: rleEncode(game.w.bg), tiles: rleEncode(game.w.tiles), meta: rleEncode(game.w.meta),
     chests: [...game.chests], furnaces: [...game.furnaces],
     mobs: game.mobs.filter((m) => !m.dead).map((m) => ({ ...m })),
@@ -229,17 +230,18 @@ function breakBlock(x, y, { harvest = true, quiet = false, chance = 1 } = {}) {
   if (t === B.AIR || BLOCKS[t].fluid) return;
   burst(x + 0.5, y + 0.5, avgColor[t] ?? '#888', quiet ? 4 : 10);
   if (harvest && G.mode !== 'creative' && G.rng() < chance) {
-    let d = dropOf(t);
+    let d = enchantedDrop(held(),t,dropOf(t),G.rng);
+    if(BLOCKS[t].mcName?.endsWith('_ore')&&!enchantLevel(held(),'silk_touch')&&d?.[0]!==t)gainExperience(G.player,3);
     if (t === B.DOOR_T) d = [I.DOOR, 1];
     if (t === B.BED_HEAD) d = [I.BED, 1];
     if (d) spawnDrop(x + 0.5, y + 0.5, d[0], d[1]);
   }
   if (t === B.CHEST) {
-    for (const s of G.chests.get(i) ?? []) if (s) spawnDrop(x + 0.5, y + 0.5, s.id, s.count, s.dur);
+    for (const s of G.chests.get(i) ?? []) if (s) spawnDrop(x + 0.5, y + 0.5, s.id, s.count, s.dur, s.enchants);
     G.chests.delete(i);
   }
   if (t === B.FURNACE || t === B.FURNACE_LIT) {
-    for (const s of G.furnaces.get(i)?.slots ?? []) if (s) spawnDrop(x + 0.5, y + 0.5, s.id, s.count, s.dur);
+    for (const s of G.furnaces.get(i)?.slots ?? []) if (s) spawnDrop(x + 0.5, y + 0.5, s.id, s.count, s.dur, s.enchants);
     G.furnaces.delete(i);
     if (UI.open === 'furnace' && UI.ref === i) closePanel();
   }
@@ -284,10 +286,10 @@ function fellTree(x, y, trunk, harvest) {
 }
 
 // ---- 아이템, 조각 ----
-function spawnDrop(x, y, id, count, dur) {
+function spawnDrop(x, y, id, count, dur, enchants) {
   if (!ITEMS[id] || count <= 0) return;
   if (dur === undefined && durabilityOf(id)) dur = durabilityOf(id);
-  G.drops.push({ id, count, dur, x: x - 0.175, y: y - 0.175, w: 0.35, h: 0.35, vx: (G.rng() - 0.5) * 3, vy: -3.5, age: 0, seed: G.rng() * 10 });
+  G.drops.push({ id, count, dur, enchants:enchants?{...enchants}:undefined, x: x - 0.175, y: y - 0.175, w: 0.35, h: 0.35, vx: (G.rng() - 0.5) * 3, vy: -3.5, age: 0, seed: G.rng() * 10 });
 }
 function burst(x, y, color, n) {
   for (let k = 0; k < n; k++) {
@@ -382,6 +384,7 @@ function hitMob(m, dmg, fromX) {
   if (m.hp <= 0) {
     m.dead = true;
     m.deadT = 0;
+    gainExperience(G.player,HOSTILE.has(m.type)?7:3);
     adventure.defeated(m);
     for (const [id, lo, hi] of MOBS[m.type].drops) {
       const n = lo + Math.floor(G.rng() * (hi - lo + 1));
@@ -628,7 +631,7 @@ function wearTool(amount) {
   if (G.mode === 'creative') return;
   const s = held();
   if (!s || s.dur === undefined) return;
-  s.dur -= amount;
+  s.dur -= wearAmount(s,amount,G.rng);
   if (s.dur <= 0) {
     G.player.inv[G.player.sel] = null;
     sfx.brk('metal');
@@ -737,7 +740,7 @@ function updatePlayer(dt) {
   }
   const head = tileAt(Math.floor(p.x + p.w / 2), Math.floor(p.y + 0.3));
   if (head === B.WATER) {
-    p.air -= dt;
+    p.air -= dt/(1+enchantLevel(p.armor?.[0],'respiration'));
     if (p.air <= 0) {
       p.air = 0;
       p.drownT -= dt;
@@ -837,9 +840,10 @@ function tryAttack() {
   const mob = mobUnderMouse();
   if (!mob) return false;
   const tool = ITEMS[held()?.id]?.tool;
-  const dmg = tool ? tool.dmg : 1;
+  const dmg = meleeDamage(held(),tool ? tool.dmg : 1);
   const p = G.player;
   hitMob(mob, dmg * (p.vy > 1 && !p.onGround ? 1.5 : 1), p.x + p.w / 2);
+  if(enchantLevel(held(),'knockback'))mob.vx*=1+enchantLevel(held(),'knockback')*.5;
   p.swing = 1;
   p.exhaust += 0.1;
   G.attackT = tool?.type === 'sword' ? 0.35 : 0.5;
@@ -876,7 +880,7 @@ function updateMining(dt) {
     return;
   }
   if (!G.mining || G.mining.i !== i) G.mining = { i, progress: 0, soundT: 0 };
-  const info = breakInfo(t, held()?.id ?? 0);
+  const info = breakInfo(t, held()?.id ?? 0, held()?.enchants);
   if (!Number.isFinite(info.time)) return;
   G.mining.progress += dt / info.time;
   G.mining.soundT -= dt;
@@ -979,11 +983,13 @@ function doUse() {
   const s = held();
   const id = s?.id ?? 0;
   if ((id === I.FLINT_STEEL || id === I.ENDER_EYE) && adventure.lightPortal()) return;
+  if(id===I.EXPERIENCE_BOTTLE){gainExperience(p,21);consumeHeld();hudDirty();toast('경험치를 얻었어!');return;}
   if([I.OVERWORLD_BOOK,I.NETHER_BOOK,I.END_BOOK].includes(id)&&adventure.readBook(id))return;
   const tg = G.target && !G.target.place ? G.target : null;
   if (tg) {
     const i = tg.y * W + tg.x;
     const t = G.w.tiles[i];
+    if(t===B.ENCHANTING_TABLE)return openPanel('enchant',i);
     if (t === B.CRAFTING) return openPanel('table');
     if (t === B.FURNACE || t === B.FURNACE_LIT) {
       if (!G.furnaces.has(i)) G.furnaces.set(i, { slots: [null, null, null], burn: 0, burnMax: 0, cook: 0 });
@@ -1054,7 +1060,7 @@ function releaseBow() {
   if (power < 0.15 || held()?.id !== I.BOW) return;
   if (G.mode !== 'creative') {
     if (countItem(p.inv, [I.ARROW]) <= 0) return toast('화살이 없어!');
-    for (let k = 35; k >= 0; k--) {
+    if(!enchantLevel(held(),'infinity'))for (let k = 35; k >= 0; k--) {
       const s = p.inv[k];
       if (s?.id === I.ARROW) {
         s.count--;
@@ -1068,7 +1074,7 @@ function releaseBow() {
   const ex = p.x + p.w / 2, ey = p.y + 0.5;
   const dx = m.x - ex, dy = m.y - ey, d = Math.max(0.1, Math.hypot(dx, dy));
   const sp = 12 + power * 22;
-  G.arrows.push({ x: ex, y: ey, vx: (dx / d) * sp, vy: (dy / d) * sp, from: 'player', dmg: Math.round(2 + power * 7), life: 10, stuck: false });
+  G.arrows.push({ x: ex, y: ey, vx: (dx / d) * sp, vy: (dy / d) * sp, from: 'player', dmg: Math.round((2 + power * 7)*(1+.25*enchantLevel(held(),'power'))), flame:!!enchantLevel(held(),'flame'),infinite:!!enchantLevel(held(),'infinity'),life: 10, stuck: false });
   sfx.bow();
   wearTool(1);
   hudDirty();
@@ -1091,7 +1097,7 @@ function updateWorld(dt) {
       d.vx += (dx / dist) * 30 * dt;
       d.vy += (dy / dist) * 30 * dt;
       if (dist < 0.9) {
-        const left = addItem(p.inv, d.id, d.count, d.dur);
+        const left = addItem(p.inv, d.id, d.count, d.dur,0,p.inv.length,d);
         if (left < d.count) {
           sfx.pop();
           hudDirty();
@@ -1114,7 +1120,7 @@ function updateWorld(dt) {
   for (const a of G.arrows) {
     if (a.stuck) {
       a.life -= dt;
-      if (a.from === 'player' && Math.hypot(a.x - (p.x + p.w / 2), a.y - (p.y + p.h / 2)) < 1.1 && G.mode !== 'creative') {
+      if (!a.infinite && a.from === 'player' && Math.hypot(a.x - (p.x + p.w / 2), a.y - (p.y + p.h / 2)) < 1.1 && G.mode !== 'creative') {
         if (addItem(p.inv, I.ARROW, 1) === 0) {
           a.life = 0;
           sfx.pop();
@@ -1143,6 +1149,7 @@ function updateWorld(dt) {
       } else {
         for (const m of G.mobs) {
           if (m.dead || a.x < m.x || a.x > m.x + m.w || a.y < m.y || a.y > m.y + m.h) continue;
+          if(a.flame)m.fire=Math.max(m.fire,4);
           hitMob(m, a.dmg, a.x - a.vx);
           a.life = 0;
           break;
@@ -1515,7 +1522,7 @@ function showHeldName() {
     return;
   }
   el.hidden = false;
-  el.textContent = ITEMS[s.id].name;
+  el.textContent = [ITEMS[s.id].name,...enchantLines(s)].join(' · ');
   heldNameTimer = setTimeout(() => { el.hidden = true; }, 1600);
 }
 function dropHeld(all) {
@@ -1523,7 +1530,7 @@ function dropHeld(all) {
   if (!s) return;
   const p = G.player;
   const n = all ? s.count : 1;
-  G.drops.push({ id: s.id, count: n, dur: s.dur, x: p.x + p.w / 2 - 0.175 + p.face * 0.5, y: p.y + 0.4, w: 0.35, h: 0.35, vx: p.face * 6, vy: -3, age: -1, seed: G.rng() * 10 });
+  G.drops.push({ id: s.id, count: n, dur: s.dur, enchants:s.enchants?{...s.enchants}:undefined, x: p.x + p.w / 2 - 0.175 + p.face * 0.5, y: p.y + 0.4, w: 0.35, h: 0.35, vx: p.face * 6, vy: -3, age: -1, seed: G.rng() * 10 });
   s.count -= n;
   if (s.count <= 0) p.inv[p.sel] = null;
   hudDirty();
@@ -1643,9 +1650,9 @@ function startGame(game) {
   keys.clear(); mouse.left = mouse.right = false;
   demo = null;
   initUI(G, {
-    drop: (id, count, dur) => spawnDrop(G.player.x + G.player.w / 2, G.player.y + 0.5, id, count, dur),
+    drop: (id, count, dur, enchants) => spawnDrop(G.player.x + G.player.w / 2, G.player.y + 0.5, id, count, dur, enchants),
     onSelect: () => showHeldName(),
-    onCraft: () => { hudDirty(); },
+    onCraft: () => { hudDirty(); }, toast, save:()=>saveGame(true),
   });
   $('title').hidden = true;
   $('hud').hidden = false;
@@ -1812,6 +1819,8 @@ function boot() {
   $('btnRespawn').onclick = respawn;
   $('btnDeathQuit').onclick = () => { respawn(); quitToTitle(); };
   $('hint').querySelector('button').onclick = () => { if (G) G.hintHidden = true; $('hint').hidden = true; };
+  $('blockCatalogButton').onclick=()=>{if(G&&!G.jump){UI.tab=0;UI.search='';UI.page=0;openPanel('catalog');}};
+  $('enchantButton').onclick=()=>{if(!G||G.jump)return;const p=G.player;for(let y=Math.max(0,Math.floor(p.y)-4);y<Math.min(H,p.y+5);y++)for(let x=Math.max(0,Math.floor(p.x)-4);x<Math.min(W,p.x+5);x++)if(tileAt(x,y)===B.ENCHANTING_TABLE)return openPanel('enchant',y*W+x);if(G.mode==='creative')return openPanel('enchant');toast('먼저 마법 부여대를 만들고 가까이 가 줘! 제작대에서 책 1개·다이아몬드 2개·흑요석 4개로 만들 수 있어.');};
   $('btnHelp').onclick = () => { $('help').hidden = !$('help').hidden; };
   $('helpClose').onclick = () => { $('help').hidden = true; };
   document.addEventListener('visibilitychange', () => {

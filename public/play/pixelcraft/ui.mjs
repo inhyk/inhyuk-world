@@ -1,13 +1,17 @@
+import { ENCHANTMENTS,enchantLevel,enchantLines,experienceLevel,bookshelfPower,applyEnchant } from './enchantments.mjs';
+import { BLOCK_VERSION,VANILLA_BLOCKS } from './block-catalog.mjs';
+import { blockGroup } from './catalog-art.mjs';
 import { ARMOR_SLOTS, armorPoints } from './armor.mjs';
 // 가방·제작대·화로·상자 화면과 아래쪽 손 줄(핫바), 체력·배고픔 표시
-import { ITEMS, RECIPES, SMELT, SMELT_TIME, FUEL, maxStack, durabilityOf, I } from './data.mjs';
-import { addItem, matchRecipe, canCraft, craftFromSlots, recipeNeeds, countItem } from './core.mjs';
+import { ITEMS, RECIPES, SMELT, SMELT_TIME, FUEL, maxStack, durabilityOf, I,B } from './data.mjs';
+import { addItem, matchRecipe, canCraft, craftFromSlots, recipeNeeds, countItem,W } from './core.mjs';
 import { iconUrl } from './textures.mjs';
 import { sfx } from './audio.mjs';
 
-export const UI = { open: null, ref: -1, cursor: null, grid: Array(9).fill(null), tab: 0, lastRender: 0 };
+export const UI = { open: null, ref: -1, cursor: null, grid: Array(9).fill(null), tab: 0, search:'',category:'전체',page:0,enchantTarget:null,message:'',lastRender: 0 };
 let G = null;
 let api = null;
+let bound=false;
 const $ = (id) => document.getElementById(id);
 
 export function newStack(id, count = 1) {
@@ -19,6 +23,7 @@ export function newStack(id, count = 1) {
 const clone = (s, count = s.count) => {
   const c = { id: s.id, count };
   if (s.dur !== undefined) c.dur = s.dur;
+  if(s.enchants)c.enchants={...s.enchants};
   return c;
 };
 
@@ -54,11 +59,15 @@ function buildHudIcons() {
 export function initUI(game, hooks) {
   G = game;
   api = hooks;
+  if(bound)return;bound=true;
   buildHudIcons();
   const panel = $('panel');
   // 눌러서 집고 다른 칸을 눌러 놓아도 되고, 꾹 누른 채 끌어다 놓아도 된다
   let drag = null;
   panel.addEventListener('pointerdown', (e) => {
+    const target=e.target.closest('[data-enchant-target]');if(target){UI.enchantTarget=target.dataset.enchantTarget;UI.message='';renderPanel();return;}
+    const enchant=e.target.closest('[data-enchant]');if(enchant){const slot=resolve(UI.enchantTarget??'i:0'),stack=slot?.arr?.[slot.k];const r=applyEnchant(G,stack,enchant.dataset.enchant,Number(enchant.dataset.level),{x:UI.ref>=0?UI.ref%W:Math.floor(G.player.x),y:UI.ref>=0?Math.floor(UI.ref/W):Math.floor(G.player.y)});UI.message=r.text;api.onCraft();api.save?.();renderPanel();return;}
+    const pager=e.target.closest('[data-page]');if(pager){UI.page=Number(pager.dataset.page);renderPanel();return;}
     const el = e.target.closest('[data-s]');
     if (el) {
       e.preventDefault();
@@ -71,7 +80,7 @@ export function initUI(game, hooks) {
     }
     const tab = e.target.closest('[data-tab]');
     if (tab) {
-      UI.tab = Number(tab.dataset.tab);
+      UI.tab = Number(tab.dataset.tab);UI.page=0;
       renderPanel();
       return;
     }
@@ -95,6 +104,8 @@ export function initUI(game, hooks) {
     sfx.click();
     renderPanel();
   });
+  panel.oninput=e=>{if(e.target.id!=='catalogSearch')return;UI.search=e.target.value;UI.page=0;const pos=e.target.selectionStart;renderPanel();const input=$('catalogSearch');input.focus();input.setSelectionRange(pos,pos);};
+  panel.onchange=e=>{if(e.target.id==='catalogCategory'){UI.category=e.target.value;UI.page=0;renderPanel();}};
   panel.addEventListener('contextmenu', (e) => e.preventDefault());
   panel.addEventListener('pointermove', (e) => {
     const el = e.target.closest('[data-s]');
@@ -155,6 +166,7 @@ function clickSlot(ref, button, shift) {
     return;
   }
   if (ref.startsWith('cr:')) {
+    if(G.mode!=='creative'){api.toast?.('야생에서는 재료를 모아 제작해 줘. 크리에이티브에서 도감의 블록을 받을 수 있어.');return;}
     const id = Number(ref.slice(3));
     if (UI.cursor) {
       UI.cursor = null;
@@ -212,7 +224,7 @@ function quickMove({ arr, k, kind }) {
   if (kind === 'i') {
     const armor = ITEMS[s.id]?.armor;
     if (armor && !G.player.armor?.[armor.slot] && ['inv', 'table'].includes(UI.open)) { G.player.armor ??= Array(4).fill(null); G.player.armor[armor.slot] = s; arr[k] = null; return; }
-    if (UI.open === 'chest') left = addItem(chestSlots(), s.id, s.count, s.dur);
+    if (UI.open === 'chest') left = addItem(chestSlots(), s.id, s.count, s.dur,0,chestSlots().length,s);
     else if (UI.open === 'furnace') {
       const f = furnace().slots;
       const target = SMELT[s.id] !== undefined ? 0 : FUEL[s.id] !== undefined ? 1 : -1;
@@ -224,8 +236,8 @@ function quickMove({ arr, k, kind }) {
           left = s.count - n;
         }
       }
-    } else left = k < 9 ? addItem(inv, s.id, s.count, s.dur, 9, 36) : addItem(inv, s.id, s.count, s.dur, 0, 9);
-  } else left = addItem(inv, s.id, s.count, s.dur);
+    } else left = k < 9 ? addItem(inv, s.id, s.count, s.dur, 9, 36,s) : addItem(inv, s.id, s.count, s.dur, 0, 9,s);
+  } else left = addItem(inv, s.id, s.count, s.dur,0,inv.length,s);
   if (left <= 0) arr[k] = null;
   else s.count = left;
 }
@@ -288,7 +300,7 @@ function craftFromBook(index, shift) {
 // ---- 열고 닫기 ----
 export function openPanel(kind, ref = -1) {
   UI.open = kind;
-  UI.ref = ref;
+  UI.ref = ref;UI.message='';if(kind==='enchant')UI.enchantTarget=`i:${G.player.sel}`;
   $('panel').hidden = false;
   renderPanel();
 }
@@ -298,14 +310,14 @@ export function closePanel() {
   for (let k = 0; k < 9; k++) {
     const s = UI.grid[k];
     if (!s) continue;
-    const left = addItem(inv, s.id, s.count, s.dur);
-    if (left > 0) api.drop(s.id, left, s.dur);
+    const left = addItem(inv, s.id, s.count, s.dur,0,inv.length,s);
+    if (left > 0) api.drop(s.id, left, s.dur,s.enchants);
     UI.grid[k] = null;
   }
   if (UI.cursor) {
     const s = UI.cursor;
-    const left = addItem(inv, s.id, s.count, s.dur);
-    if (left > 0) api.drop(s.id, left, s.dur);
+    const left = addItem(inv, s.id, s.count, s.dur,0,inv.length,s);
+    if (left > 0) api.drop(s.id, left, s.dur,s.enchants);
     UI.cursor = null;
   }
   UI.open = null;
@@ -326,7 +338,7 @@ function slotHtml(ref, s, extra = '') {
       inner += `<i style="width:${Math.round(r * 100)}%;background:hsl(${Math.round(r * 120)},90%,45%)"></i>`;
     }
   }
-  return `<div class="slot ${extra}" data-s="${ref}">${inner}</div>`;
+  return `<div class="slot ${extra} ${s?.enchants?'enchanted':''}" data-s="${ref}">${inner}</div>`;
 }
 function invHtml() {
   const inv = G.player.inv;
@@ -354,14 +366,27 @@ function bookHtml() {
 const CREATIVE_TABS = ['블록', '도구·방어구', '재료·음식'];
 function creativeIds(tab) {
   const ids = ITEMS.filter(Boolean).map((it) => it.id);
-  if (tab === 0) return ids.filter((id) => id < 100);
+  if (tab === 0) return ids.filter((id) => ITEMS[id].place!==undefined&&id!==0);
   if (tab === 1) return ids.filter((id) => ITEMS[id].tool || ITEMS[id].armor || [I.FLINT_STEEL, I.BUCKET, I.WATER_BUCKET, I.LAVA_BUCKET, I.BOW, I.ARROW, I.COMPASS, I.CLOCK, I.DOOR, I.BED].includes(id));
-  return ids.filter((id) => id >= 100 && !ITEMS[id].tool && !ITEMS[id].armor && ![I.FLINT_STEEL, I.BUCKET, I.WATER_BUCKET, I.LAVA_BUCKET, I.BOW, I.ARROW, I.COMPASS, I.CLOCK, I.DOOR, I.BED].includes(id));
+  return ids.filter((id) => ITEMS[id].place===undefined && !ITEMS[id].tool && !ITEMS[id].armor && ![I.FLINT_STEEL, I.BUCKET, I.WATER_BUCKET, I.LAVA_BUCKET, I.BOW, I.ARROW, I.COMPASS, I.CLOCK, I.DOOR, I.BED].includes(id));
 }
+const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 function creativeHtml() {
-  const tabs = CREATIVE_TABS.map((t, k) => `<button class="tab ${k === UI.tab ? 'on' : ''}" data-tab="${k}">${t}</button>`).join('');
-  const items = creativeIds(UI.tab).map((id) => `<div class="slot" data-s="cr:${id}"><img src="${iconUrl[id]}" alt=""></div>`).join('');
-  return `<div class="tabs">${tabs}<div class="slot trash" data-s="trash" title="버리기">🗑</div></div><div class="crgrid">${items}</div>`;
+ const catalog=UI.open==='catalog',tab=catalog?0:UI.tab;
+ const tabs=catalog?'':CREATIVE_TABS.map((t,k)=>`<button class="tab ${k===tab?'on':''}" data-tab="${k}">${t}</button>`).join('');
+ const query=(UI.search??'').toLowerCase().trim();
+ const ids=creativeIds(tab).filter(id=>{const it=ITEMS[id];return (!query||`${it.name} ${it.mcName??''} ${id}`.toLowerCase().includes(query))&&(tab!==0||UI.category==='전체'||blockGroup(it.mcName)===UI.category);});
+ const pages=Math.max(1,Math.ceil(ids.length/48));UI.page=Math.max(0,Math.min(pages-1,UI.page??0));
+ const items=ids.slice(UI.page*48,UI.page*48+48).map(id=>`<div class="catalog-cell" title="${esc(ITEMS[id].name)}"><div class="slot" data-s="cr:${id}" aria-label="${esc(ITEMS[id].name)}"><img loading="lazy" src="${iconUrl[id]}" alt=""></div><small>${esc(ITEMS[id].name)}</small></div>`).join('');
+ return `<div class="catalog-heading"><b>블록 도감 · 자바 ${BLOCK_VERSION}</b><small>등록 블록 ${VANILLA_BLOCKS.length}종 · ${G.mode==='creative'?'Shift+클릭으로 가방에 받기':'야생에서는 구경하기 · 재료를 모아 제작해 줘'}</small></div><div class="tabs">${tabs}${G.mode==='creative'?'<div class="slot trash" data-s="trash" title="버리기">🗑</div>':''}</div><div class="catalog-controls"><input id="catalogSearch" aria-label="블록·아이템 검색" placeholder="한글 이름 / 영어 ID 검색" value="${esc(UI.search??'')}">${tab===0?`<select id="catalogCategory" aria-label="블록 분류">${['전체','자연','나무','색깔','건축','유리·얼음','식물','차원','기능·장식'].map(c=>`<option ${UI.category===c?'selected':''}>${c}</option>`).join('')}</select>`:''}</div><div class="catalog-pager"><button data-page="${UI.page-1}" ${UI.page===0?'disabled':''}>← 이전</button><span>검색 ${ids.length}종 · ${UI.page+1}/${pages}</span><button data-page="${UI.page+1}" ${UI.page>=pages-1?'disabled':''}>다음 →</button></div><div class="crgrid catalog-grid">${items||'<p>이름을 찾지 못했어.</p>'}</div><small class="catalog-note">모든 블록은 2D 타일로 설치해. 회로·자동화·3D 전용 상태는 단순화되어 있어.</small>`;
+}
+function enchantHtml(){
+ const candidates=[...G.player.inv.map((s,i)=>({s,ref:`i:${i}`})),...(G.player.armor??[]).map((s,i)=>({s,ref:`a:${i}`}))].filter(({s})=>s&&(ITEMS[s.id].tool||ITEMS[s.id].armor||s.id===I.BOW));
+ if(!candidates.some(c=>c.ref===UI.enchantTarget))UI.enchantTarget=candidates[0]?.ref;
+ const selected=candidates.find(c=>c.ref===UI.enchantTarget)?.s,creative=G.mode==='creative',power=creative?{shelves:0,maxLevel:5}:bookshelfPower(G,UI.ref%W,Math.floor(UI.ref/W));
+ const targets=candidates.map(({s,ref})=>`<button class="enchant-target ${ref===UI.enchantTarget?'selected':''}" data-enchant-target="${ref}"><img src="${iconUrl[s.id]}" alt=""><span>${ITEMS[s.id].name}<small>${enchantLines(s).join(' · ')||'인챈트 없음'}</small></span></button>`).join('');
+ const choices=Object.entries(ENCHANTMENTS).filter(([,e])=>selected&&e.fits(ITEMS[selected.id])).map(([key,e])=>{const lv=enchantLevel(selected,key),next=lv+1,blocked=next>e.max||e.conflicts?.some(k=>enchantLevel(selected,k));return `<div class="enchant-choice"><span><b>${e.name} ${lv?`· 현재 ${lv}`:''}</b><small>${e.description}</small></span><button data-enchant="${key}" data-level="${next}" ${blocked?'disabled':''}>${next>e.max?'최대 레벨':blocked?'함께 사용 불가':`${next}레벨 부여`}</button></div>`;}).join('');
+ return `<section class="enchant-panel"><h2>✦ 마법 부여대</h2><p>경험치 <b>${experienceLevel(G.player)}레벨</b> · 청금석 ${countItem(G.player.inv,[I.LAPIS])}개 · ${creative?'크리에이티브: 무료':`책장 ${power.shelves}개 · 최대 ${power.maxLevel}레벨`}</p><small>야생 비용: 부여할 레벨 × 경험치 3레벨 + 청금석 1개. 책장 3개마다 최대 레벨 +1.</small><div class="enchant-targets">${targets||'가방에 검·도구·활·방어구를 넣어 줘.'}</div><div class="enchant-current">${selected?`선택: ${ITEMS[selected.id].name} · ${enchantLines(selected).join(' · ')||'인챈트 없음'}`:''}</div><p class="enchant-message" role="status">${esc(UI.message??'')}</p><div class="enchant-options">${choices}</div></section>`;
 }
 function furnaceHtml() {
   const f = furnace();
@@ -388,13 +413,15 @@ export function renderPanel() {
   const panel = $('panel');
   let top = '';
   let side = '';
-  if (UI.open === 'inv' && G.mode === 'creative') top = creativeHtml();
+  if(UI.open==='enchant')top=enchantHtml();
+  else if(UI.open==='catalog')top=creativeHtml();
+  else if (UI.open === 'inv' && G.mode === 'creative') top = creativeHtml();
   else if (UI.open === 'inv' || UI.open === 'table') {
     top = craftHtml();
     side = bookHtml();
   } else if (UI.open === 'furnace') top = furnaceHtml();
   else if (UI.open === 'chest') top = chestHtml();
-  panel.innerHTML = `<div class="mc-wrap"><div class="mc-panel"><button class="close" data-close aria-label="닫기">✕</button>${top}${['inv', 'table'].includes(UI.open) ? armorHtml() : ''}${invHtml()}</div>${side ? `<div class="mc-panel side">${side}</div>` : ''}</div>`;
+  panel.innerHTML = `<div class="mc-wrap"><div class="mc-panel ${['enchant','catalog'].includes(UI.open)||(UI.open==='inv'&&G.mode==='creative')?'expanded-panel':''}"><button class="close" data-close aria-label="닫기">✕</button>${top}${['inv', 'table'].includes(UI.open) ? armorHtml() : ''}${invHtml()}</div>${side ? `<div class="mc-panel side">${side}</div>` : ''}</div>`;
   UI.lastRender = performance.now();
   renderCursor();
 }
@@ -434,7 +461,7 @@ function tipFor(ref) {
   else if (it.armor) extra = `<br>방어력 +${it.armor.points} · 내구도 ${s.dur ?? durabilityOf(s.id)}/${durabilityOf(s.id)}`;
   else if (it.food) extra = `<br>배고픔 +${it.food}`;
   else if (FUEL[s.id]) extra = `<br>연료 (${Math.round(FUEL[s.id] / SMELT_TIME)}개 굽기)`;
-  return `<b>${it.name}</b>${extra}`;
+  return `<b>${it.name}</b>${extra}${enchantLines(s).map(line=>`<br><span class="enchant-label">✦ ${line}</span>`).join('')}`;
 }
 function showTip(html, x = 0, y = 0) {
   const tip = $('tip');
@@ -454,8 +481,8 @@ let hudKey = '';
 export function renderHUD() {
   const p = G.player;
   const inv = p.inv;
-  const parts = [armorPoints(p), p.sel, G.mode, Math.ceil(p.hp), Math.ceil(p.food), Math.ceil(p.air)];
-  for (let k = 0; k < 9; k++) parts.push(inv[k] ? `${inv[k].id}x${inv[k].count}d${inv[k].dur ?? ''}` : '-');
+  const parts = [p.xp, armorPoints(p), p.sel, G.mode, Math.ceil(p.hp), Math.ceil(p.food), Math.ceil(p.air)];
+  for (let k = 0; k < 9; k++) parts.push(inv[k] ? `${inv[k].id}x${inv[k].count}d${inv[k].dur ?? ''}e${JSON.stringify(inv[k].enchants??{})}` : '-');
   const key = parts.join('|');
   if (key === hudKey) return;
   hudKey = key;
@@ -469,12 +496,12 @@ export function renderHUD() {
       const max = durabilityOf(s.id);
       if (max && s.dur !== undefined && s.dur < max) inner += `<i style="width:${Math.round((s.dur / max) * 100)}%;background:hsl(${Math.round((s.dur / max) * 120)},90%,45%)"></i>`;
     }
-    hot += `<div class="slot ${k === p.sel ? 'sel' : ''}" data-hot="${k}">${inner}</div>`;
+    hot += `<div class="slot ${s?.enchants ? 'enchanted' : ''} ${k === p.sel ? 'sel' : ''}" data-hot="${k}">${inner}</div>`;
   }
   $('hotbar').innerHTML = hot;
   const bars = $('bars');
   if (G.mode === 'creative') {
-    bars.innerHTML = '<span class="creative-tag">크리에이티브 · F 날기</span>';
+    bars.innerHTML = `<span class="creative-tag">크리에이티브 · F 날기 · 경험치 ${experienceLevel(p)}레벨</span>`;
     return;
   }
   const row = (v, full, half, empty) => {
@@ -487,7 +514,7 @@ export function renderHUD() {
   };
   let air = '';
   if (p.air < 10) for (let k = 0; k < Math.ceil(p.air); k++) air += `<img src="${hudIcons.bubble}" alt="">`;
-  bars.innerHTML = `<div class="row air">${air}</div>${armorPoints(p) ? `<div class="armor-hud">🛡 방어 ${armorPoints(p)}/20</div>` : ''}<div class="hb"><div class="row hearts ${p.hp <= 6 ? 'low' : ''}">${row(Math.ceil(p.hp), hudIcons.heart, hudIcons.heartHalf, hudIcons.heartEmpty)}</div><div class="row food">${row(Math.ceil(p.food), hudIcons.food, hudIcons.foodHalf, hudIcons.foodEmpty)}</div></div>`;
+  bars.innerHTML = `<div class="xp-hud">경험치 ${experienceLevel(p)}레벨</div><div class="row air">${air}</div>${armorPoints(p) ? `<div class="armor-hud">🛡 방어 ${armorPoints(p)}/20</div>` : ''}<div class="hb"><div class="row hearts ${p.hp <= 6 ? 'low' : ''}">${row(Math.ceil(p.hp), hudIcons.heart, hudIcons.heartHalf, hudIcons.heartEmpty)}</div><div class="row food">${row(Math.ceil(p.food), hudIcons.food, hudIcons.foodHalf, hudIcons.foodEmpty)}</div></div>`;
 }
 export function hudDirty() {
   hudKey = '';
