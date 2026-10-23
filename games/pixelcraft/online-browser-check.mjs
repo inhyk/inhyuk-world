@@ -17,7 +17,7 @@ await guest.waitForFunction(()=>__pixelcraft.G?.remoteReplica&&__pixelcraft.onli
 await host.waitForFunction(()=>__pixelcraft.online.ready);
 await host.locator('#onlineClose').click();
 console.log('connected',await guest.evaluate(()=>({p:__pixelcraft.G.player.x,inv:__pixelcraft.G.player.inv.length})));
-await guest.keyboard.down('d');await guest.waitForTimeout(700);await guest.keyboard.up('d');await guest.waitForTimeout(400);
+await guest.keyboard.down('d');await guest.waitForTimeout(300);for(let i=0;i<20;i++)await guest.keyboard.down('d');await guest.waitForTimeout(300);await guest.keyboard.up('d');await guest.waitForTimeout(500);const stopped=await host.evaluate(()=>__pixelcraft.G.companion.x);await guest.waitForTimeout(300);assert.ok(Math.abs((await host.evaluate(()=>__pixelcraft.G.companion.x))-stopped)<.15);
 console.log('movement',await host.evaluate(()=>({host:__pixelcraft.G.player.x,guest:__pixelcraft.G.companion.x,same:__pixelcraft.G.player.inv===__pixelcraft.G.companion.inv})));
 assert.equal(await host.evaluate(()=>__pixelcraft.G.player.inv===__pixelcraft.G.companion.inv),false);
 
