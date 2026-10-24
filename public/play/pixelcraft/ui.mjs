@@ -378,6 +378,11 @@ function creativeIds(tab) {
 }
 const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 function creativeHtml() {
+ const tabs=CREATIVE_TABS.map((name,k)=>`<button class="tab ${k===UI.tab?'on':''}" data-tab="${k}">${name}</button>`).join('');
+ const items=creativeIds(UI.tab).map(id=>slotHtml(`cr:${id}`,newStack(id))).join('');
+ return `<div class="tabs">${tabs}<div class="slot trash" data-s="trash" title="버리기">🗑</div></div><div class="crgrid">${items}</div>`;
+}
+function catalogHtml() {
  const catalog=UI.open==='catalog',tab=catalog?0:UI.tab;
  const tabs=catalog?'':CREATIVE_TABS.map((t,k)=>`<button class="tab ${k===tab?'on':''}" data-tab="${k}">${t}</button>`).join('');
  const query=(UI.search??'').toLowerCase().trim();
@@ -421,14 +426,14 @@ export function renderPanel() {
   let top = '';
   let side = '';
   if(UI.open==='enchant')top=enchantHtml();
-  else if(UI.open==='catalog')top=creativeHtml();
+  else if(UI.open==='catalog')top=catalogHtml();
   else if (UI.open === 'inv' && G.mode === 'creative') top = creativeHtml();
   else if (UI.open === 'inv' || UI.open === 'table') {
     top = craftHtml();
     side = bookHtml();
   } else if (UI.open === 'furnace') top = furnaceHtml();
   else if (UI.open === 'chest') top = chestHtml();
-  panel.innerHTML = `<div class="mc-wrap"><div class="mc-panel ${['enchant','catalog'].includes(UI.open)||(UI.open==='inv'&&G.mode==='creative')?'expanded-panel':''}"><button class="close" data-close aria-label="닫기">✕</button>${top}${['inv', 'table'].includes(UI.open) ? armorHtml() : ''}${invHtml()}</div>${side ? `<div class="mc-panel side">${side}</div>` : ''}</div>`;
+  panel.innerHTML = `<div class="mc-wrap"><div class="mc-panel ${['enchant','catalog'].includes(UI.open)?'expanded-panel':''}"><button class="close" data-close aria-label="닫기">✕</button>${top}${['inv', 'table'].includes(UI.open) ? armorHtml() : ''}${invHtml()}</div>${side ? `<div class="mc-panel side">${side}</div>` : ''}</div>`;
   UI.lastRender = performance.now();
   renderCursor();
 }
