@@ -132,11 +132,36 @@ for(const [rawId,key,name,hard,solid,opaque,light,material] of VANILLA_BLOCKS){
 BLOCKS[B.LAPIS_ORE].drop=I.LAPIS;BLOCKS[B.DEEPSLATE_LAPIS_ORE].drop=I.LAPIS;
 BLOCKS[B.BOOKSHELF].bookshelf=true;BLOCKS[B.CHISELED_BOOKSHELF].bookshelf=true;
 
+// Shared by placement, collision, interaction, rendering and online validation.
+for(const b of BLOCKS.filter(Boolean)) {
+ const n=b.mcName??'';
+ b.use=b.id===B.DOOR_T||/_door$/.test(n)?'door':/_trapdoor$|_fence_gate$/.test(n)?'gate'
+  :b.id===B.BED_HEAD||/_bed$/.test(n)?'bed'
+  :/^(chest|trapped_chest|ender_chest|barrel|hopper|dispenser|dropper|chiseled_bookshelf|shulker_box)$|_shulker_box$/.test(n)?'chest'
+  :/^(furnace|blast_furnace|smoker)$/.test(n)||b.id===B.FURNACE_LIT?'furnace'
+  :/^(crafting_table|crafter)$/.test(n)?'table'
+  :n==='enchanting_table'?'enchant'
+  :n==='lever'||/_button$/.test(n)?'switch'
+  :n==='redstone_lamp'?'lamp'
+  :/^(campfire|soul_campfire)$|(^|_)candle$/.test(n)?'flame'
+  :n==='cake'?'cake':n==='bell'||n==='note_block'?'music':null;
+ if(/^(anvil|chipped_anvil|damaged_anvil|grindstone|smithing_table)$/.test(n))b.use=n==='grindstone'?'grindstone':n==='smithing_table'?'smithing':'anvil';
+ if(['door','gate'].includes(b.use)) { b.solid=true;b.opaque=false; }
+ if(b.use==='bed') {b.solid=false;b.opaque=false;}
+}
+export const blockLight=(t,m=0)=>{
+ const b=BLOCKS[t];
+ if(b.use==='lamp')return m&1?15:0;
+ if(b.use==='flame')return m&1?0:Math.max(b.light,12);
+ if(b.use==='furnace'&&t!==B.FURNACE&&t!==B.FURNACE_LIT)return m&1?13:0;
+ return b.light;
+};
+
 // 문은 닫혔을 때만 몸을 막는다 (meta 의 1 비트가 열림)
 export function isSolid(t, m) {
   // 켜진 포탈의 옆 틀과 엔드 장식 기둥은 2D에서 걸어서 통과한다.
   if ((m & 64) && [B.OBSIDIAN,B.END_FRAME,B.PURPUR,B.GLOWSTONE].includes(t)) return false;
-  if (t === B.DOOR_B || t === B.DOOR_T) return !(m & 1);
+  if (['door','gate'].includes(BLOCKS[t].use)) return !(m & 1);
   return BLOCKS[t].solid;
 }
 
@@ -247,6 +272,19 @@ export const FUEL = {
   [I.STICK]: 2, [I.LAVA_BUCKET]: 400, [B.SAPLING_OAK]: 2, [B.SAPLING_BIRCH]: 2, [B.SAPLING_SPRUCE]: 2,
   [B.CRAFTING]: 6, [B.CHEST]: 6, [B.LADDER]: 3, [I.WOOD_PICK]: 4, [I.WOOD_AXE]: 4, [I.WOOD_SHOVEL]: 4, [I.WOOD_SWORD]: 4,
 };
+for(const b of BLOCKS.filter(Boolean)) {
+ const n=b.mcName??'';
+ if(/_log$|_wood$|_planks$/.test(n)&&!/^crimson_|^warped_/.test(n))FUEL[b.id]??=6;
+ if(/iron_ore$/.test(n))SMELT[b.id]=I.IRON_INGOT;
+ if(/gold_ore$/.test(n))SMELT[b.id]=I.GOLD_INGOT;
+ if(/^(red_sand|sand)$/.test(n))SMELT[b.id]=B.GLASS;
+}
+export function smeltResult(furnaceId,inputId) {
+ const result=SMELT[inputId],kind=BLOCKS[furnaceId]?.mcName;
+ if(kind==='smoker'&&!ITEMS[result]?.food)return undefined;
+ if(kind==='blast_furnace'&&!/iron_ore$|gold_ore$/.test(BLOCKS[inputId]?.mcName??''))return undefined;
+ return result;
+}
 
 // ---- 조합법 ----
 // shape 의 공백은 빈 칸. key 값은 아이템 ID 하나 또는 받아 주는 ID 목록

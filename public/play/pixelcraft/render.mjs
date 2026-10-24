@@ -130,7 +130,7 @@ export function render(g, G, cw, ch, T) {
       const px = sx(x), py = sy(y), pw = sx(x + 1) - px, ph = sy(y + 1) - py;
       if (!d.opaque && bg[i]) g.drawImage(darkTex[bg[i]], px, py, pw, ph);
       if (t === B.AIR || d.fluid) continue;
-      if ((t === B.DOOR_B || t === B.DOOR_T) && meta[i] & 1) {
+      if (['door','gate'].includes(d.use) && meta[i] & 1) {
         // 열린 문은 경첩 쪽에 얇게
         const hinge = meta[i] & 2 ? pw - Math.round(pw * 0.2) : 0;
         g.drawImage(tex[t], 0, 0, 3, 16, px + hinge, py, Math.round(pw * 0.2), ph);
@@ -142,6 +142,14 @@ export function render(g, G, cw, ch, T) {
         continue;
       }
       g.drawImage(tex[t], px, py, pw, ph);
+      if(d.use==='cake'&&meta[i]) {
+        g.fillStyle='rgba(0,0,0,.65)';g.fillRect(px,py,pw*meta[i]/7,ph);
+      }
+      if(['lamp','switch','flame','furnace'].includes(d.use)&&![B.FURNACE,B.FURNACE_LIT].includes(t)) {
+        const on=d.use==='flame'?!(meta[i]&1):!!(meta[i]&1);
+        if(on){g.fillStyle='rgba(255,196,67,.35)';g.fillRect(px+pw*.2,py+ph*.25,pw*.6,ph*.5);}
+        else if(d.use==='flame'){g.fillStyle='rgba(25,35,44,.8)';g.fillRect(px,py,pw,ph*.8);}
+      }
     }
   }
 

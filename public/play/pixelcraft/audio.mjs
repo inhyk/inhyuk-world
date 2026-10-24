@@ -94,6 +94,7 @@ export const sfx = {
   splash() { noise(0.4, 900, 0.6, 0.3, 'lowpass'); },
   bow() { tone(300, 0.12, 0.1, 'triangle', 2.2); noise(0.1, 2000, 2, 0.1); },
   click() { tone(800, 0.04, 0.06, 'square'); },
+  note(pitch=0,bell=false) { tone((bell?660:262)*2**(pitch/12),bell?1:.35,.15,bell?'sine':'triangle'); },
   craft() { tone(660, 0.07, 0.08, 'triangle'); tone(990, 0.1, 0.08, 'triangle', 1, 0.06); },
   door() { noise(0.15, 380, 2, 0.35); tone(160, 0.1, 0.08, 'triangle'); },
   fizz() { noise(0.5, 2600, 0.8, 0.25, 'highpass'); },

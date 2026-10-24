@@ -12,7 +12,7 @@ import { account, saveKey, initAccount } from './account.mjs';
 import { newAdventure, packAdventure, unpackAdventure, createAdventureController } from './adventure.mjs';
 import { restoreTerrain, remapIndex } from './adventure-world.mjs';
 // 픽셀크래프트: 게임 진행, 입력, 생물, 저장
-import { B, I, BLOCKS, ITEMS, MOBS, HOSTILE, SMELT, SMELT_TIME, FUEL, isSolid, maxStack, durabilityOf } from './data.mjs';
+import { B, I, BLOCKS, ITEMS, MOBS, HOSTILE, SMELT_TIME, smeltResult, FUEL, isSolid, maxStack, durabilityOf } from './data.mjs';
 import {
   W, H, BIOME_NAMES, generateWorld, computeLight, stepFluid, wake, moveBody, collides, touching, solidAt,
   addItem, countItem, breakInfo, rleEncode, findSpawn, seedFromText, makeRng, growTree, idx,
@@ -203,8 +203,8 @@ function checkSupport(x, y) {
   const below = tileAt(x, y + 1);
   if (PLANTS.has(t) && !(SOIL.has(below) || (t === B.DEAD_BUSH && below === B.SAND))) breakBlock(x, y, { quiet: true });
   else if (t === B.CACTUS && below !== B.SAND && below !== B.CACTUS) breakBlock(x, y, { quiet: true });
-  else if (t === B.DOOR_B && !solidAt(G.w, x, y + 1)) breakBlock(x, y, { quiet: true });
-  else if ((t === B.BED_FOOT || t === B.BED_HEAD) && !solidAt(G.w, x, y + 1)) breakBlock(x, y, { quiet: true });
+  else if (BLOCKS[t].use === 'door' && t !== B.DOOR_T && !(G.w.meta[y*W+x]&4) && !solidAt(G.w, x, y + 1)) breakBlock(x, y, { quiet: true });
+  else if (BLOCKS[t].use === 'bed' && !solidAt(G.w, x, y + 1)) breakBlock(x, y, { quiet: true });
   else if (t === B.TORCH) checkTorch(x, y);
 }
 function torchSupported(x, y) {
@@ -242,11 +242,11 @@ function breakBlock(x, y, { harvest = true, quiet = false, chance = 1 } = {}) {
     if (t === B.BED_HEAD) d = [I.BED, 1];
     if (d) spawnDrop(x + 0.5, y + 0.5, d[0], d[1]);
   }
-  if (t === B.CHEST) {
+  if (BLOCKS[t].use === 'chest') {
     for (const s of G.chests.get(i) ?? []) if (s) spawnDrop(x + 0.5, y + 0.5, s.id, s.count, s.dur, s.enchants);
     G.chests.delete(i);
   }
-  if (t === B.FURNACE || t === B.FURNACE_LIT) {
+  if (BLOCKS[t].use === 'furnace') {
     for (const s of G.furnaces.get(i)?.slots ?? []) if (s) spawnDrop(x + 0.5, y + 0.5, s.id, s.count, s.dur, s.enchants);
     G.furnaces.delete(i);
     if (UI.open === 'furnace' && UI.ref === i) closePanel();
@@ -255,13 +255,17 @@ function breakBlock(x, y, { harvest = true, quiet = false, chance = 1 } = {}) {
   const meta = G.w.meta[i];
   setTile(x, y, B.AIR);
   if (TRUNKS.has(t) && !quiet) fellTree(x, y - 1, t, harvest);
+  if (t !== B.DOOR_B && t !== B.DOOR_T && BLOCKS[t].use === 'door') {
+    const oy=y+(meta&4?1:-1);
+    if(tileAt(x,oy)===t && !!(G.w.meta[oy*W+x]&4)!==!!(meta&4))setTile(x,oy,B.AIR);
+  }
   if (t === B.DOOR_B && tileAt(x, y - 1) === B.DOOR_T) setTile(x, y - 1, B.AIR);
   if (t === B.DOOR_T && tileAt(x, y + 1) === B.DOOR_B) setTile(x, y + 1, B.AIR);
-  if (t === B.BED_FOOT || t === B.BED_HEAD) {
+  if (BLOCKS[t].use === 'bed') {
     const dir = meta & 2 ? 1 : -1;
-    const ox = t === B.BED_FOOT ? x + dir : x - dir;
+    const ox = t === B.BED_HEAD || (meta&4) ? x-dir : x+dir;
     const other = tileAt(ox, y);
-    if (other === B.BED_FOOT || other === B.BED_HEAD) setTile(ox, y, B.AIR);
+    if (BLOCKS[other].use === 'bed' && (other===t && !!(G.w.meta[y*W+ox]&4)!==!!(meta&4) || [B.BED_FOOT,B.BED_HEAD].includes(t)&&[B.BED_FOOT,B.BED_HEAD].includes(other))) setTile(ox, y, B.AIR);
   }
   if (!quiet) sfx.brk(BLOCKS[t].sound);
 }
@@ -932,22 +936,22 @@ function placeBlock(x, y, itemId) {
   if (PLANTS.has(blockId) && !(SOIL.has(below) || (blockId === B.DEAD_BUSH && below === B.SAND))) return false;
   if (blockId === B.CACTUS && below !== B.SAND && below !== B.CACTUS) return false;
   if (blockId === B.TORCH && !torchSupported(x, y)) return false;
-  if (blockId === B.DOOR_B) {
+  if (BLOCKS[blockId].use === 'door') {
     if (!BLOCKS[tileAt(x, y - 1)].replace || !solidAt(G.w, x, y + 1) || overlapsBody(x, y) || overlapsBody(x, y - 1)) return false;
-    setTile(x, y, B.DOOR_B);
-    setTile(x, y - 1, B.DOOR_T);
-  } else if (blockId === B.BED_FOOT) {
+    setTile(x, y, blockId);
+    setTile(x, y - 1, blockId===B.DOOR_B?B.DOOR_T:blockId,blockId===B.DOOR_B?0:4);
+  } else if (BLOCKS[blockId].use === 'bed') {
     const dir = G.player.face >= 0 ? 1 : -1;
     if (!BLOCKS[tileAt(x + dir, y)].replace || !solidAt(G.w, x, y + 1) || !solidAt(G.w, x + dir, y + 1)) return false;
     const m = dir > 0 ? 2 : 0;
-    setTile(x, y, B.BED_FOOT, m);
-    setTile(x + dir, y, B.BED_HEAD, m);
+    setTile(x, y, blockId, m);
+    setTile(x + dir, y, blockId===B.BED_FOOT?B.BED_HEAD:blockId, blockId===B.BED_FOOT?m:m|4);
   } else {
     if (isSolid(blockId, 0) && overlapsBody(x, y)) return false;
     setTile(x, y, blockId);
     const i = y * W + x;
-    if (blockId === B.CHEST) G.chests.set(i, Array(27).fill(null));
-    if (blockId === B.FURNACE) G.furnaces.set(i, { slots: [null, null, null], burn: 0, burnMax: 0, cook: 0 });
+    if (BLOCKS[blockId].use === 'chest') G.chests.set(i, Array(27).fill(null));
+    if (BLOCKS[blockId].use === 'furnace') G.furnaces.set(i, { slots: [null, null, null], burn: 0, burnMax: 0, cook: 0 });
   }
   G.stats.placed=(G.stats.placed??0)+1;
   consumeHeld();
@@ -957,14 +961,17 @@ function placeBlock(x, y, itemId) {
   return true;
 }
 function toggleDoor(x, y) {
-  const by = tileAt(x, y) === B.DOOR_T ? y + 1 : y;
+  const t=tileAt(x,y),door=BLOCKS[t].use==='door';
+  const by = t===B.DOOR_T || (door && G.w.meta[y*W+x]&4) ? y+1 : y;
   const i = by * W + x;
   const open = !(G.w.meta[i] & 1);
-  if (!open && (overlapsBody(x, by) || overlapsBody(x, by - 1))) return;
+  if (!open && (overlapsBody(x, by) || door && overlapsBody(x, by - 1))) return;
   const side = G.player.x + G.player.w / 2 > x + 0.5 ? 2 : 0;
   const m = open ? 1 | side : 0;
   G.w.meta[i] = m;
   if (tileAt(x, by - 1) === B.DOOR_T) G.w.meta[i - W] = m;
+  else if(door && tileAt(x,by-1)===t && G.w.meta[i-W]&4) G.w.meta[i-W]=m|4;
+  markLight(x);
   sfx.door();
 }
 function sleepInBed(x, y) {
@@ -1002,17 +1009,61 @@ function doUse() {
     const i = tg.y * W + tg.x;
     const t = G.w.tiles[i];
     if(t===B.ENCHANTING_TABLE)return openPanel('enchant',i);
-    if (t === B.CRAFTING) return openPanel('table');
-    if (t === B.FURNACE || t === B.FURNACE_LIT) {
+    if (BLOCKS[t].use === 'table') return openPanel('table',i);
+    if (BLOCKS[t].use === 'furnace') {
       if (!G.furnaces.has(i)) G.furnaces.set(i, { slots: [null, null, null], burn: 0, burnMax: 0, cook: 0 });
       return openPanel('furnace', i);
     }
-    if (t === B.CHEST) {
+    if (BLOCKS[t].use === 'chest') {
       if (!G.chests.has(i)) G.chests.set(i, Array(27).fill(null));
       return openPanel('chest', i);
     }
-    if (t === B.DOOR_B || t === B.DOOR_T) return toggleDoor(tg.x, tg.y);
-    if (t === B.BED_FOOT || t === B.BED_HEAD) return sleepInBed(tg.x, tg.y);
+    if (['door','gate'].includes(BLOCKS[t].use)) return toggleDoor(tg.x, tg.y);
+    if (BLOCKS[t].use === 'bed') return sleepInBed(tg.x, tg.y);
+    if(BLOCKS[t].use==='switch') {
+      const on=!(G.w.meta[i]&1);G.w.meta[i]=on?1:0;sfx.click();
+      // In this 2D world a switch powers the four directly touching blocks.
+      for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+        const x=tg.x+dx,y=tg.y+dy;if(x<0||x>=W||y<0||y>=H)continue;
+        const j=y*W+x,kind=BLOCKS[G.w.tiles[j]].use;
+        if(['door','gate'].includes(kind)&&!!(G.w.meta[j]&1)!==on)toggleDoor(x,y);
+        if(kind==='lamp'){G.w.meta[j]=on?1:0;markLight(x);}
+      }
+      toast(`${BLOCKS[t].name}: ${on?'켜짐':'꺼짐'} · 바로 옆 문·램프를 작동해`);return;
+    }
+    if(BLOCKS[t].use==='lamp'||BLOCKS[t].use==='flame') {
+      if(BLOCKS[t].use==='flame'&&(G.w.meta[i]&1)&&id!==I.FLINT_STEEL){toast('다시 불을 붙이려면 부싯돌과 부시를 써 줘');return;}
+      G.w.meta[i]^=1;markLight(tg.x);sfx.click();return;
+    }
+    if(BLOCKS[t].use==='cake') {
+      if(p.food>=20){toast('지금은 배가 불러');return;}
+      p.food=Math.min(20,p.food+2);p.sat=Math.min(p.food,p.sat+.4);sfx.eat();
+      if(++G.w.meta[i]>=7)setTile(tg.x,tg.y,B.AIR);hudDirty();return;
+    }
+    if(BLOCKS[t].use==='music') {
+      G.w.meta[i]=(G.w.meta[i]+1)%25;sfx.note(G.w.meta[i],BLOCKS[t].mcName==='bell');
+      burst(tg.x+.5,tg.y,'#f0cc6a',8);toast(`${BLOCKS[t].name} ♪ ${G.w.meta[i]+1}`);return;
+    }
+    if(['anvil','grindstone','smithing'].includes(BLOCKS[t].use)) {
+      const kind=BLOCKS[t].use,max=durabilityOf(id);
+      if(!s||!max){toast('수리·강화할 도구나 방어구를 손에 들어 줘');return;}
+      if(kind==='grindstone') {
+        if(!s.enchants){toast('이 장비에는 지울 인챈트가 없어');return;}
+        delete s.enchants;gainXP(3);hudDirty();sfx.craft();toast('인챈트를 지우고 경험치를 돌려받았어');return;
+      }
+      const upgrades=new Map([[I.IRON_PICK,I.DIAMOND_PICK],[I.IRON_AXE,I.DIAMOND_AXE],[I.IRON_SHOVEL,I.DIAMOND_SHOVEL],[I.IRON_SWORD,I.DIAMOND_SWORD],[I.IRON_HELMET,I.DIAMOND_HELMET],[I.IRON_CHEST,I.DIAMOND_CHEST],[I.IRON_LEGS,I.DIAMOND_LEGS],[I.IRON_BOOTS,I.DIAMOND_BOOTS]]);
+      if(kind==='smithing'&&!upgrades.has(id)){toast('철 도구·철 방어구를 들면 다이아몬드 1개로 강화할 수 있어');return;}
+      if(kind==='anvil'&&(s.dur??max)>=max){toast('이 장비는 이미 내구도가 가득해');return;}
+      const cost=kind==='smithing'?I.DIAMOND:I.IRON_INGOT;
+      if(G.mode!=='creative'){
+        const material=p.inv.find(stack=>stack?.id===cost);
+        if(!material){toast(`${ITEMS[cost].name} 1개가 필요해`);return;}
+        if(--material.count<=0)p.inv[p.inv.indexOf(material)]=null;
+      }
+      if(kind==='smithing')p.inv[p.sel]={...newStack(upgrades.get(id)),...(s.enchants?{enchants:{...s.enchants}}:{})};
+      else s.dur=max;
+      hudDirty();sfx.craft();toast(kind==='smithing'?'다이아몬드 장비로 강화했어! 인챈트도 유지돼': '내구도를 모두 수리했어! 인챈트도 유지돼');return;
+    }
     if (t === B.TNT && id === I.FLINT_STEEL) {
       G.w.tiles[i] = B.AIR;
       markLight(tg.x);
@@ -1226,7 +1277,7 @@ function updateWorld(dt) {
   for (const [i, f] of G.furnaces) {
     const [inp, fuel] = f.slots;
     const out = f.slots[2];
-    const result = inp ? SMELT[inp.id] : undefined;
+    const result = inp ? smeltResult(w.tiles[i],inp.id) : undefined;
     const can = result !== undefined && (!out || (out.id === result && out.count < maxStack(result)));
     if (f.burn > 0) f.burn -= dt;
     if (f.burn <= 0 && can && fuel && FUEL[fuel.id]) {
@@ -1238,7 +1289,8 @@ function updateWorld(dt) {
       }
     }
     if (f.burn > 0 && can) {
-      f.cook += dt;
+      const fast=BLOCKS[w.tiles[i]].mcName==='blast_furnace'||BLOCKS[w.tiles[i]].mcName==='smoker';
+      f.cook += dt*(fast?2:1);
       if (f.cook >= SMELT_TIME) {
         f.cook = 0;
         inp.count--;
@@ -1250,6 +1302,7 @@ function updateWorld(dt) {
     if (f.burn < 0) f.burn = 0;
     const lit = f.burn > 0;
     const t = w.tiles[i];
+    if(t!==B.FURNACE&&t!==B.FURNACE_LIT&&BLOCKS[t].use==='furnace'&&w.meta[i]!==Number(lit)){w.meta[i]=Number(lit);markLight(i%W);}
     if (lit && t === B.FURNACE) {
       w.tiles[i] = B.FURNACE_LIT;
       markLight(i % W);
