@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { B,I } from '../../public/play/pixelcraft/data.mjs';
-import { W,H,SEA,BIOME,generateWorld,idx } from '../../public/play/pixelcraft/core.mjs';
+import { W,H,SEA,BIOME,generateWorld,idx,stepFluid,wake,findSpawn } from '../../public/play/pixelcraft/core.mjs';
 import { makeMoon,makeSchool,landingPad,END_TREASURES,upgradeWaters } from '../../public/play/pixelcraft/expedition-world.mjs';
 import { makeEnd } from '../../public/play/pixelcraft/adventure-world.mjs';
 import { populateEnd } from '../../public/play/pixelcraft/end-exploration.mjs';
@@ -11,6 +11,34 @@ test('바다와 지역별 작은 웅덩이는 깊이와 크기가 다르며 시�
   const w=generateWorld(seed);assert.equal(w.biome[160],BIOME.OCEAN);assert.ok(w.surface[160]>SEA+12);assert.equal(w.tiles[idx(160,SEA)],B.WATER);
   assert.notEqual(w.tiles[idx(W/2,w.surface[W/2])],B.WATER);
   for(const x of[300,530,965])assert.equal(w.tiles[idx(x,w.surface[x]-1)],B.WATER);
+ }
+});
+test('시작 지점 왼쪽 물웅덩이는 얕고 바닥·둑이 막혀 있으며 물이 새지 않는다',()=>{
+ for(const seed of [1,1234,98765,123,9876,42,99,20261024]){
+  const w=generateWorld(seed),levels=[];
+  for(let y=0;y<H;y++)if(w.tiles[idx(620,y)]===B.WATER)levels.push(y);
+  assert.equal(levels.length,3);const top=levels[0];
+  for(let x=615;x<=625;x++){
+   assert.equal(w.tiles[idx(x,top)],B.WATER);assert.equal(w.meta[idx(x,top)],8);
+   assert.notEqual(w.tiles[idx(x,w.surface[x])],B.AIR);
+  }
+  for(const x of[614,626])assert.ok(w.surface[x]<top);
+  const sp=findSpawn(w);assert.equal(Math.floor(sp.x),640);
+  const active=new Set();for(let x=614;x<=626;x++)for(let y=top-1;y<=top+4;y++)wake(active,idx(x,y));
+  const before=w.tiles.slice();for(let k=0;k<40;k++)stepFluid(w,B.WATER,active);
+  for(let x=614;x<=626;x++)for(let y=top-1;y<=top+4;y++)assert.equal(w.tiles[idx(x,y)],before[idx(x,y)]);
+ }
+});
+test('이전 세계의 새 웅덩이는 수정 안 한 곳에만 추가하고 흙 건축·채굴·보관함을 보존한다',()=>{
+ const fresh=generateWorld(1234),old=generateWorld(1234,{nearbyPond:false});
+ upgradeWaters(old,{nearSpawnOnly:true});
+ assert.equal(old.tiles[idx(620,fresh.surface[620]-1)],B.WATER);
+ for(const change of ['dirt','mine','chest']){
+  const w=generateWorld(1234,{nearbyPond:false}),i=idx(620,w.surface[620]-1);
+  if(change==='mine')w.tiles[idx(620,w.surface[620]+1)]=B.AIR;
+  else w.tiles[i]=change==='dirt'?B.DIRT:B.CHEST;
+  const before=w.tiles.slice(),meta=w.meta.slice(),bg=w.bg.slice();upgradeWaters(w,{nearSpawnOnly:true});
+  assert.deepEqual(w.tiles,before);assert.deepEqual(w.meta,meta);assert.deepEqual(w.bg,bg);
  }
 });
 test('달의 크레이터와 운석은 저장 가능한 블록이며 착륙장은 서 있을 공간이 있다',()=>{

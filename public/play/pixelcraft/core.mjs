@@ -58,7 +58,7 @@ export function seedFromText(text) {
 // ---- 지형 ----
 export const idx = (x, y) => y * W + x;
 
-export function generateWorld(seed) {
+export function generateWorld(seed,{nearbyPond=true}={}) {
   const tiles = new Uint16Array(W * H);
   const bg = new Uint16Array(W * H);
   const meta = new Uint8Array(W * H);
@@ -86,10 +86,12 @@ export function generateWorld(seed) {
   }
   // 다른 바이옴 안에는 드문 작은 물웅덩이가 있다. 수면 높이는 장소마다 다르다.
   const ponds=[];
-  for(const center of [300,530,965]){
-    const water=surface[center]+1,half=4+Math.floor(noise1(seed+819,center)*4);
+  for(const center of [300,530,...(nearbyPond?[620]:[]),965]){
+    const half=center===620?5:4+Math.floor(noise1(seed+819,center)*4);
+    const water=center===620?Math.min(SEA-2,surface[center]+1,surface[center-half-1]+1,surface[center+half+1]+1):surface[center]+1;
     ponds.push({center,water,half});
     for(let x=center-half;x<=center+half;x++)surface[x]=water+Math.max(1,Math.round((1-Math.abs(x-center)/(half+1))*3));
+    if(center===620)for(const x of[center-half-1,center+half+1])surface[x]=Math.min(surface[x],water-1);
   }
   // 처음 서는 곳(가운데)은 물에 잠기지 않게 살짝 들어 올린다
   for (let x = W / 2 - 14; x < W / 2 + 14; x++) surface[x] = Math.min(surface[x], SEA - 4 + Math.round(Math.abs(x - W / 2) / 6));
@@ -120,6 +122,8 @@ export function generateWorld(seed) {
         const i = idx(x, y);
         if (tiles[i] === B.BEDROCK || y < surface[x]) continue;
         if (surface[x] >= SEA - 1 && y < surface[x] + 9) continue;
+        // The nearby pond has a sealed earthen basin, even above sea level.
+        if(nearbyPond&&x>=614&&x<=626&&y<surface[x]+4)continue;
         if (y >= H - 11) {
           tiles[i] = B.LAVA;
           meta[i] = 8;
