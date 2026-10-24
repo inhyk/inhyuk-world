@@ -3,7 +3,7 @@ import { BLOCK_VERSION,VANILLA_BLOCKS } from './block-catalog.mjs';
 import { blockGroup } from './catalog-art.mjs';
 import { ARMOR_SLOTS, armorPoints } from './armor.mjs';
 // 가방·제작대·화로·상자 화면과 아래쪽 손 줄(핫바), 체력·배고픔 표시
-import { ITEMS, RECIPES, SMELT, SMELT_TIME, FUEL, maxStack, durabilityOf, I,B } from './data.mjs';
+import { BLOCKS, ITEMS, RECIPES, SMELT, SMELT_TIME, FUEL, maxStack, durabilityOf, I,B } from './data.mjs';
 import { addItem, matchRecipe, canCraft, craftFromSlots, recipeNeeds, countItem,W } from './core.mjs';
 import { iconUrl } from './textures.mjs';
 import { sfx } from './audio.mjs';
@@ -403,7 +403,7 @@ function furnaceHtml() {
   const f = furnace();
   const burn = f.burnMax ? f.burn / f.burnMax : 0;
   const cook = f.cook / SMELT_TIME;
-  return `<div class="furnace"><div class="label">화로</div>
+  return `<div class="furnace"><div class="label">${BLOCKS[G.w.tiles[UI.ref]]?.name??'화로'}</div>
     <div class="fcol">${slotHtml('f:0', f.slots[0])}<div class="flame"><span style="height:${Math.round(burn * 100)}%"></span></div>${slotHtml('f:1', f.slots[1])}</div>
     <div class="farrow"><span style="width:${Math.round(Math.min(1, cook) * 100)}%"></span></div>${slotHtml('f:2', f.slots[2], 'big')}
     <p class="hint">위: 구울 것 · 아래: 연료(석탄, 나무)</p></div>`;
@@ -412,7 +412,7 @@ function chestHtml() {
   const c = chestSlots();
   let cells = '';
   for (let k = 0; k < 27; k++) cells += slotHtml(`c:${k}`, c[k]);
-  return `<div class="label">상자</div><div class="grid9">${cells}</div>`;
+  return `<div class="label">${BLOCKS[G.w.tiles[UI.ref]]?.name??'상자'}</div><div class="grid9">${cells}</div>`;
 }
 
 function armorHtml() {
@@ -569,9 +569,10 @@ export function replayPanelAction(action) {
     if(!['inv','catalog','enchant','table','chest','furnace'].includes(kind))return;
     if(!['inv','catalog'].includes(kind)&&!(kind==='enchant'&&G.mode==='creative')){
       if(!Number.isInteger(ref)||ref<0||ref>=G.w.tiles.length||Math.hypot(G.player.x-ref%W,G.player.y-Math.floor(ref/W))>6)return;
-      const block=G.w.tiles[ref],valid=kind==='enchant'?block===B.ENCHANTING_TABLE:kind==='table'?block===B.CRAFTING:kind==='chest'?block===B.CHEST:[B.FURNACE,B.FURNACE_LIT].includes(block);
+      const block=G.w.tiles[ref],valid=kind==='enchant'?block===B.ENCHANTING_TABLE:kind==='table'?BLOCKS[block].use==='table':kind==='chest'?BLOCKS[block].use==='chest':BLOCKS[block].use==='furnace';
       if(!valid)return;
       if(kind==='chest'&&!G.chests.has(ref))G.chests.set(ref,Array(27).fill(null));
+      if(kind==='furnace'&&!G.furnaces.has(ref))G.furnaces.set(ref,{slots:[null,null,null],burn:0,burnMax:0,cook:0});
     }
     if(UI.open)closePanel();
     openPanel(kind,Number.isInteger(ref)?ref:-1);return;

@@ -1,6 +1,6 @@
 // 화면과 상관없는 계산: 난수, 지형 만들기, 빛, 물·용암 흐름, 몸 충돌, 가방, 조합법, 저장 압축.
 // 브라우저 없이 node 로도 돌아가야 한다 (games/pixelcraft/core.test.mjs).
-import { B, BLOCKS, ITEMS, RECIPES, isSolid, maxStack } from './data.mjs';
+import { B, BLOCKS, ITEMS, RECIPES, blockLight, isSolid, maxStack } from './data.mjs';
 
 export const W = 1280;
 export const H = 160;
@@ -275,7 +275,7 @@ export function computeLight(w, x0, x1) {
       if (d.opaque) l = 0;
       else if (l > 0 && d.atten) l = Math.max(0, l - d.atten);
       sky[i] = d.opaque ? 0 : l;
-      blk[i] = d.light;
+      blk[i] = blockLight(tiles[i],w.meta[i]);
     }
   }
   spread(w, sky, x0, x1);
