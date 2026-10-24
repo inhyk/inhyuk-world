@@ -11,7 +11,7 @@ import { SKINS, BOSS_HP, bossPhase, makeVillage, makeNether, addNetherFortress, 
 
 export function newAdventure(G, opts = {}) {
   G.adventure = { seed: G.w.seed, dimension: 'overworld', coop: !!opts.coop, skin: Number(opts.skin) || 0, name: opts.playerName || '여행자',
-    bedsVersion: 1, fortressVersion: 1, endVersion: 2, watersVersion: 1, storySeen: false, bossDefeated: false, endingSeen: false, villagers: [], portals: [], worlds: {}, boss: null, achievements: [], trades: 0, visited: [] };
+    bedsVersion: 1, fortressVersion: 1, endVersion: 2, watersVersion: opts.legacy?0:2, storySeen: false, bossDefeated: false, endingSeen: false, villagers: [], portals: [], worlds: {}, boss: null, achievements: [], trades: 0, visited: [] };
   G.player.skin = G.adventure.skin;
   G.companion = { ...G.player, armor: Array(4).fill(null), x: G.player.x + 1, inv: G.player.inv, spawn: { ...G.player.spawn }, skin: (G.adventure.skin + 1) % SKINS.length, attackT: 0 };
   if (G.jump||isBuildWorld(G)) return;
@@ -419,13 +419,13 @@ export function createAdventureController(api) {
           if (d.w.tiles[idx(x,y)]===B.AIR && d.w.tiles[idx(x+1,y)]===B.AIR && d.w.tiles[idx(x,y+1)]===B.PLANKS) { d.w.tiles[idx(x,y)]=B.BED_FOOT; d.w.tiles[idx(x+1,y)]=B.BED_HEAD; }
         }
         for (const p of (d.portals??[]).filter(p=>p.kind==='end')) for(let dx=-1;dx<=2;dx++) for(let dy=-1;dy<=4;dy++) if(dx===-1||dx===2||dy===-1||dy===4) {const i=idx(p.x+dx,p.y+dy);if(d.w.tiles[i]===B.OBSIDIAN)d.w.tiles[i]=B.END_FRAME;}
-        if(kind==='overworld'&&a.watersVersion!==1)upgradeWaters(d.w);
+        if(kind==='overworld'&&a.watersVersion!==2)upgradeWaters(d.w,{nearSpawnOnly:a.watersVersion===1});
         if(kind==='end'&&a.endVersion!==2)addEndIslands(d.w);
         if (kind==='nether' && a.fortressVersion!==1) addNetherFortress(d.w);
         if(kind==='end')openEndScenery(d.w);
         for(const p of d.portals??[])openPortalSides(d.w,p);
       }
-      a.bedsVersion=1; a.fortressVersion=1; a.endVersion=2; a.watersVersion=1;
+      a.bedsVersion=1; a.fortressVersion=1; a.endVersion=2; a.watersVersion=2;
       a.rocketSites??={};
       if(a.dimension==='overworld'&&!a.rocketSites.overworld){
         // 착륙장은 플레이어가 지은 블록을 피해서 고른다.

@@ -70,15 +70,19 @@ export function drawRocket(g,G,sx,sy,T) {
  g.fillStyle='#f2ce79';g.font=`${Math.max(11,T*.27)}px Galmuri11`;g.textAlign='center';g.fillText(G.adventure.dimension==='moon'?(G.builder&&!G.builder.survival?'R · 건축 세계로 귀환':'R · 지구로 귀환'):'R · 달 탐사선',0,-T*6.3);g.restore();
 }
 
-export function upgradeWaters(w) {
+export function upgradeWaters(w,{nearSpawnOnly=false}={}) {
   const fresh=generateWorld(w.seed);
+  const previous=generateWorld(w.seed,{nearbyPond:false});
   const natural=new Set([B.AIR,B.GRASS,B.DIRT,B.STONE,B.SAND,B.GRAVEL,B.SNOW_GRASS,B.WATER,B.ICE,B.OAK_TRUNK,B.BIRCH_TRUNK,B.SPRUCE_TRUNK,B.OAK_LEAVES,B.BIRCH_LEAVES,B.SPRUCE_LEAVES,B.TALL_GRASS,B.POPPY,B.DANDELION,B.CACTUS,B.DEAD_BUSH]);
-  for(const [left,right]of[[95,235],[293,307],[523,537],[958,972]]){
+  for(const [left,right]of(nearSpawnOnly?[[614,626]]:[[95,235],[293,307],[523,537],[614,626],[958,972]])){
     let clear=true;
-    for(let x=left-2;x<=right+2&&clear;x++)for(let y=0;y<=Math.max(w.surface[x],fresh.surface[x])+1;y++)if(!natural.has(w.tiles[idx(x,y)])){clear=false;break;}
+    for(let x=left-2;x<=right+2&&clear;x++)for(let y=0;y<=Math.max(w.surface[x],fresh.surface[x])+4;y++){
+      const i=idx(x,y);
+      if(left===614 ? (w.tiles[i]!==previous.tiles[i]||w.bg[i]!==previous.bg[i]||w.meta[i]!==previous.meta[i]) : !natural.has(w.tiles[i])){clear=false;break;}
+    }
     if(!clear)continue; // 이미 지은 집이 있는 구역은 그대로 둔다.
     for(let x=left;x<=right;x++){
-      const bottom=Math.max(w.surface[x],fresh.surface[x])+1;
+      const bottom=Math.max(w.surface[x],fresh.surface[x])+(left===614?4:1);
       for(let y=0;y<=bottom;y++){const i=idx(x,y);w.tiles[i]=fresh.tiles[i];w.bg[i]=fresh.bg[i];w.meta[i]=fresh.meta[i];}
       w.surface[x]=fresh.surface[x];w.biome[x]=fresh.biome[x];
     }
