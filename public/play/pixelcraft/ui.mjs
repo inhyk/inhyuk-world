@@ -117,6 +117,7 @@ export function initUI(game, hooks) {
     const c = $('cursorItem');
     c.style.transform = `translate(${e.clientX - 20}px, ${e.clientY - 20}px)`;
   });
+  $('offhandHUD').onclick=()=>api.swapHands();
   $('hotbar').addEventListener('pointerdown', (e) => {
     const el = e.target.closest('[data-hot]');
     if (!el) return;
@@ -138,6 +139,7 @@ function resolve(ref) {
   const [kind, n] = ref.split(':');
   const k = Number(n);
   if (kind === 'a') { const player = k >= 4 ? G.companion : G.player; player.armor ??= Array(4).fill(null); return { arr: player.armor, k: k % 4, kind: `a${k % 4}` }; }
+  if(kind==='h'){const player=k===1?G.companion:G.player;player.offhand??=[null];return {arr:player.offhand,k:0,kind};}
   if (kind === 'i') return { arr: G.player.inv, k, kind };
   if (kind === 'g') return { arr: UI.grid, k, kind };
   if (kind === 'c') return { arr: chestSlots(), k, kind };
@@ -417,7 +419,7 @@ function chestHtml() {
 
 function armorHtml() {
   const row = (player, offset, label) => `<div class="armor-line"><span>${label}<br><small>방어 ${armorPoints(player)}/20</small></span>${ARMOR_SLOTS.map((name, k) => `<div class="armor-cell">${slotHtml(`a:${offset+k}`, player.armor?.[k])}<small>${name}</small></div>`).join('')}</div>`;
-  return `<div class="armor-rack">${row(G.player, 0, G.onlineSession?'내 방어구':G.adventure?.coop ? '1P 방어구' : '방어구')}${G.adventure?.coop&&!G.onlineSession ? row(G.companion, 4, '2P 방어구') : ''}<small>가방에서 집어 맞는 부위에 놓기 · Shift+클릭: 내 장비 빠른 착용</small></div>`;
+  return `<div class="armor-rack"><div class="offhand-rack"><div>${slotHtml('h:0',G.player.offhand?.[0])}<small>왼손</small></div><span>G · 양손 바꾸기<br>블록·음식: 사용 버튼 / 우클릭</span></div>${row(G.player, 0, G.onlineSession?'내 방어구':G.adventure?.coop ? '1P 방어구' : '방어구')}${G.adventure?.coop&&!G.onlineSession ? row(G.companion, 4, '2P 방어구') : ''}<small>가방에서 집어 맞는 부위에 놓기 · Shift+클릭: 내 장비 빠른 착용</small></div>`;
 }
 export function renderPanel() {
   if(UI.silent)return;
@@ -493,7 +495,7 @@ let hudKey = '';
 export function renderHUD() {
   const p = G.player;
   const inv = p.inv;
-  const parts = [p.xp, armorPoints(p), p.sel, G.mode, Math.ceil(p.hp), Math.ceil(p.food), Math.ceil(p.air)];
+  const parts = [JSON.stringify(p.offhand),p.xp, armorPoints(p), p.sel, G.mode, Math.ceil(p.hp), Math.ceil(p.food), Math.ceil(p.air)];
   for (let k = 0; k < 9; k++) parts.push(inv[k] ? `${inv[k].id}x${inv[k].count}d${inv[k].dur ?? ''}e${JSON.stringify(inv[k].enchants??{})}` : '-');
   const key = parts.join('|');
   if (key === hudKey) return;
@@ -511,6 +513,7 @@ export function renderHUD() {
     hot += `<div class="slot ${s?.enchants ? 'enchanted' : ''} ${k === p.sel ? 'sel' : ''}" data-hot="${k}">${inner}</div>`;
   }
   $('hotbar').innerHTML = hot;
+  const off=p.offhand?.[0];$('offhandHUD').innerHTML=`<span class="slot">${off&&iconUrl[off.id]?`<img src="${iconUrl[off.id]}" alt="${ITEMS[off.id].name}">${off.count>1?`<b>${off.count}</b>`:''}`:''}</span><span>왼손 ⇄ G</span>`;
   const bars = $('bars');
   if (G.mode === 'creative') {
     bars.innerHTML = `<span class="creative-tag">크리에이티브 · F 날기 · 경험치 ${experienceLevel(p)}레벨</span>`;
@@ -551,10 +554,11 @@ function validRef(ref) {
   if(typeof ref!=='string'||ref.length>16)return false;
   if(ref==='o')return ['inv','table'].includes(UI.open)&&!!currentRecipe();
   if(ref==='trash')return G.mode==='creative';
-  const m=/^(i|a|g|c|f|cr|rb):(\d{1,4})$/.exec(ref);if(!m)return false;
+  const m=/^(i|a|h|g|c|f|cr|rb):(\d{1,4})$/.exec(ref);if(!m)return false;
   const n=Number(m[2]);
   if(m[1]==='i')return n<36;
   if(m[1]==='a')return n<4;
+  if(m[1]==='h')return n===0&&['inv','table'].includes(UI.open);
   if(m[1]==='g')return n<9&&['inv','table'].includes(UI.open);
   if(m[1]==='c')return UI.open==='chest'&&n<27&&!!chestSlots();
   if(m[1]==='f')return UI.open==='furnace'&&n<3&&!!furnace();

@@ -1,3 +1,4 @@
+import { swapHands, canUseOffhand } from './offhand.mjs';
 import { enchantLines,enchantLevel,wearAmount,meleeDamage,gainExperience,enchantedDrop } from './enchantments.mjs';
 import { createOnline } from './online.mjs';
 import { INPUT_KEYS } from './online-codec.mjs';
@@ -61,7 +62,7 @@ function makePlayer(sp) {
   return {
     x: sp.x, y: sp.y, w: 0.6, h: 1.8, vx: 0, vy: 0, onGround: false, step: true,
     hp: 20, xp:0, food: 20, sat: 5, exhaust: 0, air: 10, face: 1, fallTop: sp.y, hurtT: 0, invT: 0, fire: 0,
-    sel: 0, inv: Array(36).fill(null), armor: Array(4).fill(null), spawn: { x: sp.x, y: sp.y }, flying: false, swing: 0, walkT: 0,
+    sel: 0, inv: Array(36).fill(null), offhand: [null], armor: Array(4).fill(null), spawn: { x: sp.x, y: sp.y }, flying: false, swing: 0, walkT: 0,
     regenT: 0, starveT: 0, hazardT: 0, drownT: 0, stepT: 0, bowT: -1, stepLift: 0,
   };
 }
@@ -110,7 +111,7 @@ function serialize(game) {
   const p = game.player;
   return JSON.stringify({
     v: 2, width: W, onlinePartner:game.onlinePartner, builder:game.builder, jump: game.jump, adventure: game.onlineSession ? {...packAdventure(game),coop:game.offlineCoop??false,companion:game.offlineCompanion??null} : packAdventure(game), stats: game.stats, seed: game.adventure?.seed ?? game.w.seed, name: game.name, mode: game.mode, diff: game.diff, time: game.time, day: game.day, playTime: game.playTime, hint: game.hint,
-    player: { xp:p.xp??0, armor: p.armor, x: p.x, y: p.y, hp: p.hp, food: p.food, sat: p.sat, air: p.air, sel: p.sel, inv: p.inv, spawn: p.spawn, flying: p.flying, skin: p.skin },
+    player: { xp:p.xp??0, armor: p.armor, offhand:p.offhand, x: p.x, y: p.y, hp: p.hp, food: p.food, sat: p.sat, air: p.air, sel: p.sel, inv: p.inv, spawn: p.spawn, flying: p.flying, skin: p.skin },
     surface: [...game.w.surface], bg: rleEncode(game.w.bg), tiles: rleEncode(game.w.tiles), meta: rleEncode(game.w.meta),
     chests: [...game.chests], furnaces: [...game.furnaces],
     mobs: game.mobs.filter((m) => !m.dead).map((m) => ({ ...m })),
@@ -641,7 +642,8 @@ function spawnTick() {
 }
 
 // ---- 플레이어 ----
-const held = () => G.player.inv[G.player.sel];
+const held = () => G.usingOffhand ? G.player.offhand?.[0] : G.player.inv[G.player.sel];
+function swapPlayerHands(){if(!G||G.dead||G.paused||UI.open)return;if(online.action({op:'swapHands'}))return;swapHands(G.player);hudDirty();showHeldName();saveGame(true);}
 function wearTool(amount) {
   if (G.mode === 'creative') return;
   const s = held();
@@ -659,7 +661,7 @@ function consumeHeld(n = 1) {
   const s = held();
   if (!s) return;
   s.count -= n;
-  if (s.count <= 0) G.player.inv[G.player.sel] = null;
+  if (s.count <= 0) {if(G.usingOffhand)G.player.offhand[0]=null;else G.player.inv[G.player.sel] = null;}
   hudDirty();
 }
 function updatePlayer(dt) {
@@ -1075,6 +1077,7 @@ function doUse() {
     }
   }
   const it = ITEMS[id];
+  if(!G.usingOffhand&&canUseOffhand(s,p.offhand?.[0])){G.usingOffhand=true;try{return doUse();}finally{G.usingOffhand=false;}}
   if (it?.food) {
     if (p.food >= 20 && !it.heal) return toast('지금은 배가 불러');
     p.food = Math.min(20, p.food + it.food);
@@ -1556,6 +1559,7 @@ window.addEventListener('keydown', (e) => {
     const n = Number(e.code.slice(5));
     if (n >= 1 && n <= 9) selectSlot(n - 1);
   }
+  if(e.code==='KeyG'&&!UI.open){swapPlayerHands();return;}
   if (e.code === 'KeyQ' && !UI.open) dropHeld(e.ctrlKey || e.metaKey);
   if (e.code === 'KeyF' && G.mode === 'creative') {
     G.player.flying = !G.player.flying;
@@ -1729,6 +1733,7 @@ function startGame(game,onlineLoad=false) {
   initUI(G, {
     drop: (id, count, dur, enchants) => spawnDrop(G.player.x + G.player.w / 2, G.player.y + 0.5, id, count, dur, enchants),
     onSelect: () => showHeldName(),
+    swapHands:swapPlayerHands,
     onlineAction:action=>{if(online.guest&&action.op==='select')guestSelection=action.slot;return online.action(action);},
     onCraft: () => { hudDirty(); }, toast, save:()=>saveGame(true),
   });
@@ -1963,6 +1968,7 @@ function guestKey(e){
   if(e.code==='KeyE'){if(UI.open)closePanel();else openPanel('inv');}
   if(e.code.startsWith('Digit')){const n=Number(e.code.slice(5));if(n>=1&&n<=9)selectSlot(n-1);}
   if(e.code==='KeyQ'&&!UI.open)online.action({op:'drop',all:e.ctrlKey||e.metaKey});
+  if(e.code==='KeyG'&&!UI.open)swapPlayerHands();
   if(e.code==='KeyF')online.action({op:'fly'});
   if(e.code==='Space'&&G.mode==='creative'){const now=performance.now();if(now-(G.lastSpace??0)<300)online.action({op:'fly'});G.lastSpace=now;}
   if(e.code==='KeyR')online.action({op:'interact'});
@@ -2012,7 +2018,7 @@ function applyNetworkSnapshot(packet){
   G.player.sel=guestSelection;
   const dimension=G.adventure.dimension;
   if(replicaDimension!==dimension){G.cam={x:G.player.x,y:G.player.y};replicaDimension=dimension;}
-  const key=JSON.stringify([s.panel,G.player.inv,G.player.armor,s.panel.open==='chest'?s.chests:null,s.panel.open==='furnace'?s.furnaces:null,G.player.xp]);
+  const key=JSON.stringify([s.panel,G.player.inv,G.player.offhand,G.player.armor,s.panel.open==='chest'?s.chests:null,s.panel.open==='furnace'?s.furnaces:null,G.player.xp]);
   if(key!==replicaPanelKey){syncOnlinePanel(s.panel);replicaPanelKey=key;}
   $('commandButton').disabled=true;hudDirty();
 }
@@ -2037,6 +2043,7 @@ const online=createOnline({
     withRemote(()=>{
       if(action.op==='select'&&Number.isInteger(action.slot)&&action.slot>=0&&action.slot<9){G.player.sel=remoteInput.sel=action.slot;return;}
       if(action.op==='drop'&&!UI.open){dropHeld(action.all===true);return;}
+      if(action.op==='swapHands'&&!UI.open){swapHands(G.player);return;}
       if(action.op==='fly'&&G.mode==='creative'){G.player.flying=!G.player.flying;return;}
       if(action.op==='regroup'){Object.assign(G.player,{x:G.companion.x+.8,y:G.companion.y,vx:0,vy:0,fallTop:G.companion.y,invT:2});return;}
       if(action.op==='interact'){adventure.lightPortal();toast('차원 이동·주민 거래·이야기 진행은 방장이 해. B를 누르면 친구 곁에 합류해!');return;}

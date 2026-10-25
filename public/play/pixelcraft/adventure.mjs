@@ -13,7 +13,7 @@ export function newAdventure(G, opts = {}) {
   G.adventure = { seed: G.w.seed, dimension: 'overworld', coop: !!opts.coop, skin: Number(opts.skin) || 0, name: opts.playerName || '여행자',
     bedsVersion: 1, fortressVersion: 1, endVersion: 2, watersVersion: opts.legacy?0:2, storySeen: false, bossDefeated: false, endingSeen: false, villagers: [], portals: [], worlds: {}, boss: null, achievements: [], trades: 0, visited: [] };
   G.player.skin = G.adventure.skin;
-  G.companion = { ...G.player, armor: Array(4).fill(null), x: G.player.x + 1, inv: G.player.inv, spawn: { ...G.player.spawn }, skin: (G.adventure.skin + 1) % SKINS.length, attackT: 0 };
+  G.companion = { ...G.player, offhand:[null], armor: Array(4).fill(null), x: G.player.x + 1, inv: G.player.inv, spawn: { ...G.player.spawn }, skin: (G.adventure.skin + 1) % SKINS.length, attackT: 0 };
   if (G.jump||isBuildWorld(G)) return;
   for (const center of [Math.floor(W / 2) + 65, ...(opts.legacy ? [] : [Math.floor(W / 2) - 215]), W - 130]) G.adventure.villagers.push(...makeVillage(G.w, center));
   populateVillageChests(G);
@@ -47,7 +47,7 @@ export function unpackAdventure(G, saved) {
     restoreTerrain(w, d.terrain);
     G.adventure.worlds[key] = { ...d, w, chests: new Map(d.chests), furnaces: new Map(d.furnaces), water: new Set(), lava: new Set(), drops: [], arrows: [], tnts: [], falling: [] };
   }
-  G.companion = { ...G.player, armor: Array(4).fill(null), ...saved.companion, inv: G.player.inv, attackT: 0 };
+  G.companion = { ...G.player, offhand:[null], armor: Array(4).fill(null), ...saved.companion, inv: G.player.inv, attackT: 0 };
   G.player.skin = saved.skin ?? 0;
 }
 

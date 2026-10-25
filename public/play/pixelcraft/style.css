@@ -652,3 +652,6 @@ legend { font-size: 14px; margin-bottom: 6px; }
 
 /* Online room controls stay above gameplay, including on touch screens. */
 #onlineDialog{z-index:1000}.online-dialog{max-height:90dvh;overflow:auto}.online-dialog p{font-size:12px;line-height:1.8;word-break:keep-all}.online-dialog .mc-btn{width:100%;margin:5px 0}#onlineJoinForm{display:grid;gap:8px;margin:12px 0}#onlineInput{text-transform:uppercase;text-align:center;letter-spacing:.25em;font-size:24px;width:100%;box-sizing:border-box}#onlineCode{display:block;text-align:center;font-size:30px;letter-spacing:.25em;color:#c8f3a4;padding:12px}#onlineBadge{position:fixed;z-index:40;right:10px;top:10px;background:#172b30ed;border:1px solid #83bca3;padding:8px 12px;color:#d1efcb;font-size:12px;pointer-events:none}@media(max-width:600px){#onlineBadge{top:auto;bottom:198px;right:8px;font-size:10px;max-width:90vw}.online-dialog{width:min(92vw,440px)}}
+
+.offhand-rack{display:flex;align-items:center;gap:12px;font-size:11px;margin-bottom:8px}.offhand-rack small{display:block;text-align:center;margin-top:3px}
+#offhandHUD{pointer-events:auto;justify-self:start;display:flex;align-items:center;gap:6px;padding:2px 6px 2px 2px;background:#252936dd;color:#fff;border:2px solid #828491;font-size:11px;cursor:pointer}#offhandHUD .slot{width:32px;height:32px}#offhandHUD .slot img{width:26px;height:26px}
