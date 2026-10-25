@@ -301,7 +301,7 @@ function drawLight(g, G, x0, x1, y0, y1, sx, sy) {
     }
   }
   // 횃불·잭오랜턴·용암 양동이를 손에 들면 둘레가 밝아진다
-  const glow = HELD_LIGHT[G.heldId] ?? 0;
+  const glow = Math.max(HELD_LIGHT[G.heldId]??0,HELD_LIGHT[G.player.offhand?.[0]?.id]??0);
   if (glow && !G.dead) {
     const p = G.player;
     const cx = p.x + p.w / 2, cy = p.y + 0.6;
@@ -382,7 +382,8 @@ function humanoid(g, ux, o) {
   const { skin, shirt, pants, hair, swing, armAng, tint, thin, eye = '#ffffff', pupil = '#4a2a8a' } = o;
   const lw = thin ? 2 : 4;
   limb(g, ux, 0, -12, lw, 12, -swing, shade(pants, -25), tint);
-  limb(g, ux, 0, -24, lw, 12, (armAng ?? swing) * 0.9 + (o.reach ? -1.4 : 0), shade(o.arm ?? shirt, -25), tint);
+  if(!o.offhand)limb(g, ux, 0, -24, lw, 12, (armAng ?? swing) * 0.9 + (o.reach ? -1.4 : 0), shade(o.arm ?? shirt, -25), tint);
+  if(o.offhand){g.save();g.translate(-4*ux,-24*ux);g.rotate(.55);g.fillStyle=tinted(o.arm??skin,tint);g.fillRect(-lw/2*ux,0,lw*ux,12*ux);g.drawImage(o.offhand,-8*ux,6*ux,10*ux,10*ux);g.restore();}
   box(g, ux, -2, -24, 4, 12, shirt, tint);
   limb(g, ux, 0, -12, lw, 12, swing, pants, tint);
   // 머리
@@ -437,7 +438,7 @@ function drawPlayer(g, G, sx, sy, T) {
   humanoid(g, ux, {
     ...(SKINS[p.skin ?? 0] ?? SKINS[0]), swing: walk, armAng: swingArm ?? (held ? -0.5 + walk * -0.3 : null),
     ...(armor[1] ? { shirt: armor[1], arm: armor[1] } : {}), ...(armor[2] ? { pants: armor[2] } : {}),
-    tint: p.hurtT > 0.15 ? 'red' : null, held, pupil: '#3a5aa8',
+    tint: p.hurtT > 0.15 ? 'red' : null, held, offhand:icons[p.offhand?.[0]?.id], pupil: '#3a5aa8',
   });
   if (armor[0]) { box(g, ux, -5, -33, 10, 3, armor[0]); box(g, ux, -5, -30, 2, 5, armor[0]); box(g, ux, 4, -30, 1, 3, armor[0]); box(g, ux, -3, -33, 6, 1, '#f2fff4'); }
   if (armor[1]) { box(g, ux, -3, -24, 6, 3, armor[1]); box(g, ux, -2, -22, 1, 7, '#f2fff4'); }
