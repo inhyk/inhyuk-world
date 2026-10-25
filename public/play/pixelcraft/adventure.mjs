@@ -191,6 +191,16 @@ export function createAdventureController(api) {
     }
     return null;
   }
+  function portalPlaced(x,y) {
+    const G=get();
+    if(!G?.adventure||G.jump||isBuildWorld(G))return;
+    const frame=findPortal(G.w,x,y,'nether');
+    if(!frame)return api.toast('흑요석 틀 안에 차원문을 놓으면 포탈이 켜져!');
+    if(!G.adventure.portals.some(p=>p.x===frame.x&&p.y===frame.y&&p.kind==='nether'))G.adventure.portals.push({...frame,kind:'nether'});
+    openPortalSides(G.w,{...frame,kind:'nether'});
+    G.portalBlockedUntilExit=false;G.portalHold=0;api.hudDirty();api.save();
+    api.toast('네더 포탈이 켜졌어! 보라색 문 안으로 걸어 들어가 줘.');
+  }
   function lightPortal() {
     const G = get(); if (!G || G.jump) return false;
     const id = G.player.inv[G.player.sel]?.id;
@@ -381,6 +391,7 @@ export function createAdventureController(api) {
     const p = G.player;
     $('questLine').textContent = a.bossDefeated ? (a.endingSeen ? '이야기 완료 · 자유롭게 세계를 탐험해!' : '황금빛 포탈에서 현실로 돌아가자') : G.day < 50 ? `소환사 좀비까지 ${50 - G.day}일 · 집과 장비를 준비하자` : '소환사 좀비를 쓰러뜨려 포탈을 열자';
     if(building&&!isBuildWorld(G)){const p=guideProgress(G),distance=Math.round(G.builder.x+5-G.player.x);$('questLine').textContent+=` · ${BLUEPRINTS[G.builder.plan].name} ${p.done}/${p.total} · ${distance<0?'←':'→'} ${Math.abs(distance)}칸`;}
+    if(a.dimension==='overworld'&&!building){const portal=a.portals.filter(p=>p.kind==='nether'&&portalIntact(G.w,p)).sort((a,b)=>Math.abs(a.x-p.x)-Math.abs(b.x-p.x))[0];if(portal){const distance=Math.round(portal.x-p.x);$('questLine').textContent+=` · 네더 포탈 ${Math.abs(distance)<3?'여기':`${distance<0?'←':'→'} ${Math.abs(distance)}칸`}`;}}
     if(a.dimension==='school')$('questLine').textContent='현실로 돌아왔어! 교실 오른쪽 포탈로 다시 모험하기';
     if(a.dimension==='moon')$('questLine').textContent='우주선 옆 R로 귀환 · 월석과 운석을 찾아봐!';
     if(a.dimension==='end')$('questLine').textContent='동쪽 바깥 섬의 보물과 탑을 찾아봐 · 모험책 J';
@@ -498,5 +509,5 @@ export function createAdventureController(api) {
   $('achievementButton').onclick = () => { const G = get(); if (G) show('도전과제', achievementList(G).map(([id, label, done]) => `${done || G.adventure.achievements?.includes(id) ? '◆ 달성' : '◇ 미달성'} · ${label}`)); };
   $('interactButton').onclick = interact;
   $('storyButton').onclick = story;
-  return { start, reset, readBook, key, tick, draw, hud, interact, lightPortal, defeated, switchDimension, summonBoss, hurtCompanion };
+  return { start, reset, readBook, key, tick, draw, hud, interact, lightPortal, portalPlaced, defeated, switchDimension, summonBoss, hurtCompanion };
 }

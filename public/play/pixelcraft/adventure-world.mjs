@@ -148,7 +148,7 @@ export function findPortal(w, px, py, kind = 'nether') {
     let valid = true;
     for (let dx = -1; dx <= 2; dx++) for (let dy = 0; dy <= 5; dy++) {
       const t = w.tiles[idx(x + dx, y + dy)];
-      if ((dx === -1 || dx === 2 || dy === 0 || dy === 5) ? t !== material : t !== B.AIR) valid = false;
+      if ((dx === -1 || dx === 2 || dy === 0 || dy === 5) ? t !== material : !portalInterior(t, kind)) valid = false;
     }
     if (valid) return { x, y: y + 1, w: 2, h: 4 };
   }
@@ -158,13 +158,15 @@ export function findPortal(w, px, py, kind = 'nether') {
 export function insidePortal(player, portal) {
   return player.x >= portal.x && player.x + player.w <= portal.x + portal.w && player.y + player.h > portal.y && player.y < portal.y + portal.h;
 }
+// A placed portal tile is part of the opening, not an obstruction.
+function portalInterior(t, kind) { return t === B.AIR || (kind === 'nether' && t === B.NETHER_PORTAL); }
 export function portalIntact(w, portal) {
   const material = portal.kind === 'end' ? B.END_FRAME : B.OBSIDIAN;
   for (let dx = -1; dx <= 2; dx++) for (let dy = -1; dy <= 4; dy++) {
     const x = portal.x + dx, y = portal.y + dy;
     if (x < 0 || x >= W || y < 0 || y >= H) return false;
     const t = w.tiles[idx(x, y)];
-    if ((dx === -1 || dx === 2 || dy === -1 || dy === 4) ? t !== material : t !== B.AIR) return false;
+    if ((dx === -1 || dx === 2 || dy === -1 || dy === 4) ? t !== material : !portalInterior(t, portal.kind)) return false;
   }
   return true;
 }
