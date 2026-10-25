@@ -7,7 +7,7 @@ import { absorbDamage } from './armor.mjs';
 import { meleeDamage,enchantLevel } from './enchantments.mjs';
 import { B, I, ITEMS, HOSTILE } from './data.mjs';
 import { W, H, idx, moveBody, touching, computeLight, addItem, countItem, generateWorld } from './core.mjs';
-import { SKINS, BOSS_HP, bossPhase, makeVillage, makeNether, addNetherFortress, makeEnd, portalFrame, findPortal, insidePortal, portalIntact, openPortalSides, openEndScenery, terrainSave, restoreTerrain } from './adventure-world.mjs';
+import { SKINS, BOSS_HP, bossPhase, makeVillage, populateVillageChests, makeNether, addNetherFortress, makeEnd, portalFrame, findPortal, insidePortal, portalIntact, openPortalSides, openEndScenery, terrainSave, restoreTerrain } from './adventure-world.mjs';
 
 export function newAdventure(G, opts = {}) {
   G.adventure = { seed: G.w.seed, dimension: 'overworld', coop: !!opts.coop, skin: Number(opts.skin) || 0, name: opts.playerName || '여행자',
@@ -16,6 +16,7 @@ export function newAdventure(G, opts = {}) {
   G.companion = { ...G.player, armor: Array(4).fill(null), x: G.player.x + 1, inv: G.player.inv, spawn: { ...G.player.spawn }, skin: (G.adventure.skin + 1) % SKINS.length, attackT: 0 };
   if (G.jump||isBuildWorld(G)) return;
   for (const center of [Math.floor(W / 2) + 65, ...(opts.legacy ? [] : [Math.floor(W / 2) - 215]), W - 130]) G.adventure.villagers.push(...makeVillage(G.w, center));
+  populateVillageChests(G);
   const x = Math.floor(W / 2) + 102;
   G.adventure.portals.push({ ...portalFrame(G.w, x, G.w.surface[x] - 1), kind: 'nether' });
   const ex = Math.floor(W / 2) + 145;
@@ -422,6 +423,7 @@ export function createAdventureController(api) {
     if (!G.adventure) newAdventure(G);
     G.drawAdventure = draw;
     if (!G.jump&&!isBuildWorld(G)) {
+      populateVillageChests(G);
       // 현재 차원과 보관 중인 차원의 구버전 마을·포탈도 함께 보완한다.
       const a=G.adventure, dimensions=[[a.dimension,{w:G.w,villagers:a.villagers,portals:a.portals}],...Object.entries(a.worlds)];
       for (const [kind,d] of dimensions) {

@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { W, H, generateWorld, idx, rleEncode } from '../../public/play/pixelcraft/core.mjs';
-import { B, BLOCKS } from '../../public/play/pixelcraft/data.mjs';
-import { bossPhase, makeVillage, makeNether, makeEnd, portalFrame, findPortal, portalIntact, restoreTerrain, terrainSave, remapIndex } from '../../public/play/pixelcraft/adventure-world.mjs';
+import { B, I, ITEMS, BLOCKS } from '../../public/play/pixelcraft/data.mjs';
+import { bossPhase, makeVillage, populateVillageChests, makeNether, makeEnd, portalFrame, findPortal, portalIntact, restoreTerrain, terrainSave, remapIndex } from '../../public/play/pixelcraft/adventure-world.mjs';
 
 test('이전 640칸 저장은 모든 행의 블록·메타·상자 위치를 보존한다', () => {
  const w = generateWorld(1234), legacy = new Uint8Array(640 * H), meta = new Uint8Array(640 * H);
@@ -40,4 +40,22 @@ test('네더 차원문 블록은 틀의 내부를 막지 않으며 틀 파손은
  w.tiles[idx(p.x,p.y+2)]=B.STONE;assert.equal(portalIntact(w,p),false);
  w.tiles[idx(p.x,p.y+2)]=B.AIR;w.tiles[idx(p.x-1,p.y)]=B.AIR;
  assert.equal(portalIntact(w,p),false);
+});
+
+test('마을 상자는 보급품을 한 번 받고 개인 물건·부순 상자는 보존한다',()=>{
+ const w=generateWorld(1234),villagers=[...makeVillage(w,425),...makeVillage(w,705),...makeVillage(w,1150)];
+ const indices=villagers.filter(v=>v.shop===2).map(v=>idx(Math.round(v.x-6.8),Math.round(v.y-.2)));
+ const chests=new Map([[indices[1],[{id:I.DIAMOND,count:2}]]]);
+ w.tiles[indices[2]]=B.AIR;
+ const G={w,chests,adventure:{dimension:'overworld',villagers,worlds:{}}};
+ populateVillageChests(G);
+ const loot=chests.get(indices[0]);assert.equal(loot.length,27);assert.equal(loot.filter(Boolean).length,7);
+ for(const item of loot.filter(Boolean)){assert.ok(ITEMS[item.id]);assert.ok(item.count>0&&item.count<=ITEMS[item.id].stack);if(ITEMS[item.id].tool)assert.equal(item.dur,ITEMS[item.id].tool.dur);}
+ assert.deepEqual(chests.get(indices[1]),[{id:I.DIAMOND,count:2}]);assert.equal(chests.has(indices[2]),false);
+ chests.set(indices[0],Array(27).fill(null));populateVillageChests(G);assert.ok(chests.get(indices[0]).every(x=>x===null));
+});
+test('다른 차원에서 불러온 옛 세계도 보관된 숲 마을 상자에 보급한다',()=>{
+ const w=generateWorld(1234),villagers=makeVillage(w,705),chests=new Map();
+ const G={adventure:{dimension:'nether',worlds:{overworld:{w,villagers,chests}}}};
+ populateVillageChests(G);assert.equal(chests.size,1);assert.equal(G.adventure.villageLootVersion,1);
 });
