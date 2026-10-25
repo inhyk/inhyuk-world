@@ -955,6 +955,7 @@ function placeBlock(x, y, itemId) {
   }
   G.stats.placed=(G.stats.placed??0)+1;
   consumeHeld();
+  if(blockId===B.NETHER_PORTAL)adventure.portalPlaced(x,y);
   sfx.place(BLOCKS[blockId].sound);
   G.player.swing = 1;
   if (blockId === B.CRAFTING) G.placedTable = true;

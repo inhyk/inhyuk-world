@@ -12,6 +12,11 @@ export function blockGroup(name=''){
  return '기능·장식';
 }
 export function catalogArt(p,b){
+ if(b.mcName==='nether_portal'){
+  p.rect(0,0,16,16,'#4d197c');
+  for(let y=0;y<16;y++)for(let x=0;x<16;x++){const wave=Math.sin(x*.65+Math.sin(y*.6)*2)+Math.cos(y*.7-x*.25);p.px(x,y,wave>1?'#d38bff':wave>0?'#a34fe1':wave>-.9?'#7b32bb':'#50207f');}
+  return p.c;
+ }
  const n=b.mcName??'',color=Object.entries(COLORS).sort((a,b)=>b[0].length-a[0].length).find(([key])=>n.startsWith(key+'_'))?.[1];
  const wood=Object.entries(WOODS).sort((a,b)=>b[0].length-a[0].length).find(([key])=>n.includes(key))?.[1];
  let base=color??wood??(/granite/.test(n)?'#ac7e6c':/diorite/.test(n)?'#c9c7bd':/tuff/.test(n)?'#73796e':/basalt/.test(n)?'#535259':/prismarine/.test(n)?'#559e8e':/terracotta/.test(n)?'#ae7257':/clay/.test(n)?'#929da9':/sculk/.test(n)?'#173e46':/sponge/.test(n)?'#c8bc59':/honey/.test(n)?'#d49627':/slime/.test(n)?'#83ba5b':/dripstone/.test(n)?'#9b8170':/copper/.test(n)?(/oxidized/.test(n)?'#438e78':/weathered/.test(n)?'#6f9980':/exposed/.test(n)?'#b38462':'#bb714d'):/gold/.test(n)?'#e6c346':/diamond/.test(n)?'#5adbd3':/emerald/.test(n)?'#38b76f':/lapis/.test(n)?'#3859b0':/amethyst/.test(n)?'#a27bce':/quartz|calcite/.test(n)?'#dfd9c9':/snow/.test(n)?'#e7f1f5':/netherite|ancient|blackstone|deepslate/.test(n)?'#41404c':/nether|crimson/.test(n)?'#853e42':/end_stone/.test(n)?'#d7d4a0':/purpur/.test(n)?'#ad80b0':/sand/.test(n)?'#d4bd88':/mud|dirt/.test(n)?'#80634e':/moss|leaves|grass/.test(n)?'#5a914b':'#8d9294');
