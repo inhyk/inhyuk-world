@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { W, H, generateWorld, idx, rleEncode } from '../../public/play/pixelcraft/core.mjs';
 import { B, I, ITEMS, BLOCKS } from '../../public/play/pixelcraft/data.mjs';
-import { bossPhase, makeVillage, populateVillageChests, makeNether, makeEnd, portalFrame, findPortal, portalIntact, restoreTerrain, terrainSave, remapIndex } from '../../public/play/pixelcraft/adventure-world.mjs';
+import { bossPhase, makeVillage, populateVillageChests, villageChestHasDiamonds, makeNether, makeEnd, portalFrame, findPortal, portalIntact, restoreTerrain, terrainSave, remapIndex } from '../../public/play/pixelcraft/adventure-world.mjs';
 
 test('이전 640칸 저장은 모든 행의 블록·메타·상자 위치를 보존한다', () => {
  const w = generateWorld(1234), legacy = new Uint8Array(640 * H), meta = new Uint8Array(640 * H);
@@ -58,4 +58,22 @@ test('다른 차원에서 불러온 옛 세계도 보관된 숲 마을 상자에
  const w=generateWorld(1234),villagers=makeVillage(w,705),chests=new Map();
  const G={adventure:{dimension:'nether',worlds:{overworld:{w,villagers,chests}}}};
  populateVillageChests(G);assert.equal(chests.size,1);assert.equal(G.adventure.villageLootVersion,1);
+});
+
+test('마을 다이아는 약 20%의 세계에서 정확히 3개이며 저장된 보상은 다시 생기지 않는다',()=>{
+ const w=generateWorld(1234),villagers=makeVillage(w,705),v=villagers.find(v=>v.shop===2),i=idx(Math.round(v.x-6.8),Math.round(v.y-.2));
+ const seeds=Array.from({length:1000},(_,n)=>n),wins=seeds.filter(seed=>villageChestHasDiamonds(seed,i));
+ assert.ok(wins.length>150&&wins.length<250);
+ for(const seed of [wins[0],seeds.find(s=>!villageChestHasDiamonds(s,i))]){
+  w.seed=seed;const G={w,chests:new Map(),adventure:{dimension:'overworld',villagers,worlds:{}}};populateVillageChests(G);
+  const slots=G.chests.get(i),diamond=slots.find(s=>s?.id===I.DIAMOND);
+  assert.equal(diamond?.count,wins.includes(seed)?3:undefined);
+  const k=slots.findIndex(s=>s?.id===I.DIAMOND);if(k>=0)slots[k]=null;
+  populateVillageChests(G);assert.ok(!slots.some(s=>s?.id===I.DIAMOND));
+ }
+ // Upgrade a supplied old chest once without changing the other stacks.
+ w.seed=wins[0];const contents=Array(27).fill(null);contents[0]={id:I.APPLE,count:2};
+ const G={w,chests:new Map([[i,contents]]),adventure:{dimension:'overworld',villagers,worlds:{},villageLootVersion:1}};
+ populateVillageChests(G);assert.deepEqual(contents[0],{id:I.APPLE,count:2});assert.deepEqual(contents[1],{id:I.DIAMOND,count:3});
+ contents[1]=null;populateVillageChests(G);assert.equal(contents[1],null);
 });

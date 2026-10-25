@@ -1,6 +1,6 @@
 import { addEndIslands } from './expedition-world.mjs';
 import { B, I, ITEMS, MOBS } from './data.mjs';
-import { W, H, idx, generateWorld, computeLight, noise1, rleDecode, rleEncode } from './core.mjs';
+import { W, H, idx, generateWorld, computeLight, makeRng, noise1, rleDecode, rleEncode } from './core.mjs';
 
 export const SKINS = [
   { name: '하늘 탐험가', skin: '#c69c7a', shirt: '#2fa6b4', pants: '#3a3aa8', hair: '#3b2a1a' },
@@ -64,22 +64,29 @@ export function makeVillage(w, center) {
   computeLight(w, center - 40, center + 40);
   return villagers;
 }
+export const villageChestHasDiamonds=(seed,index)=>makeRng((seed^index^0x6d2b79f5)>>>0)()<.2;
 // Seed village supplies once; existing contents and removed chests belong to the player.
 export function populateVillageChests(G) {
   const a=G.adventure;
-  if(a.villageLootVersion===1)return;
+  if(a.villageLootVersion===1&&a.villageDiamondVersion===1)return;
   const d=a.dimension==='overworld'?{w:G.w,chests:G.chests,villagers:a.villagers}:a.worlds.overworld;
   if(!d)return;
   for(const v of d.villagers??[]) {
     if(v.shop!==2)continue;
     const x=Math.round(v.x-6.8),y=Math.round(v.y-.2),i=idx(x,y);
-    if(d.w.tiles[i]!==B.CHEST||d.chests.get(i)?.some(Boolean))continue;
-    const loot=[[I.STEAK,8],[I.APPLE,6],[B.TORCH,16],[B.PLANKS,24],[I.IRON_INGOT,3],[I.STONE_PICK,1],[I.STONE_SWORD,1]];
-    const slots=Array(27).fill(null);
-    loot.forEach(([id,count],k)=>{slots[k]={id,count};if(ITEMS[id].tool)slots[k].dur=ITEMS[id].tool.dur;});
-    d.chests.set(i,slots);
+    if(d.w.tiles[i]!==B.CHEST)continue;
+    if(a.villageLootVersion!==1&&!d.chests.get(i)?.some(Boolean)){
+      const loot=[[I.STEAK,8],[I.APPLE,6],[B.TORCH,16],[B.PLANKS,24],[I.IRON_INGOT,3],[I.STONE_PICK,1],[I.STONE_SWORD,1]];
+      const slots=Array(27).fill(null);
+      loot.forEach(([id,count],k)=>{slots[k]={id,count};if(ITEMS[id].tool)slots[k].dur=ITEMS[id].tool.dur;});
+      d.chests.set(i,slots);
+    }
+    const contents=d.chests.get(i);
+    if(a.villageDiamondVersion!==1&&contents?.some(Boolean)&&!contents.some(s=>s?.id===I.DIAMOND)&&villageChestHasDiamonds(d.w.seed,i)){
+      const empty=contents.findIndex(s=>!s);if(empty>=0)contents[empty]={id:I.DIAMOND,count:3};
+    }
   }
-  a.villageLootVersion=1;
+  a.villageLootVersion=1; a.villageDiamondVersion=1;
 }
 export function makeNether(seed) {
   const w = generateWorld(seed ^ 0x7e771e);
