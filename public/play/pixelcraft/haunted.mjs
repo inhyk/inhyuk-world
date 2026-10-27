@@ -84,12 +84,14 @@ export function drawHauntedSky(g,G,cw,ch){
  g.restore();
 }
 export function drawHauntedMist(g,G,sx,sy,T,cw){
- const strength=hauntedStrength(G);if(!strength)return;
- const h=G.adventure.halloween.haunted;
- g.save();g.beginPath();g.rect(sx(h.start),0,sx(h.end+1)-sx(h.start),10000);g.clip();
- for(let k=0;k<6;k++){
-  const x=h.start+((k*9+G.clock*.25)%(h.end-h.start)),y=G.w.surface[Math.floor(x)]-1.5-k%2;
-  const grad=g.createRadialGradient(sx(x),sy(y),0,sx(x),sy(y),T*7);grad.addColorStop(0,`rgba(177,190,175,${.09*strength})`);grad.addColorStop(1,'rgba(177,190,175,0)');g.fillStyle=grad;g.fillRect(sx(x)-T*7,sy(y)-T*3,T*14,T*6);
- }
+ const strength=hauntedStrength(G),h=G.adventure?.halloween?.haunted;
+ if(strength&&h){g.save();g.beginPath();g.rect(sx(h.start),0,sx(h.end+1)-sx(h.start),10000);g.clip();
+  for(let k=0;k<6;k++){
+   const x=h.start+((k*9+G.clock*.25)%(h.end-h.start)),y=G.w.surface[Math.floor(x)]-1.5-k%2;
+   const grad=g.createRadialGradient(sx(x),sy(y),0,sx(x),sy(y),T*7);grad.addColorStop(0,`rgba(177,190,175,${.09*strength})`);grad.addColorStop(1,'rgba(177,190,175,0)');g.fillStyle=grad;g.fillRect(sx(x)-T*7,sy(y)-T*3,T*14,T*6);
+  }g.restore();}
+ const tree=G.adventure?.halloween?.trees?.find(t=>t.special);if(!tree||Math.abs(tree.x-G.cam.x)>cw/T)return;
+ const cx=sx(tree.x),cy=sy(tree.y-9);g.save();g.globalAlpha=.55+.3*Math.sin(G.clock*2);g.fillStyle='#ffe18a';
+ for(let k=0;k<8;k++){const a=G.clock*.7+k*Math.PI/4,x=cx+Math.cos(a)*(T*(2.2+Math.sin(G.clock+k)*.2)),y=cy+Math.sin(a)*(T*(1.2+Math.cos(G.clock*1.3+k)*.15));g.fillRect(Math.round(x),Math.round(y),Math.max(2,Math.round(T*.08)),Math.max(2,Math.round(T*.08)));}
  g.restore();
 }
