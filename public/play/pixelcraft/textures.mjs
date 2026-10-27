@@ -505,6 +505,18 @@ export const fluidFrames = { [B.WATER]: [], [B.LAVA]: [] };
 for(const [id,color]of[[I.OVERWORLD_BOOK,'#54824a'],[I.NETHER_BOOK,'#aa4b48'],[I.END_BOOK,'#8752a7']])ITEM_ART[id]=p=>{p.rect(2,2,12,13,'#322d3c');p.rect(3,2,11,12,color);p.rect(4,3,1,11,'#eed29e');p.rect(6,5,6,1,'#f2e9c8');p.rect(6,8,5,1,'#f2e9c8');p.rect(4,13,10,1,'#c9c4b1');};
 
 for(const id of[I.BOOK,I.LAPIS,I.PAPER,I.EXPERIENCE_BOTTLE])ITEM_ART[id]=p=>{if(id===I.LAPIS){p.map(['...LL...','..LLLL..','.LLLLLL.','..LLLL..','...LL...'],{L:'#4164d9'},4,4);}else if(id===I.EXPERIENCE_BOTTLE){p.rect(6,1,4,3,'#d8bb74');p.rect(4,4,8,10,'#9fe1a1');p.rect(5,7,6,6,'#72bd43');}else{p.rect(3,2,10,12,id===I.BOOK?'#7f4e35':'#efdfbc');p.rect(5,3,7,9,'#efe3be');p.rect(6,5,5,1,'#afaa8b');}};
+// Dedicated materials for the haunted forest: bark, leaf litter, silk and fungi.
+Object.assign(BLOCK_ART,{
+ [B.DARK_OAK_LOG]:p=>{p.fill(['#302932','#3b3037','#44353a','#29242c']);for(let x=1;x<16;x+=3){p.line(x,0,x,15,'#201d25');p.line(x+1,2,x+1,12,'#514047');}p.rect(6,5,4,6,'#231f28');p.rect(7,7,2,3,'#463640');},
+ [B.PODZOL]:p=>{p.fill(['#554532','#665139','#493b31','#725a3d']);for(let k=0;k<25;k++)p.rect(Math.floor(p.r()*16),Math.floor(p.r()*4),2,1,p.pick(['#a77e42','#796332','#3b4935']));p.rect(0,4,16,1,'#3d332c');},
+ [B.COARSE_DIRT]:p=>{p.fill(['#62503e','#74604a','#4e4035','#806952']);for(let k=0;k<9;k++)p.rect(Math.floor(p.r()*15),Math.floor(p.r()*15),2,1,'#98816a');},
+ [B.MYCELIUM]:p=>{p.fill(['#574b43','#66554b','#463e39']);p.fill(['#76687d','#85718b','#63576d'],0,0,16,4);for(let k=0;k<12;k++)p.line(k,k%3,k+2,5+k%3,'#a593ac');},
+ [B.COBWEB]:p=>{const c='#afb4b7';for(const[x,y]of[[0,0],[15,0],[0,15],[15,15],[7,0],[0,7],[15,7],[7,15]])p.line(7,7,x,y,c);for(const r of[3,6]){p.line(7-r,7,7,7-r,c);p.line(7,7-r,7+r,7,c);p.line(7+r,7,7,7+r,c);p.line(7,7+r,7-r,7,c);}},
+ [B.RED_MUSHROOM]:p=>{p.rect(7,9,3,7,'#b8a68e');p.rect(3,6,11,4,'#9b4054');p.rect(5,3,7,4,'#b95062');p.rect(7,2,3,2,'#ca6472');for(const[x,y]of[[5,6],[9,4],[11,7]])p.rect(x,y,2,1,'#f0d5b9');p.rect(4,10,9,1,'#602e40');},
+ [B.CHISELED_STONE_BRICKS]:p=>{p.fill(['#777b7c','#6c7073','#858786']);p.rect(1,1,14,1,'#a0a29d');p.rect(1,1,1,14,'#91968f');p.rect(14,1,1,14,'#50585b');p.rect(4,4,8,8,'#596263');p.rect(7,5,2,6,'#adb0a1');p.rect(5,7,6,2,'#adb0a1');p.line(1,13,5,10,'#394740');},
+ [B.STONE_BRICK_SLAB]:p=>{p.fill(['#747a78','#81867f','#656e6c']);p.rect(0,7,16,1,'#404c4b');p.rect(0,0,16,1,'#a4aaa0');p.rect(7,1,1,6,'#515e59');p.rect(3,8,1,8,'#515e59');}
+});
+
 export function buildTextures() {
   for (const id of BLOCKS.filter(Boolean).map(b=>b.id)) {
     let c = null;

@@ -1,3 +1,4 @@
+import {upgradeHaunted} from './haunted.mjs';
 import {B,I,ITEMS,RECIPES} from './data.mjs';
 import {W,H,SEA,BIOME,idx,generateWorld,makeRng,computeLight,countItem,addItem,canCraft,craftFromSlots} from './core.mjs';
 import {makeVillage,populateVillageChests} from './adventure-world.mjs';
@@ -22,7 +23,7 @@ export function claimHalloween(G){
 }
 // Upgrade only untouched natural terrain; never reconstruct a player's buildings.
 export function upgradeHalloween(G){
- const h=halloweenState(G);if(h.version===1)return;
+ const h=halloweenState(G);if(h.version===1){upgradeHaunted(G);return;}
  const d=G.adventure.dimension==='overworld'?{w:G.w,villagers:G.adventure.villagers,chests:G.chests}:G.adventure.worlds.overworld;if(!d)return;
  const w=d.w,base=generateWorld(w.seed),r=makeRng(w.seed^0x0c70bee),sites=h.sites??=[],villages=h.villages??=[],food=h.food??=[];
  const clean=(x0,x1,y0,y1)=>{for(let x=x0;x<=x1;x++)for(let y=Math.max(1,y0);y<=Math.min(H-2,y1);y++){const i=idx(x,y);if(w.tiles[i]!==base.tiles[i]||w.meta[i]!==base.meta[i]||w.bg[i]!==base.bg[i])return false;}return true;};
@@ -71,5 +72,5 @@ export function upgradeHalloween(G){
    w.tiles[i]=B.CHEST;const slots=Array(27).fill(null);slots[0]={id:I.APPLE,count:6};slots[1]={id:I.COOKED_PORK,count:4};d.chests.set(i,slots);food.push({x,y,biome});break;
   }
  }
- h.version=1;h.sites=sites;h.villages=villages;h.food=food;computeLight(w,0,W-1);G.dirty=[0,W-1];
+ h.version=1;h.sites=sites;h.villages=villages;h.food=food;computeLight(w,0,W-1);G.dirty=[0,W-1];upgradeHaunted(G);
 }

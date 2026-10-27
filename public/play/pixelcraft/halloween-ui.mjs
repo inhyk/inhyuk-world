@@ -19,6 +19,7 @@ export function createHalloweenUI(api){
   $('halloweenRecipeDetail').innerHTML=`<h3>${picture(selected)}${ITEMS[selected].name} 제작법</h3><div class="festival-ingredients">${needs.map(g=>`<div>${picture(g.ids[0])}<b>${ITEMS[g.ids[0]].name+(g.ids.length>1?' 등':'')}</b><span>${g.n}개 ${play?`· 보유 ${countItem(G.player.inv,g.ids)}`:''}</span></div>`).join('<span class="plus">+</span>')}<span class="plus">→</span><div>${picture(selected)}<b>${ITEMS[selected].name}</b><span>${recipe.out[1]}개</span></div></div>`;
   $('halloweenCraft').disabled=!play||!canCraft(G.player.inv,recipe);$('halloweenCraft').textContent=play?(canCraft(G.player.inv,recipe)?'제작하기':'재료를 더 모아 줘'):'숲 세계에서 제작할 수 있어';
   $('halloweenIntro').textContent=play?'호박을 모아 등불을 켜고, 어두운 숲에 축제를 열어 줘.':'숲 세계를 시작하거나 이어 하면 미션과 제작을 할 수 있어. 진행은 세계마다 저장돼.';
+  const forest=play&&G.adventure.dimension==='overworld'&&halloweenState(G).haunted;if(forest){const distance=Math.round(forest.x-G.player.x);$('halloweenIntro').textContent+=` · 속삭이는 안개 숲 ${Math.abs(distance)<20?'여기':`${distance<0?'←':'→'} ${Math.abs(distance)}칸`}`;}
  }
  function open(){const G=api.get();wasPaused=!!G?.paused;api.closePanel();if(G){G.paused=true;api.keys.clear();}render();$('halloweenDialog').hidden=false;$('halloweenClose').focus();}
  function close(){const G=api.get();$('halloweenDialog').hidden=true;if(G){G.paused=wasPaused;api.keys.clear();}}
