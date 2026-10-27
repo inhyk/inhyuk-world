@@ -1,5 +1,5 @@
 import {createHalloweenUI} from './halloween-ui.mjs';
-import {halloweenState,recordHalloweenCraft} from './halloween.mjs';
+import {halloweenState,recordHalloweenCraft,recordHalloweenPumpkin} from './halloween.mjs';
 import { swapHands, canUseOffhand } from './offhand.mjs';
 import { enchantLines,enchantLevel,wearAmount,meleeDamage,gainExperience,enchantedDrop } from './enchantments.mjs';
 import { createOnline } from './online.mjs';
@@ -243,7 +243,7 @@ function breakBlock(x, y, { harvest = true, quiet = false, chance = 1 } = {}) {
     if(BLOCKS[t].mcName?.endsWith('_ore')&&!enchantLevel(held(),'silk_touch')&&d?.[0]!==t)gainXP(3);
     if (t === B.DOOR_T) d = [I.DOOR, 1];
     if (t === B.BED_HEAD) d = [I.BED, 1];
-    if (d) spawnDrop(x + 0.5, y + 0.5, d[0], d[1]);
+    if (d) {spawnDrop(x + 0.5, y + 0.5, d[0], d[1]);if(d[0]===B.PUMPKIN)recordHalloweenPumpkin(G,d[1]);}
   }
   if (BLOCKS[t].use === 'chest') {
     for (const s of G.chests.get(i) ?? []) if (s) spawnDrop(x + 0.5, y + 0.5, s.id, s.count, s.dur, s.enchants);
@@ -1327,7 +1327,7 @@ function fluidChanges(list) {
     const now = G.w.tiles[i];
     if (old !== B.AIR && old !== now && !BLOCKS[old].fluid && BLOCKS[old].replace === true) {
       const d = dropOf(old);
-      if (d) spawnDrop(x + 0.5, y + 0.5, d[0], d[1]);
+      if (d) {spawnDrop(x + 0.5, y + 0.5, d[0], d[1]);if(d[0]===B.PUMPKIN)recordHalloweenPumpkin(G,d[1]);}
     }
     if (old === B.TORCH) spawnDrop(x + 0.5, y + 0.5, B.TORCH, 1);
     if (now === B.OBSIDIAN || now === B.COBBLE) {
@@ -1961,7 +1961,7 @@ function tickRemote(dt){
     }
     if(remoteWasRight&&!mouse.right&&!UI.open)releaseBow();
     remoteWasRight=mouse.right;
-    for(const d of G.drops)if(!d.remove&&d.age>.5&&Math.hypot(d.x-G.player.x,d.y-G.player.y)<1.4){d.count=addItem(G.player.inv,d.id,d.count,d.dur,0,36,d);if(!d.count)d.remove=true;}
+    for(const d of G.drops)if(!d.remove&&d.age>.5&&Math.hypot(d.x-G.player.x,d.y-G.player.y)<1.4){const before=d.count;d.count=addItem(G.player.inv,d.id,d.count,d.dur,0,36,d);if(d.id===B.PUMPKIN)recordHalloweenPumpkin(G,before-d.count);if(!d.count)d.remove=true;}
   });
 }
 function guestKey(e){
