@@ -1,3 +1,4 @@
+import {upgradeHalloween,halloweenMissions} from './halloween.mjs';
 import { BLUEPRINTS,guideProgress,guidePreview,tickBuildGuide,drawBuildGuide,selectGuide,builtRocket,isBuildWorld,guideActive,stopGuide } from './build-guide.mjs';
 import { tickSkeletonBoss,isBoss,skeletonPhase,SKELETON_BOSS_HP } from './skeleton-boss.mjs';
 import { BOOK_IDS,bookForDimension,bookPages,updateJournal } from './journal.mjs';
@@ -16,11 +17,12 @@ export function newAdventure(G, opts = {}) {
   G.companion = { ...G.player, offhand:[null], armor: Array(4).fill(null), x: G.player.x + 1, inv: G.player.inv, spawn: { ...G.player.spawn }, skin: (G.adventure.skin + 1) % SKINS.length, attackT: 0 };
   if (G.jump||isBuildWorld(G)) return;
   for (const center of [Math.floor(W / 2) + 65, ...(opts.legacy ? [] : [Math.floor(W / 2) - 215]), W - 130]) G.adventure.villagers.push(...makeVillage(G.w, center));
-  populateVillageChests(G);
   const x = Math.floor(W / 2) + 102;
   G.adventure.portals.push({ ...portalFrame(G.w, x, G.w.surface[x] - 1), kind: 'nether' });
   const ex = Math.floor(W / 2) + 145;
   G.adventure.portals.push({ ...portalFrame(G.w, ex, G.w.surface[ex] - 1, 'end'), kind: 'end' });
+  populateVillageChests(G);
+  upgradeHalloween(G);
   computeLight(G.w, 0, W - 1);
 }
 const WORLD_FIELDS = ['mobs', 'drops', 'arrows', 'tnts', 'falling', 'chests', 'furnaces', 'water', 'lava', 'fireballs'];
@@ -320,6 +322,7 @@ export function createAdventureController(api) {
     let m = G.mobs.find(m => m.type === 'summoner');
     if (!m && a.dimension === 'overworld' && a.boss?.spawned && !a.bossDefeated && !G.dead) { summonBoss(); m = G.mobs.find(m=>m.type==='summoner'); }
     if (m?.dead && !a.bossDefeated) defeated(m);
+    halloweenMissions(G);
     updateJournal(G);
     tickSkeletonBoss(G,dt,api);
     const beforeWorld=G.w; tickPortals(dt);
@@ -378,6 +381,7 @@ export function createAdventureController(api) {
     $('questHUD').hidden = !G;
     if (!a) return;
     const building=guideActive(G)&&a.dimension==='overworld';
+    $('halloweenButton').hidden=!!G.jump||isBuildWorld(G);
     $('blockCatalogButton').hidden=!!G.jump;$('enchantButton').hidden=!!G.jump;
     $('blueprintButton').hidden=!building;$('skipGuideButton').hidden=!building;$('galleryButton').hidden=!!G.jump||a.dimension!=='overworld';$('journalButton').hidden=isBuildWorld(G);
     if(isBuildWorld(G)&&!building&&a.dimension==='overworld'){ $('worldLine').textContent='자유 건축';$('questLine').textContent='다른 그림 선택으로 다시 따라 쌓을 수 있어';$('interactButton').textContent='그림 선택 R';$('bossHUD').hidden=true;return;}
@@ -424,6 +428,7 @@ export function createAdventureController(api) {
     G.drawAdventure = draw;
     if (!G.jump&&!isBuildWorld(G)) {
       populateVillageChests(G);
+      upgradeHalloween(G);
       // 현재 차원과 보관 중인 차원의 구버전 마을·포탈도 함께 보완한다.
       const a=G.adventure, dimensions=[[a.dimension,{w:G.w,villagers:a.villagers,portals:a.portals}],...Object.entries(a.worlds)];
       for (const [kind,d] of dimensions) {
