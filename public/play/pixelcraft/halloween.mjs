@@ -70,7 +70,7 @@ export function upgradeHalloween(G,{deferLight=false}={}){
   let clear=true;for(let dx=-3;dx<=3;dx++)for(let dy=top;dy<=0;dy++)if(![B.AIR,B.TALL_GRASS,B.POPPY,B.DANDELION,B.SNOW,B.OAK_TRUNK,B.BIRCH_TRUNK,B.SPRUCE_TRUNK,B.OAK_LEAVES,B.BIRCH_LEAVES,B.SPRUCE_LEAVES].includes(w.tiles[idx(x+dx,y+dy)]))clear=false;
   if(!clear)continue;
   for(let dy=0;dy>= (special?-7:-5);dy--)w.tiles[idx(x,y+dy)]=special?B.DARK_OAK_LOG:B.SPRUCE_TRUNK;
-  for(let dx=-3;dx<=3;dx++)for(let dy=special?-9:-7;dy<=-4;dy--)if(Math.abs(dx)+(dy=== (special?-9:-7)?1:0)<=3&&dx!==0)w.tiles[idx(x+dx,y+dy)]=B.SPRUCE_LEAVES;
+  for(let dx=-3;dx<=3;dx++)for(let dy=special?-9:-7;dy<=-4;dy++)if(Math.abs(dx)+(dy=== (special?-9:-7)?1:0)<=3&&dx!==0)w.tiles[idx(x+dx,y+dy)]=B.SPRUCE_LEAVES;
   w.tiles[idx(x-2,y-3)]=B.JACK;w.tiles[idx(x+2,y-3)]=B.JACK;w.tiles[idx(x-3,y-5)]=B.JACK;w.tiles[idx(x+3,y-5)]=B.JACK;w.tiles[idx(x,y-6)]=B.PUMPKIN;
   if(special){w.tiles[idx(x,y-8)]=B.GOLD_BLOCK;w.tiles[idx(x-1,y-7)]=B.GOLD_BLOCK;w.tiles[idx(x+1,y-7)]=B.GOLD_BLOCK;w.tiles[idx(x,y-9)]=B.JACK;}
   h.trees.push({x,y,special});x+=45;
