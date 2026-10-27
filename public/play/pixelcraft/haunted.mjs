@@ -58,7 +58,7 @@ export function upgradeHaunted(G){
   put(x+1,y-2,B.CHISELED_STONE_BRICKS);put(x+1,y-3,B.STONE_BRICK_SLAB);stones.push({x,y});
  }
  h.haunted={start,end,x:Math.round((start+end)/2),name:'속삭이는 안개 숲',trees,stones};h.terrainVersion=1;
- computeLight(w,0,W-1);G.dirty=[0,W-1];
+ G.dirty=[0,W-1];
 }
 export function hauntedStrength(G){
  const h=G.adventure?.halloween?.haunted;

@@ -1832,11 +1832,18 @@ function createWorld() {
   const diff = Number(document.querySelector('input[name="diff"]:checked').value);
   $('loading').hidden = false;
   setTimeout(() => {
-    const game = newGame({ worldType: $('nwWorldType').value, name, seed, mode, diff, slot: newSlot, coop: $('nwCoop').checked, skin: Number($('nwSkin').value), playerName: $('nwPlayer').value.trim().slice(0, 16) });
-    game.adventure.dayLength = Number($('nwDayLength').value);
-    $('loading').hidden = true;
-    startGame(game);
-    saveGame(true);
+    try {
+      const game = newGame({ worldType: $('nwWorldType').value, name, seed, mode, diff, slot: newSlot, coop: $('nwCoop').checked, skin: Number($('nwSkin').value), playerName: $('nwPlayer').value.trim().slice(0, 16) });
+      if(game.adventure)game.adventure.dayLength = Number($('nwDayLength').value);
+      $('loading').hidden = true;
+      startGame(game);
+      saveGame(true);
+    } catch (error) {
+      console.error('World creation failed:',error);
+      $('loading').hidden = true;
+      $('newWorld').hidden = false;
+      toast('세계를 만들지 못했어. 설정을 확인하고 다시 해 줘!');
+    }
   }, 30);
 }
 
