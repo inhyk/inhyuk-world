@@ -1,13 +1,24 @@
 import {B} from './data.mjs';
-import {W,H,SEA,BIOME,idx,generateWorld,computeLight} from './core.mjs';
+import {W,H,SEA,BIOME,idx,generateWorld,computeLight,registerPassableTerrain} from './core.mjs';
+
+function registerGhostTrees(w, haunted){
+ const indices=[];
+ for(const{x,y,height}of haunted?.trees??[]){
+  for(let dy=1;dy<=height;dy++)indices.push(idx(x,y-dy));
+  for(const side of[-1,1]){for(let k=1;k<=3;k++)indices.push(idx(x+side*k,y-height+2-Math.floor(k/2)));indices.push(idx(x+side*3,y-height));}
+ }
+ registerPassableTerrain(w,indices);
+}
 
 // This is an overworld region, so existing biome/save IDs stay compatible.
 export function upgradeHaunted(G){
  const a=G.adventure,h=a.halloween;
- if(!h||h.terrainVersion===1)return;
+ if(!h)return;
  const d=a.dimension==='overworld'?{w:G.w,villagers:a.villagers}:a.worlds.overworld;
  if(!d)return;
- const w=d.w,base=generateWorld(w.seed),decor=new Set((h.sites??[]).map(p=>idx(p.x,p.y)));
+ const w=d.w;
+ if(h.terrainVersion===1){registerGhostTrees(w,h.haunted);return;}
+ const base=generateWorld(w.seed),decor=new Set((h.sites??[]).map(p=>idx(p.x,p.y)));
  const safe=x=>{
   const y=w.surface[x];
   if(w.biome[x]===BIOME.OCEAN||y>=SEA-2||Math.abs(x-W/2)<65||d.villagers.some(v=>Math.abs(v.x-x)<38))return false;
@@ -57,7 +68,7 @@ export function upgradeHaunted(G){
   for(let dx=0;dx<3;dx++)put(x+dx,w.surface[x+dx]-1,B.MOSSY_COBBLE);
   put(x+1,y-2,B.CHISELED_STONE_BRICKS);put(x+1,y-3,B.STONE_BRICK_SLAB);stones.push({x,y});
  }
- h.haunted={start,end,x:Math.round((start+end)/2),name:'속삭이는 안개 숲',trees,stones};h.terrainVersion=1;
+ h.haunted={start,end,x:Math.round((start+end)/2),name:'속삭이는 안개 숲',trees,stones};h.terrainVersion=1;registerGhostTrees(w,h.haunted);
  G.dirty=[0,W-1];
 }
 export function hauntedStrength(G){

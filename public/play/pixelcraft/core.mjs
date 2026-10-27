@@ -410,11 +410,18 @@ export function wake(active, i) {
 }
 
 // ---- 몸 충돌 ----
+const passableTerrain = new WeakMap();
+export function registerPassableTerrain(w, indices) {
+  let passable = passableTerrain.get(w);
+  if (!passable) passableTerrain.set(w, passable = new Set());
+  for (const i of indices) if (Number.isInteger(i) && i >= 0 && i < W * H) passable.add(i);
+}
 export function solidAt(w, x, y) {
   if (x < 0 || x >= W) return true;
   if (y < 0) return false;
   if (y >= H) return true;
   const i = y * W + x;
+  if (passableTerrain.get(w)?.has(i)) return false;
   return isSolid(w.tiles[i], w.meta[i]);
 }
 export function collides(w, x, y, bw, bh) {
