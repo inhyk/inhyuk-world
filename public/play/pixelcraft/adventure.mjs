@@ -400,6 +400,7 @@ export function createAdventureController(api) {
     if(a.dimension==='school')$('questLine').textContent='현실로 돌아왔어! 교실 오른쪽 포탈로 다시 모험하기';
     if(a.dimension==='moon')$('questLine').textContent='우주선 옆 R로 귀환 · 월석과 운석을 찾아봐!';
     if(a.dimension==='end')$('questLine').textContent='동쪽 바깥 섬의 보물과 탑을 찾아봐 · 모험책 J';
+    const haunted=a.dimension==='overworld'&&a.halloween?.haunted;if(haunted&&p.x>=haunted.start&&p.x<=haunted.end)$('questLine').textContent='속삭이는 안개 숲 · 검은 나무와 거미줄 사이의 호박 등불을 찾아봐!';
     $('worldLine').textContent = `${a.dimension === 'school' ? '학교 세계' : a.dimension === 'moon' ? '달 · 낮은 중력' : a.dimension === 'nether' ? '네더' : a.dimension === 'end' ? '엔드' : '숲 세계'} · ${G.day}일째 · ${W}칸${a.coop ? ` · 2P ${G.companion.spectator ? '관전 중' : `HP ${Math.ceil(G.companion.hp)}/20`}` : ''}`;
     const nearby = [...a.villagers, ...a.portals].some(e => Math.hypot(e.x - p.x, e.y - p.y) < 5);
     $('interactButton').classList.toggle('near', nearby);

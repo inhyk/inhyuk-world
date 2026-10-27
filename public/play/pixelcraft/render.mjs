@@ -1,3 +1,4 @@
+import {drawHauntedSky,drawHauntedMist} from './haunted.mjs';
 import { drawMoonSky } from './expedition-world.mjs';
 import { drawJumpSky } from './jump-world.mjs';
 // 화면 그리기: 하늘 → 뒷벽 → 블록 → 생물 → 물 → 빛 → 금·선택 칸 → 조각
@@ -116,6 +117,7 @@ export function render(g, G, cw, ch, T) {
   const sy = (y) => Math.round((y - top) * T);
   g.imageSmoothingEnabled = false;
   drawSky(g, G, cw, ch, view);
+  drawHauntedSky(g,G,cw,ch);
 
   const x0 = Math.max(0, Math.floor(left) - 1), x1 = Math.min(W - 1, Math.ceil(left + viewW) + 1);
   const y0 = Math.max(0, Math.floor(top) - 1), y1 = Math.min(H - 1, Math.ceil(top + viewH) + 1);
@@ -249,6 +251,7 @@ export function render(g, G, cw, ch, T) {
     g.fillRect(sx(p.x) - s / 2, sy(p.y) - s / 2, s, s);
   }
   g.globalAlpha = 1;
+  drawHauntedMist(g,G,sx,sy,T,cw);
   // 물속이면 푸르게, 다치면 빨갛게
   const p = G.player;
   const head = Math.floor(p.y + 0.3) * W + Math.floor(p.x + p.w / 2);
