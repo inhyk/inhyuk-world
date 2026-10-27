@@ -38,8 +38,8 @@ export function claimHalloween(G){
  return {ok:true,text:`미션 ${index+1n} 완료! 황금 사과 2개${index%10n===9n?'와 다이아몬드 1개':''}를 받았어. 다음 미션 ${index+2n}이 열렸어!`};
 }
 // Upgrade only untouched natural terrain; never reconstruct a player's buildings.
-export function upgradeHalloween(G){
- const h=halloweenState(G);if(h.version===1){upgradeHaunted(G);upgradeFestivalTree(G,h);return;}
+export function upgradeHalloween(G,{deferLight=false}={}){
+ const h=halloweenState(G);if(h.version===1){const needsLight=h.terrainVersion!==1||h.treeUpgradeVersion!==1;upgradeHaunted(G);upgradeFestivalTree(G,h);const w=G.adventure.dimension==='overworld'?G.w:G.adventure.worlds.overworld?.w;if(needsLight&&!deferLight&&w)computeLight(w,0,W-1);return;}
  const d=G.adventure.dimension==='overworld'?{w:G.w,villagers:G.adventure.villagers,chests:G.chests}:G.adventure.worlds.overworld;if(!d)return;
  const w=d.w,base=generateWorld(w.seed),r=makeRng(w.seed^0x0c70bee),sites=h.sites??=[],villages=h.villages??=[],food=h.food??=[];
  const clean=(x0,x1,y0,y1)=>{for(let x=x0;x<=x1;x++)for(let y=Math.max(1,y0);y<=Math.min(H-2,y1);y++){const i=idx(x,y);if(w.tiles[i]!==base.tiles[i]||w.meta[i]!==base.meta[i]||w.bg[i]!==base.bg[i])return false;}return true;};
@@ -90,7 +90,7 @@ export function upgradeHalloween(G){
    w.tiles[i]=B.CHEST;const slots=Array(27).fill(null);slots[0]={id:I.APPLE,count:6};slots[1]={id:I.COOKED_PORK,count:4};d.chests.set(i,slots);food.push({x,y,biome});break;
   }
  }
- h.version=1;h.sites=sites;h.villages=villages;h.food=food;computeLight(w,0,W-1);G.dirty=[0,W-1];upgradeHaunted(G);upgradeFestivalTree(G,h);
+ h.version=1;h.sites=sites;h.villages=villages;h.food=food;G.dirty=[0,W-1];upgradeHaunted(G);upgradeFestivalTree(G,h);if(!deferLight)computeLight(w,0,W-1);
 }
 
 function upgradeFestivalTree(G,h){
@@ -102,7 +102,7 @@ function upgradeFestivalTree(G,h){
   if(w.tiles[idx(x,y-5)]!==B.SPRUCE_TRUNK||w.tiles[idx(x,y-6)]!==B.PUMPKIN||w.tiles[idx(x-2,y-3)]!==B.JACK||w.tiles[idx(x+2,y-3)]!==B.JACK)continue;
   const crown=[[x,y-8,B.GOLD_BLOCK],[x-1,y-8,B.GOLD_BLOCK],[x+1,y-8,B.GOLD_BLOCK],[x,y-9,B.JACK]];
   if(crown.some(([cx,cy])=>w.tiles[idx(cx,cy)]!==base.tiles[idx(cx,cy)]||base.tiles[idx(cx,cy)]!==B.AIR||w.meta[idx(cx,cy)]!==base.meta[idx(cx,cy)]||w.bg[idx(cx,cy)]!==base.bg[idx(cx,cy)]))continue;
-  for(const[cx,cy,id]of crown)w.tiles[idx(cx,cy)]=id;tree.special=true;computeLight(w,Math.max(0,x-5),Math.min(W-1,x+5));G.dirty=[Math.max(0,x-5),Math.min(W-1,x+5)];break;
+  for(const[cx,cy,id]of crown)w.tiles[idx(cx,cy)]=id;tree.special=true;G.dirty=[Math.max(0,x-5),Math.min(W-1,x+5)];break;
  }
  h.treeUpgradeVersion=1;
 }

@@ -22,7 +22,7 @@ export function newAdventure(G, opts = {}) {
   const ex = Math.floor(W / 2) + 145;
   G.adventure.portals.push({ ...portalFrame(G.w, ex, G.w.surface[ex] - 1, 'end'), kind: 'end' });
   populateVillageChests(G);
-  upgradeHalloween(G);
+  upgradeHalloween(G,{deferLight:true});
   computeLight(G.w, 0, W - 1);
 }
 const WORLD_FIELDS = ['mobs', 'drops', 'arrows', 'tnts', 'falling', 'chests', 'furnaces', 'water', 'lava', 'fireballs'];
