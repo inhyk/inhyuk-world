@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#1b1b1b">
-  <title>2D마인크레프트</title>
+  <title>2D마인크레프트 · 할로윈 등불 축제</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23865b3a'/%3E%3Crect width='16' height='5' fill='%235fa83b'/%3E%3Crect x='3' y='5' width='2' height='2' fill='%235fa83b'/%3E%3Crect x='10' y='5' width='3' height='1' fill='%235fa83b'/%3E%3C/svg%3E">
   <link rel="preload" href="../undertale/fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="./style.css">
@@ -44,18 +44,28 @@
     </div>
   </div>
 
+  <section id="halloweenDialog" class="overlay festival-overlay" role="dialog" aria-modal="true" aria-labelledby="halloweenTitle" hidden>
+    <div class="festival-dialog"><button id="halloweenClose" class="festival-close" aria-label="할로윈 창 닫기">✕</button>
+      <header><span class="season-label">HALLOWEEN FESTIVAL</span><h2 id="halloweenTitle">등불을 되찾는 밤</h2><p id="halloweenIntro"></p></header>
+      <div class="festival-columns"><section><h3>오늘의 할로윈 미션</h3><div id="halloweenMissions"></div><button id="halloweenClaim" class="mc-btn"></button><p class="festival-note">보상은 세계마다 한 번 · 진행은 자동 저장</p></section>
+      <section><h3>축제 제작법</h3><p class="festival-note">아래 아이템을 누르면 재료와 제작 버튼이 나와.</p><div id="halloweenRecipes"></div><div id="halloweenRecipeDetail"></div><button id="halloweenCraft" class="mc-btn"></button></section></div>
+      <p id="halloweenMessage" role="status" aria-live="polite"></p>
+    </div>
+  </section>
   <div id="panel" hidden></div>
   <div id="tip" hidden></div>
   <div id="cursorItem" hidden></div>
 
   <section id="title" hidden>
     <a class="back" href="/games" target="_top">← 게임 목록</a>
-    <div class="logo">
+    <div class="halloween-scenery" aria-hidden="true"><div class="festival-moon"></div><div class="festival-bats">⌁　⌁　　⌁</div><div class="festival-woods"></div><div class="festival-pumpkins"><span>🎃</span><span>🎃</span><span>🎃</span></div></div>
+    <div class="logo"><span class="season-label">HALLOWEEN · 등불을 되찾는 밤</span>
       <h1>2D마인크레프트</h1>
-      <p class="sub">숲의 비밀</p>
-      <span class="splash">깊은 숲과 소환사 좀비!</span>
+      <p class="sub">안개 숲의 할로윈</p>
+      <span class="splash">할로윈이 왔어!</span>
     </div>
     <div class="menu">
+      <button id="btnHalloween" class="mc-btn festival-enter">🎃 할로윈 이벤트 · 미션과 제작법 <span>호박을 모으고 잭오랜턴을 켜 줘!</span></button>
       <div class="account-bar">
         <div><b id="accountName">손님으로 플레이 중</b><small id="accountNote">계정 확인 중…</small></div>
         <button id="btnAccount" class="mc-btn" disabled>로그인 / 가입</button>
@@ -177,7 +187,7 @@
     </div>
   </section>
 
-  <aside id="questHUD" hidden><b id="worldLine"></b><span id="questLine"></span><div><button id="interactButton">대화·포탈 R</button><button id="storyButton">이야기</button><button id="achievementButton">도전과제</button><button id="recordsButton">기록</button><button id="journalButton">모험책 J</button><button id="blueprintButton" hidden>완성 그림 R</button><button id="galleryButton" hidden>다른 그림 선택</button><button id="skipGuideButton" hidden>따라 쌓기 안 하기</button><button id="blockCatalogButton">블록 도감</button><button id="enchantButton">인챈트</button><button id="commandButton">명령어</button><button id="onlineButton">온라인</button></div></aside>
+  <aside id="questHUD" hidden><b id="worldLine"></b><span id="questLine"></span><div><button id="interactButton">대화·포탈 R</button><button id="storyButton">이야기</button><button id="achievementButton">도전과제</button><button id="recordsButton">기록</button><button id="halloweenButton">🎃 할로윈 미션</button><button id="journalButton">모험책 J</button><button id="blueprintButton" hidden>완성 그림 R</button><button id="galleryButton" hidden>다른 그림 선택</button><button id="skipGuideButton" hidden>따라 쌓기 안 하기</button><button id="blockCatalogButton">블록 도감</button><button id="enchantButton">인챈트</button><button id="commandButton">명령어</button><button id="onlineButton">온라인</button></div></aside>
   <aside id="bossHUD" hidden><b id="bossLabel"></b><progress id="bossHealth" max="540" value="540" aria-label="소환사 좀비 체력"></progress></aside>
   <section id="adventureDialog" class="overlay" hidden><div class="mc-dialog wide story-dialog"><span class="chapter">2D마인크레프트 · 숲의 비밀</span><h2 id="adventureTitle"></h2><div id="adventureBody"></div><div id="adventureActions"></div></div></section>
   <section id="commandDialog" class="overlay" role="dialog" aria-modal="true" aria-labelledby="commandHeading" hidden>

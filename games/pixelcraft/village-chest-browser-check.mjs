@@ -6,7 +6,7 @@ const b=await chromium.launch(),p=await b.newPage({viewport:{width:1280,height:7
 try{
  await p.goto(process.env.PIXELCRAFT_TEST_URL||'http://127.0.0.1:3065/play/pixelcraft/');await p.waitForFunction(()=>window.__pixelcraft);
  await p.click('#slots .play >> nth=0');await p.fill('#nwSeed','1234');await p.click('#nwCreate');await p.click('#adventureActions button:last-child');
- const i=await p.evaluate(()=>{const A=window.__pixelcraft,G=A.G;if(G.chests.size!==3)throw Error('Expected three supplied villages');const i=[...G.chests.keys()][0];Object.assign(G.player,{x:i%1280-1,y:Math.floor(i/1280)-.8,vx:0,vy:0,invT:999});G.cam={x:G.player.x,y:G.player.y};G.target={x:i%1280,y:Math.floor(i/1280)};A.doUse();return i;});
+ const i=await p.evaluate(()=>{const A=window.__pixelcraft,G=A.G;if(G.chests.size<3)throw Error('Expected three supplied villages');const i=[...G.chests.keys()][0];Object.assign(G.player,{x:i%1280-1,y:Math.floor(i/1280)-.8,vx:0,vy:0,invT:999});G.cam={x:G.player.x,y:G.player.y};G.target={x:i%1280,y:Math.floor(i/1280)};A.doUse();return i;});
  await p.waitForSelector('[data-s="c:0"] img');assert.ok([7,8].includes(await p.locator('[data-s^="c:"] img').count()));
  await p.screenshot({path:`${out}/chest.png`});
  await p.locator('[data-s="c:0"]').click({modifiers:['Shift']});

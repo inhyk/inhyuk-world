@@ -1,3 +1,5 @@
+import {createHalloweenUI} from './halloween-ui.mjs';
+import {halloweenState,recordHalloweenCraft} from './halloween.mjs';
 import { swapHands, canUseOffhand } from './offhand.mjs';
 import { enchantLines,enchantLevel,wearAmount,meleeDamage,gainExperience,enchantedDrop } from './enchantments.mjs';
 import { createOnline } from './online.mjs';
@@ -955,6 +957,7 @@ function placeBlock(x, y, itemId) {
     if (BLOCKS[blockId].use === 'chest') G.chests.set(i, Array(27).fill(null));
     if (BLOCKS[blockId].use === 'furnace') G.furnaces.set(i, { slots: [null, null, null], burn: 0, burnMax: 0, cook: 0 });
   }
+  if(blockId===B.JACK&&G.adventure)halloweenState(G).placed=(halloweenState(G).placed??0)+1;
   G.stats.placed=(G.stats.placed??0)+1;
   consumeHeld();
   if(blockId===B.NETHER_PORTAL)adventure.portalPlaced(x,y);
@@ -1735,7 +1738,7 @@ function startGame(game,onlineLoad=false) {
     onSelect: () => showHeldName(),
     swapHands:swapPlayerHands,
     onlineAction:action=>{if(online.guest&&action.op==='select')guestSelection=action.slot;return online.action(action);},
-    onCraft: () => { hudDirty(); }, toast, save:()=>saveGame(true),
+    onCraft: (id,n=1) => { recordHalloweenCraft(G,id,n);hudDirty(); }, toast, save:()=>saveGame(true),
   });
   $('title').hidden = true;
   $('hud').hidden = false;
@@ -1874,6 +1877,7 @@ function frame(now) {
 
 function boot() {
   buildTextures();
+  createHalloweenUI({get:()=>G,closePanel,keys,hudDirty,save:()=>saveGame(true)});
   try {
     Object.assign(sound, JSON.parse(load('pixelcraft.sound') ?? '{}'));
   } catch {

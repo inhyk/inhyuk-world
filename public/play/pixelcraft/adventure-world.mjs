@@ -36,14 +36,15 @@ export const terrainSave = (w) => ({ width: W, tiles: rleEncode(w.tiles), meta: 
 export const remapIndex = (i, width = W) => Math.floor(i / width) * W + i % width;
 
 export function put(w, x, y, t) { if (x > 0 && x < W - 1 && y > 0 && y < H - 1) { w.tiles[idx(x, y)] = t; w.meta[idx(x, y)] = 0; } }
-export function makeVillage(w, center) {
+export function makeVillage(w, center, {compact=false}={}) {
   const floor = w.surface[center];
   const villagers = [];
-  for (let x = center - 25; x <= center + 25; x++) {
+  const radius=compact?7:25;
+  for (let x = center - radius; x <= center + radius; x++) {
     w.surface[x] = floor;
     for (let y = floor - 13; y < floor + 6; y++) put(w, x, y, y < floor ? B.AIR : y === floor ? B.GRASS : B.DIRT);
   }
-  for (const [n, off] of [-18, -3, 12].entries()) {
+  for (const [n, off] of (compact?[[2,-4]]:[...[-18,-3,12].entries()])) {
     const x = center + off;
     for (let dx = 0; dx < 9; dx++) {
       put(w, x + dx, floor - 1, B.PLANKS);

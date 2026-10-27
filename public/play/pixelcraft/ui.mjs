@@ -258,12 +258,14 @@ function takeOutput(shift) {
   let rec = currentRecipe();
   if (!rec) return;
   const [id, n] = rec.out;
+  let crafted = 0;
   if (shift) {
     let guard = 64;
     while (rec && guard-- > 0) {
       const left = addItem(G.player.inv, id, n, durabilityOf(id) || undefined);
       if (left > 0) api.drop(id, left);
       consumeGrid();
+      crafted += n;
       rec = currentRecipe();
       if (rec && rec.out[0] !== id) break;
     }
@@ -273,9 +275,10 @@ function takeOutput(shift) {
     else if (c.id === id && c.count + n <= maxStack(id)) c.count += n;
     else return;
     consumeGrid();
+    crafted = n;
   }
   sfx.craft();
-  api.onCraft(id);
+  api.onCraft(id, crafted);
 }
 function bookList() {
   const table = UI.open === 'table';
@@ -297,7 +300,7 @@ function craftFromBook(index, shift) {
   }
   if (made) {
     sfx.craft();
-    api.onCraft(rec.out[0]);
+    api.onCraft(rec.out[0],made*rec.out[1]);
   }
 }
 
