@@ -16,7 +16,8 @@
     "Block contact from above or below snaps the rotated cube to the solid surface as soon as its polygon overlaps, even if a frame crossing was missed.",
     "An overlapping cube approaching the top side of a block is resolved onto its upper surface regardless of vertical velocity, preventing lethal side-corner hits during a jump.",
     "Cube spike collision uses the stable player hitbox instead of its rotated visual corners; blocks use axis-aligned collision to prevent artwork from striking low ceilings. Ship block contact uses the inset solid collider for clearance through narrow corridors.",
-    "Gravity portals clear the prior grounded state immediately so the cube can move away from the previous surface after gravity flips."
+    "Gravity portals clear the prior grounded state immediately so the cube can move away from the previous surface after gravity flips.",
+    "In inverted-gravity sections, the ceiling floor is rendered and collides as a landing surface for the cube."
   ],
   "maps": [
     {
@@ -166,7 +167,7 @@
   ],
   "packageBytes": 3441398,
   "packageSha256": "e933166460b1dd210127c880846e5ae15aaf0cb9ef11ec21691e9baa02a357c4",
-  "wasmSha256": "13fa69cb19472451caf79345df665bc02a033eb0fb9393979c6b7106763201d2",
+  "wasmSha256": "d9464cf6f2c7e3583f398cd6a652097c4279d756469f9de41956f8fc7d8bc05c",
   "musicSources": [
     {
       "level": 1,
@@ -231,5 +232,5 @@
   ],
   "runtimeNetwork": "YouTube IFrame API and its selected video are loaded when the page is opened.",
   "sourceRevision": "VinkentLi/Bad-GD-Clone 40ef6a3",
-  "wasmBytes": 2597747
+  "wasmBytes": 2597866
 }
