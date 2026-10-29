@@ -17,7 +17,8 @@
     "An overlapping cube approaching the top side of a block is resolved onto its upper surface regardless of vertical velocity, preventing lethal side-corner hits during a jump.",
     "Cube spike collision uses the stable player hitbox instead of its rotated visual corners; blocks use axis-aligned collision to prevent artwork from striking low ceilings. Ship block contact uses the inset solid collider for clearance through narrow corridors.",
     "Gravity portals clear the prior grounded state immediately so the cube can move away from the previous surface after gravity flips.",
-    "In inverted-gravity sections, the ceiling floor is rendered and collides as a landing surface for the cube."
+    "In inverted-gravity sections, the ceiling floor is rendered and collides as a landing surface for the cube.",
+    "Added five-block assisted platforms in clear sections of all 15 stages. Platform placement avoids overlapping existing solid blocks and hazards, and the blocks use the engine collision system."
   ],
   "maps": [
     {
@@ -167,7 +168,7 @@
   ],
   "packageBytes": 3441398,
   "packageSha256": "e933166460b1dd210127c880846e5ae15aaf0cb9ef11ec21691e9baa02a357c4",
-  "wasmSha256": "d9464cf6f2c7e3583f398cd6a652097c4279d756469f9de41956f8fc7d8bc05c",
+  "wasmSha256": "68a93e9662bf59c4efc8c488ef942d8eff156594ac8cf72dbb95013abfe03e94",
   "musicSources": [
     {
       "level": 1,
@@ -232,5 +233,5 @@
   ],
   "runtimeNetwork": "YouTube IFrame API and its selected video are loaded when the page is opened.",
   "sourceRevision": "VinkentLi/Bad-GD-Clone 40ef6a3",
-  "wasmBytes": 2597866
+  "wasmBytes": 2599091
 }
