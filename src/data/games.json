@@ -1,5 +1,55 @@
 [
   {
+    "slug": "dash-overdrive",
+    "title": "DASH / OVERDRIVE · 대쉬 오버드라이브",
+    "description": "HARD EDITION과 원작 맵 6단계 Can’t Let Go·7단계 Jumper에 도전하세요.",
+    "longDescription": "처음부터 새로 만든 독립적인 리듬 러너입니다. SKYLINE·AFTERGLOW·HYPERSPACE의 세 하늘을 달리며 점프 발판을 밟고, 포털에서 비행선으로 변신해 장애물 사이를 비행하세요. 큐브는 클릭·터치·스페이스로 점프하고 비행선은 누르면 상승, 떼면 하강합니다. 보석 수집, 안전 체크포인트 연습 모드, 코스별 최고 기록, 합성 리듬 음악, 일시정지와 전체 화면을 지원합니다. HARD EDITION에서는 세 코스가 초당 420·500·580 속도로 달리며 2~5연속 높은 가시와 180·160·144 높이의 좁은 비행 통로를 돌파합니다. 일반 최고 기록은 이전 버전과 분리됩니다. 별도 Geometry Classics에서는 원작 맵 데이터의 6단계 Can’t Let Go와 7단계 Jumper를 음악 없이 플레이할 수 있습니다. 비공식 웹 재현 엔진으로 조작감과 일부 장식·숨겨진 요소는 원작과 다를 수 있습니다.",
+    "emoji": "🚀",
+    "thumbnail": "/images/games/dash-overdrive-thumb.png",
+    "screenshots": [
+      "/images/games/dash-overdrive-play.png",
+      "/images/games/dash-overdrive-flight.png",
+      "/images/games/dash-overdrive-mobile.png",
+      "/images/games/dash-overdrive-classic-6.png",
+      "/images/games/dash-overdrive-classic-7.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio",
+      "WebAssembly"
+    ],
+    "category": "아케이드",
+    "playUrl": "/play/dash-overdrive",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 100
+  },
+  {
+    "slug": "pixelcraft",
+    "title": "2D마인크레프트",
+    "description": "방 코드로 온라인 2인 협동! 넓은 블록 세계에서 함께 만들고, 14종 인챈트로 장비를 강화하세요!",
+    "longDescription": "학교에서 잠들었다가 깊은 숲의 네모난 세계에 눈을 뜬 여행자. 1280×160칸 세계에서 나무를 캐고, 집과 도구를 만들고, 마을 주민과 물건을 거래하며 살아남으세요. 네더·엔드 포탈로 차원을 오가고, 50일째 등장하는 소환사 좀비의 3단계 소환술을 이겨 내면 현실로 돌아가는 황금 포탈이 열립니다. 한 컴퓨터에서 2인 협동(공유 가방), 캐릭터와 이름 선택, 가방·제작·화로, 서바이벌과 크리에이티브, 가죽·철·금·다이아몬드 방어구 16종과 장비별 내구도, 공용 계정 로그인과 계정별 세계 3칸 브라우저 자동 저장, 모바일 터치 조작, 도전과제 10개를 지원합니다. 하루 길이는 1분·2분·10분 중 고를 수 있어요. 그림과 소리는 모두 코드로 만들었습니다. 마법 부여대에서 날카로움·효율·보호·수선 등 14종 인챈트를 붙일 수 있습니다. 야생에서는 경험치와 청금석을 모으고 책장으로 부여 레벨을 높이며, 크리에이티브에서는 무료로 강화합니다. 2P의 공유 도구와 착용 방어구에도 인챈트가 적용되고 저장됩니다. 온라인에서는 로그인 없이 6자리 방 코드로 2명이 함께 플레이합니다. 각자의 가방·장비·경험치를 쓰고 블록·상자·화로와 차원을 공유합니다. 세계와 친구 자리의 장비는 방장 브라우저에 저장됩니다. 차원·이야기 진행은 방장이 맡고, 방장이 나가면 온라인 방도 종료됩니다.",
+    "emoji": "⛏️",
+    "thumbnail": "/images/games/pixelcraft-thumb.png",
+    "screenshots": [
+      "/images/games/pixelcraft-thumb.png",
+      "/images/games/pixelcraft-1.png",
+      "/images/games/pixelcraft-enchant.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "샌드박스",
+    "playUrl": "/play/pixelcraft",
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/pixelcraft",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 63
+  },
+  {
     "slug": "noraebang",
     "title": "인혁 노래방 · 인혁 월드로 와!",
     "description": "핑크 젤리와 파랑 젤리가 인혁 월드 주제가를 불러요. 가사 색이 글자마다 채워지는 노래방!",
@@ -46,30 +96,6 @@
     "createdAt": "2026-10",
     "featured": true,
     "order": 61
-  },
-  {
-    "slug": "pixelcraft",
-    "title": "2D마인크레프트",
-    "description": "방 코드로 온라인 2인 협동! 넓은 블록 세계에서 함께 만들고, 14종 인챈트로 장비를 강화하세요!",
-    "longDescription": "학교에서 잠들었다가 깊은 숲의 네모난 세계에 눈을 뜬 여행자. 1280×160칸 세계에서 나무를 캐고, 집과 도구를 만들고, 마을 주민과 물건을 거래하며 살아남으세요. 네더·엔드 포탈로 차원을 오가고, 50일째 등장하는 소환사 좀비의 3단계 소환술을 이겨 내면 현실로 돌아가는 황금 포탈이 열립니다. 한 컴퓨터에서 2인 협동(공유 가방), 캐릭터와 이름 선택, 가방·제작·화로, 서바이벌과 크리에이티브, 가죽·철·금·다이아몬드 방어구 16종과 장비별 내구도, 공용 계정 로그인과 계정별 세계 3칸 브라우저 자동 저장, 모바일 터치 조작, 도전과제 10개를 지원합니다. 하루 길이는 1분·2분·10분 중 고를 수 있어요. 그림과 소리는 모두 코드로 만들었습니다. 마법 부여대에서 날카로움·효율·보호·수선 등 14종 인챈트를 붙일 수 있습니다. 야생에서는 경험치와 청금석을 모으고 책장으로 부여 레벨을 높이며, 크리에이티브에서는 무료로 강화합니다. 2P의 공유 도구와 착용 방어구에도 인챈트가 적용되고 저장됩니다. 온라인에서는 로그인 없이 6자리 방 코드로 2명이 함께 플레이합니다. 각자의 가방·장비·경험치를 쓰고 블록·상자·화로와 차원을 공유합니다. 세계와 친구 자리의 장비는 방장 브라우저에 저장됩니다. 차원·이야기 진행은 방장이 맡고, 방장이 나가면 온라인 방도 종료됩니다.",
-    "emoji": "⛏️",
-    "thumbnail": "/images/games/pixelcraft-thumb.png",
-    "screenshots": [
-      "/images/games/pixelcraft-thumb.png",
-      "/images/games/pixelcraft-1.png",
-      "/images/games/pixelcraft-enchant.png"
-    ],
-    "techStack": [
-      "JavaScript",
-      "Canvas 2D",
-      "Web Audio"
-    ],
-    "category": "샌드박스",
-    "playUrl": "/play/pixelcraft",
-    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/pixelcraft",
-    "createdAt": "2026-10",
-    "featured": true,
-    "order": 63
   },
   {
     "slug": "crabcraft",
@@ -123,30 +149,6 @@
     "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/sword-forge"
   },
   {
-    "slug": "undertale-echo",
-    "title": "UNDERTALE: ECHO · 잊힌 별의 역",
-    "description": "다섯 신호와 마지막 열차. 새 이야기·20개 방·영혼 탄막 전투·세 가지 결말의 언더테일 팬게임.",
-    "longDescription": "멈춘 지하 열차를 다시 움직이는 새로운 비공식 팬게임입니다. 별가루 정원, 눈 내리는 승강장, 메아리 저수지, 자정의 방송국과 마지막 신호까지 5장·20개 방을 탐험하세요. 토리엘, 파피루스, 언다인, 메타톤과 만나 공격·행동·아이템·자비로 전투를 해결하고, 유령의 노래와 작은 친절이 마지막 열차의 목적지를 바꿉니다. 스위치 퍼즐, 세 곳의 상점, 조사할 기억 20개, 별 세이브, 모바일 터치와 합성 음악을 지원하며, 별도 보스 연습에서 아스고어·플라위·샌즈·아스리엘 등을 포함한 10개 전투를 즐길 수 있습니다.",
-    "emoji": "🚂",
-    "thumbnail": "/images/games/undertale-echo-thumb.png",
-    "screenshots": [
-      "/images/games/undertale-echo-thumb.png",
-      "/images/games/undertale-echo-1.png",
-      "/images/games/undertale-echo-2.png"
-    ],
-    "techStack": [
-      "JavaScript",
-      "Canvas 2D",
-      "Web Audio"
-    ],
-    "category": "액션",
-    "playUrl": "/play/undertale-echo",
-    "createdAt": "2026-10",
-    "featured": true,
-    "order": 55,
-    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/undertale-echo"
-  },
-  {
     "slug": "sans",
     "title": "SANS · 심판의 회랑",
     "description": "암전마다 바뀌는 공격과 무자비한 특별 공격. HP 1·아이템 없는 하드모드에 도전하세요.",
@@ -169,6 +171,53 @@
     "featured": true,
     "order": 57,
     "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/sans"
+  },
+  {
+    "slug": "asriel",
+    "title": "ASRIEL · 마지막 별빛",
+    "description": "무지개 날개의 아스리엘과 맞서는 보스전. 12개 공격을 버티고 마지막 기억을 되찾으세요.",
+    "longDescription": "움직이는 픽셀 아트와 세 가지 모습, 12개 전용 탄막으로 펼쳐지는 아스리엘 단독 보스전입니다. 검·번개·별똥별·프리즘의 경고를 읽고 공격을 피하며, 희망과 꿈으로 버티세요. 최종 형태의 날개와 여섯 영혼이 빛나고, 쓰러져도 한 번은 결의로 다시 일어납니다. 친구 세 쌍의 기억을 되찾고 마지막 구원 연출과 결말을 만나세요. 독자 합성 음악과 전용 효과음, 키보드·모바일 터치 조작을 지원합니다.",
+    "emoji": "🌟",
+    "thumbnail": "/images/games/asriel-thumb.png",
+    "screenshots": [
+      "/images/games/asriel-1.png",
+      "/images/games/asriel-2.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "액션",
+    "playUrl": "/play/asriel",
+    "createdAt": "2026-09",
+    "featured": true,
+    "order": 56,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/asriel"
+  },
+  {
+    "slug": "undertale-echo",
+    "title": "UNDERTALE: ECHO · 잊힌 별의 역",
+    "description": "다섯 신호와 마지막 열차. 새 이야기·20개 방·영혼 탄막 전투·세 가지 결말의 언더테일 팬게임.",
+    "longDescription": "멈춘 지하 열차를 다시 움직이는 새로운 비공식 팬게임입니다. 별가루 정원, 눈 내리는 승강장, 메아리 저수지, 자정의 방송국과 마지막 신호까지 5장·20개 방을 탐험하세요. 토리엘, 파피루스, 언다인, 메타톤과 만나 공격·행동·아이템·자비로 전투를 해결하고, 유령의 노래와 작은 친절이 마지막 열차의 목적지를 바꿉니다. 스위치 퍼즐, 세 곳의 상점, 조사할 기억 20개, 별 세이브, 모바일 터치와 합성 음악을 지원하며, 별도 보스 연습에서 아스고어·플라위·샌즈·아스리엘 등을 포함한 10개 전투를 즐길 수 있습니다.",
+    "emoji": "🚂",
+    "thumbnail": "/images/games/undertale-echo-thumb.png",
+    "screenshots": [
+      "/images/games/undertale-echo-thumb.png",
+      "/images/games/undertale-echo-1.png",
+      "/images/games/undertale-echo-2.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Canvas 2D",
+      "Web Audio"
+    ],
+    "category": "액션",
+    "playUrl": "/play/undertale-echo",
+    "createdAt": "2026-10",
+    "featured": true,
+    "order": 55,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/undertale-echo"
   },
   {
     "slug": "keycap-clicker",
@@ -1328,28 +1377,5 @@
     "createdAt": "2026-02",
     "featured": true,
     "order": 1
-  },
-  {
-    "slug": "asriel",
-    "title": "ASRIEL · 마지막 별빛",
-    "description": "무지개 날개의 아스리엘과 맞서는 보스전. 12개 공격을 버티고 마지막 기억을 되찾으세요.",
-    "longDescription": "움직이는 픽셀 아트와 세 가지 모습, 12개 전용 탄막으로 펼쳐지는 아스리엘 단독 보스전입니다. 검·번개·별똥별·프리즘의 경고를 읽고 공격을 피하며, 희망과 꿈으로 버티세요. 최종 형태의 날개와 여섯 영혼이 빛나고, 쓰러져도 한 번은 결의로 다시 일어납니다. 친구 세 쌍의 기억을 되찾고 마지막 구원 연출과 결말을 만나세요. 독자 합성 음악과 전용 효과음, 키보드·모바일 터치 조작을 지원합니다.",
-    "emoji": "🌟",
-    "thumbnail": "/images/games/asriel-thumb.png",
-    "screenshots": [
-      "/images/games/asriel-1.png",
-      "/images/games/asriel-2.png"
-    ],
-    "techStack": [
-      "JavaScript",
-      "Canvas 2D",
-      "Web Audio"
-    ],
-    "category": "액션",
-    "playUrl": "/play/asriel",
-    "createdAt": "2026-09",
-    "featured": true,
-    "order": 56,
-    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/public/play/asriel"
   }
 ]

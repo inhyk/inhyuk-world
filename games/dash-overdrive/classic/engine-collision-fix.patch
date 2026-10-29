@@ -1,0 +1,258 @@
+diff --git a/src/Game.cpp b/src/Game.cpp
+index 88f4aa9..add3116 100644
+--- a/src/Game.cpp
++++ b/src/Game.cpp
+@@ -30,10 +30,15 @@ int Game::init() {
+         std::cerr << "Mix Open Audio has failed! " << SDL_GetError() << std::endl;
+         return -1;
+     }
++#ifdef __EMSCRIPTEN__
++    m_ScreenWidth = 1920;
++    m_ScreenHeight = 1080;
++#else
+     SDL_Rect displayBounds;
+     SDL_GetDisplayBounds(0, &displayBounds);
+     m_ScreenWidth = displayBounds.w;
+     m_ScreenHeight = displayBounds.h;
++#endif
+     m_Window = SDL_CreateWindow(
+         "GDClone",
+         SDL_WINDOWPOS_UNDEFINED,
+diff --git a/src/Player.cpp b/src/Player.cpp
+index 7786a18..d885e08 100644
+--- a/src/Player.cpp
++++ b/src/Player.cpp
+@@ -6,6 +6,24 @@
+ #include "Game.h"
+ #include "Object.h"
+
++namespace {
++constexpr float DEGREES_TO_RADIANS = 0.01745329252f;
++
++float rotatedCubeExtent(float halfSize, float radians) {
++    return halfSize * (std::abs(std::cos(radians)) + std::abs(std::sin(radians)));
++}
++
++float cubeVisualOffset(float radians, int gravityMultiplier, bool movingTowardLanding) {
++    if (!movingTowardLanding) {
++        return 0;
++    }
++    const float halfSize = Config::TILE_SIZE / 2.0f;
++    const float extent = rotatedCubeExtent(halfSize, radians);
++    return gravityMultiplier * (extent - halfSize);
++}
++
++}
++
+ void Player::init(Game *game) {
+     m_Game = game;
+     m_Renderer = m_Game->getRenderer();
+@@ -189,6 +207,7 @@ void Player::respawn() {
+     m_SolidHitbox.x = m_HazardHitbox.x + Config::TILE_SIZE / 3;
+     m_SolidHitbox.y = m_HazardHitbox.y + Config::TILE_SIZE / 3;
+     m_Position = { m_HazardHitbox.x, m_HazardHitbox.y };
++    m_PreviousPosition = m_Position;
+ }
+
+ void Player::updatePhysics(float deltaTime, bool mouseClicked, bool mouseReleased) {
+@@ -203,7 +222,9 @@ void Player::updatePhysics(float deltaTime, bool mouseClicked, bool mouseRelease
+             m_YVelocity = m_JumpStrength * m_GravityMultiplier;
+             m_IsGrounded = false;
+         }
+-        m_YVelocity += m_Gravity * m_GravityMultiplier * deltaTime;
++        if (!m_IsGrounded) {
++            m_YVelocity += m_Gravity * m_GravityMultiplier * deltaTime;
++        }
+         m_YVelocity = std::clamp(m_YVelocity, static_cast<float>(-Config::TILE_SIZE/2), static_cast<float>(Config::TILE_SIZE/2));
+         break;
+     case Gamemode::SHIP: {
+@@ -230,20 +251,40 @@ void Player::updatePhysics(float deltaTime, bool mouseClicked, bool mouseRelease
+ }
+
+ void Player::handleCollisions(const std::vector<Object> &objects) {
++    if (m_Gamemode == Gamemode::CUBE) {
++        m_IsGrounded = false;
++    }
+     collideWithGround();
+
++    bool blockSupportResolved = false;
+     for (const Object &object : objects) {
++        if (blockSupportResolved && m_Gamemode == Gamemode::CUBE && object.getType() == ObjectType::BLOCK) {
++            continue;
++        }
+         const std::optional<SDL_FRect> hitbox = object.getHitbox();
+         if (!hitbox.has_value()) {
+             continue;
+         }
++        SDL_FRect playerBounds = m_HazardHitbox;
++        if (object.getType() == ObjectType::BLOCK && m_Gamemode == Gamemode::CUBE) {
++            playerBounds.y -= 2.0f;
++            playerBounds.h += 4.0f;
++        }
+         SDL_FRect intersect;
+-        if (SDL_IntersectFRect(&m_HazardHitbox, &hitbox.value(), &intersect)) {
++        if (SDL_IntersectFRect(&playerBounds, &hitbox.value(), &intersect)) {
+             collideWithObject(object);
++            if (m_Gamemode == Gamemode::CUBE && object.getType() == ObjectType::BLOCK && m_IsGrounded) {
++                const float blockBottom = hitbox->y + hitbox->h;
++                const bool onTop = std::abs(m_HazardHitbox.y + m_HazardHitbox.h - hitbox->y) < 0.01f;
++                const bool onBottom = std::abs(m_HazardHitbox.y - blockBottom) < 0.01f;
++                blockSupportResolved = onTop || onBottom;
++            }
+         }
+     }
+     // update some stuff
+-    m_IsGrounded = m_YVelocity == 0 && (!m_IsMouseHeld || m_Gamemode != Gamemode::SHIP);
++    if (m_Gamemode == Gamemode::SHIP) {
++        m_IsGrounded = m_YVelocity == 0 && !m_IsMouseHeld;
++    }
+     m_SolidHitbox.x = m_HazardHitbox.x + Config::TILE_SIZE / 3;
+     m_SolidHitbox.y = m_HazardHitbox.y + Config::TILE_SIZE / 3;
+     m_Position.x = m_HazardHitbox.x;
+@@ -252,16 +293,77 @@ void Player::handleCollisions(const std::vector<Object> &objects) {
+
+ void Player::collideWithObject(const Object &object) {
+     switch (object.getType()) {
+-    case ObjectType::HAZARD:
++    case ObjectType::HAZARD: {
++        const SDL_FRect hitbox = object.getHitbox().value();
++        if (!SDL_HasIntersectionF(&m_HazardHitbox, &hitbox)) {
++            break;
++        }
++        m_HazardHitbox.x = m_PreviousPosition.x;
++        m_HazardHitbox.y = m_PreviousPosition.y;
++        m_Position = m_PreviousPosition;
+         die();
+         break;
++    }
+     case ObjectType::BLOCK: {
+         const SDL_FRect hitbox = object.getHitbox().value();
+-        // checking inner hitbox cuz if inner hitbox collides, player dies
+-        if (SDL_HasIntersectionF(&m_SolidHitbox, &hitbox)) {
++        if (m_Gamemode == Gamemode::CUBE) {
++            const float centerY = m_HazardHitbox.y + m_HazardHitbox.h / 2.0f;
++            const bool overlapsHorizontally = m_HazardHitbox.x < hitbox.x + hitbox.w &&
++                m_HazardHitbox.x + m_HazardHitbox.w > hitbox.x;
++            if (overlapsHorizontally && m_GravityMultiplier == 1) {
++                const float previousBottom = m_PreviousPosition.y + m_HazardHitbox.h;
++                const float currentBottom = m_HazardHitbox.y + m_HazardHitbox.h;
++                // A delayed frame can leave the previous hitbox a little inside
++                // the block. If its center was still above the top, resolve it as
++                // a landing instead of treating the overlap as a lethal side hit.
++                const bool crossedTop = m_YVelocity >= 0 &&
++                    (previousBottom <= hitbox.y + 2.0f || m_PreviousPosition.y + m_HazardHitbox.h / 2.0f < hitbox.y) &&
++                    currentBottom >= hitbox.y;
++                const bool touchingTopFromAbove = m_PreviousPosition.y + m_HazardHitbox.h / 2.0f < hitbox.y &&
++                    currentBottom >= hitbox.y - 2.0f;
++                const bool restingOnTop = m_YVelocity == 0 && std::abs(currentBottom - hitbox.y) <= 2.0f;
++                if (crossedTop || touchingTopFromAbove || restingOnTop) {
++                    m_HazardHitbox.y = hitbox.y - m_HazardHitbox.h;
++                    m_YVelocity = 0;
++                    m_IsGrounded = true;
++                    break;
++                }
++            } else if (overlapsHorizontally && m_GravityMultiplier == -1) {
++                const float previousTop = m_PreviousPosition.y;
++                const float currentTop = m_HazardHitbox.y;
++                const float blockBottom = hitbox.y + hitbox.h;
++                const bool crossedBottom = m_YVelocity <= 0 &&
++                    (previousTop >= blockBottom - 2.0f || m_PreviousPosition.y + m_HazardHitbox.h / 2.0f > blockBottom) &&
++                    currentTop <= blockBottom;
++                const bool touchingBottomFromBelow = centerY > blockBottom && currentTop <= blockBottom + 2.0f;
++                const bool restingOnBottom = m_YVelocity == 0 && std::abs(currentTop - blockBottom) <= 2.0f;
++                if (crossedBottom || touchingBottomFromBelow || restingOnBottom) {
++                    m_HazardHitbox.y = blockBottom;
++                    m_YVelocity = 0;
++                    m_IsGrounded = true;
++                    break;
++                }
++            }
++
++            if (!SDL_HasIntersectionF(&m_HazardHitbox, &hitbox)) break;
++            m_HazardHitbox.x = m_PreviousPosition.x;
++            m_HazardHitbox.y = m_PreviousPosition.y;
++            m_SolidHitbox.x = m_HazardHitbox.x + Config::TILE_SIZE / 3;
++            m_SolidHitbox.y = m_HazardHitbox.y + Config::TILE_SIZE / 3;
++            m_Position = m_PreviousPosition;
+             die();
+         } else {
+-            snapToObject(object);
++            // Ship movement uses its inset solid collider for block contact.
++            // The full square hitbox is for motion bounds; using it here makes
++            // narrow ship corridors lethal even when the visible ship clears.
++            if (SDL_HasIntersectionF(&m_SolidHitbox, &hitbox)) {
++                m_HazardHitbox.x = m_PreviousPosition.x;
++                m_HazardHitbox.y = m_PreviousPosition.y;
++                m_Position = m_PreviousPosition;
++                die();
++            } else {
++                snapToObject(object);
++            }
+         }
+         break;
+     }
+@@ -313,7 +415,7 @@ void Player::collideWithObject(const Object &object) {
+ void Player::collideWithGround() {
+     switch (m_Gamemode) {
+     case Gamemode::CUBE:
+-        if (m_HazardHitbox.y + m_HazardHitbox.h > m_Game->getGround().getPosition().y) {
++        if (m_HazardHitbox.y + m_HazardHitbox.h >= m_Game->getGround().getPosition().y - 0.001f) {
+             m_HazardHitbox.y = -m_HazardHitbox.h + m_Game->getGround().getPosition().y;
+             m_SolidHitbox.y = m_HazardHitbox.y + Config::TILE_SIZE / 3;
+             m_IsGrounded = true;
+@@ -337,15 +439,21 @@ void Player::collideWithGround() {
+ }
+
+ void Player::snapToObject(const Object &object) {
++    const SDL_FRect hitbox = object.getHitbox().value();
+     if (m_GravityMultiplier == 1 || m_Gamemode == Gamemode::SHIP) {
+-        if (m_YVelocity > 0 && m_SolidHitbox.y + m_SolidHitbox.h < object.getHitbox()->y) {
+-            m_HazardHitbox.y = object.getPos().y - m_HazardHitbox.h;
++        const float previousBottom = m_PreviousPosition.y + m_HazardHitbox.h;
++        const float currentBottom = m_HazardHitbox.y + m_HazardHitbox.h;
++        if (m_YVelocity > 0 && previousBottom <= hitbox.y && currentBottom >= hitbox.y) {
++            m_HazardHitbox.y = hitbox.y - m_HazardHitbox.h;
+             m_YVelocity = 0;
+         }
+     }
+     if (m_GravityMultiplier == -1 || m_Gamemode == Gamemode::SHIP) {
+-        if (m_YVelocity < 0 && m_SolidHitbox.y > object.getHitbox()->y + object.getHitbox()->h) {
+-            m_HazardHitbox.y = object.getPos().y + object.getHitbox()->h;
++        const float previousTop = m_PreviousPosition.y;
++        const float currentTop = m_HazardHitbox.y;
++        const float hitboxBottom = hitbox.y + hitbox.h;
++        if (m_YVelocity < 0 && previousTop >= hitboxBottom && currentTop <= hitboxBottom) {
++            m_HazardHitbox.y = hitboxBottom;
+             m_YVelocity = 0;
+         }
+     }
+@@ -462,9 +570,12 @@ void Player::render() const {
+ }
+
+ void Player::renderCube() const {
++    const float radians = m_Rotation * DEGREES_TO_RADIANS;
++    const bool movingTowardLanding = m_IsGrounded || m_GravityMultiplier * m_YVelocity >= 0;
++    const float landingVisualOffset = cubeVisualOffset(radians, m_GravityMultiplier, movingTowardLanding);
+     const SDL_FRect dst = {
+         m_Position.x - m_Game->getCameraPosition().x,
+-        m_Position.y - m_Game->getCameraPosition().y,
++        m_Position.y - m_Game->getCameraPosition().y - landingVisualOffset,
+         static_cast<float>(Config::TILE_SIZE),
+         static_cast<float>(Config::TILE_SIZE)
+     };
+diff --git a/src/PlayingState.cpp b/src/PlayingState.cpp
+index 6f74e96..da3868a 100644
+--- a/src/PlayingState.cpp
++++ b/src/PlayingState.cpp
+@@ -344,8 +344,10 @@ void PlayingState::updateNewBest() {
+ }
+
+ void PlayingState::render() const {
+-    m_Player.render();
+     m_LevelManager.render();
++    // Keep the player in front of blocks and decorations. Drawing it first makes
++    // the cube look like it slides behind obstacles while running into them.
++    m_Player.render();
+     renderEndBlocks();
+     // render ground so it appears above blocks but below text
+     m_Game->getGround().render();

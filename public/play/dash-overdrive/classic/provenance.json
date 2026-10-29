@@ -1,0 +1,163 @@
+{
+  "engine": "VinkentLi/Bad-GD-Clone",
+  "source": "https://github.com/VinkentLi/Bad-GD-Clone",
+  "webBuild": "https://vinkentli.github.io/gdclone/",
+  "reference": "https://github.com/GuesterReal/Geometry-Dash-All-In-One/blob/main/Versions%20of%20Geometry%20Dash%20%28except%202.2%20and%20above%29/2nd%20manifest/Resources/LevelData.plist",
+  "audio": "The local engine audio was silenced. The matching official-level tracks are now played by the visible YouTube IFrame player when each level starts; an internet connection is required. No music file is copied into this project.",
+  "engineChanges": [
+    "Fixed 1920x1080 logical display for consistent mobile and desktop play",
+    "Rebuilt data package with silent audio",
+    "Landing collision now detects crossing a block surface between frames and snaps the player to the surface before solid-body collision handling",
+    "Rotated cube render offset also applies while falling toward a solid surface",
+    "Player renders after level objects so blocks and decorations cannot visually cover the cube.",
+    "Block landing and support use a stable axis-aligned player hitbox; gravity is suspended while grounded and restored immediately after leaving a surface.",
+    "Side collisions restore the last safe position instead of pushing the player backward or beyond the block.",
+    "Block landing candidates and top/underside support use the rotated cube bounds so visible corners can land on platforms without a false side collision.",
+    "Block contact from above or below snaps the rotated cube to the solid surface as soon as its polygon overlaps, even if a frame crossing was missed.",
+    "An overlapping cube approaching the top side of a block is resolved onto its upper surface regardless of vertical velocity, preventing lethal side-corner hits during a jump.",
+    "Cube spike collision uses the stable player hitbox instead of its rotated visual corners; blocks use axis-aligned collision to prevent artwork from striking low ceilings. Ship block contact uses the inset solid collider for clearance through narrow corridors."
+  ],
+  "maps": [
+    {
+      "level": 1,
+      "name": "Stereo Madness",
+      "objects": 2291,
+      "sha256": "1a7cea40cfa6d8b74eb89876e5179a391da93e7ae139e836ad59b6026b982d21",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "nativeFile": "/res/leveldata/0.level",
+      "nativeOffset": 2206664,
+      "nativeEnd": 2248605,
+      "playable": true
+    },
+    {
+      "level": 2,
+      "name": "Back on Track",
+      "objects": 1545,
+      "sha256": "0afaff95eb7a67919bc1671632521da51a68afa90aa3a1b5475913a016d0810e",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "nativeFile": "/res/leveldata/1.level",
+      "nativeOffset": 2248605,
+      "nativeEnd": 2275799,
+      "playable": true
+    },
+    {
+      "level": 3,
+      "name": "Polargeist",
+      "objects": 1531,
+      "sha256": "a07a19a26bb13740121b35fa68521f1796d54dd7285772734eade1d1cd9ac41d",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "nativeFile": "/res/leveldata/2.level",
+      "nativeOffset": 2275799,
+      "nativeEnd": 2303284,
+      "playable": true
+    },
+    {
+      "level": 4,
+      "name": "Dry Out",
+      "objects": 1444,
+      "sha256": "5521870b259dab9f2db9146927eebaf5c560bf554c3be2ff1d212f2e1742bcd2",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "nativeFile": "/res/leveldata/3.level",
+      "nativeOffset": 2303284,
+      "nativeEnd": 2331671,
+      "playable": true
+    },
+    {
+      "level": 5,
+      "name": "Base After Base",
+      "objects": 2146,
+      "sha256": "49f0f10ff64d2cc5701e5372b5584c4acded7a0e785ac76f95c8dda052765fb9",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "nativeFile": "/res/leveldata/4.level",
+      "nativeOffset": 2331671,
+      "nativeEnd": 2370977,
+      "playable": true
+    },
+    {
+      "level": 6,
+      "name": "Can’t Let Go",
+      "objects": 1704,
+      "sha256": "76c8d626bab04fd4d7b7d3dfd951f43ff290c5fcdc39333075289a6e17392e86",
+      "coordinateComparison": "all object IDs, positions, flips and rotations match LevelData.plist",
+      "nativeFile": "/res/leveldata/5.level",
+      "nativeOffset": 2370977,
+      "nativeEnd": 2403511,
+      "playable": true
+    },
+    {
+      "level": 7,
+      "name": "Jumper",
+      "objects": 2813,
+      "sha256": "600b926bb2d4768e5bcd5968ac442b0cbf535e171856fc8bbcf98f4aeece478a",
+      "coordinateComparison": "all object IDs, positions, flips and rotations match LevelData.plist",
+      "nativeFile": "/res/leveldata/6.level",
+      "nativeOffset": 2403511,
+      "nativeEnd": 2456088,
+      "playable": true
+    },
+    {
+      "level": 8,
+      "name": "Time Machine",
+      "objects": 3599,
+      "sha256": "2c673c62cc5b537d0bd711e2893b34060a221c84d09f17a8017f7051b848e8af",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "playable": false,
+      "note": "Map data is preserved; current local WebAssembly engine only includes level files 1–7 and cannot select this stage."
+    },
+    {
+      "level": 9,
+      "name": "Cycles",
+      "objects": 3921,
+      "sha256": "5df678397b4fbe6a6d0420c428c7c5ba3ce85affbf1fc36b532ac52eeb40b32c",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "playable": false,
+      "note": "Map data is preserved; current local WebAssembly engine only includes level files 1–7 and cannot select this stage."
+    },
+    {
+      "level": 10,
+      "name": "xStep",
+      "objects": 4716,
+      "sha256": "b4bb257c0ee9f7f7e12921de4621f1e8c5bd513d0d5b017ec85e2a9665228309",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "playable": false,
+      "note": "Map data is preserved; current local WebAssembly engine only includes level files 1–7 and cannot select this stage."
+    }
+  ],
+  "packageBytes": 2498231,
+  "packageSha256": "394030e127bb97b4b07ab9c5667ad0557ed2ba462ad7f7f357fadfa10ceb300f",
+  "wasmSha256": "116e732d1a2507e644aba52580258667b6a9ebf40ad479505a4a46b5bc992185",
+  "musicSources": [
+    {
+      "level": 1,
+      "url": "https://www.youtube.com/watch?v=tof8_p0F3kg"
+    },
+    {
+      "level": 2,
+      "url": "https://www.youtube.com/watch?v=N9vDTYZpqXM"
+    },
+    {
+      "level": 3,
+      "url": "https://www.youtube.com/watch?v=_WPmsD0tKlA"
+    },
+    {
+      "level": 4,
+      "url": "https://www.youtube.com/watch?v=FnXabH2q2A0"
+    },
+    {
+      "level": 5,
+      "url": "https://www.youtube.com/watch?v=TZULkgQPHt0"
+    },
+    {
+      "level": 6,
+      "url": "https://www.youtube.com/watch?v=fLnF-QnR1Zw"
+    },
+    {
+      "level": 7,
+      "url": "https://www.youtube.com/watch?v=NcZMExixvDg"
+    }
+  ],
+  "runtimeNetwork": "YouTube IFrame API and its selected video are loaded when the page is opened.",
+  "sourceRevision": "VinkentLi/Bad-GD-Clone 40ef6a3",
+  "sourcePatch": "games/dash-overdrive/classic/engine-collision-fix.patch",
+  "wasmBytes": 2596315
+}
