@@ -36,7 +36,7 @@ async function clickLeftArrow(){
 }
 var Module={
  canvas,
- locateFile:path=>'engine/'+path+'?v=solid-floor-platforms-20261029-2245',
+ locateFile:path=>'engine/'+path+'?v=original-map-platforms-20261029-2300',
  setStatus(message){if(!ready&&message)status.textContent='클래식 게임을 불러오고 있어…';},
  print(){},
  printErr(message){console.error(message);},
