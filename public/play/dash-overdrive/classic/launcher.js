@@ -3,9 +3,9 @@ const canvas=document.getElementById('canvas');
 const status=document.getElementById('status');
 const play=document.getElementById('play');
 const selectedParameter=Number(new URLSearchParams(location.search).get('level'));
-let selected=Number.isInteger(selectedParameter)&&selectedParameter>=1&&selectedParameter<=7?selectedParameter:6;
+let selected=Number.isInteger(selectedParameter)&&selectedParameter>=1&&selectedParameter<=15?selectedParameter:6;
 let ready=false,launching=false,phase='title',musicPlayer=null,musicReady=false,musicOn=false,musicEnabled=true,pendingSong=null,pendingStart=false,cuedSong=null;
-const songs={1:{id:'tof8_p0F3kg',name:'Stereo Madness · ForeverBound'},2:{id:'N9vDTYZpqXM',name:'Back on Track · DJVI'},3:{id:'_WPmsD0tKlA',name:'Polargeist · Step'},4:{id:'FnXabH2q2A0',name:'Dry Out · DJVI'},5:{id:'TZULkgQPHt0',name:'Base After Base · DJVI'},6:{id:'fLnF-QnR1Zw',name:"Can't Let Go · DJVI"},7:{id:'NcZMExixvDg',name:'Jumper · Waterflame'}};
+const songs={1:{id:'tof8_p0F3kg',name:'Stereo Madness · ForeverBound'},2:{id:'N9vDTYZpqXM',name:'Back on Track · DJVI'},3:{id:'_WPmsD0tKlA',name:'Polargeist · Step'},4:{id:'FnXabH2q2A0',name:'Dry Out · DJVI'},5:{id:'TZULkgQPHt0',name:'Base After Base · DJVI'},6:{id:'fLnF-QnR1Zw',name:"Can't Let Go · DJVI"},7:{id:'NcZMExixvDg',name:'Jumper · Waterflame'},8:{id:'EFYy36tcp7M',name:'Time Machine · Waterflame'},9:{id:'QsCHWlCgJt4',name:'Cycles · DJVI'},10:{id:'PSvYfVGyQfw',name:'xStep · DJVI'},11:{id:'iNaBLxSNFWU',name:'Clutterfunk · Waterflame'},12:{id:'1_vKqgcFF4w',name:'Theory of Everything · DJ-Nate'},13:{id:'y8nVfW_7rsw',name:'Electroman Adventures · Waterflame'},14:{id:'TiwSjh7SI5Y',name:'Clubstep · DJ-Nate'},15:{id:'n0CwuexLakU',name:'Electrodynamix · DJ-Nate'}};
 function updateChoice(){
  document.documentElement.style.setProperty('--accent',selected===6?'#e4a8ff':selected===7?'#a7c3ff':'#72e8c3');
  for(const button of document.querySelectorAll('[data-level]')){
@@ -36,7 +36,7 @@ async function clickLeftArrow(){
 }
 var Module={
  canvas,
- locateFile:path=>'engine/'+path+'?v=stable-hitboxes-20261029-2230',
+ locateFile:path=>'engine/'+path+'?v=classics-15-20261029',
  setStatus(message){if(!ready&&message)status.textContent='클래식 게임을 불러오고 있어…';},
  print(){},
  printErr(message){console.error(message);},
@@ -46,7 +46,7 @@ var Module={
   const nativeOpen=FS.open;
   FS.open=function(path,...args){
    const match=typeof path==='string'&&path.match(/res\/leveldata\/(\d+)\.level$/);
-   if(match){const level=Number(match[1])+1;if(level>=1&&level<=7){selected=level;updateChoice();if(musicReady&&musicEnabled)playSelectedSong();else if(musicEnabled){pendingSong=level;pendingStart=true;status.textContent='원곡 플레이어를 준비하고 있어. ♪ 버튼에서 YouTube로 들을 수도 있어.';}}}
+   if(match){const level=Number(match[1])+1;if(level>=1&&level<=15){selected=level;updateChoice();if(musicReady&&musicEnabled)playSelectedSong();else if(musicEnabled){pendingSong=level;pendingStart=true;status.textContent='원곡 플레이어를 준비하고 있어. ♪ 버튼에서 YouTube로 들을 수도 있어.';}}}
    return nativeOpen.call(this,path,...args);
   };
  }],
@@ -91,13 +91,13 @@ play.addEventListener('click',async()=>{
  try{
   canvas.focus();
   await tapSpace();
-  const leftMoves=(7-selected+1)%7;
+  const leftMoves=(16-selected)%15;
   for(let i=0;i<leftMoves;i++)await clickLeftArrow();
   phase='selected';
   await tapSpace();
   launcher.hidden=true;
   document.getElementById('select').textContent='단계 선택';
-  document.getElementById('now-playing').textContent=`${String(selected).padStart(2,'0')} / ${['','STEREO MADNESS','BACK ON TRACK','POLARGEIST','DRY OUT','BASE AFTER BASE',"CAN'T LET GO",'JUMPER'][selected]}`;
+  document.getElementById('now-playing').textContent=`${String(selected).padStart(2,'0')} / ${['','STEREO MADNESS','BACK ON TRACK','POLARGEIST','DRY OUT','BASE AFTER BASE',"CAN'T LET GO",'JUMPER','TIME MACHINE','CYCLES','XSTEP','CLUTTERFUNK','THEORY OF EVERYTHING','ELECTROMAN ADVENTURES','CLUBSTEP','ELECTRODYNAMIX'][selected]}`;
   canvas.focus();phase='playing';
  }catch(error){
   phase='error';status.textContent='시작 중 문제가 생겼어. 새로고침해서 다시 시도해 줘.';console.error(error);

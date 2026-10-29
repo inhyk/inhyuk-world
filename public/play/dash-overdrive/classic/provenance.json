@@ -101,8 +101,8 @@
       "objects": 3599,
       "sha256": "2c673c62cc5b537d0bd711e2893b34060a221c84d09f17a8017f7051b848e8af",
       "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "playable": false,
-      "note": "Map data is preserved; current local WebAssembly engine only includes level files 1–7 and cannot select this stage."
+      "playable": true,
+      "nativeFile": "/res/leveldata/7.level"
     },
     {
       "level": 9,
@@ -110,8 +110,8 @@
       "objects": 3921,
       "sha256": "5df678397b4fbe6a6d0420c428c7c5ba3ce85affbf1fc36b532ac52eeb40b32c",
       "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "playable": false,
-      "note": "Map data is preserved; current local WebAssembly engine only includes level files 1–7 and cannot select this stage."
+      "playable": true,
+      "nativeFile": "/res/leveldata/8.level"
     },
     {
       "level": 10,
@@ -119,13 +119,53 @@
       "objects": 4716,
       "sha256": "b4bb257c0ee9f7f7e12921de4621f1e8c5bd513d0d5b017ec85e2a9665228309",
       "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "playable": false,
-      "note": "Map data is preserved; current local WebAssembly engine only includes level files 1–7 and cannot select this stage."
+      "playable": true,
+      "nativeFile": "/res/leveldata/9.level"
+    },
+    {
+      "level": 11,
+      "name": "Clutterfunk",
+      "sha256": "47f625f070bc07ba9bd5c3c17fc9793aa0e4051e6349da1c2d5c2f31c988b682",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "nativeFile": "/res/leveldata/10.level",
+      "playable": true
+    },
+    {
+      "level": 12,
+      "name": "Theory of Everything",
+      "sha256": "243d5614dd3e23ea71c0866cac9f84b5005500019548e1947e0147a89bab2f02",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "nativeFile": "/res/leveldata/11.level",
+      "playable": true
+    },
+    {
+      "level": 13,
+      "name": "Electroman Adventures",
+      "sha256": "87645eae4176aef23efd2b4ebbaa0a7429cfc79df6fed72709fb18c6dd986a4c",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "nativeFile": "/res/leveldata/12.level",
+      "playable": true
+    },
+    {
+      "level": 14,
+      "name": "Clubstep",
+      "sha256": "44a45e82a553fd4a2d43c8a7de1270229ef6996a2ec6bb529b028e93e8c90f51",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "nativeFile": "/res/leveldata/13.level",
+      "playable": true
+    },
+    {
+      "level": 15,
+      "name": "Electrodynamix",
+      "sha256": "7e36db2d0204da6e52a7f8147ede476f3f4d2df0223d9925a28718b697e7316b",
+      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
+      "nativeFile": "/res/leveldata/14.level",
+      "playable": true
     }
   ],
-  "packageBytes": 2498231,
-  "packageSha256": "394030e127bb97b4b07ab9c5667ad0557ed2ba462ad7f7f357fadfa10ceb300f",
-  "wasmSha256": "116e732d1a2507e644aba52580258667b6a9ebf40ad479505a4a46b5bc992185",
+  "packageBytes": 3441398,
+  "packageSha256": "e933166460b1dd210127c880846e5ae15aaf0cb9ef11ec21691e9baa02a357c4",
+  "wasmSha256": "7a9b6e007f5df08df2aa56ca1e57a80781c5e9894696a93a6894f0c9fb85cbde",
   "musicSources": [
     {
       "level": 1,
@@ -154,10 +194,42 @@
     {
       "level": 7,
       "url": "https://www.youtube.com/watch?v=NcZMExixvDg"
+    },
+    {
+      "level": 8,
+      "url": "https://www.youtube.com/watch?v=EFYy36tcp7M"
+    },
+    {
+      "level": 9,
+      "url": "https://www.youtube.com/watch?v=QsCHWlCgJt4"
+    },
+    {
+      "level": 10,
+      "url": "https://www.youtube.com/watch?v=PSvYfVGyQfw"
+    },
+    {
+      "level": 11,
+      "url": "https://www.youtube.com/watch?v=iNaBLxSNFWU"
+    },
+    {
+      "level": 12,
+      "url": "https://www.youtube.com/watch?v=1_vKqgcFF4w"
+    },
+    {
+      "level": 13,
+      "url": "https://www.youtube.com/watch?v=y8nVfW_7rsw"
+    },
+    {
+      "level": 14,
+      "url": "https://www.youtube.com/watch?v=TiwSjh7SI5Y"
+    },
+    {
+      "level": 15,
+      "url": "https://www.youtube.com/watch?v=n0CwuexLakU"
     }
   ],
   "runtimeNetwork": "YouTube IFrame API and its selected video are loaded when the page is opened.",
   "sourceRevision": "VinkentLi/Bad-GD-Clone 40ef6a3",
-  "sourcePatch": "games/dash-overdrive/classic/engine-collision-fix.patch",
-  "wasmBytes": 2596315
+  "sourcePatch": "games/dash-overdrive/classic/engine-source.patch",
+  "wasmBytes": 2597731
 }
