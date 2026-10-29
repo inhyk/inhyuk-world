@@ -15,7 +15,8 @@
     "Block landing candidates and top/underside support use the rotated cube bounds so visible corners can land on platforms without a false side collision.",
     "Block contact from above or below snaps the rotated cube to the solid surface as soon as its polygon overlaps, even if a frame crossing was missed.",
     "An overlapping cube approaching the top side of a block is resolved onto its upper surface regardless of vertical velocity, preventing lethal side-corner hits during a jump.",
-    "Cube spike collision uses the stable player hitbox instead of its rotated visual corners; blocks use axis-aligned collision to prevent artwork from striking low ceilings. Ship block contact uses the inset solid collider for clearance through narrow corridors."
+    "Cube spike collision uses the stable player hitbox instead of its rotated visual corners; blocks use axis-aligned collision to prevent artwork from striking low ceilings. Ship block contact uses the inset solid collider for clearance through narrow corridors.",
+    "Gravity portals clear the prior grounded state immediately so the cube can move away from the previous surface after gravity flips."
   ],
   "maps": [
     {
@@ -165,7 +166,7 @@
   ],
   "packageBytes": 3441398,
   "packageSha256": "e933166460b1dd210127c880846e5ae15aaf0cb9ef11ec21691e9baa02a357c4",
-  "wasmSha256": "7a9b6e007f5df08df2aa56ca1e57a80781c5e9894696a93a6894f0c9fb85cbde",
+  "wasmSha256": "13fa69cb19472451caf79345df665bc02a033eb0fb9393979c6b7106763201d2",
   "musicSources": [
     {
       "level": 1,
@@ -230,6 +231,5 @@
   ],
   "runtimeNetwork": "YouTube IFrame API and its selected video are loaded when the page is opened.",
   "sourceRevision": "VinkentLi/Bad-GD-Clone 40ef6a3",
-  "sourcePatch": "games/dash-overdrive/classic/engine-source.patch",
-  "wasmBytes": 2597731
+  "wasmBytes": 2597747
 }
