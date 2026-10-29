@@ -18,7 +18,8 @@
     "Cube spike collision uses the stable player hitbox instead of its rotated visual corners; blocks use axis-aligned collision to prevent artwork from striking low ceilings. Ship block contact uses the inset solid collider for clearance through narrow corridors.",
     "Gravity portals clear the prior grounded state immediately so the cube can move away from the previous surface after gravity flips.",
     "In inverted-gravity sections, the ceiling floor is rendered and collides as a landing surface for the cube.",
-    "Added five-block assisted platforms in clear sections of all 15 stages. Platform placement avoids overlapping existing solid blocks and hazards, and the blocks use the engine collision system."
+    "Added five full-size, white-outlined solid-block platforms in clear sections of all 15 stages. Their placement avoids existing blocks and hazards, and they use the engine collision system.",
+    "Added a bright, tiled surface band over the existing solid floor so the walkable ground is easy to see."
   ],
   "maps": [
     {
