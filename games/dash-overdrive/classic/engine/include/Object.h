@@ -27,6 +27,8 @@ public:
     int getHeight() const;
     ObjectType getType() const;
     void render() const;
+    // Light poles (ids 15-17) flash a little star on their ball now and then.
+    inline void setSparkle(bool sparkle) { m_Sparkle = sparkle; }
 
 protected:
     Game *m_Game;
@@ -40,5 +42,8 @@ protected:
     bool m_FlipX;
     bool m_FlipY;
     SDL_Texture *m_ObjectTexture;
+    bool m_Sparkle = false;
+
+    void renderSparkle(int x, int y) const;
 };
 

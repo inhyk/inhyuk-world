@@ -9,6 +9,8 @@ emsdk="${EMSDK:-/tmp/emsdk}"
 source "$emsdk/emsdk_env.sh" >/dev/null 2>&1
 build="${BUILD_DIR:-${TMPDIR:-/tmp}/dash-classic-build}"
 emcmake cmake -S "$here/engine" -B "$build" -DCMAKE_BUILD_TYPE=Release >/dev/null
+# res/ is packed at link time but is not a link input, so always relink.
+rm -f "$build/DashClassic.js" "$build/DashClassic.wasm" "$build/DashClassic.data"
 cmake --build "$build" -j 8
 out="$root/public/play/dash-overdrive/classic/engine"
 mkdir -p "$out"

@@ -214,7 +214,6 @@ function play(mx, P, notes, o = {}) {
 // Polyphonic: every note is its own voice (overlapping releases).
 function poly(mx, P, notes, o) { for (const q of notes) play(mx, P, [q], o); }
 
-//@@PART2
 // ------------------------------------------------------------------ drums and effects (all synthesized)
 // Kick: sine with pitch and amplitude envelopes, a short noise click, soft saturation.
 function kick(mx, t, o = {}) {
@@ -416,7 +415,6 @@ function impact(mx, t, o = {}) {
   }
 }
 
-//@@PART3
 // ------------------------------------------------------------------ mix processing
 // 8-line feedback-delay-network reverb (Hadamard mixing, damped lines, input diffusion).
 function reverb(inp, outL, outR, n, o = {}) {
@@ -541,7 +539,7 @@ function limiter(L, R, n, ceil, o = {}) {
   }
   let g = 1;
   for (let i = 0; i < T; i++) { g = Math.min(wm[i], 1 - (1 - g) * relCo); wm[i] = g; }
-  let acc = 0;
+  let acc = la + 1;
   for (let i = 0; i < T; i++) {
     acc += wm[i] - (i > la ? wm[i - la - 1] : 1);
     if (i >= M && i < M + n) { const gg = acc / (la + 1), k = i - M; L[k] *= gg; R[k] *= gg; }
@@ -609,6 +607,7 @@ function encode(wav, out, o = {}) {
   const canLinear = +m.input_tp + (I - +m.input_i) <= TP && +m.input_lra <= 20;
   const gainDb = canLinear ? I - +m.input_i : Math.min(I - +m.input_i, TP - +m.input_tp - 0.1);
   const af = canLinear ? lin : `volume=${gainDb.toFixed(2)}dB`;
+  if (!Number.isFinite(gainDb)) throw new Error(`loudnorm measurement unusable for ${wav}: ${JSON.stringify(m)}`);
   let size = 0, q = 0;
   for (q of o.qs ?? [2, 1.5, 1, 0.5, 0]) {
     ff(['-y', '-i', wav, '-af', af, '-ar', String(SR), '-ac', '2', '-c:a', 'libvorbis', '-q:a', String(q),
@@ -696,7 +695,979 @@ function sfxPlay() {
   return finishSfx(mx, { rt: 0.7, fade: 0.08, dt: 0.07, peak: -1.5 });
 }
 
-//@@PART5
+// ------------------------------------------------------------------ music theory
+const PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const pcOf = s => (PC[s[0]] + (s[1] === '#' ? 1 : s[1] === 'b' ? -1 : 0) + 12) % 12;
+const SCALES = { major: [0, 2, 4, 5, 7, 9, 11], minor: [0, 2, 3, 5, 7, 8, 10], phrygdom: [0, 1, 4, 5, 7, 8, 10] };
+const QUAL = {
+  '': [0, 4, 7], m: [0, 3, 7], 5: [0, 7, 12], sus2: [0, 2, 7], sus4: [0, 5, 7], dim: [0, 3, 6], aug: [0, 4, 8],
+  7: [0, 4, 7, 10], maj7: [0, 4, 7, 11], m7: [0, 3, 7, 10], add9: [0, 4, 7, 14], madd9: [0, 3, 7, 14],
+  m9: [0, 3, 7, 10, 14], maj9: [0, 4, 7, 11, 14], 9: [0, 4, 7, 10, 14], 6: [0, 4, 7, 9], m6: [0, 3, 7, 9],
+  m7b5: [0, 3, 6, 10], '7sus4': [0, 5, 7, 10], 13: [0, 4, 10, 14, 21], m11: [0, 3, 7, 10, 14, 17],
+};
+function parseChord(sym) {
+  const m = /^([A-G][#b]?)([^/]*)(?:\/([A-G][#b]?))?$/.exec(sym);
+  if (!m || !QUAL[m[2]]) throw new Error('bad chord ' + sym);
+  const root = pcOf(m[1]), iv = QUAL[m[2]];
+  return { sym, root, iv, bass: m[3] ? pcOf(m[3]) : root, tones: [...new Set(iv.map(x => (root + x) % 12))] };
+}
+// "C G Am F" (one bar each) or "C:2 G:2" (beats)
+const parseProg = str => str.trim().split(/\s+/).map(tok => { const [s, b] = tok.split(':'); return { c: parseChord(s), beats: b ? +b : 4 }; });
+// Melody notation, 16th-note grid: degree [#|b]1-7, ' = octave up, , = octave down, :len (16ths, default 2),
+// r = rest, - = tie (extends previous note), ~ prefix = slide into the note, | = bar line (each bar must be 16).
+function parseMel(str, tonic, scale) {
+  const notes = [];
+  let pos = 0;
+  for (const bar of str.split('|').map(b => b.trim()).filter(Boolean)) {
+    const start = pos;
+    for (const tok of bar.split(/\s+/)) {
+      let m;
+      if ((m = /^r(?::(\d+))?$/.exec(tok))) { pos += m[1] ? +m[1] : 2; continue; }
+      if ((m = /^-(?::(\d+))?$/.exec(tok))) { const l = m[1] ? +m[1] : 2; notes[notes.length - 1].len += l; pos += l; continue; }
+      m = /^(~?)([#b]?)([1-7])([',]*)(?::(\d+))?$/.exec(tok);
+      if (!m) throw new Error(`bad melody token "${tok}"`);
+      const oct = [...m[4]].reduce((a, c) => a + (c === "'" ? 1 : -1), 0);
+      const len = m[5] ? +m[5] : 2;
+      notes.push({ s: pos, len, m: tonic + scale[+m[3] - 1] + 12 * oct + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0), slide: !!m[1] });
+      pos += len;
+    }
+    if (pos - start !== 16) throw new Error(`melody bar has ${pos - start} sixteenths: "${bar}"`);
+  }
+  return notes;
+}
+// Close voicing in [lo, hi] with the least movement from the previous voicing.
+function voicing(c, prev, lo = 52, hi = 76, size = 4) {
+  const tones = c.tones;
+  let best = null, cost = Infinity;
+  for (let inv = 0; inv < tones.length; inv++) {
+    for (let base = lo; base < lo + 12; base++) {
+      if (base % 12 !== tones[inv]) continue;
+      const v = [base];
+      let cur = base;
+      for (let j = 1; j < size; j++) { const pc = tones[(inv + j) % tones.length]; cur++; while (cur % 12 !== pc) cur++; v.push(cur); }
+      if (v[v.length - 1] > hi) continue;
+      const k = prev ? v.reduce((a, x, j) => a + Math.abs(x - prev[Math.min(j, prev.length - 1)]), 0)
+        : Math.abs(v.reduce((a, x) => a + x, 0) / v.length - (lo + hi) / 2);
+      if (k < cost) { cost = k; best = v; }
+    }
+  }
+  if (!best) { best = []; let cur = lo; for (let j = 0; j < size; j++) { const pc = tones[j % tones.length]; while (cur % 12 !== pc) cur++; best.push(cur); cur++; } }
+  return best;
+}
+const bassNote = (c, lo = 28) => lo + (((c.bass - lo) % 12) + 12) % 12;
+
+// ------------------------------------------------------------------ arranger
+const VEL = { X: 1, x: 0.8, o: 0.5, g: 0.3 };
+// Mix trims found by measuring stem loudness in the drops (kick about 5 LU under the full mix).
+const TRIM = { kick: 0.6, drums: 2.0, music: 1.8 };
+const KIT = {
+  k: { type: 'kick' },
+  s: { tone: 0.55, f: 185, pa: 0.4, pd: 0.015, td: 0.06, noise: 0.8, hp: 1300, lp: 9500, nd: 0.13, g: 0.4, rev: 0.12 },
+  c: { noise: 1, bp: 1250, bq: 0.9, nd: 0.12, bursts: [0, 0.011, 0.022, 0.032], g: 0.42, rev: 0.16, seed: 5 },
+  h: { metal: 1, noise: 0.5, hp: 7000, nd: 0.034, g: 0.2, pan: 0.15, seed: 7 },
+  H: { metal: 1, noise: 0.6, hp: 6500, nd: 0.2, g: 0.13, pan: 0.15, seed: 8 },
+  r: { metal: 1, noise: 0.25, hp: 5200, bp: 8000, bq: 0.8, nd: 0.4, g: 0.1, pan: -0.25, seed: 9 },
+  x: { metal: 0.9, noise: 0.6, hp: 4200, nd: 1.1, g: 0.17, wide: true, rev: 0.2, seed: 10 },
+  t: { noise: 1, hp: 6000, nd: 0.03, att: 0.006, g: 0.11, pan: -0.3, seed: 11 },
+  m: { tone: 0.85, f: 110, pa: 0.7, pd: 0.03, td: 0.17, noise: 0.15, lp: 3000, nd: 0.04, g: 0.34, rev: 0.12 },
+  p: { tone: 0.8, f: 320, pa: 0.25, pd: 0.01, td: 0.08, noise: 0.25, bp: 2600, nd: 0.018, g: 0.2, pan: 0.3 },
+  b: { metal: 0.9, noise: 0.7, hp: 6500, bp: 9500, bq: 0.9, nd: 0.08, g: 0.075, pan: 0.35, seed: 12 },
+  w: { tone: 0.6, f: 790, t2: 0.7, r2: 0.68, td: 0.07, g: 0.08, pan: -0.2 },
+};
+const LAYERS = {
+  intro: { drums: 'intro', bass: 0, pad: 1, arp: 1, lead: 0, stab: 0, filt: { type: 'lp', f0: 380, f1: 15000, curve: 1.6 } },
+  verse: { drums: 'verse', bass: 1, pad: 1, arp: 1, lead: 0, stab: 0 },
+  build: { drums: 'build', bass: 1, pad: 1, arp: 1, lead: 0, stab: 0, filt: { type: 'hp', f0: 30, f1: 650, curve: 1.6 }, riser: 1, roll: 1 },
+  drop: { drums: 'drop', bass: 1, pad: 1, arp: 0, lead: 1, stab: 1, crash: 1 },
+  break: { drums: 'break', bass: 'sub', pad: 1, arp: 1, lead: 'soft', stab: 0, down: 1 },
+  outro: { drums: 'outro', bass: 1, pad: 1, arp: 1, lead: 0, stab: 0, filt: { type: 'lp', f0: 15000, f1: 1100, xout: false, curve: 0.7 } },
+  loop: { drums: 'drop', bass: 1, pad: 1, arp: 1, lead: 1, stab: 0 },
+};
+const NAMES = { intro: 'intro', verse: 'verse', build: 'build', drop: 'drop', break: 'breakdown', outro: 'outro', loop: 'loop' };
+function hit(ctx, key, t, v) {
+  const k = ctx.S.kit?.[key] ?? KIT[key];
+  if (!k) throw new Error('no drum ' + key);
+  const stem = key === 'k' ? 'kick' : 'drums';
+  if (!ctx.on(stem)) return;
+  const o = { ...k, v: v * (k.v ?? 1) * TRIM[stem] * ctx.g(stem) };
+  if (k.type === 'kick') kick(ctx.mx, t, { ...ctx.S.kick, ...o });
+  else if (k.type === 'clang') clang(ctx.mx, t, o);
+  else if (k.type === 'chip') chip(ctx.mx, t, o);
+  else if (k.type === 'zap') zap(ctx.mx, t, o);
+  else drum(ctx.mx, t, o);
+  if (k.and) hit(ctx, k.and, t, v);
+}
+const clean = p => p.replace(/[\s|]/g, '');
+function chordAt(h, beat) { let c = h[0].c; for (const x of h) { if (x.b0 <= beat + 1e-6) c = x.c; else break; } return c; }
+function drumsSec(ctx, sec, pats, bars = sec.bars) {
+  if (!pats) return;
+  const r = rng(ctx.S.seed * 31 + sec.bar0);
+  for (const key of Object.keys(pats)) {
+    const p = clean(pats[key]);
+    for (let s = 0; s < bars * 16; s++) {
+      const v = VEL[p[s % p.length]];
+      if (!v) continue;
+      const t = ctx.t(sec.bar0, s) + (s % 4 === 2 ? (ctx.S.swing8 ?? 0) * ctx.st : 0);
+      if (!ctx.stopped(t)) hit(ctx, key, t, v * (0.94 + 0.06 * r()));
+    }
+  }
+}
+function roll(ctx, sec, bars = sec.bars) {
+  const total = bars * 16, startDiv = bars >= 4 ? 4 : 2, k = ctx.S.kit?.roll ?? ctx.S.kit?.s ?? KIT.s;
+  for (let s = 0; s < total;) {
+    const x = s / total, t = ctx.t(sec.bar0, s);
+    if (!ctx.stopped(t) && ctx.on('drums')) drum(ctx.mx, t, { ...k, v: (0.25 + 0.75 * x * x) * (k.v ?? 1) * TRIM.drums * ctx.g('drums'), f: (k.f ?? 185) * (1 + 0.6 * x), nd: (k.nd ?? 0.13) * 0.8, rev: (k.rev ?? 0.1) + 0.1 * x });
+    s += x < 0.5 ? startDiv : x < 0.75 ? Math.max(1, startDiv / 2) : x < 0.9 ? 1 : 0.5;
+  }
+}
+// Bass pattern per 16th: R root, r soft root, O/o octave, 5 fifth, 4 fourth, 3 chord third, 7 minor 7th,
+// b flat 2nd, 2 second, 6 sixth, L octave down, - tie, . rest.
+const BIV = { R: 0, r: 0, O: 12, o: 12, 5: 7, 4: 5, 7: 10, b: 1, 2: 2, 6: 9, L: -12 };
+function bassSec(ctx, sec, P, pat, o = {}) {
+  if (!ctx.on('bass')) return;
+  const p = clean(pat), notes = [], bars = o.bars ?? sec.bars, lo = ctx.S.bassLo ?? 28;
+  let cur = null;
+  for (let s = 0; s < bars * 16; s++) {
+    const ch = p[s % p.length], t = ctx.t(sec.bar0, s);
+    if (ch === '-') { if (cur) cur.d += ctx.st; continue; }
+    cur = null;
+    if (ch === '.' || ctx.stopped(t)) continue;
+    const c = chordAt(sec.harm, t / ctx.spb), iv = ch === '3' ? c.iv[1] : BIV[ch];
+    if (iv === undefined) throw new Error('bad bass step ' + ch);
+    cur = { t, d: ctx.st, m: bassNote(c, lo) + iv + (o.oct ?? 0) * 12, v: ch === 'r' || ch === 'o' ? 0.6 : 1, lfo: o.lfo?.(s) };
+    notes.push(cur);
+  }
+  for (const q of notes) q.d *= P.gate ?? 0.86;
+  play(ctx.mx, P, notes, { ...o, gain: (o.gain ?? 1) * ctx.g('bass') });
+}
+function padSec(ctx, sec, P, o = {}) {
+  if (!ctx.on(o.stem ?? 'pad')) return;
+  const S = ctx.S, endBeat = (sec.bar0 + (o.bars ?? sec.bars)) * 4, lo = o.lo ?? S.padLo ?? 52, hi = o.hi ?? S.padHi ?? 76;
+  let prev = ctx.prevV;
+  const notes = [];
+  for (const h of sec.harm) {
+    if (h.b0 >= endBeat) break;
+    const v = voicing(h.c, prev, lo, hi, o.size ?? 4); prev = v;
+    const t0 = h.b0 * ctx.spb, dur = Math.min(h.beats, endBeat - h.b0) * ctx.spb;
+    if (!o.pat) { for (const m of v) notes.push({ t: t0, d: dur, m, v: o.v ?? 1 }); continue; }
+    const p = clean(o.pat), s0 = Math.round(t0 / ctx.st), steps = Math.round(dur / ctx.st);
+    for (let s = 0; s < steps; s++) {
+      const ch = p[(s0 + s) % p.length];
+      if (ch === '.' || ch === '-') continue;
+      let len = 1; while (s + len < steps && p[(s0 + s + len) % p.length] === '-') len++;
+      const t = t0 + s * ctx.st;
+      if (ctx.stopped(t)) continue;
+      for (const m of v) notes.push({ t, d: len * ctx.st * (o.gate ?? 0.75), m, v: (VEL[ch] ?? 0.8) * (o.v ?? 1) });
+    }
+  }
+  ctx.prevV = prev;
+  poly(ctx.mx, P, notes, { ...o, gain: (o.gain ?? 1) * ctx.g(o.stem ?? 'pad') });
+}
+function arpSec(ctx, sec, P, A, o = {}) {
+  if (!ctx.on('arp')) return;
+  const rate = A.rate ?? 4, per = ctx.spb / rate, p = clean(A.pat), bars = o.bars ?? sec.bars, notes = [];
+  let lastC = null, tones = null;
+  for (let k = 0; k < bars * 4 * rate; k++) {
+    const t = ctx.t(sec.bar0) + k * per, ch = p[k % p.length];
+    if (ch === '.' || ctx.stopped(t)) continue;
+    const c = chordAt(sec.harm, t / ctx.spb);
+    if (c !== lastC) { const v = voicing(c, tones, A.lo ?? 60, A.hi ?? 80, A.size ?? 3); tones = v; lastC = c; }
+    const ext = [...tones, ...tones.map(x => x + 12), ...tones.map(x => x + 24)];
+    notes.push({ t, d: per * (A.gate ?? 0.6), m: ext[parseInt(ch, 36) % ext.length] + (o.oct ?? 0) * 12, v: k % (A.acc ?? 4) === 0 ? 1 : 0.72 });
+  }
+  play(ctx.mx, P, notes, { ...o, gain: (o.gain ?? 1) * ctx.g('arp') });
+}
+function leadSec(ctx, sec, P, o = {}) {
+  if (!ctx.on('lead')) return;
+  const ph = o.hooks ? o.hooks.map(i => ctx.hooks[i]) : ctx.hooks, bars = o.bars ?? sec.bars, notes = [];
+  for (let j = 0; j * 4 < bars; j++) {
+    for (const q of ph[(j + (o.phase ?? 0)) % ph.length]) {
+      if (q.s >= (bars - j * 4) * 16) break;
+      const t = ctx.t(sec.bar0 + j * 4, q.s);
+      if (ctx.stopped(t)) continue;
+      notes.push({ t, d: q.len * ctx.st * (P.gate ?? 0.9), m: q.m + (o.oct ?? 0) * 12, slide: q.slide, v: o.v ?? 1 });
+    }
+  }
+  if (ctx.S.leadChords && !o.noChords) {
+    const extra = [];
+    for (const q of notes) {
+      const c = chordAt(sec.harm, q.t / ctx.spb);
+      for (let m = q.m - 1, k = 0; m > q.m - 13 && k < ctx.S.leadChords; m--) if (c.tones.includes(((m % 12) + 12) % 12)) { extra.push({ ...q, m }); k++; }
+    }
+    notes.push(...extra);
+  }
+  const oo = { ...o, gain: (o.gain ?? 1) * ctx.g('lead') };
+  if (P.mono) play(ctx.mx, P, notes, oo); else poly(ctx.mx, P, notes, oo);
+}
+function harmFor(ctx, sec) {
+  const S = ctx.S, list = sec.prog ?? S.progs?.[sec.type] ?? (['drop', 'break', 'verse', 'loop'].includes(sec.type) ? S.prog : [S.prog[0]]);
+  const chords = list.flatMap(parseProg), out = [], end = (sec.bar0 + sec.bars) * 4;
+  for (let beat = sec.bar0 * 4, k = 0; beat < end; k++) { const c = chords[k % chords.length]; out.push({ b0: beat, beats: Math.min(c.beats, end - beat), c: c.c }); beat += c.beats; }
+  return out;
+}
+function makeCtx(S, seconds) {
+  const spb = 60 / S.bpm, st = spb / 4, mx = makeMix(seconds), tonic = pcOf(S.key) + 12 * (S.oct ?? 5);
+  const scale = SCALES[S.mode];
+  const ctx = { S, mx, spb, st, barS: spb * 4, scale, stops: [], filt: [], cues: [], post: [], prevV: null,
+    t: (bar, step = 0) => (bar * 16 + step) * st,
+    stopped: t => ctx.stops.some(([a, b]) => t >= a - 1e-6 && t < b - 1e-6),
+    on: name => !S.only || S.only.includes(name), g: name => S.mix?.[name] ?? 1 };
+  ctx.hooks = S.hooks ? S.hooks.map(h => parseMel(h, S.hookTonic ?? tonic, scale)) : [[]];
+  return ctx;
+}
+
+function sectionsOf(S, nBars) {
+  const secs = [], count = {};
+  let b = 0;
+  for (const [type, bars, energy, opt] of S.form) {
+    const len = bars || nBars - b;
+    count[type] = (count[type] ?? 0) + 1;
+    secs.push({ type, bars: len, bar0: b, energy, opt: opt ?? {}, n: count[type], name: NAMES[type] + (count[type] > 1 ? ' ' + count[type] : '') });
+    b += len;
+  }
+  if (b !== nBars) throw new Error(`${S.name}: form has ${b} bars, song has ${nBars}`);
+  return secs;
+}
+function renderSection(ctx, sec, next) {
+  const S = ctx.S, L = { ...LAYERS[sec.type], ...(S.layers?.[sec.type] ?? {}), ...sec.opt }, mx = ctx.mx;
+  if (sec.opt.prog) sec.prog = sec.opt.prog;
+  sec.harm = harmFor(ctx, sec);
+  const t0 = ctx.t(sec.bar0), t1 = ctx.t(sec.bar0 + sec.bars);
+  const outro = sec.type === 'outro' && ctx.finalBar != null;
+  const bars = outro ? ctx.finalBar - sec.bar0 : sec.bars;
+  if (bars < 1) throw new Error(`${S.name}: outro too short`);
+  if (next?.type === 'drop' && sec.type !== 'drop' && L.stop !== false) {
+    ctx.stops.push([t1 - ctx.st * 2, t1]);
+    ctx.cues.push({ beat: (sec.bar0 + sec.bars) * 4 - 0.5, type: 'stop' });
+  }
+  if (L.filt) ctx.filt.push({ ...L.filt, t0, t1: outro ? mx.n / SR : t1 });
+  if (L.drums) drumsSec(ctx, sec, S.drums[L.drums] ?? S.drums.drop, bars);
+  if (L.roll) roll(ctx, sec, bars);
+  if (L.bass === 'sub') bassSec(ctx, sec, S.subPatch ?? PT.sub, S.subPat ?? 'R-------R-------', { bars });
+  else if (L.bass) bassSec(ctx, sec, S.bassPatch, S.bassPat[sec.type] ?? S.bassPat.drop, { bars, ...(S.bassOpt?.(ctx, sec) ?? {}) });
+  if (L.pad && S.padPatch) padSec(ctx, sec, S.padPatch, { bars, ...(S.padOpt?.[sec.type] ?? S.padOpt?.all ?? {}) });
+  if (L.stab && S.stab) padSec(ctx, sec, S.stab.patch, { bars, stem: 'stab', ...S.stab });
+  if (L.arp && S.arp) arpSec(ctx, sec, S.arp.patch, S.arp, { bars, ...(S.arp[sec.type] ?? {}) });
+  const hooks = L.hooks;
+  if (L.lead === 'soft') leadSec(ctx, sec, S.softLead ?? S.lead, { bars, hooks, gain: S.softGain ?? 0.85 });
+  else if (L.lead === 'tease') leadSec(ctx, sec, S.teaseLead ?? S.lead, { bars, hooks, gain: 0.55 });
+  else if (L.lead) {
+    leadSec(ctx, sec, S.lead, { bars, hooks });
+    if (sec.type === 'drop' && sec.n >= 2 && S.double !== false) leadSec(ctx, sec, S.lead2 ?? S.lead, { bars, hooks, oct: S.doubleOct ?? 1, gain: S.doubleGain ?? 0.38 });
+  }
+  if (L.crash) {
+    hit(ctx, 'x', t0, 1);
+    impact(mx, t0, { g: S.impactG ?? 0.28 });
+    for (let b = 8; b < bars; b += 8) hit(ctx, 'x', ctx.t(sec.bar0 + b), 0.75);
+    ctx.cues.push({ beat: sec.bar0 * 4, type: 'drop' });
+  }
+  if (L.riser) { riser(mx, t0, t1, { g: S.riserG ?? 0.075 }); revCym(mx, t1, Math.min(2.4, (t1 - t0) * 0.5)); }
+  if (L.down) { hit(ctx, 'x', t0, 0.7); riser(mx, t0, t0 + Math.min(ctx.barS * 2, t1 - t0), { f0: 7000, f1: 300, g: 0.05, pow: 1.5 }); }
+  S.extra?.(ctx, sec, L, bars);
+  if (outro) {
+    const tf = ctx.t(ctx.finalBar), rest = mx.n / SR - tf, c = parseProg(S.prog[0])[0].c, fsec = { ...sec, harm: [{ b0: ctx.finalBar * 4, beats: 64, c }] };
+    hit(ctx, 'k', tf, 1); hit(ctx, 'x', tf, 1); impact(mx, tf, { g: (S.impactG ?? 0.28) * 0.8 });
+    padSec(ctx, { ...fsec, bar0: ctx.finalBar, bars: 4 }, S.endPatch ?? S.padPatch ?? PT.warmPad, { bars: 4, v: 1.2 });
+    play(mx, S.subPatch ?? PT.sub, [{ t: tf, d: rest, m: bassNote(c, S.bassLo ?? 28) }]);
+    if (S.lead) play(mx, S.endLead ?? PT.bell, [{ t: tf, d: 0.4, m: (S.hookTonic ?? pcOf(S.key) + 12 * (S.oct ?? 5)) + 12 }], { gain: 0.9 });
+    ctx.cues.push({ beat: ctx.finalBar * 4, type: 'end' });
+  }
+}
+function master(ctx, o = {}) {
+  const { mx, S } = ctx, n = mx.n;
+  reverb(mx.rev, mx.mL, mx.mR, n, { rt: S.rt ?? 1.8, wet: S.revWet ?? 0.45, size: S.revSize ?? 1, damp: S.damp ?? 6500 });
+  delay(mx.dly, mx.mL, mx.mR, n, { time: (S.dlyBeats ?? 0.75) * ctx.spb, fb: S.dlyFb ?? 0.35, wet: S.dlyWet ?? 0.45 });
+  if (S.sc !== false) sidechain(mx.mL, mx.mR, n, mx.kicks, { depth: S.sc?.depth ?? 0.45, rel: (S.sc?.rel ?? 0.55) * ctx.spb, wrap: o.loopN });
+  for (const f of ctx.filt) sweep(mx.mL, mx.mR, n, f);
+  for (const [a, b] of ctx.stops) mute(mx.mL, mx.mR, n, a, b);
+  const L = mx.dL, R = mx.dR;
+  for (let i = 0; i < n; i++) { L[i] += mx.mL[i] * TRIM.music; R[i] += mx.mR[i] * TRIM.music; }
+  mx.mL = mx.mR = mx.rev = mx.dly = null;
+  for (const p of ctx.post) p(L, R, n);
+  let len = n;
+  if (o.loopN) { len = o.loopN; for (let i = len; i < n; i++) { L[i - len] += L[i]; R[i - len] += R[i]; } }
+  const hc = 1 - Math.exp(-TAU * 18 / SR);
+  let hl = 0, hr = 0;
+  for (let pass = o.loopN ? 0 : 1; pass < 2; pass++) {
+    for (let i = 0; i < len; i++) {
+      hl += (L[i] - hl) * hc; hr += (R[i] - hr) * hc;
+      if (pass) { L[i] -= hl; R[i] -= hr; }
+    }
+  }
+  for (let i = 0; i < len; i++) if (!Number.isFinite(L[i]) || !Number.isFinite(R[i])) throw new Error(`${S.name}: non-finite sample at ${i}`);
+  const I0 = kLoud(L, R, len), g = dbg((o.preI ?? -13) - I0);
+  let pk = 0;
+  for (let i = 0; i < len; i++) { L[i] *= g; R[i] *= g; pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i])); }
+  limiter(L, R, len, dbg(o.ceil ?? -1), { circular: !!o.loopN });
+  if (o.fade) {
+    const F = Math.round(o.fade * SR);
+    for (let i = len - F; i < len; i++) { const x = (i - (len - F)) / F, gg = 1 - x ** 2.5; L[i] *= gg; R[i] *= gg; }
+    L[len - 1] = R[len - 1] = 0;
+  }
+  return { L, R, n: len, stats: { rawLUFS: +I0.toFixed(1), preLimitPeakDb: +(20 * Math.log10(pk)).toFixed(1), outLUFS: +kLoud(L, R, len).toFixed(1) } };
+}
+function renderSong(S) {
+  seedAll(S.seed);
+  const ctx = makeCtx(S, S.dur), totalBeats = S.dur / ctx.spb, nBars = Math.floor(totalBeats / 4 + 1e-9);
+  const secs = sectionsOf(S, nBars);
+  ctx.finalBar = Math.floor((S.dur - 2.0) / ctx.barS);
+  secs.forEach((sec, i) => renderSection(ctx, sec, secs[i + 1]));
+  if (!ctx.mx.kicks.includes(0)) hit(ctx, 'k', 0, 1);
+  hit(ctx, 'x', 0, 0.55);
+  const out = master(ctx, { fade: 4, preI: S.preI ?? -13 });
+  out.timeline = {
+    index: S.index, name: S.name, bpm: S.bpm, durationSeconds: S.dur, beatSeconds: +ctx.spb.toFixed(6), totalBeats: +totalBeats.toFixed(3),
+    difficulty: S.difficulty, style: S.style, key: S.keyName,
+    sections: secs.map((s, i) => ({ name: s.name, startBeat: s.bar0 * 4, endBeat: i === secs.length - 1 ? +totalBeats.toFixed(3) : (s.bar0 + s.bars) * 4, energy: s.energy })),
+    cues: ctx.cues.sort((a, b) => a.beat - b.beat),
+  };
+  return out;
+}
+function renderLoop(S) {
+  seedAll(S.seed);
+  const spb = 60 / S.bpm, loopN = Math.round(S.bars * 4 * spb * SR), ctx = makeCtx(S, loopN / SR + 6);
+  sectionsOf(S, S.bars).forEach(sec => renderSection(ctx, sec, null));
+  return master(ctx, { loopN, preI: S.preI ?? -14, ceil: -1.5 });
+}
+
+// ------------------------------------------------------------------ patches
+const PT = {
+  sub: { osc: [{ w: 'sin' }, { w: 'tri', oct: 1, g: 0.18 }], a: 0.012, d: 0.4, s: 0.9, r: 0.18, gain: 0.24, gate: 0.97 },
+  warmPad: { osc: [{ w: 'saw', uni: 5, spr: 18, wid: 0.9 }, { w: 'tri', g: 0.5 }], a: 0.35, d: 0.8, s: 0.8, r: 0.9, flt: { t: 'lp', f: 2600, q: 0.6, kt: 0.3 }, gain: 0.06, rev: 0.5 },
+  bell: { osc: [{ w: 'fm', ratio: 3.5, idx: 1.5 }, { w: 'sin', oct: 1, g: 0.18 }], fmd: 0.35, a: 0.001, d: 1.4, s: 0, r: 0.7, reset: true, gain: 0.12, rev: 0.45, dly: 0.3 },
+  pluck: { osc: [{ w: 'saw' }, { w: 'sq', det: 7, g: 0.6 }], a: 0.001, d: 0.22, s: 0, r: 0.1, reset: true, flt: { t: 'lp', f: 800, q: 1.1, env: 3.1, fd: 0.12, kt: 0.6 }, gain: 0.11, rev: 0.25, dly: 0.3 },
+  softPluck: { osc: [{ w: 'tri' }, { w: 'saw', g: 0.35, det: 6 }], a: 0.001, d: 0.3, s: 0, r: 0.15, reset: true, flt: { t: 'lp', f: 2200, q: 0.8, env: 2.2, fd: 0.15, kt: 0.5 }, gain: 0.12, rev: 0.3, dly: 0.35 },
+  flute: { osc: [{ w: 'tri' }, { w: 'sin', oct: 1, g: 0.25 }, { w: 'noise', g: 0.03 }], a: 0.03, d: 0.3, s: 0.8, r: 0.15, vib: { r: 5.2, d: 0.12, dl: 0.18 }, flt: { t: 'lp', f: 6500, q: 0.7 }, gain: 0.16, rev: 0.35, dly: 0.3, mono: true, glide: 0.03, legato: true },
+  ep: { osc: [{ w: 'fm', ratio: 1, idx: 1.1 }, { w: 'fm', ratio: 14, idx: 0.3, g: 0.12 }, { w: 'sin', g: 0.35 }], fmd: 0.45, fms: 0.15, a: 0.002, d: 1.6, s: 0.35, r: 0.35, gain: 0.075, rev: 0.3, reset: true },
+  vibes: { osc: [{ w: 'fm', ratio: 4, idx: 0.7 }, { w: 'sin', g: 0.6 }], fmd: 0.2, a: 0.001, d: 1.2, s: 0, r: 0.5, reset: true, gain: 0.12, rev: 0.35, dly: 0.25 },
+  neonLead: { osc: [{ w: 'sq', pw: 0.42, g: 0.7 }, { w: 'saw', uni: 2, spr: 9, g: 0.5 }], a: 0.004, d: 0.25, s: 0.6, r: 0.14, vib: { r: 5.5, d: 0.1, dl: 0.2 }, flt: { t: 'lp', f: 2600, q: 0.8, env: 1.4, fd: 0.2, kt: 0.5 }, gain: 0.13, rev: 0.3, dly: 0.3, mono: true, glide: 0.025, legato: true },
+  roundBass: { osc: [{ w: 'tri' }, { w: 'sin', g: 0.7 }, { w: 'saw', g: 0.12 }], a: 0.004, d: 0.3, s: 0.75, r: 0.08, flt: { t: 'lp', f: 900, q: 0.7 }, gain: 0.2, gate: 0.9 },
+};
+
+// ------------------------------------------------------------------ menu and practice loops
+const MENU = {
+  name: 'menuLoop', seed: 901, bpm: 124.632, key: 'A', mode: 'major', bars: 20, preI: -14.5, rt: 2.0, revWet: 0.5, dlyBeats: 0.75, dlyFb: 0.4,
+  sc: { depth: 0.3, rel: 0.6 },
+  form: [['loop', 8, 0.5, { prog: ['Amaj7 C#m7 Dmaj7 E'], hooks: [0, 1] }], ['loop', 8, 0.6, { prog: ['F#m7 Dmaj7 Amaj7 E'], hooks: [2, 3] }],
+    ['loop', 4, 0.4, { prog: ['Bm7 C#m7 Dmaj7 E'], lead: 0 }]],
+  hooks: [
+    '3:4 5:2 3:2 2:4 1:4 | 3:3 5:3 7:2 5:8 | 6:4 4:2 3:2 4:4 6:4 | 5:6 7,:2 2:8',
+    '3:4 5:2 3:2 2:4 1:4 | 3:3 5:3 7:2 2\':8 | 1\':4 7:2 6:2 7:4 6:4 | 5:12 r:4',
+    '6:2 6:2 5:2 3:2 5:4 6:4 | 4:2 4:2 3:2 1:2 3:4 4:4 | 3:2 3:2 2:2 1:2 2:4 3:4 | 2:6 7,:2 5,:8',
+    '6:2 6:2 5:2 3:2 5:4 1\':4 | 1\':6 6:2 4:8 | 3:4 5:4 7:4 1\':4 | 7:12 r:4'],
+  kick: { f0: 150, f1: 52, dec: 0.2, drive: 1.2, click: 0.25, g: 0.65 },
+  kit: { c: { ...KIT.c, g: 0.26 }, t: { ...KIT.t, g: 0.06 } },
+  drums: { drop: { k: 'x.......x.......', c: '....o.......o...', h: 'o.x.o.x.o.x.o.xo', H: '..............o.', t: 'goxogoxogoxogoxo' } },
+  bassPatch: PT.roundBass, bassPat: { drop: 'R-----R---R-----' }, bassLo: 33,
+  padPatch: { ...PT.warmPad, flt: { t: 'lp', f: 4200, q: 0.6 } }, padLo: 55, padHi: 74,
+  arp: { patch: PT.softPluck, pat: '01213212', rate: 2, lo: 64, hi: 81, gate: 0.7 },
+  lead: PT.neonLead,
+};
+const PRACTICE = {
+  name: 'practice', seed: 902, bpm: 90, key: 'F', mode: 'major', bars: 16, preI: -15.5, rt: 1.6, revWet: 0.4, dlyBeats: 0.75, dlyFb: 0.3, dlyWet: 0.35,
+  sc: false, swing8: 0.28,
+  form: [['loop', 8, 0.3, { lead: 0 }], ['loop', 8, 0.35, { hooks: [0, 1] }]],
+  prog: ['Fmaj9 Am7 Bbmaj7 C7sus4:2 C7:2', 'Dm9 Am7 Gm9 C9'],
+  hooks: ['5:6 3:2 5:4 7:4 | 5:6 3:2 2\':8 | 1\':6 6:2 4:8 | 5:4 4:4 3:4 2:4', '3:6 5:2 7:4 6:4 | 5:6 3:2 5:8 | 4:4 6:4 1\':4 3\':4 | 2\':8 7:4 r:4'],
+  kick: { f0: 120, f1: 48, dec: 0.26, drive: 1.1, click: 0.12, lp: 2500, g: 0.6 },
+  kit: { s: { tone: 0.5, f: 200, pa: 0.3, td: 0.05, noise: 0.6, hp: 1500, lp: 5000, nd: 0.11, g: 0.2, rev: 0.15 }, h: { ...KIT.h, g: 0.06, hp: 6000, nd: 0.03 },
+    v: { noise: 1, hp: 2500, lp: 9000, nd: 0.002, g: 0.03, att: 0.0001 } },
+  drums: { drop: { k: 'X.....x...X.....', s: '....x.......x..o', h: 'o.x.o.x.o.x.o.xo' } },
+  bassPatch: { ...PT.roundBass, gain: 0.15 }, bassPat: { drop: 'R-----R-....5---' }, bassLo: 29,
+  padPatch: PT.ep, padOpt: { all: { pat: 'X-----x---------', gate: 0.95, lo: 53, hi: 72 } },
+  lead: PT.vibes,
+  extra(ctx, sec) {
+    if (sec.bar0 !== 0) return;
+    const r = rng(4242), end = ctx.t(16);
+    for (let t = r() * 0.3; t < end; t += 0.05 + r() * 0.45) hit(ctx, 'v', t, 0.3 + r() * 0.7);
+  },
+};
+
+// ------------------------------------------------------------------ level songs
+// form: [type, bars (0 = rest of the song), energy 0..1, options]; prog: 4-bar progressions A, B;
+// hooks: 4-bar melodies A, B written over prog A and B (see parseMel). Drum steps: X x o g = velocities.
+const SONGS = [];
+SONGS[0] = {
+  index: 0, name: 'Neon Start', bpm: 124.632, dur: 64, difficulty: 'easy', style: 'bright happy electro-pop', keyName: 'C major',
+  key: 'C', mode: 'major', seed: 100, mix: { pad: 0.5, lead: 1.2, drums: 1.2 }, hookTonic: 60,
+  form: [['intro', 4, 0.35], ['build', 4, 0.6], ['drop', 8, 0.9], ['break', 4, 0.4], ['build', 2, 0.7], ['drop', 8, 1], ['outro', 0, 0.3]],
+  prog: ['C G Am F', 'F G Em Am'],
+  hooks: ["5:3 3:3 5:2 1':3 7:3 5:2 | 5:3 2:3 5:2 7:3 6:3 5:2 | 6:3 3:3 6:2 1':3 7:3 6:2 | 6:3 4:3 1':2 6:4 5:4",
+    "1':2 1':2 2':2 1':2 6:4 1':4 | 2':2 2':2 3':2 2':2 7:4 5:4 | 3':2 3':2 5':2 3':2 2':3 1':3 7:2 | 1':4 7:2 6:6 r:4"],
+  kick: { f0: 175, f1: 50, dec: 0.24, drive: 1.5, click: 0.4 },
+  drums: {
+    intro: { k: 'x...x...x...x...', h: '..o...o...o...o.', t: 'g.g.g.g.g.g.g.g.' },
+    build: { k: 'x...x...x...x...', h: '..x...x...x...x.' },
+    drop: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.', h: 'o.g.o.g.o.g.o.go', t: '.g.g.g.g.g.g.g.g' },
+    break: { t: 'gogogogogogogogo', c: '............o...' },
+    outro: { k: 'x...x...x...x...', c: '....o.......o...', h: '..x...x...x...x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw' }, { w: 'sq', oct: -1, g: 0.5 }], a: 0.002, d: 0.18, s: 0.55, r: 0.05, flt: { t: 'lp', f: 320, q: 1.1, env: 2.4, fd: 0.13 }, gain: 0.22, gate: 0.8 },
+  bassPat: { drop: 'R..R..R.R..R..O.', build: 'R.R.R.R.R.R.R.R.', outro: 'R...R...R...R...' },
+  padPatch: PT.warmPad,
+  stab: { patch: { osc: [{ w: 'saw', uni: 3, spr: 14 }, { w: 'sq', g: 0.4 }], a: 0.002, d: 0.2, s: 0.25, r: 0.1, flt: { t: 'lp', f: 1500, q: 0.9, env: 2, fd: 0.14 }, gain: 0.045, rev: 0.25, dly: 0.12 }, pat: '..x...x...x...x.', gate: 0.7, lo: 60, hi: 79 },
+  arp: { patch: PT.pluck, pat: '0121', rate: 4, lo: 64, hi: 84 },
+  lead: { osc: [{ w: 'sq', g: 0.55 }, { w: 'saw', g: 0.6, uni: 3, spr: 14, wid: 0.6 }], a: 0.003, d: 0.3, s: 0.55, r: 0.12, reset: true, flt: { t: 'lp', f: 2200, q: 0.9, env: 2, fd: 0.22, kt: 0.5 }, gain: 0.15, rev: 0.22, dly: 0.28 },
+  softLead: PT.bell, teaseLead: PT.pluck, layers: { build: { lead: 'tease' } },
+  sc: { depth: 0.5, rel: 0.55 },
+};
+SONGS[1] = {
+  index: 1, name: 'Pixel Hop', bpm: 138.48, dur: 68, difficulty: 'easy', style: 'bouncy chiptune', keyName: 'G major',
+  key: 'G', mode: 'major', seed: 101, mix: { lead: 0.85, arp: 1.6 }, hookTonic: 67,
+  form: [['intro', 4, 0.35], ['build', 4, 0.55], ['drop', 8, 0.85], ['break', 8, 0.4], ['build', 4, 0.7], ['drop', 8, 1], ['outro', 0, 0.3]],
+  prog: ['G Em C D', 'C D G:2 Em:2 Am:2 D:2'],
+  hooks: ["1:2 5:1 1':1 5:2 3:2 5:2 1':2 2':2 1':2 | 6,:2 3:1 6:1 3:2 1:2 3:2 6:2 7:2 6:2 | 4,:2 1:1 4:1 1:2 6,:2 1:2 4:2 5:2 6:2 | 5,:2 2:1 5:1 7:2 5:2 2':4 r:2 7:2",
+    '6:3 4:3 1:2 4:4 6:4 | 7:3 5:3 2:2 5:4 7:2 6:2 | 5:2 3:2 1:2 3:2 6,:2 1:2 3:4 | 2:2 4:2 6:2 4:2 5:4 7,:2 2:2'],
+  kick: { f0: 200, f1: 55, dec: 0.18, drive: 1.6, click: 0.5 },
+  kit: { s: { type: 'chip', rate: 6500, dec: 0.1, g: 0.3, and: 'c' }, c: { ...KIT.c, g: 0.16 }, h: { type: 'chip', rate: 24000, dec: 0.022, g: 0.15, short: true }, H: { type: 'chip', rate: 16000, dec: 0.08, g: 0.11 } },
+  drums: {
+    intro: { k: 'x...x...x...x...', h: '..x...x...x...x.' },
+    build: { k: 'x...x...x...x...', h: 'x.x.x.x.x.x.x.x.' },
+    drop: { k: 'x...x...x..xx...', s: '....x.......x...', h: 'x.xxx.xxx.xxx.xx', H: '..............x.' },
+    break: { h: 'o.o.o.o.o.o.o.o.', s: '............o...' },
+    outro: { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+  },
+  bassPatch: { osc: [{ w: 'tri' }, { w: 'sq', pw: 0.5, g: 0.12 }], a: 0.001, d: 0.1, s: 0.85, r: 0.02, gain: 0.3, gate: 0.75 },
+  bassPat: { drop: 'R.O.R.O.R.O.R.O.', build: 'R...R...R...R...', outro: 'R.O.R.O.R.O.R.O.' },
+  bassLo: 38, subPatch: { osc: [{ w: 'tri' }], a: 0.01, d: 0.2, s: 0.9, r: 0.1, gain: 0.26, gate: 0.95 },
+  padPatch: { osc: [{ w: 'sq', pw: 0.5, uni: 2, spr: 10 }], a: 0.03, d: 0.4, s: 0.6, r: 0.25, flt: { t: 'lp', f: 2500, q: 0.6 }, gain: 0.035, rev: 0.25 },
+  arp: { patch: { osc: [{ w: 'sq', pw: 0.125 }], a: 0.001, d: 0.05, s: 0.6, r: 0.015, flt: { t: 'lp', f: 7500, q: 0.6 }, gain: 0.07, dly: 0.12, pan: -0.25 }, pat: '012', rate: 8, lo: 67, hi: 86, gate: 0.85, acc: 3 },
+  lead: { osc: [{ w: 'sq', pw: 0.25 }], a: 0.001, d: 0.08, s: 0.8, r: 0.03, vib: { r: 6, d: 0.18, dl: 0.12 }, flt: { t: 'lp', f: 8000, q: 0.6 }, gain: 0.15, dly: 0.2, rev: 0.06, mono: true },
+  softLead: { osc: [{ w: 'sq', pw: 0.5 }], a: 0.002, d: 0.2, s: 0.5, r: 0.08, vib: { r: 5, d: 0.15, dl: 0.2 }, flt: { t: 'lp', f: 4500, q: 0.6 }, gain: 0.12, dly: 0.35, rev: 0.15, mono: true },
+  layers: { drop: { arp: 1, stab: 0 } },
+  sc: { depth: 0.35, rel: 0.5 }, rt: 1.2, revWet: 0.3, dlyBeats: 0.5, dlyFb: 0.3,
+};
+SONGS[2] = {
+  index: 2, name: 'Blue Ladder', bpm: 124.632, dur: 72, difficulty: 'normal', style: 'upbeat synthwave', keyName: 'A minor',
+  key: 'A', mode: 'minor', seed: 102, mix: { drums: 0.7, pad: 1.4, lead: 0.85 }, hookTonic: 57,
+  form: [['intro', 4, 0.35], ['verse', 4, 0.5], ['build', 4, 0.65], ['drop', 8, 0.9], ['break', 4, 0.45], ['build', 2, 0.7], ['drop', 8, 1], ['outro', 0, 0.3]],
+  prog: ['Am F C G', 'Dm Am F G'],
+  hooks: ["5:6 3:2 5:2 6:2 5:4 | 1':6 6:2 1':2 2':2 1':4 | 3':6 1':2 3':2 4':2 3':4 | 2':6 7:2 2':2 4':2 2':4",
+    "4':2 3':2 4':2 6':2 4':4 1':4 | 3':2 2':2 3':2 5':2 3':4 1':4 | 1':2 7:2 1':2 3':2 1':4 6:4 | 7:2 6:2 7:2 2':2 7:2 2':2 4':4"],
+  kick: { f0: 160, f1: 52, dec: 0.25, drive: 1.4, click: 0.3 },
+  kit: { s: { tone: 0.5, f: 190, pa: 0.4, td: 0.07, noise: 0.9, hp: 1100, lp: 8000, nd: 0.2, g: 0.42, rev: 0.45 } },
+  drums: {
+    intro: { k: 'x...x...x...x...', h: 'o.o.o.o.o.o.o.o.' },
+    verse: { k: 'x...x...x...x...', s: '....x.......x...', h: 'o.x.o.x.o.x.o.x.' },
+    build: { k: 'x...x...x...x...', h: 'oxoxoxoxoxoxoxox' },
+    drop: { k: 'x...x...x...x...', s: '....X.......X...', h: 'gxoxgxoxgxoxgxox', H: '..............x.' },
+    break: { h: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'x...x...x...x...', s: '....x.......x...', h: 'o.x.o.x.o.x.o.x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw' }, { w: 'saw', det: 9, g: 0.6 }, { w: 'sin', oct: -1, g: 0.5 }], a: 0.002, d: 0.12, s: 0.5, r: 0.04, flt: { t: 'lp', f: 380, q: 1.2, env: 2.2, fd: 0.1 }, gain: 0.2, gate: 0.7 },
+  bassPat: { drop: 'RRRRRRRRRRRRRRRR', verse: 'R.R.R.R.R.R.R.R.', build: 'R.R.R.R.R.R.R.R.', outro: 'R.R.R.R.R.R.R.R.' },
+  padPatch: { osc: [{ w: 'saw', uni: 5, spr: 20, wid: 0.9 }, { w: 'sq', oct: -1, g: 0.25 }], a: 0.004, d: 0.12, s: 0.75, r: 0.06, flt: { t: 'lp', f: 2800, q: 0.7 }, gain: 0.05, rev: 0.3, dly: 0.08 },
+  padOpt: { drop: { pat: 'x.xx.xx.x.xx.xx.', gate: 0.7 }, verse: { pat: 'x.x.x.x.x.x.x.x.', gate: 0.6 }, break: { v: 1.1 } },
+  arp: { patch: PT.pluck, pat: '0123', rate: 4, lo: 60, hi: 81 },
+  lead: { osc: [{ w: 'saw', uni: 2, spr: 10, wid: 0.4 }, { w: 'saw', oct: -1, g: 0.3 }], a: 0.005, d: 0.3, s: 0.75, r: 0.18, vib: { r: 5.5, d: 0.16, dl: 0.25 }, flt: { t: 'lp', f: 2800, q: 0.8, env: 1, fd: 0.3 }, gain: 0.15, rev: 0.3, dly: 0.35, mono: true, glide: 0.04, legato: true },
+  softLead: { ...PT.bell, gain: 0.11 },
+  sc: { depth: 0.45, rel: 0.55 }, rt: 2.4, revWet: 0.5, dlyBeats: 0.75, dlyFb: 0.38,
+  extra(ctx, sec) {
+    if (sec.type !== 'drop') return;
+    const b = sec.bar0 + sec.bars - 1;
+    [[12, 0.9, 140], [13, 0.85, 120], [14, 0.9, 100], [15, 1, 82]].forEach(([s, v, f]) => drum(ctx.mx, ctx.t(b, s), { ...KIT.m, f, v, g: 0.3 }));
+  },
+};
+SONGS[3] = {
+  index: 3, name: 'Desert Wind', bpm: 138.48, dur: 74, difficulty: 'normal', style: 'dance beat with a phrygian-dominant melody and hand percussion', keyName: 'D phrygian dominant',
+  key: 'D', mode: 'phrygdom', seed: 103, mix: { bass: 1.25, arp: 1.4 }, hookTonic: 74,
+  form: [['intro', 4, 0.35], ['verse', 4, 0.5], ['build', 4, 0.65], ['drop', 8, 0.9], ['break', 8, 0.45], ['build', 4, 0.75], ['drop', 8, 1], ['outro', 0, 0.3]],
+  prog: ['D Eb Cm D', 'Gm Cm Eb D'],
+  hooks: ["5:3 6:1 5:2 3:2 4:2 3:2 2:2 1:2 | 2:3 3:1 2:2 4:2 6:4 4:2 2:2 | 4:3 2:1 7,:2 2:2 4:4 6:2 5:2 | 1:6 2:1 1:1 3:4 1:4",
+    "1':4 6:2 7:1 6:1 4:4 6:4 | 7:4 6:2 7:1 6:1 4:4 2:4 | 6:4 4:2 6:1 4:1 2:4 3:2 2:2 | 1:4 3:2 5:2 1':6 r:2"],
+  kick: { f0: 165, f1: 50, dec: 0.24, drive: 1.5, click: 0.3 },
+  kit: {
+    d: { tone: 1, f: 95, pa: 0.5, pd: 0.02, td: 0.16, noise: 0.15, lp: 1200, nd: 0.03, g: 0.3, pan: -0.1 },
+    e: { tone: 0.5, f: 720, pa: 0.1, td: 0.03, noise: 0.9, bp: 3200, bq: 1.5, nd: 0.025, g: 0.2, pan: 0.2, rev: 0.1 },
+    f: { tone: 0.3, f: 650, td: 0.02, noise: 0.7, bp: 2800, bq: 1.5, nd: 0.018, g: 0.11, pan: -0.25 },
+    b: { ...KIT.b, g: 0.09 },
+  },
+  drums: {
+    intro: { k: 'x...............', d: 'x.......x.......', e: '..x...x.....x...', t: 'gogogogogogogogo' },
+    verse: { k: 'x...x...x...x...', d: 'x.......x.......', e: '..x...x.....x...', f: '.o.o.o..o.oo.o.o', t: 'gogogogogogogogo' },
+    build: { k: 'x...x...x...x...', e: '..x...x...x...x.', t: 'gogogogogogogogo' },
+    drop: { k: 'x...x...x...x...', c: '....x.......x...', d: 'x.......x.......', e: '..x...x.....x.x.', f: '.o.o.o..o.oo.o..', b: '..x...x...x...x.', h: 'g.g.g.g.g.g.g.g.' },
+    break: { d: 'x.......x.......', e: '..x...x.....x...', f: '.o.o.o..o.oo.o.o', t: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'x...x...x...x...', d: 'x.......x.......', e: '..x...x.....x...', t: 'gogogogogogogogo' },
+  },
+  bassPatch: { osc: [{ w: 'saw' }, { w: 'sin', oct: -1, g: 0.6 }], a: 0.002, d: 0.15, s: 0.6, r: 0.05, flt: { t: 'lp', f: 300, q: 1, env: 2.2, fd: 0.12 }, gain: 0.22, gate: 0.8 },
+  bassPat: { drop: '..R...R...R.R.R.', verse: '..R...R...R...R.', build: 'R.R.R.R.R.R.R.R.', outro: '..R...R...R...R.' },
+  padPatch: { ...PT.warmPad, gain: 0.045 },
+  arp: { patch: { osc: [{ w: 'saw' }, { w: 'tri', oct: 1, g: 0.4 }], a: 0.001, d: 0.16, s: 0, r: 0.08, reset: true, flt: { t: 'lp', f: 1200, q: 1.4, env: 2.6, fd: 0.08, kt: 0.5 }, gain: 0.1, rev: 0.25, dly: 0.25, pan: 0.2 }, pat: '0102', rate: 4, lo: 62, hi: 80 },
+  lead: { osc: [{ w: 'saw' }, { w: 'sq', pw: 0.3, g: 0.6 }], a: 0.01, d: 0.25, s: 0.8, r: 0.12, vib: { r: 5.8, d: 0.22, dl: 0.18 }, flt: { t: 'bp', f: 1300, q: 1.1, env: 0.6, fd: 0.2, kt: 0.6 }, drive: 1.3, gain: 0.26, rev: 0.3, dly: 0.25, mono: true, glide: 0.03, legato: true },
+  softLead: { osc: [{ w: 'tri' }, { w: 'sin', oct: 1, g: 0.2 }, { w: 'noise', g: 0.04 }], a: 0.04, d: 0.3, s: 0.8, r: 0.2, vib: { r: 5, d: 0.2, dl: 0.2 }, flt: { t: 'lp', f: 3500 }, gain: 0.15, rev: 0.45, dly: 0.3, mono: true, glide: 0.04, legato: true },
+  layers: { drop: { arp: 1 } },
+  sc: { depth: 0.4, rel: 0.5 }, rt: 2.2, revWet: 0.45, dlyBeats: 0.75,
+  extra(ctx, sec) {
+    if (sec.type === 'intro' || sec.type === 'break') play(ctx.mx, { osc: [{ w: 'saw', uni: 3, spr: 8 }, { w: 'sin', g: 0.8 }], a: 1.2, d: 1, s: 0.9, r: 1.2, flt: { t: 'lp', f: 500, q: 0.8 }, gain: 0.08, rev: 0.3 }, [{ t: ctx.t(sec.bar0), d: sec.bars * ctx.barS - 0.2, m: 38 }]);
+  },
+};
+SONGS[4] = {
+  index: 4, name: 'Iron Gate', bpm: 155.79, dur: 78, difficulty: 'hard', style: 'industrial electro', keyName: 'E minor',
+  key: 'E', mode: 'minor', seed: 104, mix: { kick: 1.2, drums: 0.5, bass: 1.25 }, hookTonic: 64,
+  form: [['intro', 4, 0.4], ['verse', 8, 0.6], ['build', 4, 0.75], ['drop', 8, 0.95], ['break', 8, 0.5], ['build', 4, 0.8], ['drop', 12, 1], ['outro', 0, 0.35]],
+  prog: ['Em Em C D', 'Em G C B'],
+  hooks: ['1:2 1:1 1:1 b2:2 1:2 4:2 3:2 b2:2 1:2 | 5:2 5:1 5:1 4:2 3:2 1:4 7,:2 1:2 | 6:2 6:1 6:1 5:2 3:2 6:2 5:2 3:2 1:2 | 7:2 7:1 7:1 6:2 4:2 2:4 4:2 7:2',
+    "1':4 7:2 1':2 3':4 2':4 | 3':4 2':2 3':2 5':4 4':4 | 6:4 5:2 6:2 1':4 3':4 | 5:6 #7,:2 2:4 5:4"],
+  kick: { f0: 200, f1: 47, dec: 0.2, drive: 3, click: 0.5, lp: 7000 },
+  kit: {
+    s: { tone: 0.5, f: 210, pa: 0.5, td: 0.05, noise: 1, hp: 900, nd: 0.12, metal: 0.4, g: 0.42, drive: 1.8, rev: 0.15 },
+    a: { type: 'clang', f: 470, dec: 0.22, idx: 5, drive: 1.6, g: 0.12, pan: 0.3, rev: 0.1, dly: 0.1 },
+    A: { type: 'clang', f: 233, dec: 0.4, idx: 3, drive: 2, g: 0.13, pan: -0.3, rev: 0.15 },
+  },
+  drums: {
+    intro: { k: 'x...x...x...x...', a: '...x.......x....', h: 'o.o.o.o.o.o.o.o.' },
+    verse: { k: 'x...x...x...x...', s: '....x.......x...', h: 'xoxoxoxoxoxoxoxo', a: '...x.....x....x.' },
+    build: { k: 'x...x...x...x...', h: 'xoxoxoxoxoxoxoxo', a: '...x.......x....' },
+    drop: { k: 'x...x...x...x...', s: '....X.......X...', h: 'xoxoxoxoxoxoxoxo', a: '...x.....x....x.', A: 'x.......x.......', H: '..x...x...x...x.' },
+    break: { a: '...x.......x....', A: 'x...............', h: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'x...x...x...x...', s: '....x.......x...', h: 'xoxoxoxoxoxoxoxo', a: '...x.....x....x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw' }, { w: 'sq', g: 0.6, det: -8 }, { w: 'sin', oct: -1, g: 0.6 }], a: 0.002, d: 0.14, s: 0.6, r: 0.04, drive: 3.5, flt: { t: 'lp', f: 420, q: 1.3, env: 2.4, fd: 0.09 }, gain: 0.2, gate: 0.85 },
+  bassPat: { drop: 'RR.RR.RR.RR.R.Ob', verse: 'R.R.R.R.R.R.R.Rb', build: 'R.R.R.R.R.R.R.R.', outro: 'R.R.R.R.R.R.R.R.' },
+  padPatch: { osc: [{ w: 'saw', uni: 4, spr: 16 }], a: 0.3, d: 0.5, s: 0.8, r: 0.5, flt: { t: 'lp', f: 1400, q: 0.8 }, gain: 0.04, rev: 0.4 },
+  stab: { patch: { osc: [{ w: 'saw', uni: 3, spr: 10 }, { w: 'sq', oct: -1, g: 0.5 }], a: 0.001, d: 0.12, s: 0.3, r: 0.06, drive: 2, flt: { t: 'lp', f: 1800, q: 1, env: 1.5, fd: 0.08 }, gain: 0.05, rev: 0.15 }, pat: 'x..x..x.........', gate: 0.6, lo: 52, hi: 70, size: 3 },
+  arp: { patch: { ...PT.pluck, gain: 0.08 }, pat: '0.1.2.1.', rate: 4, lo: 64, hi: 82 },
+  lead: { osc: [{ w: 'sq', pw: 0.5 }, { w: 'saw', g: 0.6, det: 10 }], a: 0.002, d: 0.15, s: 0.7, r: 0.06, drive: 2, flt: { t: 'lp', f: 2600, q: 1.1, env: 1.2, fd: 0.12 }, gain: 0.14, rev: 0.15, dly: 0.2, mono: true },
+  softLead: { ...PT.bell, gain: 0.1 }, teaseLead: { ...PT.pluck, gain: 0.1 },
+  layers: { verse: { arp: 0, stab: 1 }, build: { lead: 'tease' } },
+  sc: { depth: 0.5, rel: 0.45 }, rt: 1.6, revWet: 0.35, dlyBeats: 0.75, dlyFb: 0.3,
+  extra(ctx, sec) {
+    if (sec.type === 'verse' || sec.type === 'drop') drum(ctx.mx, ctx.t(sec.bar0), { noise: 1, metal: 0.6, hp: 300, nd: 0.25, g: 0.18, drive: 2.5, wide: true, rev: 0.3 });
+  },
+};
+
+const SUPERSAW = (o = {}) => ({ osc: [{ w: 'saw', uni: 7, spr: 32, wid: 0.95 }, { w: 'sq', g: 0.3, oct: -1 }], a: 0.004, d: 0.3, s: 0.7, r: 0.18, hp: 140,
+  flt: { t: 'lp', f: 5200, q: 0.7, env: 0.8, fd: 0.25 }, gain: 0.07, rev: 0.3, dly: 0.2, ...o });
+const DARKPAD = (o = {}) => ({ osc: [{ w: 'saw', uni: 5, spr: 16, wid: 0.9 }, { w: 'tri', oct: -1, g: 0.4 }], a: 0.4, d: 0.8, s: 0.8, r: 0.9, flt: { t: 'lp', f: 1300, q: 0.7 }, gain: 0.05, rev: 0.5, ...o });
+const GLASS = (o = {}) => ({ osc: [{ w: 'fm', ratio: 3.5, idx: 1.3 }, { w: 'fm', ratio: 5.19, idx: 0.5, g: 0.35 }, { w: 'sin', g: 0.5 }], fmd: 0.4, a: 0.001, d: 1.5, s: 0, r: 0.8, reset: true, gain: 0.1, rev: 0.45, dly: 0.35, ...o });
+SONGS[5] = {
+  index: 5, name: 'Night Rail', bpm: 124.632, dur: 80, difficulty: 'hard', style: 'dark synthwave with half-time drops', keyName: 'F# minor',
+  key: 'F#', mode: 'minor', seed: 105, hookTonic: 66, mix: { kick: 1.25, bass: 0.8, lead: 0.75, arp: 1.6 },
+  form: [['intro', 4, 0.35], ['verse', 8, 0.55], ['build', 4, 0.7], ['drop', 8, 0.9], ['break', 4, 0.45], ['build', 2, 0.75], ['drop', 8, 1], ['outro', 0, 0.3]],
+  prog: ['F#m D A E', 'Bm D E C#'],
+  hooks: ["1':3 7:3 5:6 3:2 5:2 | 6:3 5:3 3:6 1:2 3:2 | 5:3 3:3 7:6 5:2 3:2 | 7:3 2':3 4':6 2':2 7:2",
+    "4':4 3':2 1':2 6:4 4:4 | 6:4 5:2 3:2 1:4 3:4 | 7:4 4':2 2':2 7:4 5:4 | 5:4 #7,:2 2:2 5:8"],
+  kick: { f0: 150, f1: 46, dec: 0.32, drive: 1.6, click: 0.3 },
+  kit: { s: { tone: 0.45, f: 175, pa: 0.4, td: 0.08, noise: 1, hp: 900, lp: 7000, nd: 0.28, g: 0.45, rev: 0.5 },
+    p: { noise: 1, metal: 0.5, bp: 2600, bq: 2, nd: 0.018, g: 0.11, pan: -0.35, seed: 31 } },
+  drums: {
+    intro: { k: 'x...............', p: 'x.x.....x.x.....', h: '..o...o...o...o.' },
+    verse: { k: 'x...x...x...x...', s: '....x.......x...', p: 'x.x.....x.x.....', h: 'o.x.o.x.o.x.o.x.' },
+    build: { k: 'x...x...x...x...', p: 'x.x.....x.x.....', h: 'oxoxoxoxoxoxoxox' },
+    drop: { k: 'X.........x.....', s: '........X.......', h: 'o.x.o.x.o.x.o.x.', H: '......x.......x.', p: 'x.x.....x.x.....' },
+    break: { p: 'x.x.....x.x.....', h: 'g...g...g...g...' },
+    outro: { k: 'x...x...x...x...', s: '....x.......x...', p: 'x.x.....x.x.....', h: 'o.x.o.x.o.x.o.x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw' }, { w: 'saw', det: 12, g: 0.7 }, { w: 'sin', oct: -1, g: 0.6 }], a: 0.003, d: 0.4, s: 0.7, r: 0.1, flt: { t: 'lp', f: 260, q: 1.1, env: 2, fd: 0.3 }, gain: 0.2, gate: 0.92 },
+  bassPat: { drop: 'R---------R---O-', verse: 'R.R.R.R.R.R.R.R.', build: 'R.R.R.R.R.R.R.R.', outro: 'R.R.R.R.R.R.R.R.' },
+  padPatch: DARKPAD(),
+  arp: { patch: { ...PT.pluck, gain: 0.1, flt: { t: 'lp', f: 700, q: 1.2, env: 2.8, fd: 0.1, kt: 0.6 } }, pat: '0123', rate: 4, lo: 61, hi: 80 },
+  lead: { osc: [{ w: 'saw', uni: 2, spr: 12, wid: 0.5 }, { w: 'sq', pw: 0.45, g: 0.4 }], a: 0.01, d: 0.4, s: 0.75, r: 0.25, vib: { r: 5, d: 0.15, dl: 0.3 }, flt: { t: 'lp', f: 2000, q: 0.9, env: 1, fd: 0.3 }, gain: 0.17, rev: 0.4, dly: 0.35, mono: true, glide: 0.05, legato: true },
+  softLead: GLASS({ gain: 0.09 }),
+  layers: { drop: { arp: 1 } },
+  sc: { depth: 0.4, rel: 0.9 }, rt: 2.6, revWet: 0.5, dlyBeats: 0.75, dlyFb: 0.42,
+  extra(ctx, sec) {
+    if (sec.type === 'intro' || sec.type === 'break') riser(ctx.mx, ctx.t(sec.bar0), ctx.t(sec.bar0 + sec.bars), { f0: 120, f1: 260, q: 0.8, g: 0.05, pow: 0.6 });
+  },
+};
+SONGS[6] = {
+  index: 6, name: 'Sky Rocket', bpm: 155.79, dur: 82, difficulty: 'hard', style: 'uplifting trance', keyName: 'D major',
+  key: 'D', mode: 'major', seed: 106, hookTonic: 62, mix: { pad: 0.8, stab: 1.6 },
+  form: [['intro', 4, 0.4], ['verse', 8, 0.6], ['build', 4, 0.75], ['drop', 8, 0.9], ['break', 8, 0.45], ['build', 8, 0.8], ['drop', 8, 1], ['outro', 0, 0.35]],
+  prog: ['Bm G D A', 'G A D A'],
+  hooks: ["6:3 1':3 3':2 2':3 1':3 6:2 | 4:3 6:3 1':2 7:3 6:3 4:2 | 3:3 5:3 1':2 7:3 6:3 5:2 | 5:3 7:3 2':2 1':3 7:3 5:2",
+    "6:4 1':4 2':8 | 2':4 3':4 2':8 | 3':4 5':4 4':4 3':4 | 2':12 7:2 1':2"],
+  kick: { f0: 190, f1: 50, dec: 0.2, drive: 1.8, click: 0.45 },
+  drums: {
+    intro: { k: 'x...x...x...x...', h: '..x...x...x...x.' },
+    verse: { k: 'x...x...x...x...', c: '....x.......x...', h: 'g.x.g.x.g.x.g.x.', t: 'gogogogogogogogo' },
+    build: { k: 'x...x...x...x...', h: '..x...x...x...x.' },
+    drop: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.', h: 'xgxgxgxgxgxgxgxg', r: 'x.x.x.x.x.x.x.x.' },
+    break: { h: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw' }, { w: 'sin', oct: -1, g: 0.5 }], a: 0.001, d: 0.09, s: 0.3, r: 0.03, flt: { t: 'lp', f: 340, q: 1.2, env: 2.2, fd: 0.07 }, gain: 0.24, gate: 0.85 },
+  bassPat: { drop: '.RRR.RRR.RRR.RRR', verse: '.RRR.RRR.RRR.RRR', build: 'R.R.R.R.R.R.R.R.', outro: '.RRR.RRR.RRR.RRR' },
+  padPatch: SUPERSAW({ a: 0.3, d: 0.6, s: 0.85, r: 0.7, gain: 0.045, flt: { t: 'lp', f: 3500, q: 0.6 } }),
+  stab: { patch: SUPERSAW({ a: 0.002, d: 0.18, s: 0.3, r: 0.1, gain: 0.05 }), pat: '..x...x...x...x.', gate: 0.7, lo: 62, hi: 81 },
+  arp: { patch: { ...PT.pluck, gain: 0.11 }, pat: '01234321', rate: 4, lo: 62, hi: 84 },
+  lead: SUPERSAW({ a: 0.006, d: 0.3, s: 0.8, r: 0.22, gain: 0.11, vib: { r: 5.5, d: 0.12, dl: 0.3 }, mono: true, glide: 0.035, legato: true, flt: { t: 'lp', f: 6500, q: 0.7 } }),
+  softLead: { ...PT.bell, gain: 0.12 }, teaseLead: { ...PT.pluck, gain: 0.1 },
+  layers: { drop: { arp: 1 }, build: { lead: 'tease' } },
+  sc: { depth: 0.55, rel: 0.6 }, rt: 2.8, revWet: 0.5, dlyBeats: 0.75, dlyFb: 0.4, riserG: 0.09,
+};
+SONGS[7] = {
+  index: 7, name: 'Crystal Cave', bpm: 138.48, dur: 84, difficulty: 'harder', style: 'glassy bell arpeggios over deep bass', keyName: 'B minor',
+  key: 'B', mode: 'minor', seed: 107, hookTonic: 71, mix: { arp: 1.3, kick: 1.35, drums: 1.6, bass: 0.7, lead: 0.75 },
+  form: [['intro', 4, 0.35], ['verse', 8, 0.55], ['build', 4, 0.7], ['drop', 8, 0.9], ['break', 8, 0.45], ['build', 4, 0.75], ['drop', 8, 1], ['outro', 0, 0.3]],
+  prog: ['Bm G Em F#', 'Bm D G F#'],
+  hooks: ["5:4 3:2 1:2 3:4 5:4 | 6:4 3:2 1:2 3:4 6:4 | 4:4 6:2 1':2 7:4 6:4 | 5:4 #7:2 2':2 5:8",
+    "1':6 2':2 3':4 1':4 | 3':6 5':2 3':4 7:4 | 6:6 1':2 3':4 1':4 | #7:6 5:2 2':4 5:4"],
+  kick: { f0: 160, f1: 45, dec: 0.3, drive: 1.4, click: 0.35 },
+  kit: { c: { ...KIT.c, rev: 0.3 }, s: { tone: 0.3, f: 420, td: 0.03, noise: 0.6, bp: 2500, bq: 1.5, nd: 0.05, g: 0.25, rev: 0.25 } },
+  drums: {
+    intro: { k: 'x...............', h: '..g...g...g...g.' },
+    verse: { k: 'x.....x...x.....', s: '....x.......x...', h: 'gogxgogxgogxgogx', t: '.g.g.g.g.g.g.g.g' },
+    build: { k: 'x...x...x...x...', h: 'gogxgogxgogxgogx' },
+    drop: { k: 'x...x...x...x...', c: '....x.......x...', h: 'gogxgogxgogxgogx', H: '..x...x...x...x.', t: '.g.g.g.g.g.g.g.g' },
+    break: { h: 'g...g...g...g...' },
+    outro: { k: 'x...x...x...x...', c: '....x.......x...', h: 'gogxgogxgogxgogx' },
+  },
+  bassPatch: { osc: [{ w: 'sin' }, { w: 'tri', g: 0.25 }, { w: 'saw', g: 0.08, oct: 1 }], a: 0.004, d: 0.4, s: 0.85, r: 0.12, drive: 1.6, gain: 0.3, gate: 0.95 },
+  bassPat: { drop: 'R-----R---R-----', verse: 'R-----R---R-----', build: 'R-------R-------', outro: 'R-----R---R-----' },
+  bassLo: 30, subPatch: { ...PT.sub, gain: 0.28 },
+  padPatch: DARKPAD({ flt: { t: 'lp', f: 1800, q: 0.6 }, gain: 0.04 }),
+  arp: { patch: GLASS({ gain: 0.07, d: 0.7, r: 0.4, pan: 0.15 }), pat: '01232101', rate: 4, lo: 66, hi: 86, gate: 0.5 },
+  lead: GLASS({ gain: 0.14, dly: 0.3 }),
+  softLead: GLASS({ gain: 0.11, rev: 0.6 }),
+  layers: { drop: { arp: 1, pad: 1 }, verse: { arp: 1 } },
+  sc: { depth: 0.35, rel: 0.6 }, rt: 3.2, revWet: 0.55, revSize: 1.3, dlyBeats: 0.75, dlyFb: 0.45, dlyWet: 0.5,
+  extra(ctx, sec) {
+    if (sec.type !== 'intro' && sec.type !== 'break') return;
+    const r = rng(sec.bar0 + 7);
+    for (let b = 0; b < sec.bars * 4; b += 1 + Math.floor(r() * 3)) {
+      play(ctx.mx, { osc: [{ w: 'sin' }], a: 0.001, d: 0.08, s: 0, r: 0.1, pe: { a: 14, d: 0.012 }, gain: 0.07, rev: 0.6, dly: 0.4, pan: r() * 1.4 - 0.7 },
+        [{ t: ctx.t(sec.bar0) + (b + r() * 0.5) * ctx.spb, d: 0.05, m: 84 + Math.floor(r() * 12) }]);
+    }
+  },
+};
+SONGS[8] = {
+  index: 8, name: 'Thunder Road', bpm: 178.05, dur: 86, difficulty: 'harder', style: 'drum and bass', keyName: 'C minor',
+  key: 'C', mode: 'minor', seed: 108, hookTonic: 60, mix: { drums: 0.9, kick: 1.25, bass: 0.8 },
+  form: [['intro', 8, 0.4], ['build', 8, 0.7], ['drop', 16, 0.95], ['break', 8, 0.45], ['build', 8, 0.8], ['drop', 12, 1], ['outro', 0, 0.35]],
+  prog: ['Cm Ab Eb Bb', 'Fm Ab Bb G'],
+  hooks: ['5:6 4:2 3:4 1:4 | 6:6 5:2 3:4 1:4 | 5:6 4:2 3:4 7,:4 | 4:6 3:2 2:8',
+    "1':4 6:2 4:2 6:4 1':4 | 3':4 1':2 6:2 1':4 3':4 | 2':4 7:2 4:2 7:4 2':4 | #7:4 5:2 2:2 5:8"],
+  kick: { f0: 180, f1: 50, dec: 0.16, drive: 1.8, click: 0.55 },
+  kit: { s: { tone: 0.6, f: 200, pa: 0.5, td: 0.05, noise: 0.9, hp: 1200, lp: 10000, nd: 0.1, g: 0.45, rev: 0.12 },
+    r: { ...KIT.r, g: 0.08 } },
+  drums: {
+    intro: { r: 'x.x.x.x.x.x.x.x.', t: 'gogogogogogogogo' },
+    build: { k: 'x.........x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+    drop: { k: 'x.........x.....x.........x..x..', s: '....X..o.o..X..o....X..o.o..X...', h: 'x.x.x.x.x.x.x.x.', t: 'gogogogogogogogo', r: '..x...x...x...x.' },
+    break: { r: 'x...x...x...x...', t: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'x.........x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw', uni: 2, spr: 28, wid: 0.3 }, { w: 'saw', det: -14, g: 0.7 }, { w: 'sin', oct: -1, g: 0.7 }], a: 0.004, d: 0.5, s: 0.85, r: 0.08, drive: 2.2,
+    flt: { t: 'lp', f: 480, q: 1.4, lfo: { r: 0.37, d: 1.4, sh: 'sin', reset: false } }, gain: 0.2, gate: 0.97, mono: true, legato: true, glide: 0.02 },
+  bassPat: { drop: 'R---------R---5-', build: 'R-------R-------', outro: 'R---------R-----' },
+  padPatch: DARKPAD({ gain: 0.05 }),
+  stab: { patch: { osc: [{ w: 'saw', uni: 3, spr: 12 }, { w: 'sq', g: 0.4 }], a: 0.001, d: 0.15, s: 0.2, r: 0.12, flt: { t: 'lp', f: 2200, q: 1, env: 1.5, fd: 0.1 }, gain: 0.045, rev: 0.3, dly: 0.25 }, pat: 'x.........x.....', gate: 0.8, lo: 60, hi: 79 },
+  arp: { patch: { ...PT.pluck, gain: 0.09 }, pat: '0.2.1.3.', rate: 4, lo: 60, hi: 82 },
+  lead: { osc: [{ w: 'saw', uni: 3, spr: 14, wid: 0.5 }, { w: 'sq', g: 0.35 }], a: 0.006, d: 0.35, s: 0.7, r: 0.2, vib: { r: 5.5, d: 0.12, dl: 0.25 }, flt: { t: 'lp', f: 3000, q: 0.8, env: 1, fd: 0.25 }, gain: 0.15, rev: 0.3, dly: 0.3, mono: true, glide: 0.03, legato: true },
+  softLead: { ...PT.bell, gain: 0.11 },
+  layers: { intro: { arp: 0 } },
+  sc: { depth: 0.35, rel: 0.5 }, rt: 2.4, revWet: 0.45, dlyBeats: 0.75, dlyFb: 0.35,
+  extra(ctx, sec) {
+    if (sec.type !== 'intro' && sec.type !== 'break') return;
+    const r = rng(sec.bar0 + 3), t0 = ctx.t(sec.bar0);
+    for (let k = 0; k < sec.bars / 4; k++) {
+      const tt = t0 + (k * 4 + r() * 2) * ctx.barS;
+      drum(ctx.mx, tt, { noise: 1, hp: 1500, nd: 0.06, g: 0.25 * TRIM.drums * 0.5, wide: true, rev: 0.6 });
+      drum(ctx.mx, tt + 0.02, { noise: 1, lp: 260, nd: 1.2, g: 0.6, wide: true, rev: 0.3 });
+    }
+  },
+};
+SONGS[9] = {
+  index: 9, name: 'Lava Lift', bpm: 155.79, dur: 88, difficulty: 'harder', style: 'heavy electro-house with big saw stabs', keyName: 'G minor',
+  key: 'G', mode: 'minor', seed: 109, hookTonic: 67, leadChords: 3, mix: { lead: 1.3, kick: 0.75 },
+  form: [['intro', 8, 0.4], ['build', 4, 0.7], ['drop', 16, 0.95], ['break', 8, 0.45], ['build', 8, 0.8], ['drop', 8, 1], ['outro', 0, 0.35]],
+  prog: ['Gm Eb Bb F', 'Cm Eb D D'],
+  hooks: ['5:3 5:3 3:4 4:2 5:2 r:2 | 6:3 6:3 5:4 3:2 1:2 r:2 | 5:3 5:3 3:4 4:2 5:2 r:2 | 4:3 4:3 2:4 7,:2 2:2 r:2',
+    "1':3 6:3 4:2 1':3 6:3 4:2 | 3':3 1':3 6:2 3':3 1':3 6:2 | 2':3 #7:3 5:2 2':3 #7:3 5:2 | 5:4 #7:4 2':4 5':4"],
+  kick: { f0: 210, f1: 49, dec: 0.22, drive: 2.4, click: 0.5 },
+  kit: { c: { ...KIT.c, g: 0.5, nd: 0.16, rev: 0.25 } },
+  drums: {
+    intro: { k: 'x...x...x...x...', h: '..x...x...x...x.', t: 'gogogogogogogogo' },
+    build: { k: 'x...x...x...x...', h: '..x...x...x...x.' },
+    drop: { k: 'x...x...x...x...', c: '....X.......X...', h: 'xoxoxoxoxoxoxoxo', H: '..x...x...x...x.' },
+    break: { t: 'gogogogogogogogo' },
+    outro: { k: 'x...x...x...x...', c: '....x.......x...', h: '..x...x...x...x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw' }, { w: 'sq', det: 7, g: 0.6 }, { w: 'sin', oct: -1, g: 0.6 }], a: 0.002, d: 0.12, s: 0.6, r: 0.04, drive: 2.8, flt: { t: 'lp', f: 380, q: 1.3, env: 2.4, fd: 0.08 }, gain: 0.2, gate: 0.8 },
+  bassPat: { drop: '..RR..R...RR..RO', build: 'R.R.R.R.R.R.R.R.', outro: '..R...R...R...R.' },
+  padPatch: DARKPAD({ gain: 0.035 }),
+  arp: { patch: { ...PT.pluck, gain: 0.09 }, pat: '0213', rate: 4, lo: 62, hi: 82 },
+  lead: SUPERSAW({ a: 0.002, d: 0.22, s: 0.5, r: 0.12, drive: 1.8, gain: 0.06, flt: { t: 'lp', f: 1600, q: 1, env: 2.2, fd: 0.16 }, dly: 0.15 }),
+  softLead: { ...PT.bell, gain: 0.11 },
+  sc: { depth: 0.5, rel: 0.5 }, rt: 2.0, revWet: 0.4, dlyBeats: 0.75, dlyFb: 0.3,
+  extra(ctx, sec) {
+    if (sec.type !== 'intro' && sec.type !== 'break') return;
+    const r = rng(sec.bar0 + 19);
+    for (let b = 0; b < sec.bars * 8; b += 1 + Math.floor(r() * 4)) {
+      play(ctx.mx, { osc: [{ w: 'sin' }, { w: 'tri', g: 0.3 }], a: 0.002, d: 0.12, s: 0, r: 0.08, pe: { a: -9, d: 0.04 }, gain: 0.08, rev: 0.4, pan: r() * 1.2 - 0.6 },
+        [{ t: ctx.t(sec.bar0) + b * ctx.spb / 2, d: 0.08, m: 50 + Math.floor(r() * 10) }]);
+    }
+  },
+};
+
+SONGS[10] = {
+  index: 10, name: 'Star Factory', bpm: 138.48, dur: 90, difficulty: 'insane', style: 'funky electro', keyName: 'Eb major',
+  key: 'Eb', mode: 'major', seed: 110, mix: { bass: 0.7, lead: 0.8, stab: 1.8 }, hookTonic: 63,
+  form: [['intro', 4, 0.4], ['verse', 8, 0.6], ['build', 4, 0.75], ['drop', 8, 0.95], ['break', 8, 0.5], ['build', 4, 0.8], ['drop', 12, 1], ['outro', 0, 0.35]],
+  prog: ['Ebmaj7 Cm7 Abmaj7 Bb7', 'Fm7 Gm7 Abmaj7 Bb7'],
+  hooks: ["5:1 r:1 5:1 6:1 1':2 6:1 5:3 3:2 5:2 r:2 | 6:1 r:1 6:1 1':1 3':2 1':1 6:3 5:2 6:2 r:2 | 4:1 r:1 4:1 6:1 1':2 6:1 4:3 3:2 4:2 r:2 | 5:2 7:2 2':2 4':2 3':1 2':1 1':2 7:4",
+    "2':2 r:1 2':1 4':2 2':1 1':3 6:2 4:2 r:2 | 3':2 r:1 3':1 5':2 3':1 2':3 7:2 5:2 r:2 | 4':2 r:1 4':1 6':2 4':1 3':3 1':2 6:2 r:2 | 5:2 7:2 2':2 4':2 5':4 r:4"],
+  kick: { f0: 170, f1: 51, dec: 0.22, drive: 1.6, click: 0.4 },
+  kit: { w: { ...KIT.w, g: 0.09 }, a: { type: 'clang', f: 610, dec: 0.12, idx: 3.5, g: 0.07, pan: -0.4, dly: 0.2 } },
+  drums: {
+    intro: { k: 'x...x...x...x...', h: 'g.x.g.x.g.x.g.x.', a: '......x.......x.' },
+    verse: { k: 'x...x...x...x...', c: '....x.......x...', h: 'gxgxgxgxgxgxgxgx', w: '...x.......x..x.', a: '......x.......x.' },
+    build: { k: 'x...x...x...x...', h: 'gxgxgxgxgxgxgxgx' },
+    drop: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.', h: 'xgxgxgxgxgxgxgxg', w: '...x.......x..x.', a: '......x.......x.' },
+    break: { h: 'g.x.g.x.g.x.g.x.', a: '......x.......x.' },
+    outro: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.' },
+  },
+  bassPatch: { osc: [{ w: 'sq', pw: 0.5 }, { w: 'saw', g: 0.6 }, { w: 'sin', oct: -1, g: 0.5 }], a: 0.002, d: 0.14, s: 0.5, r: 0.04, flt: { t: 'lp', f: 420, q: 2.2, env: 2.4, fd: 0.09 }, gain: 0.2, gate: 0.6 },
+  bassPat: { drop: 'R.R..O.RR..R.5.O', verse: 'R.R..O.RR..R.5.O', build: 'R.R.R.R.R.R.R.R.', outro: 'R...R...R...R...' },
+  padPatch: { ...PT.warmPad, gain: 0.035 },
+  stab: { patch: { osc: [{ w: 'sq', pw: 0.18 }, { w: 'saw', g: 0.5 }], a: 0.001, d: 0.12, s: 0.05, r: 0.05, reset: true, flt: { t: 'bp', f: 900, q: 1.6, env: 2, fd: 0.06 }, gain: 0.08, pan: 0.25, dly: 0.08 }, pat: '.x.x..x..x.x..xx', gate: 0.6, lo: 60, hi: 77, size: 3 },
+  arp: { patch: { ...PT.pluck, gain: 0.08 }, pat: '0.2.1.3.', rate: 4, lo: 63, hi: 84 },
+  lead: { osc: [{ w: 'saw', uni: 2, spr: 8 }, { w: 'sq', pw: 0.4, g: 0.5 }], a: 0.01, d: 0.25, s: 0.7, r: 0.1, flt: { t: 'lp', f: 1500, q: 1, env: 1.8, fd: 0.18, kt: 0.5 }, vib: { r: 5.8, d: 0.12, dl: 0.2 }, gain: 0.15, rev: 0.2, dly: 0.22, mono: true, glide: 0.03, legato: true },
+  softLead: { ...PT.vibes, gain: 0.12 },
+  layers: { verse: { stab: 1, arp: 0 } },
+  sc: { depth: 0.45, rel: 0.5 }, rt: 1.6, revWet: 0.35, dlyBeats: 0.75, dlyFb: 0.3,
+};
+SONGS[11] = {
+  index: 11, name: 'Frost Bite', bpm: 178.05, dur: 92, difficulty: 'insane', style: 'fast chiptune-trance', keyName: 'A minor',
+  key: 'A', mode: 'minor', seed: 111, mix: { drums: 0.65, pad: 1.8, arp: 1.3 }, hookTonic: 69,
+  form: [['intro', 8, 0.4], ['build', 8, 0.7], ['drop', 16, 0.95], ['break', 8, 0.5], ['build', 8, 0.8], ['drop', 16, 1], ['outro', 0, 0.35]],
+  prog: ['Am F G Em', 'F G Am E'],
+  hooks: ["1':2 5:2 3:2 5:2 1':2 2':2 3':2 2':2 | 1':2 6:2 3:2 6:2 1':2 2':2 3':2 1':2 | 2':2 7:2 4:2 7:2 2':2 3':2 4':2 2':2 | 5:2 2:2 7,:2 2:2 5:4 7:4",
+    "3':4 2':4 1':4 6:4 | 2':4 1':4 7:4 4:4 | 3':4 5':4 3':4 1':4 | #7:4 2':4 5':8"],
+  kick: { f0: 200, f1: 52, dec: 0.17, drive: 1.8, click: 0.5 },
+  kit: { h: { type: 'chip', rate: 24000, dec: 0.02, g: 0.14, short: true }, H: { type: 'chip', rate: 15000, dec: 0.07, g: 0.1 }, s: { type: 'chip', rate: 7000, dec: 0.09, g: 0.26, and: 'c' }, c: { ...KIT.c, g: 0.3 } },
+  drums: {
+    intro: { k: 'x...x...x...x...', h: 'x.x.x.x.x.x.x.x.' },
+    build: { k: 'x...x...x...x...', h: 'x.x.x.x.x.x.x.x.' },
+    drop: { k: 'x...x...x...x...', s: '....x.......x...', H: '..x...x...x...x.', h: 'xxx.xxx.xxx.xxx.' },
+    break: { h: 'o.o.o.o.o.o.o.o.' },
+    outro: { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+  },
+  bassPatch: { osc: [{ w: 'sq', pw: 0.5 }, { w: 'sin', oct: -1, g: 0.6 }], a: 0.001, d: 0.06, s: 0.4, r: 0.02, flt: { t: 'lp', f: 500, q: 1, env: 2, fd: 0.05 }, gain: 0.22, gate: 0.8 },
+  bassPat: { drop: '.RRR.RRR.RRR.RRR', build: 'R.R.R.R.R.R.R.R.', outro: '.RRR.RRR.RRR.RRR' },
+  padPatch: SUPERSAW({ a: 0.003, d: 0.1, s: 0.7, r: 0.05, gain: 0.04 }), padOpt: { drop: { pat: 'x.xxx.xxx.xxx.xx', gate: 0.6 }, outro: { pat: 'x.xxx.xxx.xxx.xx', gate: 0.6 } },
+  arp: { patch: { osc: [{ w: 'sq', pw: 0.125 }], a: 0.001, d: 0.04, s: 0.6, r: 0.015, flt: { t: 'lp', f: 7500, q: 0.6 }, gain: 0.07, dly: 0.15, pan: 0.25 }, pat: '0123', rate: 8, lo: 69, hi: 88, gate: 0.85 },
+  lead: { osc: [{ w: 'sq', pw: 0.25 }, { w: 'sq', pw: 0.5, det: 8, g: 0.4 }], a: 0.001, d: 0.1, s: 0.8, r: 0.04, vib: { r: 6.5, d: 0.15, dl: 0.1 }, flt: { t: 'lp', f: 7000, q: 0.6 }, gain: 0.12, dly: 0.2, rev: 0.12, mono: true },
+  softLead: GLASS({ gain: 0.1 }),
+  layers: { drop: { arp: 1 }, build: { lead: 'tease' } }, teaseLead: { ...PT.pluck, gain: 0.08 },
+  sc: { depth: 0.5, rel: 0.6 }, rt: 2.2, revWet: 0.4, dlyBeats: 0.75, dlyFb: 0.35,
+  extra(ctx, sec) {
+    if (sec.type !== 'intro' && sec.type !== 'break') return;
+    const r = rng(sec.bar0 + 11);
+    for (let b = 0; b < sec.bars * 4; b += 1 + Math.floor(r() * 2)) {
+      const c = chordAt(sec.harm, sec.bar0 * 4 + b), m = 84 + c.tones[Math.floor(r() * c.tones.length)];
+      play(ctx.mx, GLASS({ gain: 0.06, pan: r() * 1.4 - 0.7 }), [{ t: ctx.t(sec.bar0) + b * ctx.spb, d: 0.1, m: m > 96 ? m - 12 : m }]);
+    }
+  },
+};
+const WOB = [2, 3, 4, 1];
+SONGS[12] = {
+  index: 12, name: 'Laser Maze', bpm: 155.79, dur: 94, difficulty: 'insane', style: 'half-time wobble bass with laser zaps', keyName: 'F minor',
+  key: 'F', mode: 'minor', seed: 112, mix: { drums: 0.6, bass: 0.6, kick: 1.3, lead: 1.4 }, hookTonic: 65,
+  form: [['intro', 8, 0.4], ['build', 4, 0.7], ['drop', 16, 0.95], ['break', 8, 0.5], ['build', 8, 0.8], ['drop', 12, 1], ['outro', 0, 0.35]],
+  prog: ['Fm Db Ab Eb', 'Bbm Db Eb C'],
+  hooks: ["5:2 1':2 r:2 1':2 7:2 5:2 3:4 | 6:2 1':2 r:2 1':2 3':2 1':2 6:4 | 5:2 7:2 r:2 7:2 1':2 7:2 5:4 | 4:2 7:2 r:2 7:2 2':2 7:2 4:4",
+    "4:4 6:4 1':6 r:2 | 6:4 1':4 3':6 r:2 | 7:4 2':4 4':6 r:2 | 5:4 #7:4 2':8"],
+  kick: { f0: 190, f1: 46, dec: 0.3, drive: 2, click: 0.5 },
+  kit: { s: { tone: 0.5, f: 180, pa: 0.5, td: 0.07, noise: 1, hp: 800, lp: 9000, nd: 0.2, g: 0.5, rev: 0.3, drive: 1.4 } },
+  drums: {
+    intro: { k: 'x...............', h: 'x.x.x.x.x.x.x.x.' },
+    build: { k: 'x...x...x...x...', h: 'x.x.x.x.x.x.x.x.' },
+    drop: { k: 'X.........x.....', s: '........X.......', h: 'x.xgx.xgx.xgx.xg', H: '......x.........' },
+    break: { h: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'X.........x.....', s: '........x.......', h: 'x.x.x.x.x.x.x.x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw' }, { w: 'sq', oct: -1, g: 0.7 }, { w: 'sin', oct: -1, g: 0.5 }], a: 0.004, d: 0.5, s: 0.9, r: 0.06, drive: 2.5,
+    flt: { t: 'lp', f: 110, q: 2.6, lfo: { r: 4, d: 4.6, sh: 'sin', ph: 0 } }, gain: 0.22, gate: 0.97, mono: true, legato: true, glide: 0.02 },
+  bassPat: { drop: 'R-------R---R-R-', build: 'R-------R-------', outro: 'R-------R-------' },
+  bassOpt: (ctx, sec) => ({ lfo: s => ctx.S.bpm / 60 * (sec.type === 'drop' ? WOB[(s >> 4) % 4] : 1) }),
+  padPatch: DARKPAD({ gain: 0.04 }),
+  arp: { patch: { ...PT.pluck, gain: 0.09 }, pat: '0.1.2.3.', rate: 4, lo: 60, hi: 82 },
+  lead: { osc: [{ w: 'saw', uni: 3, spr: 12, wid: 0.6 }, { w: 'sq', g: 0.3 }], a: 0.004, d: 0.3, s: 0.6, r: 0.15, flt: { t: 'lp', f: 2600, q: 1, env: 1.4, fd: 0.2 }, gain: 0.13, rev: 0.3, dly: 0.35, mono: true, glide: 0.03, legato: true },
+  softLead: GLASS({ gain: 0.1 }),
+  sc: { depth: 0.4, rel: 1.0 }, rt: 2.4, revWet: 0.45, dlyBeats: 0.75, dlyFb: 0.38,
+  extra(ctx, sec, L, bars) {
+    if (sec.type !== 'drop' && sec.type !== 'build') return;
+    const steps = sec.type === 'drop' ? [2, 7, 11] : [14];
+    for (let b = 0; b < bars; b++) steps.forEach((s, k) => {
+      const t = ctx.t(sec.bar0 + b, s);
+      if (!ctx.stopped(t)) zap(ctx.mx, t, { f0: 2600 + 800 * ((b + k) % 3), f1: 140 + 40 * k, d: 0.14 + 0.04 * k, pan: (k % 2 ? 0.6 : -0.6), g: 0.1, sq: k !== 1 });
+    });
+  },
+};
+const GROWL = { osc: [{ w: 'fm', ratio: 0.5, idx: 3.2 }, { w: 'saw', g: 0.5 }], fms: 0.6, fmd: 0.06, a: 0.002, d: 0.1, s: 0.8, r: 0.02, drive: 3, flt: { t: 'lp', f: 900, q: 2, env: 1.5, fd: 0.06 }, gain: 0.17 };
+const SQB = { osc: [{ w: 'sq', pw: 0.3 }, { w: 'sin', oct: -1, g: 0.6 }], a: 0.002, d: 0.08, s: 0.7, r: 0.02, drive: 2, flt: { t: 'bp', f: 700, q: 2.5, env: 2, fd: 0.05 }, gain: 0.2 };
+const FMB = { osc: [{ w: 'fm', ratio: 2.01, idx: 5 }, { w: 'sin', g: 0.5 }], fms: 0.3, fmd: 0.05, a: 0.001, d: 0.1, s: 0.7, r: 0.02, drive: 2.5, flt: { t: 'lp', f: 2400, q: 1 }, gain: 0.15 };
+const SAWB = { osc: [{ w: 'saw', uni: 2, spr: 20 }, { w: 'sin', oct: -1, g: 0.6 }], a: 0.002, d: 0.08, s: 0.7, r: 0.02, drive: 2.5, flt: { t: 'lp', f: 300, q: 2.5, env: 3, fd: 0.07 }, gain: 0.2 };
+SONGS[13] = {
+  index: 13, name: 'Black Hole', bpm: 138.48, dur: 96, difficulty: 'demon', style: 'dark aggressive complextro with glitch fills', keyName: 'C# minor',
+  key: 'C#', mode: 'minor', seed: 113, mix: { drums: 0.4, bass: 1.4, lead: 1.2 }, hookTonic: 61,
+  form: [['intro', 8, 0.45], ['build', 4, 0.75], ['drop', 16, 1], ['break', 8, 0.5], ['build', 4, 0.8], ['drop', 12, 1], ['outro', 0, 0.35]],
+  prog: ['C#m A F#m G#', 'C#m B A G#'],
+  hooks: ["1:2 1:1 1:1 3:2 1:2 5:3 4:3 3:2 | 6:2 6:1 6:1 1':2 6:2 3':3 2':3 1':2 | 4:2 4:1 4:1 6:2 4:2 1':3 7:3 6:2 | 5:2 5:1 5:1 #7:2 5:2 2':4 #7:2 5:2",
+    "1':3 7:3 5:2 r:2 5:2 3:2 5:2 | 7:3 6:3 4:2 r:2 4:2 2:2 4:2 | 6:3 5:3 3:2 r:2 3:2 1:2 3:2 | 5:3 #7:3 2':2 r:2 5:6"],
+  kick: { f0: 230, f1: 48, dec: 0.2, drive: 3, click: 0.6, lp: 8000 },
+  kit: { s: { tone: 0.5, f: 220, pa: 0.6, td: 0.05, noise: 1, hp: 1000, nd: 0.14, g: 0.45, drive: 2, rev: 0.2 }, c: { ...KIT.c, g: 0.35 } },
+  drums: {
+    intro: { k: 'x.......x.......', h: 'gogogogogogogogo' },
+    build: { k: 'x...x...x...x...', h: 'xoxoxoxoxoxoxoxo' },
+    drop: { k: 'x...x...x...x..x', s: '....X.......X...', c: '....x.......x...', h: 'xoxoxoxoxoxoxoxo', H: '..x...x...x...x.' },
+    break: { h: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'x...x...x...x...', s: '....x.......x...', h: 'xoxoxoxoxoxoxoxo' },
+  },
+  bassPatch: SAWB, bassPat: { build: 'R.R.R.R.R.R.R.R.', outro: 'R.R.R.R.R.R.R.R.' }, bassLo: 25,
+  padPatch: DARKPAD({ gain: 0.04 }),
+  arp: { patch: { ...PT.pluck, gain: 0.09 }, pat: '0.1.2.1.', rate: 4, lo: 61, hi: 80 },
+  lead: { osc: [{ w: 'saw', uni: 2, spr: 18 }, { w: 'sq', pw: 0.3, g: 0.5 }], a: 0.002, d: 0.2, s: 0.7, r: 0.06, drive: 2.4, flt: { t: 'lp', f: 2200, q: 1.4, env: 1.6, fd: 0.12 }, gain: 0.12, rev: 0.2, dly: 0.2, mono: true, glide: 0.02 },
+  softLead: GLASS({ gain: 0.1 }),
+  layers: { drop: { bass: 0 } },
+  sc: { depth: 0.5, rel: 0.45 }, rt: 1.8, revWet: 0.35, dlyBeats: 0.5, dlyFb: 0.3,
+  extra(ctx, sec, L, bars) {
+    if (sec.type !== 'drop') return;
+    const pat = 'R.RR.R.RRR.R.RO.', patches = [GROWL, SQB, FMB, SAWB], lists = patches.map(() => []);
+    for (let s = 0; s < bars * 16; s++) {
+      const ch = pat[s % 16], t = ctx.t(sec.bar0, s);
+      if (ch === '.' || ctx.stopped(t)) continue;
+      lists[Math.floor(s / 2) % 4].push({ t, d: ctx.st * 0.85, m: bassNote(chordAt(sec.harm, t / ctx.spb), 25) + (ch === 'O' ? 12 : 0) });
+    }
+    if (ctx.on('bass')) patches.forEach((P, k) => play(ctx.mx, P, lists[k], { gain: ctx.g('bass') }));
+    const spb = ctx.spb;
+    for (let b = 4; b <= bars; b += 4) {
+      const tEnd = ctx.t(sec.bar0 + b);
+      if (b === bars && sec.n === 1) {
+        ctx.post.push((Lb, Rb, n) => tapeStop(Lb, Rb, n, tEnd - 2 * spb, 2 * spb));
+        ctx.cues.push({ beat: (sec.bar0 + b) * 4 - 2, type: 'tapestop' });
+        continue;
+      }
+      if (b === bars) continue;
+      ctx.post.push((Lb, Rb, n) => stutter(Lb, Rb, n, tEnd - spb, spb / 4, 4, { decay: 0.92 }));
+      if (b % 8 === 0) ctx.post.push((Lb, Rb, n) => { stutter(Lb, Rb, n, tEnd - spb / 2, spb / 8, 4, { pitch: 1.12 }); crush(Lb, Rb, n, tEnd - 2 * spb, tEnd - spb, 6, 4); });
+    }
+  },
+};
+SONGS[14] = {
+  index: 14, name: 'Overdrive', bpm: 178.05, dur: 100, difficulty: 'demon', style: 'epic finale with hard kicks and a soaring lead', keyName: 'E minor',
+  key: 'E', mode: 'minor', seed: 114, mix: { kick: 0.8, bass: 1.3, lead: 1.25, stab: 1.5 }, hookTonic: 64,
+  form: [['intro', 8, 0.45], ['build', 8, 0.75], ['drop', 16, 0.95], ['break', 8, 0.5], ['build', 8, 0.85], ['drop', 20, 1], ['outro', 0, 0.4]],
+  prog: ['Em C G D', 'Am C D B'],
+  hooks: ["5:6 4:2 3:4 5:4 | 1':6 7:2 6:4 3:4 | 3':6 2':2 7:4 5:4 | 4:6 7:2 2':8",
+    "4:4 6:4 1':8 | 6:4 1':4 3':8 | 7:4 2':4 4':8 | 5':4 #7:4 2':4 5':4"],
+  kick: { f0: 320, f1: 41, pd: 0.025, hold: 0.025, dec: 0.15, drive: 5, click: 0.6, lp: 5500 },
+  kit: { c: { ...KIT.c, g: 0.5, rev: 0.25 }, m: { ...KIT.m, g: 0.4, rev: 0.3 } },
+  drums: {
+    intro: { k: 'x...x...x...x...', H: '..x...x...x...x.' },
+    build: { k: 'x...x...x...x...', h: '..x...x...x...x.' },
+    drop: { k: 'x...x...x...x...', c: '....X.......X...', H: '..x...x...x...x.', h: 'xgxgxgxgxgxgxgxg', r: 'x.x.x.x.x.x.x.x.' },
+    break: { m: 'x.....x.x.....x.x.....x.x..x.x.x', h: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw' }, { w: 'sin', oct: -1, g: 0.6 }], a: 0.001, d: 0.08, s: 0.4, r: 0.03, drive: 1.6, flt: { t: 'lp', f: 360, q: 1.2, env: 2.2, fd: 0.06 }, gain: 0.22, gate: 0.85 },
+  bassPat: { drop: '.RRR.RRR.RRR.RRR', build: 'R.R.R.R.R.R.R.R.', outro: '.RRR.RRR.RRR.RRR' },
+  padPatch: { osc: [{ w: 'saw', uni: 6, spr: 22, wid: 0.9 }], a: 0.4, d: 0.8, s: 0.85, r: 0.9, flt: { t: 'bp', f: 950, q: 0.8, kt: 0.2 }, vib: { r: 4.5, d: 0.08, dl: 0.3 }, gain: 0.08, rev: 0.55 },
+  stab: { patch: SUPERSAW({ a: 0.002, d: 0.16, s: 0.3, r: 0.1, gain: 0.05 }), pat: '..x...x...x...x.', gate: 0.7, lo: 59, hi: 79 },
+  arp: { patch: { ...PT.pluck, gain: 0.1 }, pat: '01232123', rate: 4, lo: 64, hi: 86 },
+  lead: SUPERSAW({ a: 0.008, d: 0.4, s: 0.85, r: 0.3, gain: 0.11, vib: { r: 5.5, d: 0.15, dl: 0.25 }, mono: true, glide: 0.05, legato: true, flt: { t: 'lp', f: 6000, q: 0.7 }, dly: 0.25 }),
+  softLead: { ...PT.bell, gain: 0.12 }, teaseLead: { ...PT.pluck, gain: 0.1 },
+  layers: { drop: { arp: 1 }, build: { lead: 'tease' } },
+  sc: { depth: 0.55, rel: 0.55 }, rt: 2.8, revWet: 0.5, dlyBeats: 0.75, dlyFb: 0.38, riserG: 0.09, impactG: 0.35,
+};
+
+// ------------------------------------------------------------------ verification
+function decode(file, mono = true) {
+  const r = spawnSync(FFMPEG, ['-hide_banner', '-loglevel', 'error', '-i', file, '-ac', mono ? '1' : '2', '-f', 'f32le', '-'], { maxBuffer: 1 << 30 });
+  if (r.status !== 0) throw new Error('decode failed: ' + file);
+  return new Float32Array(r.stdout.buffer.slice(r.stdout.byteOffset, r.stdout.byteOffset + r.stdout.length));
+}
+function probe(file) {
+  const r = spawnSync(FFPROBE, ['-v', 'error', '-show_entries', 'stream=codec_name,sample_rate,channels:format=duration,size', '-of', 'json', file], { encoding: 'utf8' });
+  const j = JSON.parse(r.stdout), s = j.streams[0];
+  return { codec: s.codec_name, sr: +s.sample_rate, ch: s.channels, dur: +j.format.duration, size: +j.format.size };
+}
+function ebur(file) {
+  const e = ff(['-nostats', '-i', file, '-af', 'ebur128=peak=true', '-f', 'null', '-']);
+  const I = [...e.matchAll(/I:\s+(-?[\d.]+) LUFS/g)].pop()?.[1], P = [...e.matchAll(/Peak:\s+(-?[\d.]+|-inf) dBFS/g)].pop()?.[1];
+  return { I: +I, TP: +P };
+}
+// Onset at beat 0: first 1 ms frame whose RMS reaches 10% of the loudest frame in the first beat.
+function firstOnsetMs(x, spb) {
+  const hop = SR / 1000, nF = Math.floor(spb * 1000);
+  const rms = [];
+  for (let f = 0; f < nF; f++) { let e = 0; for (let i = f * hop; i < (f + 1) * hop; i++) e += x[i] * x[i]; rms.push(Math.sqrt(e / hop)); }
+  const mx = Math.max(...rms);
+  return { onset: rms.findIndex(v => v >= 0.1 * mx), peak: rms.indexOf(mx) };
+}
+// Beat-grid check: for every beat in the drops (a kick lands on each), find the time within ±25 ms where the
+// energy of the next 10 ms minus the energy of the previous 10 ms is largest (0.5 ms steps); report |offset| from the grid.
+function gridCheck(x, spb, secs) {
+  const P = new Float64Array(x.length + 1), W = 480;
+  for (let i = 0; i < x.length; i++) P[i + 1] = P[i] + x[i] * x[i];
+  const offs = [];
+  for (const s of secs.filter(q => q.name.startsWith("drop"))) {
+    for (let b = s.startBeat; b < s.endBeat; b++) {
+      const c = Math.round(b * spb * SR);
+      let best = -Infinity, bi = c;
+      for (let t = c - 1200; t <= c + 1200; t += 24) {
+        if (t - W < 0 || t + W > x.length) continue;
+        const d = (P[t + W] - P[t]) - (P[t] - P[t - W]);
+        if (d > best) { best = d; bi = t; }
+      }
+      offs.push(Math.abs(bi - c) / SR * 1000);
+    }
+  }
+  offs.sort((p, q) => p - q);
+  return { beats: offs.length, median: offs[offs.length >> 1].toFixed(1), p90: offs[Math.floor(offs.length * 0.9)].toFixed(1) };
+}
+function seamCheck(file) {
+  const x = decode(file, false), n = x.length / 2, step = (i, j) => Math.max(Math.abs(x[2 * i] - x[2 * j]), Math.abs(x[2 * i + 1] - x[2 * j + 1]));
+  const steps = [];
+  for (let i = 1; i < n; i += 3) steps.push(step(i, i - 1));
+  steps.sort((a, b) => a - b);
+  return { seam: step(0, n - 1), median: steps[steps.length >> 1], p99: steps[Math.floor(steps.length * 0.99)], max: steps[steps.length - 1] };
+}
+function verify() {
+  let tl = { songs: [] };
+  try { tl = JSON.parse(fs.readFileSync(OUT_TIMELINE, 'utf8')); } catch { /* reported below */ }
+  const rows = [], problems = [];
+  let total = 0;
+  const check = (file, label, durOk) => {
+    if (!fs.existsSync(file)) { problems.push(`${label}: missing`); return null; }
+    const p = probe(file);
+    total += p.size;
+    if (p.codec !== 'vorbis' || p.sr !== SR || p.ch !== 2) problems.push(`${label}: ${p.codec} ${p.sr} Hz ${p.ch} ch`);
+    if (!durOk(p.dur)) problems.push(`${label}: duration ${p.dur}`);
+    return p;
+  };
+  console.log('\nverification');
+  for (const S of SONGS) {
+    const file = path.join(OUT_MUSIC, S.index + '.ogg'), p = check(file, `${S.index}.ogg`, d => Math.abs(d - S.dur) <= 0.1);
+    if (!p) continue;
+    const L = ebur(file), x = decode(file), spb = 60 / S.bpm, on = firstOnsetMs(x, spb);
+    const entry = tl.songs.find(s => s.index === S.index), grid = entry ? gridCheck(x, spb, entry.sections) : null;
+    if (p.size > 1100000) problems.push(`${S.index}.ogg: ${p.size} B > 1.1 MB`);
+    if (L.TP > -1.0) problems.push(`${S.index}.ogg: true peak ${L.TP} dBTP`);
+    if (on.onset > 10) problems.push(`${S.index}.ogg: first onset at ${on.onset} ms`);
+    if (!entry) problems.push(`${S.index}: missing from timeline.json`);
+    rows.push(`${String(S.index).padStart(2)}.ogg ${S.name.padEnd(13)} ${p.dur.toFixed(3)} s (spec ${S.dur}) ${(p.size / 1024).toFixed(0).padStart(5)} KiB  I ${L.I.toFixed(1)} LUFS  TP ${L.TP.toFixed(1)} dBTP  onset ${on.onset} ms (peak ${on.peak} ms)` + (grid ? `  drop-beat kick offset median ${grid.median} ms p90 ${grid.p90} ms over ${grid.beats} beats` : ''));
+  }
+  const loops = [['menuLoop', 30, 45], ['practice', 40, 60]];
+  for (const [name, lo, hi] of loops) {
+    const file = path.join(OUT_SFX, name + '.ogg'), p = check(file, name + '.ogg', d => d >= lo && d <= hi);
+    if (!p) continue;
+    const L = ebur(file), s = seamCheck(file);
+    if (s.seam > s.p99) problems.push(`${name}.ogg: loop seam step ${s.seam.toFixed(4)} above p99 ${s.p99.toFixed(4)}`);
+    rows.push(`${name}.ogg ${p.dur.toFixed(3)} s ${(p.size / 1024).toFixed(0)} KiB  I ${L.I.toFixed(1)} LUFS  TP ${L.TP.toFixed(1)} dBTP  seam |last-first| ${s.seam.toFixed(4)} (median step ${s.median.toFixed(4)}, p99 ${s.p99.toFixed(4)})`);
+  }
+  for (const [name, d0] of [['deathSound', 0.5], ['levelComplete', 2.5], ['playSound', 0.4]]) {
+    const file = path.join(OUT_SFX, name + '.ogg'), p = check(file, name + '.ogg', d => Math.abs(d - d0) <= 0.15);
+    if (p) { const L = ebur(file); rows.push(`${name}.ogg ${p.dur.toFixed(3)} s ${(p.size / 1024).toFixed(0)} KiB  TP ${L.TP.toFixed(1)} dBTP`); }
+  }
+  console.log(rows.join('\n'));
+  console.log(`total ${(total / 1048576).toFixed(2)} MiB; timeline.json ${tl.songs.length} songs`);
+  console.log(problems.length ? 'PROBLEMS:\n  ' + problems.join('\n  ') : 'all checks passed');
+  if (problems.length) process.exitCode = 1;
+}
 
 // ------------------------------------------------------------------ main
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'dash-music-'));
@@ -707,8 +1678,33 @@ function writeSfx(name, fn) {
   fs.rmSync(wav);
   console.log(`${name}.ogg  ${(n / SR).toFixed(3)} s  ${fs.statSync(out).size} B  (${Date.now() - t} ms)`);
 }
+function writeMusic(name, r, out, o = {}) {
+  const t = Date.now(), wav = path.join(TMP, name + ".wav");
+  writeWav(wav, r.L, r.R, r.n);
+  const e = encode(wav, out, o);
+  fs.rmSync(wav);
+  console.log(`${path.basename(out)}  ${(r.n / SR).toFixed(3)} s  ${e.size} B  q=${e.q}  ${e.mode} ${e.gainDb} dB  ${JSON.stringify(r.stats)}  (${((Date.now() - t) / 1000).toFixed(1)} s total encode)`);
+  return e;
+}
+function updateTimeline(entry) {
+  let tl = {};
+  try { tl = JSON.parse(fs.readFileSync(OUT_TIMELINE, "utf8")); } catch { tl = {}; }
+  const songs = (tl.songs ?? []).filter(s => s.index !== entry.index).concat(entry).sort((a, b) => a.index - b.index);
+  const doc = { format: "dash-overdrive-classic-timeline/1", sampleRate: SR, beatsPerBar: 4,
+    note: "Beats are 0-based quarter notes from t = 0 s (seconds = beat * 60 / bpm). Sections tile the song; the last section ends at totalBeats. cues: drop = drop downbeat, stop = music cut for the last eighth before a drop, tapestop = music slows to silence over 2 beats, end = final hit (song then rings out and fades over the last 4 s).",
+    songs };
+  fs.writeFileSync(OUT_TIMELINE, JSON.stringify(doc, null, 2) + "\n");
+}
+function writeSong(S) {
+  const r = renderSong(S);
+  writeMusic(String(S.index), r, path.join(OUT_MUSIC, S.index + ".ogg"), { I: -15, TP: -1.5 });
+  updateTimeline(r.timeline);
+}
 const JOBS = [
   { id: 'sfx', run: () => { writeSfx('deathSound', sfxDeath); writeSfx('levelComplete', sfxComplete); writeSfx('playSound', sfxPlay); } },
+  { id: 'menu', run: () => writeMusic('menuLoop', renderLoop(MENU), path.join(OUT_SFX, 'menuLoop.ogg'), { I: -16 }) },
+  { id: 'practice', run: () => writeMusic('practice', renderLoop(PRACTICE), path.join(OUT_SFX, 'practice.ogg'), { I: -17 }) },
+  ...SONGS.map(S => ({ id: String(S.index), run: () => writeSong(S) })),
 ];
 function main() {
   const args = process.argv.slice(2);

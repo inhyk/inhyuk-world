@@ -271,6 +271,7 @@ void LevelManager::addObject(const std::string &properties) {
         m_Triggers.emplace_back(m_Game, data.type, objectPos, color, duration);
     } else {
         m_Objects.emplace_back(m_Game, data.type, rotation, objectPos, hitbox, flipX, flipY, data.texture);
+        m_Objects.back().setSparkle(objectID >= 15 && objectID <= 17);
     }
     m_FurthestX = std::max(m_FurthestX, static_cast<int>(objectPos.x + data.width));
 }

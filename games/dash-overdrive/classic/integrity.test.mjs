@@ -30,7 +30,7 @@ test('the checker played every level to the end at 60, 120 and 144 fps', () => {
   for (let index = 0; index < LEVELS.length; index++) {
     const entry = report[index + 1];
     assert.equal(entry.name, LEVELS[index].name);
-    assert.deepEqual(Object.keys(entry.inputs).sort(), ['0.4166666567325592', '0.5', '1'].sort());
+    assert.deepEqual(Object.keys(entry.inputs).sort(), ['60', '120', '144', '60 uneven', '120 uneven'].sort());
     assert.equal(hash(readFileSync(new URL(`leveldata/${index}.level`, res))), provenance.levels[index].sha256);
   }
 });
@@ -41,7 +41,14 @@ test('package holds the generated files and the MIT notice, no old game data', (
   assert.ok(packed.includes('/res/fonts/LilitaOne-Regular.ttf'));
   assert.ok(packed.includes('/res/gfx/skins/11.png'));
   assert.ok(!packed.some(name => /pusab|GJ_|\.plist/i.test(name)), 'no files from the old engine data');
+  // the package must hold the current levels, not ones from an older build
+  const data = read('engine/DashClassic.data');
+  for (const [, name, start, end] of js.matchAll(/filename:"([^"]+\.level)",start:(\d+),end:(\d+)/g)) {
+    const index = Number(name.match(/(\d+)\.level$/)[1]);
+    assert.deepEqual(data.subarray(Number(start), Number(end)), readFileSync(new URL(`leveldata/${index}.level`, res)), name);
+  }
   for (let index = 0; index < 15; index++) assert.ok(packed.includes(`/res/leveldata/${index}.level`));
+  assert.ok(packed.includes('/res/sfx/menuLoop.ogg'));
   assert.equal(hash(read('engine/DashClassic.data')), provenance.packageSha256);
   assert.equal(hash(read('engine/DashClassic.wasm')), provenance.wasmSha256);
   assert.match(read('engine/LICENSE.txt').toString(), /MIT License/);

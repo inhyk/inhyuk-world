@@ -6,7 +6,7 @@
 // node games/dash-overdrive/classic/levels/verify.mjs [--engine] [level numbers...]
 import {readFileSync} from 'node:fs';
 import {parseLevel, newPlayer, step} from './physics.mjs';
-import {shipBot, pathFrom, tapHeld} from './generate.mjs';
+import {shipBot, pathFrom, tapHeld, TRACKS} from './generate.mjs';
 
 const f = Math.fround;
 const args = process.argv.slice(2);
@@ -35,8 +35,7 @@ function frameTimes(hz, count) {
 
 function replay(level, inputs, dts) {
   const player = newPlayer();
-  // after the recording ends the cube just runs to the end
-  for (let i = 0; i < inputs.length + 2000; i++) {
+  for (let i = 0; i < inputs.length; i++) {
     const status = step(player, level, inputs[i] === 1, Array.isArray(dts) ? dts[i] : dts);
     if (status) return {status, x: player.x, steps: i + 1};
   }
@@ -72,12 +71,15 @@ for (const [number, entry] of Object.entries(report)) {
   const text = levelText(Number(number) - 1);
   const level = parseLevel(text);
   const lines = [];
-  for (const [dt, runs] of Object.entries(entry.inputs)) {
-    const result = replay(level, expand(runs), Number(dt));
-    lines.push(`${Math.round(60 / Number(dt))}fps rec ${result.status === 2 ? 'ok' : 'FAIL at tile ' + (result.x / 120).toFixed(1)}`);
+  for (const [name, runs] of Object.entries(entry.inputs)) {
+    const pattern = TRACKS.find(track => track.name === name).dts;
+    const inputs = [...expand(runs), ...Array(2000).fill(0)];
+    const dts = inputs.map((_, i) => pattern[i % pattern.length]);
+    const result = replay(level, inputs, dts);
+    lines.push(`${name} rec ${result.status === 2 ? 'ok' : 'FAIL at tile ' + (result.x / 120).toFixed(1)}`);
     if (result.status !== 2) failures++;
-    if (engine) {
-      const wasm = await engine.trajectory(text, [...expand(runs), ...Array(2000).fill(0)], Number(dt));
+    if (engine && (name === '60' || name === '120 uneven')) {
+      const wasm = await engine.trajectory(text, inputs, dts);
       lines.push(`engine ${wasm.status === 2 ? 'ok' : 'FAIL at tile ' + (wasm.frames.at(-1)[0] / 120).toFixed(1)}`);
       if (wasm.status !== 2) failures++;
     }

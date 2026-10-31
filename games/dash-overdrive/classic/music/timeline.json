@@ -1,0 +1,1209 @@
+{
+  "format": "dash-overdrive-classic-timeline/1",
+  "sampleRate": 48000,
+  "beatsPerBar": 4,
+  "note": "Beats are 0-based quarter notes from t = 0 s (seconds = beat * 60 / bpm). Sections tile the song; the last section ends at totalBeats. cues: drop = drop downbeat, stop = music cut for the last eighth before a drop, tapestop = music slows to silence over 2 beats, end = final hit (song then rings out and fades over the last 4 s).",
+  "songs": [
+    {
+      "index": 0,
+      "name": "Neon Start",
+      "bpm": 124.632,
+      "durationSeconds": 64,
+      "beatSeconds": 0.481417,
+      "totalBeats": 132.941,
+      "difficulty": "easy",
+      "style": "bright happy electro-pop",
+      "key": "C major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.35
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.6
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.9
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.4
+        },
+        {
+          "name": "build 2",
+          "startBeat": 80,
+          "endBeat": 88,
+          "energy": 0.7
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 88,
+          "endBeat": 120,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 120,
+          "endBeat": 132.941,
+          "energy": 0.3
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 87.5,
+          "type": "stop"
+        },
+        {
+          "beat": 88,
+          "type": "drop"
+        },
+        {
+          "beat": 128,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "Pixel Hop",
+      "bpm": 138.48,
+      "durationSeconds": 68,
+      "beatSeconds": 0.433276,
+      "totalBeats": 156.944,
+      "difficulty": "easy",
+      "style": "bouncy chiptune",
+      "key": "G major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.35
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.55
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.85
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.4
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.7
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 144,
+          "endBeat": 156.944,
+          "energy": 0.3
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 152,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "Blue Ladder",
+      "bpm": 124.632,
+      "durationSeconds": 72,
+      "beatSeconds": 0.481417,
+      "totalBeats": 149.558,
+      "difficulty": "normal",
+      "style": "upbeat synthwave",
+      "key": "A minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.35
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.5
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.65
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.9
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 80,
+          "endBeat": 96,
+          "energy": 0.45
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 104,
+          "energy": 0.7
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 104,
+          "endBeat": 136,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 136,
+          "endBeat": 149.558,
+          "energy": 0.3
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 103.5,
+          "type": "stop"
+        },
+        {
+          "beat": 104,
+          "type": "drop"
+        },
+        {
+          "beat": 144,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "Desert Wind",
+      "bpm": 138.48,
+      "durationSeconds": 74,
+      "beatSeconds": 0.433276,
+      "totalBeats": 170.792,
+      "difficulty": "normal",
+      "style": "dance beat with a phrygian-dominant melody and hand percussion",
+      "key": "D phrygian dominant",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.35
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.5
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.65
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.9
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.45
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.75
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 160,
+          "endBeat": 170.792,
+          "energy": 0.3
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 127.5,
+          "type": "stop"
+        },
+        {
+          "beat": 128,
+          "type": "drop"
+        },
+        {
+          "beat": 164,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "name": "Iron Gate",
+      "bpm": 155.79,
+      "durationSeconds": 78,
+      "beatSeconds": 0.385134,
+      "totalBeats": 202.527,
+      "difficulty": "hard",
+      "style": "industrial electro",
+      "key": "E minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.75
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 192,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 202.527,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 196,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "name": "Night Rail",
+      "bpm": 124.632,
+      "durationSeconds": 80,
+      "beatSeconds": 0.481417,
+      "totalBeats": 166.176,
+      "difficulty": "hard",
+      "style": "dark synthwave with half-time drops",
+      "key": "F# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.35
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.55
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.7
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.9
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.45
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 120,
+          "energy": 0.75
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 120,
+          "endBeat": 152,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 152,
+          "endBeat": 166.176,
+          "energy": 0.3
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 119.5,
+          "type": "stop"
+        },
+        {
+          "beat": 120,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "name": "Sky Rocket",
+      "bpm": 155.79,
+      "durationSeconds": 82,
+      "beatSeconds": 0.385134,
+      "totalBeats": 212.913,
+      "difficulty": "hard",
+      "style": "uplifting trance",
+      "key": "D major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.75
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.9
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.45
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 212.913,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "name": "Crystal Cave",
+      "bpm": 138.48,
+      "durationSeconds": 84,
+      "beatSeconds": 0.433276,
+      "totalBeats": 193.872,
+      "difficulty": "harder",
+      "style": "glassy bell arpeggios over deep bass",
+      "key": "B minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.35
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.55
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.7
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.9
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.45
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.75
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 193.872,
+          "energy": 0.3
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "name": "Thunder Road",
+      "bpm": 178.05,
+      "durationSeconds": 86,
+      "beatSeconds": 0.336984,
+      "totalBeats": 255.205,
+      "difficulty": "harder",
+      "style": "drum and bass",
+      "key": "C minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.7
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.45
+        },
+        {
+          "name": "build 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 192,
+          "endBeat": 240,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 240,
+          "endBeat": 255.205,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 191.5,
+          "type": "stop"
+        },
+        {
+          "beat": 192,
+          "type": "drop"
+        },
+        {
+          "beat": 248,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "name": "Lava Lift",
+      "bpm": 155.79,
+      "durationSeconds": 88,
+      "beatSeconds": 0.385134,
+      "totalBeats": 228.492,
+      "difficulty": "harder",
+      "style": "heavy electro-house with big saw stabs",
+      "key": "G minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.7
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.45
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 228.492,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "name": "Star Factory",
+      "bpm": 138.48,
+      "durationSeconds": 90,
+      "beatSeconds": 0.433276,
+      "totalBeats": 207.72,
+      "difficulty": "insane",
+      "style": "funky electro",
+      "key": "Eb major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.75
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 192,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 207.72,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 200,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "name": "Frost Bite",
+      "bpm": 178.05,
+      "durationSeconds": 92,
+      "beatSeconds": 0.336984,
+      "totalBeats": 273.01,
+      "difficulty": "insane",
+      "style": "fast chiptune-trance",
+      "key": "A minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.7
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 192,
+          "endBeat": 256,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 256,
+          "endBeat": 273.01,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 191.5,
+          "type": "stop"
+        },
+        {
+          "beat": 192,
+          "type": "drop"
+        },
+        {
+          "beat": 264,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "name": "Laser Maze",
+      "bpm": 155.79,
+      "durationSeconds": 94,
+      "beatSeconds": 0.385134,
+      "totalBeats": 244.071,
+      "difficulty": "insane",
+      "style": "half-time wobble bass with laser zaps",
+      "key": "F minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.7
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 224,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 244.071,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "name": "Black Hole",
+      "bpm": 138.48,
+      "durationSeconds": 96,
+      "beatSeconds": 0.433276,
+      "totalBeats": 221.568,
+      "difficulty": "demon",
+      "style": "dark aggressive complextro with glitch fills",
+      "key": "C# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.45
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.75
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 1
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 208,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 221.568,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 110,
+          "type": "tapestop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 216,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "name": "Overdrive",
+      "bpm": 178.05,
+      "durationSeconds": 100,
+      "beatSeconds": 0.336984,
+      "totalBeats": 296.75,
+      "difficulty": "demon",
+      "style": "epic finale with hard kicks and a soaring lead",
+      "key": "E minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.45
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.75
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.85
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 192,
+          "endBeat": 272,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 272,
+          "endBeat": 296.75,
+          "energy": 0.4
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 191.5,
+          "type": "stop"
+        },
+        {
+          "beat": 192,
+          "type": "drop"
+        },
+        {
+          "beat": 288,
+          "type": "end"
+        }
+      ]
+    }
+  ]
+}
