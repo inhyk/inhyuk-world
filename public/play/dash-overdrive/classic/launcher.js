@@ -8,9 +8,13 @@ const CLASSIC_LEVELS = [
   ['Iron Gate', 'hard'], ['Night Rail', 'hard'], ['Sky Rocket', 'hard'], ['Crystal Cave', 'harder'],
   ['Thunder Road', 'harder'], ['Lava Lift', 'harder'], ['Star Factory', 'insane'], ['Frost Bite', 'insane'],
   ['Laser Maze', 'insane'], ['Black Hole', 'demon'], ['Overdrive', 'demon'],
+  ['Golden Key', 'secret'], ['Secret Core', 'secret'], ['Last Dash', 'secret'],
 ];
-const DIFFICULTY_NAMES = {easy: '쉬움', normal: '보통', hard: '어려움', harder: '더 어려움', insane: '아주 어려움', demon: '데몬'};
-const CUSTOM_LEVEL = 15;
+const DIFFICULTY_NAMES = {easy: '쉬움', normal: '보통', hard: '어려움', harder: '더 어려움', insane: '아주 어려움', demon: '데몬', secret: '비밀 단계'};
+// secret levels 16-18 open at 10, 20 and 30 coins (engine: Config::SECRET_COINS)
+const SECRET_FIRST = 15;
+const SECRET_COINS = [10, 20, 30];
+const CUSTOM_LEVEL = 18;
 const STATE_PLAYING = 2;
 
 const canvas = document.getElementById('canvas');
@@ -22,7 +26,7 @@ const selectButton = document.getElementById('select');
 const nowPlaying = document.getElementById('now-playing');
 const params = new URLSearchParams(location.search);
 const levelParameter = Number(params.get('level'));
-let selected = Number.isInteger(levelParameter) && levelParameter >= 1 && levelParameter <= 15 ? levelParameter : 1;
+let selected = Number.isInteger(levelParameter) && levelParameter >= 1 && levelParameter <= CLASSIC_LEVELS.length ? levelParameter : 1;
 let ready = false;
 
 function storedNumber(key) {
@@ -32,6 +36,21 @@ function storedNumber(key) {
   } catch {
     return 0;
   }
+}
+
+function totalCoins() {
+  let total = 0;
+  for (let index = 0; index < CLASSIC_LEVELS.length; index++) {
+    const bits = storedNumber(300 + index);
+    total += (bits & 1) + ((bits >> 1) & 1) + ((bits >> 2) & 1);
+  }
+  return total;
+}
+
+// Coins still needed to open a level; 0 when it is open.
+function coinsNeeded(index) {
+  if (index < SECRET_FIRST) return 0;
+  return Math.max(0, SECRET_COINS[index - SECRET_FIRST] - totalCoins());
 }
 
 function bestText(index) {
@@ -59,7 +78,9 @@ function buildChoices() {
     const title = document.createElement('strong');
     title.textContent = name;
     const best = document.createElement('em');
-    best.textContent = bestText(index);
+    const needed = coinsNeeded(index);
+    best.textContent = needed ? `🔒 코인 ${needed}개 더 모으면 열려` : bestText(index);
+    if (needed) button.classList.add('locked');
     content.append(label, title, best);
     button.append(number, content);
     button.addEventListener('click', () => {
@@ -78,7 +99,12 @@ function updateChoice() {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', String(active));
   }
-  if (ready) play.textContent = `${selected}단계 시작하기 ▶`;
+  const needed = coinsNeeded(selected - 1);
+  if (ready) {
+    play.textContent = needed ? `🔒 코인 ${needed}개 더 필요해` : `${selected}단계 시작하기 ▶`;
+    play.disabled = needed > 0;
+  }
+  document.getElementById('coin-total').textContent = `모은 코인 ${totalCoins()}개`;
 }
 
 // Songs are downloaded only when needed and handed to the engine's file system.
@@ -141,6 +167,7 @@ function showLauncher(show) {
 
 function startLevel(level) {
   if (!ready) return;
+  if (level < CLASSIC_LEVELS.length && coinsNeeded(level) > 0) return;
   if (level < CLASSIC_LEVELS.length) prepareSong(level);
   showLauncher(false);
   window.classicEditor?.close();
@@ -173,7 +200,7 @@ const Module = window.Module = {
     status.textContent = '게임 화면에서 PLAY를 눌러도 돼.';
     updateChoice();
     const start = Number(params.get('start'));
-    if (Number.isInteger(start) && start >= 1 && start <= 15) startLevel(start - 1);
+    if (Number.isInteger(start) && start >= 1 && start <= CLASSIC_LEVELS.length) startLevel(start - 1);
   },
   classicPrepareSong(index) {
     prepareSong(index);

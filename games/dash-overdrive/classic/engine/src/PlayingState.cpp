@@ -160,7 +160,7 @@ void PlayingState::enter() {
     m_Game->getBackground().fade(m_InitialBackground.r, m_InitialBackground.g, m_InitialBackground.b, 0);
     m_Game->getGround().fade(m_InitialGround.r, m_InitialGround.g, m_InitialGround.b, 0);
     m_Game->getGround().setPosition({ 0, static_cast<float>(Config::FLOOR_Y) });
-    m_Game->getGround().setBounds(false, 0, 0);
+    m_Game->getGround().clearBounds();
     m_Game->setCameraPosition({0, 0});
     const int exitX = m_Game->getWidth()/2 + (m_EnterPracticeButton.getW() + MARGIN + m_ResumeButton.getW() + MARGIN - m_ExitButton.getW())/2;
     m_ExitButton.setPosition(exitX, m_Game->getHeight()/2, false, true);
@@ -192,7 +192,7 @@ void PlayingState::exit() {
     }
     m_Game->restartMenuLoop();
     m_Game->setCameraPosition({0, 0});
-    m_Game->getGround().setBounds(false, 0, 0);
+    m_Game->getGround().clearBounds();
 #ifdef __EMSCRIPTEN__
     EM_ASM({ if (Module.classicOnLevelExit) Module.classicOnLevelExit($0); }, m_Level);
 #endif

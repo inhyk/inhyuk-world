@@ -12,8 +12,8 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const provenance = JSON.parse(read('provenance.json'));
 const report = JSON.parse(readFileSync(new URL('./levels/report.json', import.meta.url), 'utf8'));
 
-test('fifteen built levels use only objects the engine knows', () => {
-  assert.equal(LEVELS.length, 15);
+test('eighteen built levels use only objects the engine knows', () => {
+  assert.equal(LEVELS.length, 18);
   for (let index = 0; index < LEVELS.length; index++) {
     const text = readFileSync(new URL(`leveldata/${index}.level`, res), 'utf8');
     const ids = text.split(';').slice(1).filter(Boolean).map(row => Number(row.split(',')[1]));
@@ -48,7 +48,8 @@ test('package holds the generated files and the MIT notice, no old game data', (
     const index = Number(name.match(/(\d+)\.level$/)[1]);
     assert.deepEqual(data.subarray(Number(start), Number(end)), readFileSync(new URL(`leveldata/${index}.level`, res)), name);
   }
-  for (let index = 0; index < 15; index++) assert.ok(packed.includes(`/res/leveldata/${index}.level`));
+  for (let index = 0; index < LEVELS.length; index++) assert.ok(packed.includes(`/res/leveldata/${index}.level`));
+  assert.ok(packed.includes('/res/gfx/lock.png'));
   assert.ok(packed.includes('/res/sfx/menuLoop.ogg'));
   assert.equal(hash(read('engine/DashClassic.data')), provenance.packageSha256);
   assert.equal(hash(read('engine/DashClassic.wasm')), provenance.wasmSha256);
@@ -58,7 +59,7 @@ test('package holds the generated files and the MIT notice, no old game data', (
 });
 
 test('every level song is present and the page has no outside player', () => {
-  for (let index = 0; index < 15; index++) {
+  for (let index = 0; index < LEVELS.length; index++) {
     const song = read(`music/${index}.ogg`);
     assert.equal(song.subarray(0, 4).toString(), 'OggS', `song ${index + 1}`);
   }

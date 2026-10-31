@@ -56,8 +56,16 @@ CLASSIC_EXPORT void classic_start_level(int level) {
     LevelSelect::get().selectLevel(level);
     if (level < Config::LEVEL_COUNT) {
         game.pushState(LevelSelect::get());
+        // a locked secret level stays on level select, showing its padlock
+        if (LevelSelect::get().coinsNeeded(level) > 0) {
+            return;
+        }
     }
     game.pushState(PlayingState::get());
+}
+
+CLASSIC_EXPORT int classic_total_coins() {
+    return LevelSelect::get().getTotalCoins();
 }
 
 CLASSIC_EXPORT void classic_set_custom_song(int song) {

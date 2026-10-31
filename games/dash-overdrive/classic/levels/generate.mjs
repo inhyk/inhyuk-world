@@ -57,27 +57,31 @@ export const LEVELS = [
   {name: 'Laser Maze', bpm: 155.79, seconds: 94, colors: [[[44, 255, 164], [0, 170, 110]], [[255, 44, 96], [170, 10, 60]]]},
   {name: 'Black Hole', bpm: 138.48, seconds: 96, colors: [[[90, 36, 120], [36, 6, 60]], [[176, 20, 72], [86, 0, 34]]]},
   {name: 'Overdrive', bpm: 178.05, seconds: 100, colors: [[[150, 230, 60], [76, 160, 26]], [[40, 92, 236], [20, 50, 180]], [[255, 64, 128], [170, 20, 80]]]},
+  // secret levels, opened with coins
+  {name: 'Golden Key', bpm: 138.48, seconds: 102, colors: [[[255, 196, 40], [176, 112, 0]], [[60, 40, 120], [26, 14, 70]]]},
+  {name: 'Secret Core', bpm: 178.05, seconds: 106, colors: [[[40, 230, 210], [0, 140, 130]], [[120, 20, 60], [60, 0, 30]]]},
+  {name: 'Last Dash', bpm: 178.05, seconds: 110, colors: [[[255, 60, 60], [150, 10, 20]], [[20, 20, 40], [6, 6, 16]], [[191, 255, 89], [90, 170, 30]]]},
 ];
 
 // How hard each level is. margin = half of the narrowest allowed tap window in
 // 60 fps frames; runway = free tiles between pieces.
 function tuning(d) {
   return {
-    margin: [3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1][d],
-    runway: [[1, 4], [1, 3], [1, 3], [1, 3], [1, 2], [1, 2], [0, 2], [0, 2], [0, 2], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]][d],
-    shipGap: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3][d],
-    shipSpacing: [6, 6, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3][d],
-    shipShift: [2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4][d],
+    margin: [3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1][d],
+    runway: [[1, 4], [1, 3], [1, 3], [1, 3], [1, 2], [1, 2], [0, 2], [0, 2], [0, 2], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 0]][d],
+    shipGap: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3][d],
+    shipSpacing: [6, 6, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3][d],
+    shipShift: [2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4][d],
     shipSpikes: d >= 1,
     shipSpikesInNarrowGaps: d >= 12,
     shipFloorSpikes: d >= 4,
     shipCeilingSpikes: d >= 7,
-    shipDelay: [4, 4, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2][d],
-    shipAim: [40, 38, 36, 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 12][d],
+    shipDelay: [4, 4, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
+    shipAim: [40, 38, 36, 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 12, 11, 10, 10][d],
     halfBeats: d >= 3,
     maxSurface: d < 2 ? 3 : 4,
-    comboMax: [2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6][d],
-    comboGapMax: [3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
+    comboMax: [2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7][d],
+    comboGapMax: [3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
   };
 }
 
@@ -741,14 +745,22 @@ class LevelBuilder {
         if (!cells.some(([cc, r]) => cc === x && r === top)) cells.push([x, top, make.small(x, top, true)]);
       }
     }
-    // The cube portal sits where the last gap was, so the ship flies straight
-    // through it; the cube then drops to the floor.
-    const exitRow = Math.max(0, Math.min(6, Math.round(center - 1.5)));
+    // The cube portal sits in a last gate where the last gap was: blocks under
+    // and over it, so the ship flies straight through, and the cube lands on a
+    // block floor at the portal's height and runs on from there.
+    const exitRow = Math.max(0, Math.min(3, Math.round(center - 1.5)));
     const exitY = 816 - 120 * exitRow - 60;
     waypoints.push([(exitColumn - 1) * TILE, exitY], [(exitColumn + 4) * TILE, exitY]);
     extra.push(make.cubePortal(exitColumn, exitRow));
+    for (let r = 0; r < exitRow; r++) cells.push([exitColumn, r, make.block(exitColumn, r, this.wallBlock)]);
+    for (let r = exitRow + 3; r <= top; r++) cells.push([exitColumn, r, make.block(exitColumn, r, this.wallBlock)]);
     const path = pathFrom(waypoints);
     const end = exitColumn + 6;
+    if (exitRow > 0) {
+      const landing = [];
+      this.ground(landing, exitColumn + 1, end, false, exitRow);
+      cells.push(...landing);
+    }
     const objects = this.allObjects({cells, extra});
     const level = parseLevel(this.levelText(objects, this.tracks[0].state.player.x / TILE));
     const doneX = (end - 2) * TILE;
@@ -781,7 +793,7 @@ class LevelBuilder {
     for (const [cc, r, object] of cells) this.put(cc, r, object);
     this.extra.push(...extra);
     this.column = end;
-    this.surface = 0;
+    this.surface = exitRow;
     this.shipPaths = this.shipPaths || [];
     this.shipPaths.push(waypoints);
     this.shipRanges = this.shipRanges || [];

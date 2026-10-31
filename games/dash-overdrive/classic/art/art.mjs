@@ -756,6 +756,57 @@ function coinEmpty() {
   );
 }
 
+// ================================================================ locks
+
+// chunky padlock drawn in a 160 x 190 frame; `detail` adds the glow, rivets and star of the big version
+function padlockParts(detail) {
+  const shackle = 'M47 98 V58 A33 33 0 0 1 113 58 V98';
+  const o = detail ? 8 : 9;
+  const B = { x: 14, y: 80, w: 132, h: 102, r: 26 };
+  const I = { x: B.x + o, y: B.y + o, w: B.w - 2 * o, h: B.h - 2 * o, r: B.r - o };
+  const rect = (q, extra) => `<rect x="${q.x}" y="${q.y}" width="${q.w}" height="${q.h}" rx="${q.r}" ${extra}/>`;
+  const defs =
+    lin('lsh', 30, 14, 130, 96, [[0, '#f6f9ff'], [0.45, '#c3cfe4'], [1, '#7a8bb2']]) +
+    lin('lbody', 0, I.y, 0, I.y + I.h, [[0, '#e2eaf8'], [0.45, '#a6b8da'], [1, '#61759f']]) +
+    lin('lbev', I.x, I.y, I.x + I.w, I.y + I.h, [[0, WHITE, 0.6], [0.4, WHITE, 0], [0.6, NAVY, 0], [1, NAVY, 0.3]]) +
+    lin('lgold', 0, 98, 0, 144, [[0, '#fff3a8'], [0.45, GOLD], [1, '#ffb000']]) +
+    lin('lstar', 0, 152, 0, 172, [[0, '#f0ffc4'], [0.5, ACID], [1, '#86d630']]) +
+    `<clipPath id="lbc">${rect(I, '')}</clipPath>` +
+    (detail ? blur('lglow', 6) : '');
+  const keyhole = 'M80 107.5 A7.5 7.5 0 0 1 84.2 121.2 L86.6 134 Q87 136.5 84.4 136.5 H75.6 Q73 136.5 73.4 134 L75.8 121.2 A7.5 7.5 0 0 1 80 107.5 Z';
+  const body =
+    (detail
+      ? `<g filter="url(#lglow)" opacity=".55"><path d="${shackle}" fill="none" stroke="#dfe8ff" stroke-width="30" stroke-linecap="round"/>${rect(B, 'fill="#dfe8ff"')}</g>`
+      : '') +
+    `<path d="${shackle}" fill="none" stroke="${NAVY}" stroke-width="${detail ? 27 : 29}" stroke-linecap="round"/>` +
+    `<path d="${shackle}" fill="none" stroke="url(#lsh)" stroke-width="15" stroke-linecap="round"/>` +
+    `<path d="M44 90 V58 A36 36 0 0 1 67.7 24.2" fill="none" stroke="${WHITE}" stroke-opacity=".8" stroke-width="3.5" stroke-linecap="round"/>` +
+    rect(B, `fill="${NAVY}"`) +
+    rect(I, 'fill="url(#lbody)"') +
+    `<g clip-path="url(#lbc)">${rect(I, 'fill="none" stroke="url(#lbev)" stroke-width="14"')}` +
+    `<rect x="34" y="${I.y + 6}" width="72" height="11" rx="5.5" fill="${WHITE}" fill-opacity=".45"/><circle cx="118" cy="${I.y + 11.5}" r="5.5" fill="${WHITE}" fill-opacity=".45"/></g>` +
+    (detail
+      ? [[35, 104], [125, 104], [35, 161], [125, 161]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.6" fill="#eef2fa" stroke="${NAVY}" stroke-width="2.2"/>`).join('')
+      : '') +
+    `<circle cx="80" cy="121" r="23" fill="url(#lgold)" stroke="${NAVY}" stroke-width="5"/>` +
+    `<path d="${ellipseArc(80, 121, 18.5, 18.5, 200, 265)}" fill="none" stroke="${WHITE}" stroke-opacity=".85" stroke-width="3" stroke-linecap="round"/>` +
+    `<path d="${keyhole}" fill="${NAVY}"/>` +
+    (detail ? `<path d="${starPath(80, 162.5, 10.5, 4.8)}" fill="url(#lstar)" stroke="${NAVY}" stroke-width="3" stroke-linejoin="round"/>` : '');
+  return { defs, body };
+}
+
+// big padlock shown over a locked secret level
+function lock() {
+  const { defs, body } = padlockParts(true);
+  return svg(160, 190, defs, body);
+}
+
+// the same padlock, simplified, for small spots (exactly 0.4 scale)
+function lockSmall() {
+  const { defs, body } = padlockParts(false);
+  return svg(64, 76, defs, `<g transform="scale(.4)">${body}</g>`);
+}
+
 // ================================================================ UI
 
 const FACES = {
@@ -1275,6 +1326,8 @@ const SPRITES = [
   { file: 'objects/201.png', w: 120, h: 120, svg: coin },
   { file: 'coinIcon.png', w: 64, h: 64, svg: coinIcon },
   { file: 'coinEmpty.png', w: 64, h: 64, svg: coinEmpty },
+  { file: 'lock.png', w: 160, h: 190, svg: lock },
+  { file: 'lockSmall.png', w: 64, h: 76, svg: lockSmall },
   ...SKINS.map((make, i) => ({ file: `skins/${i}.png`, w: 185, h: 185, svg: make })),
   { file: 'ship.png', w: 149, h: 88, svg: ship },
   { file: 'checkpoint.png', w: 100, h: 100, svg: checkpoint },

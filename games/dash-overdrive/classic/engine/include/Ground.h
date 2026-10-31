@@ -22,6 +22,8 @@ public:
     // Ship and upside-down sections draw a floor and a ceiling at these world
     // heights, the same ones the player collides with.
     void setBounds(bool active, float top, float bottom);
+    // Drops the floor and ceiling at once (new level, menus).
+    void clearBounds();
     std::array<float, 3> getColor() const;
     void setColor(std::array<float, 3> color);
     SDL_Color getTargetColor() const;
@@ -47,6 +49,10 @@ private:
     bool m_HasBounds = false;
     float m_BoundsTop = 0;
     float m_BoundsBottom = 0;
+    // When a ship or upside-down part ends, its ceiling slides up out of view.
+    static constexpr float RELEASE_FRAMES = 36.0f;
+    float m_ReleaseTime = 0;
+    float m_ReleaseTop = 0;
     float m_FadeTime;
 
     void renderStrip(float surfaceY, bool ceiling) const;

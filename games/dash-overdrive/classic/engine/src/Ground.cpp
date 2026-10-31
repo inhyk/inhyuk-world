@@ -55,12 +55,26 @@ void Ground::resetPosition() {
 }
 
 void Ground::setBounds(bool active, float top, float bottom) {
+    if (m_HasBounds && !active) {
+        m_ReleaseTop = m_BoundsTop;
+        m_ReleaseTime = RELEASE_FRAMES;
+    } else if (active) {
+        m_ReleaseTime = 0;
+    }
     m_HasBounds = active;
     m_BoundsTop = top;
     m_BoundsBottom = bottom;
 }
 
+void Ground::clearBounds() {
+    m_HasBounds = false;
+    m_ReleaseTime = 0;
+}
+
 void Ground::update(float delta) {
+    if (m_ReleaseTime > 0) {
+        m_ReleaseTime -= delta;
+    }
     if (m_Position.x < -m_GroundSize) {
         m_Position.x += m_GroundSize;
     }
@@ -115,6 +129,10 @@ void Ground::render() const {
         renderStrip(m_BoundsTop, true);
     } else {
         renderStrip(m_Position.y, false);
+        if (m_ReleaseTime > 0) {
+            const float progress = 1.0f - m_ReleaseTime / RELEASE_FRAMES;
+            renderStrip(m_ReleaseTop - progress * progress * 900.0f, true);
+        }
     }
 }
 

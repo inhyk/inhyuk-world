@@ -26,6 +26,9 @@ public:
     // Coins kept by finishing the level, one bit per coin.
     int getSavedCoins() const;
     void saveCoins(int coins);
+    int getTotalCoins() const;
+    // Coins still needed to open a level; 0 when it is open.
+    int coinsNeeded(int level) const;
     void setBestPracticePercentage(int value);
     inline SDL_Texture *getLevelNameTexture() const { return m_LevelNameTexture; }
     inline static LevelSelect &get() { return m_LevelSelect; }
@@ -36,12 +39,12 @@ private:
     constexpr static std::array<std::string_view, Config::SLOT_COUNT> m_LevelStrings = {
         "Neon Start", "Pixel Hop", "Blue Ladder", "Desert Wind", "Iron Gate", "Night Rail", "Sky Rocket",
         "Crystal Cave", "Thunder Road", "Lava Lift", "Star Factory", "Frost Bite", "Laser Maze",
-        "Black Hole", "Overdrive", "My Level"
+        "Black Hole", "Overdrive", "Golden Key", "Secret Core", "Last Dash", "My Level"
     };
     constexpr static std::array<std::string_view, Config::SLOT_COUNT> m_Difficulties = {
         "Easy", "Easy", "Normal", "Normal", "Hard", "Hard", "Hard",
         "Harder", "Harder", "Harder", "Insane", "Insane", "Insane",
-        "Demon", "Demon", "Map Maker"
+        "Demon", "Demon", "Secret", "Secret", "Secret", "Map Maker"
     };
     Button m_LeftLevelArrow;
     Button m_RightLevelArrow;
@@ -53,6 +56,9 @@ private:
     SDL_Texture *m_CornerTexture;
     SDL_Texture *m_CoinTexture;
     SDL_Texture *m_CoinEmptyTexture;
+    SDL_Texture *m_LockTexture;
+    SDL_Texture *m_LockTextTexture = nullptr;
+    SDL_Texture *m_TotalCoinsTexture = nullptr;
     SDL_Texture *m_TopTexture;
     SDL_Texture *m_LevelArrowTexture;
     SDL_Texture *m_TitleArrowTexture;
@@ -69,6 +75,9 @@ private:
     bool m_IsSpaceHeld;
 
     void updateLevelNameTexture();
+    void updateCoinTextures();
+    // Storage slot of a level; the map maker level keeps its own slot.
+    static int storageSlot(int level);
     void moveSelection(int step);
     void updateBestPercentTexture();
     void updateBestPracticePercentTexture();

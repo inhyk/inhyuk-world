@@ -1204,6 +1204,289 @@
           "type": "end"
         }
       ]
+    },
+    {
+      "index": 15,
+      "name": "Golden Key",
+      "bpm": 138.48,
+      "durationSeconds": 102,
+      "beatSeconds": 0.433276,
+      "totalBeats": 235.416,
+      "difficulty": "secret (very hard)",
+      "style": "mysterious treasure-vault electro: music-box melody over punchy kicks",
+      "key": "F# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.55
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.75
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 160,
+          "endBeat": 176,
+          "energy": 0.85
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 224,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 235.416,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 228,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "name": "Secret Core",
+      "bpm": 178.05,
+      "durationSeconds": 106,
+      "beatSeconds": 0.336984,
+      "totalBeats": 314.555,
+      "difficulty": "secret (extreme)",
+      "style": "dark glitchy drum and bass with stuttering fills and a deep reese",
+      "key": "D minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.45
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.75
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 1
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.85
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 240,
+          "energy": 1
+        },
+        {
+          "name": "build 3",
+          "startBeat": 240,
+          "endBeat": 256,
+          "energy": 0.9
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 256,
+          "endBeat": 304,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 304,
+          "endBeat": 314.555,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 255.5,
+          "type": "stop"
+        },
+        {
+          "beat": 256,
+          "type": "drop"
+        },
+        {
+          "beat": 308,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "name": "Last Dash",
+      "bpm": 178.05,
+      "durationSeconds": 110,
+      "beatSeconds": 0.336984,
+      "totalBeats": 326.425,
+      "difficulty": "secret (final)",
+      "style": "epic final-boss run: hard kicks, choir-like pads, soaring lead, a huge last drop",
+      "key": "A minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.45
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.75
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.85
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown 2",
+          "startBeat": 224,
+          "endBeat": 240,
+          "energy": 0.6
+        },
+        {
+          "name": "build 3",
+          "startBeat": 240,
+          "endBeat": 248,
+          "energy": 0.9
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 248,
+          "endBeat": 312,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 312,
+          "endBeat": 326.425,
+          "energy": 0.4
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 247.5,
+          "type": "stop"
+        },
+        {
+          "beat": 248,
+          "type": "drop"
+        },
+        {
+          "beat": 320,
+          "type": "end"
+        }
+      ]
     }
   ]
 }

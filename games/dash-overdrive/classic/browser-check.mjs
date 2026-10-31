@@ -61,7 +61,7 @@ try {
     assert.match(text, /^kS29,1_\d+_2_\d+_3_\d+,kS30,/);
     assert.equal(text.split(';').filter(row => row.startsWith('1,1,')).length, 2);
     await page.click('#editor-test');
-    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 16);
+    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 19);
     await page.evaluate(() => Module._classic_go_title());
     await page.waitForFunction(() => JSON.parse(window.render_classic_status()).editor);
     console.log('map maker passed');

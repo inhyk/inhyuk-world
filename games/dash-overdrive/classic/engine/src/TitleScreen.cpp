@@ -135,7 +135,7 @@ void TitleScreen::update(float deltaTime) {
     Ground &ground = m_Game->getGround();
     Background &background = m_Game->getBackground();
     ground.setPosition({ground.getPosition().x, static_cast<float>(Config::FLOOR_Y)});
-    ground.setBounds(false, 0, 0);
+    ground.clearBounds();
     background.setMoving(true);
     background.update(deltaTime);
     ground.update(deltaTime);

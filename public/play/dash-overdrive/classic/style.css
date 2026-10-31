@@ -30,6 +30,10 @@ h1 span{color:var(--acid)}
 .choice-content small{font-size:10px;letter-spacing:1px;color:var(--acid)}
 .choice.hard small,.choice.harder small{color:#ffb35c}
 .choice.insane small,.choice.demon small{color:#ff6b9a}
+.choice.secret small{color:#ffd23d}
+.choice.locked{opacity:.55}
+.choice.locked .number{color:#ffffff22}
+.coin-total{margin-top:14px!important;color:#ffd23d!important;font-weight:700}
 .choice-content strong{display:block;font-size:18px;letter-spacing:-.5px;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .choice-content em{font-style:normal;color:var(--muted);font-size:11px}
 .launch-controls{grid-column:1/-1;display:flex;align-items:center;gap:20px;flex-wrap:wrap;border-top:1px solid #ffffff14;padding-top:20px}
