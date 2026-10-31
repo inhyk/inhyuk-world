@@ -335,7 +335,7 @@ void LevelManager::render() const {
             continue;
         }
         gameObject.render();
-        if (m_Game->isCreatorMode() && gameObject.getHitbox().has_value()) {
+        if (m_Game->showHitboxes() && gameObject.getHitbox().has_value()) {
             const SDL_FRect box = gameObject.getHitbox().value();
             const SDL_FRect drawn = { box.x - m_Game->getCameraPosition().x, box.y - m_Game->getCameraPosition().y, box.w, box.h };
             SDL_Renderer *renderer = m_Game->getRenderer();

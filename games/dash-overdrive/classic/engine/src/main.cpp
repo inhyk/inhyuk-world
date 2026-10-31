@@ -69,6 +69,11 @@ CLASSIC_EXPORT void classic_set_creator(int on) {
     LevelSelect::get().selectLevel(LevelSelect::get().getLevelSelected());
 }
 
+// For screenshots: creator mode without the hitboxes and the CREATOR MODE label.
+CLASSIC_EXPORT void classic_set_hitboxes(int on) {
+    game.setShowHitboxes(on != 0);
+}
+
 CLASSIC_EXPORT int classic_creator() {
     return game.isCreatorMode() ? 1 : 0;
 }

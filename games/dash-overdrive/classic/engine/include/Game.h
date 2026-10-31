@@ -61,6 +61,8 @@ public:
     // open, no deaths, hitboxes shown, nothing saved.
     inline bool isCreatorMode() const { return m_CreatorMode; }
     void setCreatorMode(bool on);
+    inline bool showHitboxes() const { return m_CreatorMode && m_ShowHitboxes; }
+    inline void setShowHitboxes(bool on) { m_ShowHitboxes = on; }
 
 private:
     SDL_Window *m_Window;
@@ -68,6 +70,7 @@ private:
     std::array<SDL_Texture *, Config::SKIN_COUNT> m_Skins;
     int m_SelectedSkin = 0;
     bool m_CreatorMode = false;
+    bool m_ShowHitboxes = true;
     SDL_Texture *m_CreatorTexture = nullptr;
     SDL_Point m_MousePosition;
     SDL_FPoint m_CameraPosition = { 0, 0 };

@@ -628,7 +628,7 @@ void Player::render() const {
         renderShip(skin);
         break;
     }
-    if (m_Game->isCreatorMode()) {
+    if (m_Game->showHitboxes()) {
         // full box (spikes, landing) and inner box (block hits)
         const SDL_FPoint camera = m_Game->getCameraPosition();
         SDL_SetRenderDrawBlendMode(m_Renderer, SDL_BLENDMODE_BLEND);

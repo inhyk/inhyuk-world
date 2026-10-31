@@ -125,7 +125,7 @@ void Game::render() {
         m_Ground.render();
     }
     m_GameStates.top()->render();
-    if (m_CreatorMode) {
+    if (m_CreatorMode && m_ShowHitboxes) {
         Text::renderTexture(m_Renderer, m_CreatorTexture, 24, m_Height - 70, false, false, 0.4f);
     }
     SDL_RenderPresent(m_Renderer);
