@@ -1,237 +1,170 @@
 {
-  "engine": "VinkentLi/Bad-GD-Clone",
+ "engine": {
+  "name": "Bad-GD-Clone (modified)",
   "source": "https://github.com/VinkentLi/Bad-GD-Clone",
-  "webBuild": "https://vinkentli.github.io/gdclone/",
-  "reference": "https://github.com/GuesterReal/Geometry-Dash-All-In-One/blob/main/Versions%20of%20Geometry%20Dash%20%28except%202.2%20and%20above%29/2nd%20manifest/Resources/LevelData.plist",
-  "audio": "The local engine audio was silenced. The matching official-level tracks are now played by the visible YouTube IFrame player when each level starts; an internet connection is required. No music file is copied into this project.",
-  "engineChanges": [
-    "Fixed 1920x1080 logical display for consistent mobile and desktop play",
-    "Rebuilt data package with silent audio",
-    "Landing collision now detects crossing a block surface between frames and snaps the player to the surface before solid-body collision handling",
-    "Rotated cube render offset also applies while falling toward a solid surface",
-    "Player renders after level objects so blocks and decorations cannot visually cover the cube.",
-    "Block landing and support use a stable axis-aligned player hitbox; gravity is suspended while grounded and restored immediately after leaving a surface.",
-    "Side collisions restore the last safe position instead of pushing the player backward or beyond the block.",
-    "Block landing candidates and top/underside support use the rotated cube bounds so visible corners can land on platforms without a false side collision.",
-    "Block contact from above or below snaps the rotated cube to the solid surface as soon as its polygon overlaps, even if a frame crossing was missed.",
-    "An overlapping cube approaching the top side of a block is resolved onto its upper surface regardless of vertical velocity, preventing lethal side-corner hits during a jump.",
-    "Cube spike collision uses the stable player hitbox instead of its rotated visual corners; blocks use axis-aligned collision to prevent artwork from striking low ceilings. Ship block contact uses the inset solid collider for clearance through narrow corridors.",
-    "Gravity portals clear the prior grounded state immediately so the cube can move away from the previous surface after gravity flips.",
-    "In inverted-gravity sections, the ceiling floor is rendered and collides as a landing surface for the cube.",
-    "No helper platforms are generated; source map placements are loaded unchanged."
-  ],
-  "maps": [
-    {
-      "level": 1,
-      "name": "Stereo Madness",
-      "objects": 2291,
-      "sha256": "1a7cea40cfa6d8b74eb89876e5179a391da93e7ae139e836ad59b6026b982d21",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "nativeFile": "/res/leveldata/0.level",
-      "nativeOffset": 2206664,
-      "nativeEnd": 2248605,
-      "playable": true
-    },
-    {
-      "level": 2,
-      "name": "Back on Track",
-      "objects": 1545,
-      "sha256": "0afaff95eb7a67919bc1671632521da51a68afa90aa3a1b5475913a016d0810e",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "nativeFile": "/res/leveldata/1.level",
-      "nativeOffset": 2248605,
-      "nativeEnd": 2275799,
-      "playable": true
-    },
-    {
-      "level": 3,
-      "name": "Polargeist",
-      "objects": 1531,
-      "sha256": "a07a19a26bb13740121b35fa68521f1796d54dd7285772734eade1d1cd9ac41d",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "nativeFile": "/res/leveldata/2.level",
-      "nativeOffset": 2275799,
-      "nativeEnd": 2303284,
-      "playable": true
-    },
-    {
-      "level": 4,
-      "name": "Dry Out",
-      "objects": 1444,
-      "sha256": "5521870b259dab9f2db9146927eebaf5c560bf554c3be2ff1d212f2e1742bcd2",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "nativeFile": "/res/leveldata/3.level",
-      "nativeOffset": 2303284,
-      "nativeEnd": 2331671,
-      "playable": true
-    },
-    {
-      "level": 5,
-      "name": "Base After Base",
-      "objects": 2146,
-      "sha256": "49f0f10ff64d2cc5701e5372b5584c4acded7a0e785ac76f95c8dda052765fb9",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "nativeFile": "/res/leveldata/4.level",
-      "nativeOffset": 2331671,
-      "nativeEnd": 2370977,
-      "playable": true
-    },
-    {
-      "level": 6,
-      "name": "Can’t Let Go",
-      "objects": 1704,
-      "sha256": "76c8d626bab04fd4d7b7d3dfd951f43ff290c5fcdc39333075289a6e17392e86",
-      "coordinateComparison": "all object IDs, positions, flips and rotations match LevelData.plist",
-      "nativeFile": "/res/leveldata/5.level",
-      "nativeOffset": 2370977,
-      "nativeEnd": 2403511,
-      "playable": true
-    },
-    {
-      "level": 7,
-      "name": "Jumper",
-      "objects": 2813,
-      "sha256": "600b926bb2d4768e5bcd5968ac442b0cbf535e171856fc8bbcf98f4aeece478a",
-      "coordinateComparison": "all object IDs, positions, flips and rotations match LevelData.plist",
-      "nativeFile": "/res/leveldata/6.level",
-      "nativeOffset": 2403511,
-      "nativeEnd": 2456088,
-      "playable": true
-    },
-    {
-      "level": 8,
-      "name": "Time Machine",
-      "objects": 3599,
-      "sha256": "2c673c62cc5b537d0bd711e2893b34060a221c84d09f17a8017f7051b848e8af",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "playable": true,
-      "nativeFile": "/res/leveldata/7.level"
-    },
-    {
-      "level": 9,
-      "name": "Cycles",
-      "objects": 3921,
-      "sha256": "5df678397b4fbe6a6d0420c428c7c5ba3ce85affbf1fc36b532ac52eeb40b32c",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "playable": true,
-      "nativeFile": "/res/leveldata/8.level"
-    },
-    {
-      "level": 10,
-      "name": "xStep",
-      "objects": 4716,
-      "sha256": "b4bb257c0ee9f7f7e12921de4621f1e8c5bd513d0d5b017ec85e2a9665228309",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "playable": true,
-      "nativeFile": "/res/leveldata/9.level"
-    },
-    {
-      "level": 11,
-      "name": "Clutterfunk",
-      "sha256": "47f625f070bc07ba9bd5c3c17fc9793aa0e4051e6349da1c2d5c2f31c988b682",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "nativeFile": "/res/leveldata/10.level",
-      "playable": true
-    },
-    {
-      "level": 12,
-      "name": "Theory of Everything",
-      "sha256": "243d5614dd3e23ea71c0866cac9f84b5005500019548e1947e0147a89bab2f02",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "nativeFile": "/res/leveldata/11.level",
-      "playable": true
-    },
-    {
-      "level": 13,
-      "name": "Electroman Adventures",
-      "sha256": "87645eae4176aef23efd2b4ebbaa0a7429cfc79df6fed72709fb18c6dd986a4c",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "nativeFile": "/res/leveldata/12.level",
-      "playable": true
-    },
-    {
-      "level": 14,
-      "name": "Clubstep",
-      "sha256": "44a45e82a553fd4a2d43c8a7de1270229ef6996a2ec6bb529b028e93e8c90f51",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "nativeFile": "/res/leveldata/13.level",
-      "playable": true
-    },
-    {
-      "level": 15,
-      "name": "Electrodynamix",
-      "sha256": "7e36db2d0204da6e52a7f8147ede476f3f4d2df0223d9925a28718b697e7316b",
-      "coordinateComparison": "full serialized placement matches the original LevelData.plist entry",
-      "nativeFile": "/res/leveldata/14.level",
-      "playable": true
-    }
-  ],
-  "packageBytes": 3441398,
-  "packageSha256": "e933166460b1dd210127c880846e5ae15aaf0cb9ef11ec21691e9baa02a357c4",
-  "wasmSha256": "68a93e9662bf59c4efc8c488ef942d8eff156594ac8cf72dbb95013abfe03e94",
-  "musicSources": [
-    {
-      "level": 1,
-      "url": "https://www.youtube.com/watch?v=tof8_p0F3kg"
-    },
-    {
-      "level": 2,
-      "url": "https://www.youtube.com/watch?v=N9vDTYZpqXM"
-    },
-    {
-      "level": 3,
-      "url": "https://www.youtube.com/watch?v=_WPmsD0tKlA"
-    },
-    {
-      "level": 4,
-      "url": "https://www.youtube.com/watch?v=FnXabH2q2A0"
-    },
-    {
-      "level": 5,
-      "url": "https://www.youtube.com/watch?v=TZULkgQPHt0"
-    },
-    {
-      "level": 6,
-      "url": "https://www.youtube.com/watch?v=fLnF-QnR1Zw"
-    },
-    {
-      "level": 7,
-      "url": "https://www.youtube.com/watch?v=NcZMExixvDg"
-    },
-    {
-      "level": 8,
-      "url": "https://www.youtube.com/watch?v=EFYy36tcp7M"
-    },
-    {
-      "level": 9,
-      "url": "https://www.youtube.com/watch?v=QsCHWlCgJt4"
-    },
-    {
-      "level": 10,
-      "url": "https://www.youtube.com/watch?v=PSvYfVGyQfw"
-    },
-    {
-      "level": 11,
-      "url": "https://www.youtube.com/watch?v=iNaBLxSNFWU"
-    },
-    {
-      "level": 12,
-      "url": "https://www.youtube.com/watch?v=1_vKqgcFF4w"
-    },
-    {
-      "level": 13,
-      "url": "https://www.youtube.com/watch?v=y8nVfW_7rsw"
-    },
-    {
-      "level": 14,
-      "url": "https://www.youtube.com/watch?v=TiwSjh7SI5Y"
-    },
-    {
-      "level": 15,
-      "url": "https://www.youtube.com/watch?v=n0CwuexLakU"
-    }
-  ],
-  "runtimeNetwork": "YouTube IFrame API and its selected video are loaded when the page is opened.",
-  "sourceRevision": "VinkentLi/Bad-GD-Clone 40ef6a3",
-  "wasmBytes": 2599091
+  "license": "MIT, Copyright (c) 2023 Vincent Li",
+  "changes": [
+   "Block landing and side hits use a frame-to-frame crossing test and the inner hitbox",
+   "Ship and upside-down sections draw their floor and ceiling at the same heights the player collides with",
+   "Title screen with SKINS, PLAY and CREATE buttons and a parade of every skin",
+   "Skin picker, saved best percentages, songs downloaded per level",
+   "Extra level slot for the map maker and level-checker functions (sim_*)"
+  ]
+ },
+ "font": "Lilita One, SIL Open Font License 1.1",
+ "generated": {
+  "art": "games/dash-overdrive/classic/art/art.mjs",
+  "music": "games/dash-overdrive/classic/music/music.mjs",
+  "levels": "games/dash-overdrive/classic/levels/generate.mjs",
+  "check": "games/dash-overdrive/classic/levels/verify.mjs"
+ },
+ "packageBytes": 3116140,
+ "packageSha256": "4e34582ae357187bb3ec6a4d79c804905d43ffd4d636aa2ada6224b2f42fa1d5",
+ "wasmSha256": "0d0510c7789da20cdc4536b70141be1359d4200162bbdbf7ec523a33cd3e7441",
+ "levels": [
+  {
+   "level": 1,
+   "name": "Neon Start",
+   "bpm": 124.632,
+   "songSeconds": 64,
+   "objects": 1446,
+   "sha256": "df5061a90dec4f14c0656593d3c020eff2159aa4ec44e92689a17c1f7de6e5c9"
+  },
+  {
+   "level": 2,
+   "name": "Pixel Hop",
+   "bpm": 138.48,
+   "songSeconds": 68,
+   "objects": 1286,
+   "sha256": "1bc92f44df57641e729b69223ed77648d8f8aad61b5d40fb2024847226d1bc7c"
+  },
+  {
+   "level": 3,
+   "name": "Blue Ladder",
+   "bpm": 124.632,
+   "songSeconds": 72,
+   "objects": 1807,
+   "sha256": "b29f74d08c3e33de0af89da8bc27fd270bf19ae451eb285aed780648a4d10796"
+  },
+  {
+   "level": 4,
+   "name": "Desert Wind",
+   "bpm": 138.48,
+   "songSeconds": 74,
+   "objects": 1525,
+   "sha256": "a45efe603965afc5d1a402bb99b49075501f0676bd85b466030727f314d2b81b"
+  },
+  {
+   "level": 5,
+   "name": "Iron Gate",
+   "bpm": 155.79,
+   "songSeconds": 78,
+   "objects": 1851,
+   "sha256": "64da9843020f5a0954ed645d71d1a28cf8a9c645aea3de74d70499a025fcaa50"
+  },
+  {
+   "level": 6,
+   "name": "Night Rail",
+   "bpm": 124.632,
+   "songSeconds": 80,
+   "objects": 1925,
+   "sha256": "c86f654bbae112271e5e047dee8334eea682dac9712fafc623abbe95d68f1b39"
+  },
+  {
+   "level": 7,
+   "name": "Sky Rocket",
+   "bpm": 155.79,
+   "songSeconds": 82,
+   "objects": 1691,
+   "sha256": "2d4a97904e33454b00cf1f57ef84d4d007528cfc166ca97b8a4fb49344e25a58"
+  },
+  {
+   "level": 8,
+   "name": "Crystal Cave",
+   "bpm": 138.48,
+   "songSeconds": 84,
+   "objects": 1744,
+   "sha256": "e5c7f029d0d742431416823ce06ecd808bdf7a2e1907ba78e9c69595b8bfdd51"
+  },
+  {
+   "level": 9,
+   "name": "Thunder Road",
+   "bpm": 178.05,
+   "songSeconds": 86,
+   "objects": 1830,
+   "sha256": "8f745c40df78e2386383fe0db03bf4f528f0cc9df1b318e85125ee2e6666cf45"
+  },
+  {
+   "level": 10,
+   "name": "Lava Lift",
+   "bpm": 155.79,
+   "songSeconds": 88,
+   "objects": 1996,
+   "sha256": "d4efa4d60d0677778637bf98b7fbddc8f4ce292e2d75a3dc5ad47b5bb5a51e23"
+  },
+  {
+   "level": 11,
+   "name": "Star Factory",
+   "bpm": 138.48,
+   "songSeconds": 90,
+   "objects": 2334,
+   "sha256": "f86ee0e12097cf8c7b7f11533caf886795377b283e811367f2cd0dfc043c32b4"
+  },
+  {
+   "level": 12,
+   "name": "Frost Bite",
+   "bpm": 178.05,
+   "songSeconds": 92,
+   "objects": 2382,
+   "sha256": "d13ce585691c67bbc7690ec561957419dd17a910a70cfc479150c00712843e38"
+  },
+  {
+   "level": 13,
+   "name": "Laser Maze",
+   "bpm": 155.79,
+   "songSeconds": 94,
+   "objects": 2092,
+   "sha256": "7e6b3b96f183dfb0ef681478c35610844b50826d5b39edbde9ad252d78137f5a"
+  },
+  {
+   "level": 14,
+   "name": "Black Hole",
+   "bpm": 138.48,
+   "songSeconds": 96,
+   "objects": 2796,
+   "sha256": "e5fae0f3cb9acccbbf15119735f7a9447aa25bac48572453c48e3e6305491ac6"
+  },
+  {
+   "level": 15,
+   "name": "Overdrive",
+   "bpm": 178.05,
+   "songSeconds": 100,
+   "objects": 2308,
+   "sha256": "892c8371efd6061c828a4738aec811779a8afd3f42ca990d0453b50eefeffe92"
+  },
+  {
+   "level": 16,
+   "name": "Golden Key",
+   "bpm": 138.48,
+   "songSeconds": 102,
+   "objects": 2176,
+   "sha256": "a268d20d5b8d626411308f2d945f5c5b1e5a23aef2ae9ed251c749169054959c"
+  },
+  {
+   "level": 17,
+   "name": "Secret Core",
+   "bpm": 178.05,
+   "songSeconds": 106,
+   "objects": 2561,
+   "sha256": "b1842b660821058348b6745bd4be328e3d15c9fee617495213e67bc91c46204f"
+  },
+  {
+   "level": 18,
+   "name": "Last Dash",
+   "bpm": 178.05,
+   "songSeconds": 110,
+   "objects": 2221,
+   "sha256": "4c50a581d0e4715b9fee16fd2968307fb30c234f247aefc3f521897420f11707"
+  }
+ ]
 }

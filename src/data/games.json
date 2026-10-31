@@ -2,16 +2,16 @@
   {
     "slug": "dash-overdrive",
     "title": "DASH / OVERDRIVE · 대쉬 오버드라이브",
-    "description": "HARD EDITION과 Geometry Classics 원작 맵 1~15단계에 도전하세요.",
-    "longDescription": "처음부터 새로 만든 독립적인 리듬 러너입니다. SKYLINE·AFTERGLOW·HYPERSPACE의 세 하늘을 달리며 점프 발판을 밟고, 포털에서 비행선으로 변신해 장애물 사이를 비행하세요. 큐브는 클릭·터치·스페이스로 점프하고 비행선은 누르면 상승, 떼면 하강합니다. 보석 수집, 안전 체크포인트 연습 모드, 코스별 최고 기록, 합성 리듬 음악, 일시정지와 전체 화면을 지원합니다. HARD EDITION에서는 세 코스가 초당 420·500·580 속도로 달리며 2~5연속 높은 가시와 180·160·144 높이의 좁은 비행 통로를 돌파합니다. 일반 최고 기록은 이전 버전과 분리됩니다. 별도 Geometry Classics에서는 원작 맵 배치 1~15단계를 선택하고 각 단계 원곡을 YouTube에서 들을 수 있습니다. 비공식 재현 엔진은 기본 큐브와 비행선을 지원하며 공 모드·UFO·속도 포털 등 일부 모드는 원작과 다를 수 있습니다. 비공식 웹 재현 엔진으로 조작감과 일부 장식·숨겨진 요소는 원작과 다를 수 있습니다.",
+    "description": "HARD EDITION과 새로 만든 CLASSIC 1~15단계, 맵 만들기에 도전하세요.",
+    "longDescription": "처음부터 새로 만든 독립적인 리듬 러너입니다. SKYLINE·AFTERGLOW·HYPERSPACE의 세 하늘을 달리며 점프 발판을 밟고, 포털에서 비행선으로 변신해 장애물 사이를 비행하세요. 큐브는 클릭·터치·스페이스로 점프하고 비행선은 누르면 상승, 떼면 하강합니다. 보석 수집, 안전 체크포인트 연습 모드, 코스별 최고 기록, 합성 리듬 음악, 일시정지와 전체 화면을 지원합니다. HARD EDITION에서는 세 코스가 초당 420·500·580 속도로 달리며 2~5연속 높은 가시와 180·160·144 높이의 좁은 비행 통로를 돌파합니다. 일반 최고 기록은 이전 버전과 분리됩니다. CLASSIC에서는 새로 만든 1~15단계를 큐브, 비행선, 중력 뒤집기로 달리고, 12가지 스킨을 고르고, 맵 만들기로 나만의 맵을 만들어 바로 해 볼 수 있습니다. 맵, 그림, 노래는 모두 새로 만들었습니다.",
     "emoji": "🚀",
     "thumbnail": "/images/games/dash-overdrive-thumb.png",
     "screenshots": [
       "/images/games/dash-overdrive-play.png",
       "/images/games/dash-overdrive-flight.png",
       "/images/games/dash-overdrive-mobile.png",
-      "/images/games/dash-overdrive-classic-6.png",
-      "/images/games/dash-overdrive-classic-7.png"
+      "/images/games/dash-overdrive-classic-menu.png",
+      "/images/games/dash-overdrive-classic-play.png"
     ],
     "techStack": [
       "JavaScript",

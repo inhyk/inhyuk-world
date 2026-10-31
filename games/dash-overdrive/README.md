@@ -18,6 +18,6 @@
 
 SKYLINE: HARD / 420, AFTERGLOW: EXPERT / 500, HYPERSPACE: INSANE / 580 속도로 달립니다. 2~5연속 높은 가시, 코스당 10개 비행 장애물 쌍, 180 / 160 / 144 너비의 비행 통로로 난이도를 올렸습니다. 최고 기록은 이전 버전과 별도 저장합니다.
 
-## Geometry Classics 01–15
+## CLASSIC 01–15
 
-원작과 같은 맵을 원하는 요청에 따라 [별도 클래식 모드](classic/README.md)를 추가했습니다. `/play/dash-overdrive/classic`에서 1~15단계를 선택합니다. 원작 맵 데이터와 MIT 웹 재현 엔진을 사용하며 원곡은 포함하지 않습니다.
+[클래식 모드](classic/README.md)는 `/play/dash-overdrive/classic`에서 실행합니다. 큐브, 비행선, 중력 뒤집기로 달리는 새 15단계와 스킨, 맵 만들기가 있습니다. 맵, 그림, 노래는 모두 이 게임을 위해 새로 만들었고, MIT 라이선스 엔진을 고쳐서 씁니다.

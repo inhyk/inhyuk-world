@@ -1,0 +1,43 @@
+#pragma once
+#include <SDL.h>
+#include <array>
+
+class Game;
+
+class Background
+{
+public:
+    Background() = default;
+    void init(Game *game, uint8_t r, uint8_t g, uint8_t b);
+    void destroy();
+    void fade(uint8_t r, uint8_t g, uint8_t b, float time);
+    SDL_FPoint getPosition() const;
+    void resetPosition();
+    void setMoving(bool value);
+    void update(float delta);
+    void render() const;
+    std::array<float, 3> getColor() const;
+    void setColor(std::array<float, 3> color);
+    SDL_Color getTargetColor() const;
+    void setTargetColor(SDL_Color color);
+    float getFadeTime() const;
+    void setFadeTime(float fadeTime);
+
+private:
+    Game *m_Game;
+    int m_BackgroundSize;
+    int m_BGCount;
+    float m_Red;
+    float m_Green;
+    float m_Blue;
+    uint8_t m_TargetRed;
+    uint8_t m_TargetGreen;
+    uint8_t m_TargetBlue;
+    SDL_Texture *m_BGTexture;
+    SDL_Texture *m_EmptyBG;
+    SDL_FPoint m_Position;
+    SDL_Renderer *m_Renderer;
+    bool m_IsMoving;
+    bool m_IsFading;
+    float m_FadeTime = 0;
+};
