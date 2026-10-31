@@ -1,44 +1,59 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {gunzipSync} from 'node:zlib';
+import {readFileSync, existsSync, readdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-const root=new URL('../../../public/play/dash-overdrive/classic/',import.meta.url);
-const read=path=>readFileSync(new URL(path,root));
-const provenance=JSON.parse(read('provenance.json'));
-const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
-// Compare multisets, so duplicated objects must match too. Keys 1..6 encode
-// object ID, X, Y, horizontal flip, vertical flip and rotation.
-function placements(text){return text.split(';').slice(1).filter(Boolean).map(row=>{
- const fields=row.split(','),obj={};for(let i=0;i<fields.length;i+=2)obj[fields[i]]=fields[i+1];
- return [1,2,3,4,5,6].map(key=>Number(obj[key]||0)).join(',');
-}).sort();}
-for(const map of provenance.maps)test(`original level ${map.level}: every object position, flip and rotation`,()=>{
- const reference=gunzipSync(readFileSync(new URL(`reference-${map.level}.txt.gz`,import.meta.url))).toString();
- const actual=read(`maps/${map.level}.level`);
- assert.equal(hash(actual),map.sha256);
- assert.equal(placements(actual.toString()).length,map.objects);
- assert.deepEqual(placements(actual.toString()),placements(reference));
- if(map.playable){
-  const packed=read('engine/GDClone.data').subarray(map.nativeOffset,map.nativeEnd);
-  assert.deepEqual(packed,actual);
- }
+import {parseLevel, OBJECTS} from './levels/physics.mjs';
+import {LEVELS} from './levels/generate.mjs';
+
+const root = new URL('../../../public/play/dash-overdrive/classic/', import.meta.url);
+const res = new URL('./res/', import.meta.url);
+const read = path => readFileSync(new URL(path, root));
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const provenance = JSON.parse(read('provenance.json'));
+const report = JSON.parse(readFileSync(new URL('./levels/report.json', import.meta.url), 'utf8'));
+
+test('fifteen built levels use only objects the engine knows', () => {
+  assert.equal(LEVELS.length, 15);
+  for (let index = 0; index < LEVELS.length; index++) {
+    const text = readFileSync(new URL(`leveldata/${index}.level`, res), 'utf8');
+    const ids = text.split(';').slice(1).filter(Boolean).map(row => Number(row.split(',')[1]));
+    assert.ok(ids.length > 100, `level ${index + 1} has objects`);
+    for (const id of ids) assert.ok(OBJECTS[id], `level ${index + 1} object ${id}`);
+    const level = parseLevel(text);
+    // the end of the level lines up with its song
+    const seconds = (level.furthestX + 120) / (20.772 * 60);
+    assert.ok(seconds < LEVELS[index].seconds - 2 && seconds > LEVELS[index].seconds - 8, `level ${index + 1} length ${seconds}`);
+  }
 });
-test('local engine package integrity and MIT attribution',()=>{
- const data=read('engine/GDClone.data'),wasm=read('engine/GDClone.wasm');
- assert.equal(data.length,provenance.packageBytes);
- assert.equal(hash(data),provenance.packageSha256);
- assert.equal(hash(wasm),provenance.wasmSha256);
- assert.equal(wasm.subarray(0,4).toString(),'\0asm');
- assert.match(read('engine/LICENSE.txt').toString(),/MIT License/);
+
+test('the checker played every level to the end at 60, 120 and 144 fps', () => {
+  for (let index = 0; index < LEVELS.length; index++) {
+    const entry = report[index + 1];
+    assert.equal(entry.name, LEVELS[index].name);
+    assert.deepEqual(Object.keys(entry.inputs).sort(), ['0.4166666567325592', '0.5', '1'].sort());
+    assert.equal(hash(readFileSync(new URL(`leveldata/${index}.level`, res))), provenance.levels[index].sha256);
+  }
 });
-test('every packaged audio file is the same generated silent clip',()=>{
- const js=read('engine/GDClone.js').toString();
- const audio=[...js.matchAll(/\{filename:"([^\"]+\.ogg)",start:(\d+),end:(\d+)\}/g)]
-  .map(([,filename,start,end])=>({filename,start:Number(start),end:Number(end)}));
- assert.ok(audio.length>=7);
- const data=read('engine/GDClone.data');
- const clip=data.subarray(audio[0].start,audio[0].end);
- assert.ok(clip.length<5000);
- for(const file of audio)assert.deepEqual(data.subarray(file.start,file.end),clip,file.filename);
+
+test('package holds the generated files and the MIT notice, no old game data', () => {
+  const js = read('engine/DashClassic.js').toString();
+  const packed = [...js.matchAll(/filename:"([^"]+)"/g)].map(([, name]) => name);
+  assert.ok(packed.includes('/res/fonts/LilitaOne-Regular.ttf'));
+  assert.ok(packed.includes('/res/gfx/skins/11.png'));
+  assert.ok(!packed.some(name => /pusab|GJ_|\.plist/i.test(name)), 'no files from the old engine data');
+  for (let index = 0; index < 15; index++) assert.ok(packed.includes(`/res/leveldata/${index}.level`));
+  assert.equal(hash(read('engine/DashClassic.data')), provenance.packageSha256);
+  assert.equal(hash(read('engine/DashClassic.wasm')), provenance.wasmSha256);
+  assert.match(read('engine/LICENSE.txt').toString(), /MIT License/);
+  assert.ok(!existsSync(new URL('engine/GDClone.data', root)));
+  assert.ok(!readdirSync(root).some(name => name.startsWith('reference-')));
+});
+
+test('every level song is present and the page has no outside player', () => {
+  for (let index = 0; index < 15; index++) {
+    const song = read(`music/${index}.ogg`);
+    assert.equal(song.subarray(0, 4).toString(), 'OggS', `song ${index + 1}`);
+  }
+  const page = read('index.html').toString() + read('launcher.js').toString();
+  assert.doesNotMatch(page, /youtube|iframe_api/i);
 });

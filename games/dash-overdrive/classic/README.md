@@ -1,15 +1,37 @@
-# Geometry Classics · 01–15
+# DASH / OVERDRIVE · CLASSIC
 
-- `/play/dash-overdrive/classic` (Next.js) 또는 `/play/dash-overdrive/classic/index.html`에서 실행합니다.
-- 1~15단계의 원작 맵 배치 데이터를 포함하고, 각 단계의 원곡은 YouTube IFrame 플레이어에서 재생합니다. 음악 파일은 프로젝트에 포함하지 않습니다.
-- 단계 선택 화면에서 맵을 고른 뒤 시작하세요. Space / 클릭 / 터치로 점프하고, 비행선 구간에서는 누르면 상승합니다. Esc로 일시정지하고 Space로 재개합니다.
-- 인터넷 연결이 필요합니다. 자동 재생이 차단되면 상단 원곡 버튼을 눌러 재생하거나 YouTube 출처 링크를 여세요.
-- 발판과 장애물은 추가 생성하지 않고, 원본 맵에 저장된 위치와 순서를 그대로 사용합니다.
-- 중력 반전 구간에는 천장 바닥도 나타나고, 큐브가 그 위에 착지할 수 있습니다.
-- 원본 엔진은 기본 큐브와 비행선을 지원합니다. 공 모드·UFO·속도 포털 등은 완전히 재현되지 않아 원작과 동작이 다를 수 있습니다. 충돌 판정, 장식, 숨겨진 요소도 차이가 있을 수 있습니다.
+`/play/dash-overdrive/classic` (Next.js) 또는 `/play/dash-overdrive/classic/index.html`에서 실행합니다.
 
-## 출처와 변경
+## 게임
 
-엔진: [VinkentLi/Bad-GD-Clone](https://github.com/VinkentLi/Bad-GD-Clone), MIT (Copyright 2023 Vincent Li). Emscripten 6.0.13으로 웹 빌드를 다시 만들었습니다. 배포 폴더 `engine/LICENSE.txt` 및 크레딧 페이지에 출처를 표시합니다. 충돌 판정·화면 크기·충돌 보정·레벨 수 변경과 빌드 기준은 `provenance.json`에 기록했습니다.
+- 시작 화면은 인혁이가 손으로 그린 설계대로 SKINS, PLAY, CREATE 세 버튼이고, 뒤에서 모든 스킨의 큐브가 지나갑니다.
+- 1~15단계는 모두 새로 만든 맵입니다. 큐브 점프, 점프 패드, 점프 링, 비행선, 중력 뒤집기가 나오고 뒤로 갈수록 어려워집니다.
+- 스킨 12가지 중 하나를 고르면 이 브라우저에 저장됩니다. 단계별 최고 기록도 저장됩니다.
+- CREATE(맵 만들기)에서 블록, 반 블록, 가시, 작은 가시, 점프 패드, 점프 링, 포털을 놓고 노래와 색을 고른 뒤 바로 해 볼 수 있습니다. 만든 맵은 이 브라우저에 저장됩니다.
+- Space / 클릭 / 터치로 점프하고, 비행선은 누르고 있으면 올라갑니다. Esc로 일시정지하고, 연습 모드에서는 Z로 체크포인트를 놓고 X로 지웁니다.
 
-레벨 배치의 원본 비교 자료는 `reference-1.txt.gz`부터 `reference-15.txt.gz`까지 보관하고, 정적 맵 파일은 `public/play/dash-overdrive/classic/maps/`에 있습니다. `provenance.json`에는 각 단계의 파일 해시, 엔진 패키지 해시, YouTube 원곡 링크가 기록돼 있습니다. 원본 데이터 출처는 [LevelData.plist](https://github.com/GuesterReal/Geometry-Dash-All-In-One/blob/main/Versions%20of%20Geometry%20Dash%20%28except%202.2%20and%20above%29/2nd%20manifest/Resources/LevelData.plist)입니다.
+## 폴더
+
+- `engine/`: 게임 엔진(C++, SDL2). Vincent Li의 [Bad-GD-Clone](https://github.com/VinkentLi/Bad-GD-Clone)(MIT)을 고쳐서 씁니다. 충돌 판정, 비행선과 중력 구간의 바닥과 천장, 시작 화면, 스킨 화면, 노래 내려받기, 기록 저장, 맵 검사용 함수를 바꾸거나 더했습니다.
+- `res/`: 엔진에 들어가는 그림(`gfx`), 효과음(`sfx`), 맵(`leveldata`), 글꼴(`fonts`). 모두 아래 스크립트로 만듭니다.
+- `art/art.mjs`: 그림을 SVG로 그려서 PNG로 만듭니다.
+- `music/music.mjs`: 노래와 효과음을 코드로 합성합니다. 단계 노래는 `public/play/dash-overdrive/classic/music/`에 저장되고, 단계를 시작할 때 내려받습니다.
+- `levels/generate.mjs`: 15단계 맵을 만듭니다. `levels/physics.mjs`는 엔진의 움직임과 충돌 코드를 그대로 옮긴 것이라, 맵을 만들 때 모든 점프 시점을 실제로 해 보고 충분히 여유가 있는 장애물만 남깁니다. 비행선 구간은 늦게 반응하거나 조금 빗나가게 조종해도 통과해야 남습니다.
+- `levels/verify.mjs`: 만든 맵을 처음부터 끝까지 60, 90, 120, 144Hz 화면 시간으로 다시 깨 봅니다. `--engine`을 붙이면 빌드한 WebAssembly 엔진에서도 확인합니다.
+- `build.sh`: emsdk로 엔진을 빌드해 `public/play/dash-overdrive/classic/engine/`에 넣습니다.
+
+## 다시 만드는 순서
+
+```bash
+node games/dash-overdrive/classic/art/art.mjs
+node games/dash-overdrive/classic/music/music.mjs
+node games/dash-overdrive/classic/levels/generate.mjs
+games/dash-overdrive/classic/build.sh
+node games/dash-overdrive/classic/levels/verify.mjs --engine
+```
+
+## 출처
+
+- 엔진: Bad-GD-Clone, MIT License, Copyright 2023 Vincent Li. 라이선스 전문은 `engine/LICENSE`와 배포 폴더의 `engine/LICENSE.txt`에 있습니다.
+- 글꼴: Lilita One, SIL Open Font License 1.1 (`res/fonts/OFL.txt`).
+- 맵, 그림, 노래, 효과음은 이 저장소의 스크립트로 새로 만들었습니다. 다른 게임의 맵, 그림, 음악 파일은 넣지 않습니다.
