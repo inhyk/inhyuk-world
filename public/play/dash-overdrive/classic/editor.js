@@ -18,6 +18,7 @@
     {id: 12, name: '큐브 포털'},
     {id: 11, name: '중력 뒤집기'},
     {id: 10, name: '중력 되돌리기'},
+    {id: 201, name: '코인'},
     {id: 0, name: '지우개'},
   ];
   const SONGS = ['Neon Start', 'Pixel Hop', 'Blue Ladder', 'Desert Wind', 'Iron Gate', 'Night Rail', 'Sky Rocket',
@@ -84,6 +85,7 @@
     12: r => 42 + 30 * r,
     11: r => 36.5 + 30 * r,
     10: r => 36.5 + 30 * r,
+    201: r => 30 * r + 15,
   };
 
   function levelText() {

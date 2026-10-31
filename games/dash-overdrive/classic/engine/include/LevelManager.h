@@ -35,6 +35,7 @@ public:
     SDL_FRect rotateHitbox(SDL_FRect hitbox, int rotations);
     void render() const;
     inline int getFurthestX() const { return m_FurthestX; }
+    inline int getCoinCount() const { return m_CoinCount; }
 
 private:
     Game *m_Game;
@@ -45,6 +46,7 @@ private:
     SDL_Color m_InitialBackgroundColor;
     SDL_Color m_InitialGroundColor;
     int m_FurthestX = 0;
+    int m_CoinCount = 0;
 
     void initBlocks();
     void clearObjects();

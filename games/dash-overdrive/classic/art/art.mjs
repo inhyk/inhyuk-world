@@ -695,6 +695,67 @@ function checkpoint() {
   return svg(100, 100, defs, body);
 }
 
+// ================================================================ collectibles
+
+const COIN_RIM = [[0, '#fff3a8'], [0.35, GOLD], [0.75, '#ffb000'], [1, '#e08600']];
+const COIN_FACE = [[0, '#ffb000'], [0.5, GOLD], [1, '#ffe98a']]; // reversed, so the face looks pressed in
+
+// round gold coin: navy outline, beveled rim, recessed face, acid-green star (proportions drawn at R = 48)
+function coinParts(c, R, { outline, glow = false, reeding = false, twinkle = false }) {
+  const k = R / 48;
+  const rim = R - outline;
+  const groove = 36 * k;
+  const face = groove - Math.max(2.5 * k, 2);
+  const mid = (rim + groove) / 2;
+  const dash = (2 * Math.PI * mid) / 40; // 40 edge notches, an exact fit so the ring has no seam
+  const sy = c + 1.5 * k;
+  const defs =
+    (glow ? rad('cglow', c, c, c, [[0.62, GOLD, 0.55], [0.82, GOLD, 0.18], [1, GOLD, 0]]) : '') +
+    lin('crim', c - rim, c - rim, c + rim, c + rim, COIN_RIM) +
+    lin('cface', c - face, c - face, c + face, c + face, COIN_FACE) +
+    lin('cstar', 0, sy - 21 * k, 0, sy + 17 * k, [[0, '#f0ffc4'], [0.5, ACID], [1, '#86d630']]);
+  const body =
+    (glow ? `<circle cx="${c}" cy="${c}" r="${c}" fill="url(#cglow)"/>` : '') +
+    `<circle cx="${c}" cy="${c}" r="${n2(R)}" fill="${NAVY}"/>` +
+    `<circle cx="${c}" cy="${c}" r="${n2(rim)}" fill="url(#crim)"/>` +
+    (reeding
+      ? `<circle cx="${c}" cy="${c}" r="${n2(mid)}" fill="none" stroke="${NAVY}" stroke-opacity=".2" stroke-width="${n2(2.6 * k)}" stroke-dasharray="${n2(dash * 0.38)} ${n2(dash * 0.62)}"/>`
+      : '') +
+    `<circle cx="${c}" cy="${c}" r="${n2(groove)}" fill="${NAVY}"/>` +
+    `<circle cx="${c}" cy="${c}" r="${n2(face)}" fill="url(#cface)"/>` +
+    `<path d="${ellipseArc(c, c, rim - 2.6 * k, rim - 2.6 * k, 195, 265)}" fill="none" stroke="${WHITE}" stroke-opacity=".9" stroke-width="${n2(Math.max(3 * k, 2))}" stroke-linecap="round"/>` +
+    `<path d="${ellipseArc(c, c, rim - 2.6 * k, rim - 2.6 * k, 15, 45)}" fill="none" stroke="${WHITE}" stroke-opacity=".45" stroke-width="${n2(Math.max(2.2 * k, 1.5))}" stroke-linecap="round"/>` +
+    `<path d="${starPath(c, sy, 21 * k, 9.6 * k)}" fill="url(#cstar)" stroke="${NAVY}" stroke-width="${n2(Math.max(4.5 * k, 2.6))}" stroke-linejoin="round"/>` +
+    `<circle cx="${n2(c - 4.5 * k)}" cy="${n2(sy - 5.5 * k)}" r="${n2(Math.max(2.8 * k, 1.6))}" fill="${WHITE}" fill-opacity=".9"/>` +
+    (twinkle ? `<path d="${sparkle(c + 33 * k, c - 33 * k, 9 * k)}" fill="${WHITE}"/>` : '');
+  return { defs, body };
+}
+
+// in-level coin, about 96 px across (hitbox 20,20,80,80)
+function coin() {
+  const { defs, body } = coinParts(60, 48, { outline: 4.5, glow: true, reeding: true, twinkle: true });
+  return svg(120, 120, defs, body);
+}
+
+// small collected-coin icon for menus
+function coinIcon() {
+  const { defs, body } = coinParts(32, 29.5, { outline: 3.6 });
+  return svg(64, 64, defs, body);
+}
+
+// empty slot with the coin's silhouette, for coins not collected yet
+function coinEmpty() {
+  return svg(
+    64,
+    64,
+    '',
+    `<circle cx="32" cy="32" r="29.5" fill="${NAVY}" fill-opacity=".45"/>` +
+      `<circle cx="32" cy="32" r="28" fill="none" stroke="${WHITE}" stroke-opacity=".62" stroke-width="3"/>` +
+      `<circle cx="32" cy="32" r="21.2" fill="none" stroke="${WHITE}" stroke-opacity=".22" stroke-width="2"/>` +
+      `<path d="${starPath(32, 32.9, 12.9, 5.9)}" fill="${WHITE}" fill-opacity=".08" stroke="${WHITE}" stroke-opacity=".32" stroke-width="2.2" stroke-linejoin="round"/>`,
+  );
+}
+
 // ================================================================ UI
 
 const FACES = {
@@ -1211,6 +1272,9 @@ const SPRITES = [
   { file: 'objects/20.png', w: 288, h: 116, svg: () => tufts(288, 116, 20, 6, DECO_SPARKLES[20]) },
   { file: 'objects/21.png', w: 168, h: 52, svg: () => tufts(168, 52, 21, 4, DECO_SPARKLES[21]) },
   { file: 'objects/41.png', w: 78, h: 278, svg: chainLantern },
+  { file: 'objects/201.png', w: 120, h: 120, svg: coin },
+  { file: 'coinIcon.png', w: 64, h: 64, svg: coinIcon },
+  { file: 'coinEmpty.png', w: 64, h: 64, svg: coinEmpty },
   ...SKINS.map((make, i) => ({ file: `skins/${i}.png`, w: 185, h: 185, svg: make })),
   { file: 'ship.png', w: 149, h: 88, svg: ship },
   { file: 'checkpoint.png', w: 100, h: 100, svg: checkpoint },

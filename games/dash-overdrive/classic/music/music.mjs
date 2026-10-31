@@ -12,7 +12,7 @@
 // Outputs (paths relative to the repo root):
 //   public/play/dash-overdrive/classic/music/0.ogg … 14.ogg      level songs (file index = level - 1)
 //   games/dash-overdrive/classic/res/sfx/menuLoop.ogg, practice.ogg   seamless loops
-//   games/dash-overdrive/classic/res/sfx/deathSound.ogg, levelComplete.ogg, playSound.ogg
+//   games/dash-overdrive/classic/res/sfx/deathSound.ogg, levelComplete.ogg, playSound.ogg, coin.ogg
 //   games/dash-overdrive/classic/music/timeline.json             song sections in beats (beat 0 = 0 s)
 //
 // Sync rules: beat 0 of the grid is sample 0, the tempo never changes, and every level song starts
@@ -685,6 +685,17 @@ function sfxComplete() {
   impact(mx, 0.84, { g: 0.35 });
   [103, 100, 96, 91, 88, 84, 79].forEach((m, k) => play(mx, BELL, [{ t: 0.95 + k * 0.11, d: 0.1, m }], { gain: 0.4 * (1 - k / 9), pan: k % 2 ? 0.5 : -0.5 }));
   return finishSfx(mx, { rt: 1.6, fade: 0.5, dt: 0.14, peak: -1.5 });
+}
+// Coin pickup: two quick rising chime notes (A5 then E6, a rising fifth) with a few high sparkle glints.
+function sfxCoin() {
+  const mx = makeMix(0.35);
+  const CHIME = { osc: [{ w: 'fm', ratio: 2, idx: 1.3 }, { w: 'sq', pw: 0.25, g: 0.3 }, { w: 'sin', oct: 1, g: 0.18 }], fmd: 0.07, fms: 0.12,
+    a: 0.001, d: 0.22, s: 0, r: 0.06, reset: true, flt: { t: 'lp', f: 9500, q: 0.7 }, gain: 0.22, rev: 0.2, dly: 0.15 };
+  play(mx, CHIME, [{ t: 0, d: 0.05, m: 81 }], { pan: -0.1 });
+  play(mx, CHIME, [{ t: 0.055, d: 0.2, m: 88 }], { pan: 0.1 });
+  [[0.085, 100, -0.5], [0.12, 105, 0.5], [0.155, 109, -0.3]].forEach(([t, m, pan], k) =>
+    play(mx, BELL, [{ t, d: 0.03, m }], { gain: 0.3 * (1 - k * 0.25), pan }));
+  return finishSfx(mx, { rt: 0.6, fade: 0.06, dt: 0.06, peak: -2 });
 }
 function sfxPlay() {
   const mx = makeMix(0.42);
@@ -1659,7 +1670,7 @@ function verify() {
     if (s.seam > s.p99) problems.push(`${name}.ogg: loop seam step ${s.seam.toFixed(4)} above p99 ${s.p99.toFixed(4)}`);
     rows.push(`${name}.ogg ${p.dur.toFixed(3)} s ${(p.size / 1024).toFixed(0)} KiB  I ${L.I.toFixed(1)} LUFS  TP ${L.TP.toFixed(1)} dBTP  seam |last-first| ${s.seam.toFixed(4)} (median step ${s.median.toFixed(4)}, p99 ${s.p99.toFixed(4)})`);
   }
-  for (const [name, d0] of [['deathSound', 0.5], ['levelComplete', 2.5], ['playSound', 0.4]]) {
+  for (const [name, d0] of [['deathSound', 0.5], ['levelComplete', 2.5], ['playSound', 0.4], ['coin', 0.35]]) {
     const file = path.join(OUT_SFX, name + '.ogg'), p = check(file, name + '.ogg', d => Math.abs(d - d0) <= 0.15);
     if (p) { const L = ebur(file); rows.push(`${name}.ogg ${p.dur.toFixed(3)} s ${(p.size / 1024).toFixed(0)} KiB  TP ${L.TP.toFixed(1)} dBTP`); }
   }
@@ -1702,6 +1713,7 @@ function writeSong(S) {
 }
 const JOBS = [
   { id: 'sfx', run: () => { writeSfx('deathSound', sfxDeath); writeSfx('levelComplete', sfxComplete); writeSfx('playSound', sfxPlay); } },
+  { id: 'coin', run: () => writeSfx('coin', sfxCoin) },
   { id: 'menu', run: () => writeMusic('menuLoop', renderLoop(MENU), path.join(OUT_SFX, 'menuLoop.ogg'), { I: -16 }) },
   { id: 'practice', run: () => writeMusic('practice', renderLoop(PRACTICE), path.join(OUT_SFX, 'practice.ogg'), { I: -17 }) },
   ...SONGS.map(S => ({ id: String(S.index), run: () => writeSong(S) })),

@@ -7,6 +7,7 @@ namespace Storage {
 constexpr int SKIN = 1;
 constexpr int BEST = 100;          // + level
 constexpr int BEST_PRACTICE = 200; // + level
+constexpr int COINS = 300;         // + level, one bit per coin
 
 int getInt(int key, int fallback);
 void setInt(int key, int value);

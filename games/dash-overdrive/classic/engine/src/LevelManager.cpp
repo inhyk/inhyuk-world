@@ -78,6 +78,11 @@ void LevelManager::initBlocks() {
         SDL_FRect { 0, 0, 120, 54 },
     };
     m_IDToObjectData[41].type = ObjectType::DECO;
+    // collectible coin, three in every built-in level
+    m_IDToObjectData[201] = {
+        ObjectType::COIN,
+        SDL_FRect { 20, 20, 80, 80 },
+    };
 }
 
 void LevelManager::reset(int level) {
@@ -165,6 +170,7 @@ void LevelManager::loadTextures() {
 
 void LevelManager::loadLevelData(int level) {
     m_FurthestX = 0;
+    m_CoinCount = 0;
     m_InitialBackgroundColor = { 40, 125, 255, 255 };
     m_InitialGroundColor = { 0, 102, 255, 255 };
     std::ifstream in("res/leveldata/" + std::to_string(level) + ".level");
@@ -183,6 +189,21 @@ void LevelManager::loadLevelData(int level) {
     for (const std::string &properties : objectProperties) {
         addObject(properties);
     }
+
+    // Number the first three coins from left to right.
+    std::vector<Object *> coins;
+    for (Object &object : m_Objects) {
+        if (object.getType() == ObjectType::COIN) {
+            coins.push_back(&object);
+        }
+    }
+    std::stable_sort(coins.begin(), coins.end(), [](const Object *a, const Object *b) {
+        return a->getPos().x < b->getPos().x;
+    });
+    for (std::size_t i = 0; i < coins.size() && i < 3; i++) {
+        coins[i]->setCoinIndex(static_cast<int>(i));
+    }
+    m_CoinCount = static_cast<int>(std::min<std::size_t>(coins.size(), 3));
 
     // The objects vector is complete now, so pointers into it stay valid.
     for (const Object &object : m_Objects) {
@@ -307,6 +328,10 @@ void LevelManager::render() const {
             gameObject.getPos().y + gameObject.getHeight() < m_Game->getCameraPosition().y ||
             gameObject.getPos().y > m_Game->getCameraPosition().y + m_Game->getHeight()) {
 
+            continue;
+        }
+        // a coin taken in this run disappears
+        if (gameObject.getCoinIndex() >= 0 && PlayingState::get().getPlayer().hasCoin(gameObject.getCoinIndex())) {
             continue;
         }
         gameObject.render();

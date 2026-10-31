@@ -829,6 +829,39 @@ class LevelBuilder {
     }
   }
 
+  // Three coins on the way through the level: at the top of a high jump early
+  // on, inside the first ship flight, and at the top of a jump near the end.
+  // They sit where the checked run already flies, so every coin can be taken.
+  placeCoins() {
+    const objects = this.allObjects().filter(o => !o.deco);
+    const header = levelHeader(this.spec.colors[0]);
+    const level = parseLevel(`${header};${objects.map(objectText).join(';')};`);
+    const player = newPlayer();
+    const frames = [];
+    let groundY = player.y;
+    for (const held of this.tracks[0].inputs) {
+      step(player, level, held === 1, 1);
+      if (player.grounded) groundY = player.y;
+      frames.push({x: player.x, y: player.y, vy: player.vy, ship: player.ship, gravity: player.gravity, grounded: player.grounded, height: Math.abs(player.y - groundY)});
+    }
+    const total = frames.length;
+    const tops = [];
+    for (let i = 1; i < total; i++) {
+      const before = frames[i - 1];
+      const now = frames[i];
+      if (!now.ship && !now.grounded && before.vy * now.gravity < 0 && now.vy * now.gravity >= 0) tops.push(i);
+    }
+    const highest = (from, to) => tops.filter(i => i >= from * total && i <= to * total).sort((a, b) => frames[b].height - frames[a].height)[0];
+    const flight = frames.map((f, i) => i).filter(i => frames[i].ship && i >= 0.3 * total && i <= 0.75 * total);
+    const picks = [highest(0.1, 0.38), flight.length ? flight[Math.floor(flight.length * 0.55)] : highest(0.4, 0.68), highest(0.7, 0.94)];
+    for (const i of picks) {
+      if (i === undefined) continue;
+      const centerX = frames[i].x + 60;
+      const centerY = frames[i].y + 60;
+      this.extra.push({id: 201, x: Math.round(centerX / 4 * 4) / 4, y: Math.round((FLOOR - centerY) / 4 * 4) / 4});
+    }
+  }
+
   decorate() {
     this.addPoles();
     // soft tufts on open floor, never under the cube's path
@@ -870,6 +903,7 @@ class LevelBuilder {
     this.addRunway(Math.max(this.column + 4, totalColumns));
     // the level ends at the last object: a trigger marks the end column
     this.extra.push(make.trigger(this.column, 29, this.spec.colors[colorIndex % this.spec.colors.length][0], 0.5));
+    this.placeCoins();
     this.decorate();
     return this;
   }
@@ -967,6 +1001,7 @@ for (let index = 0; index < LEVELS.length; index++) {
     ships: builder.pieces.filter(p => p.name === 'ship').length,
     upside: builder.pieces.filter(p => p.name === 'upsidePortal').length,
     narrowestWindow: builder.minMargin === Infinity ? null : builder.minMargin * 2 + 1,
+    coins: parsed.objects.filter(o => o.id === 201).length,
     shipPaths: builder.shipPaths || [],
     inputs: Object.fromEntries(builder.tracks.map(track => [track.name, runLength(track.inputs)])),
   };

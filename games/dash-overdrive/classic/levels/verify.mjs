@@ -33,13 +33,24 @@ function frameTimes(hz, count) {
   return out;
 }
 
+// Coins the player box touched on the way.
+function touchCoins(level, player, taken) {
+  for (const coin of level.objects) {
+    if (coin.type !== 'coin' || taken.has(coin.index)) continue;
+    const h = coin.hitbox;
+    if (player.x < h.x + h.w && player.x + 120 > h.x && player.y < h.y + h.h && player.y + 120 > h.y) taken.add(coin.index);
+  }
+}
+
 function replay(level, inputs, dts) {
   const player = newPlayer();
+  const taken = new Set();
   for (let i = 0; i < inputs.length; i++) {
     const status = step(player, level, inputs[i] === 1, Array.isArray(dts) ? dts[i] : dts);
-    if (status) return {status, x: player.x, steps: i + 1};
+    touchCoins(level, player, taken);
+    if (status) return {status, x: player.x, steps: i + 1, coins: taken.size};
   }
-  return {status: 0, x: player.x};
+  return {status: 0, x: player.x, coins: taken.size};
 }
 
 // Plays the level's taps and flies its ship parts with the bot, like a player would.
@@ -78,6 +89,10 @@ for (const [number, entry] of Object.entries(report)) {
     const result = replay(level, inputs, dts);
     lines.push(`${name} rec ${result.status === 2 ? 'ok' : 'FAIL at tile ' + (result.x / 120).toFixed(1)}`);
     if (result.status !== 2) failures++;
+    if (result.coins !== 3) {
+      lines.push(`only ${result.coins} coins`);
+      failures++;
+    }
     if (engine && (name === '60' || name === '120 uneven')) {
       const wasm = await engine.trajectory(text, inputs, dts);
       lines.push(`engine ${wasm.status === 2 ? 'ok' : 'FAIL at tile ' + (wasm.frames.at(-1)[0] / 120).toFixed(1)}`);

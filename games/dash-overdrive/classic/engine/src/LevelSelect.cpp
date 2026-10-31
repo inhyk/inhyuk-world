@@ -12,6 +12,8 @@ void LevelSelect::init(Game *game) {
     GameState::init(game);
     m_Type = StateType::LEVEL_SELECT;
     m_Renderer = m_Game->getRenderer();
+    m_CoinTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinIcon.png");
+    m_CoinEmptyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinEmpty.png");
     m_CornerTexture = IMG_LoadTexture(m_Renderer, "res/gfx/selectCorner.png");
     if (m_CornerTexture == nullptr) {
         std::cerr << "Failed to load selectCorner.png!" << SDL_GetError() << std::endl;
@@ -93,6 +95,7 @@ void LevelSelect::init(Game *game) {
     for (int i = 0; i < Config::SLOT_COUNT; i++) {
         m_BestLevelPercentages[i] = Storage::getInt(Storage::BEST + i, 0);
         m_BestPracticePercentages[i] = Storage::getInt(Storage::BEST_PRACTICE + i, 0);
+        m_Coins[i] = Storage::getInt(Storage::COINS + i, 0);
     }
     updateBestPercentTexture();
     updateBestPracticePercentTexture();
@@ -101,6 +104,8 @@ void LevelSelect::init(Game *game) {
 
 void LevelSelect::destroy() {
     SDL_DestroyTexture(m_CornerTexture);
+    SDL_DestroyTexture(m_CoinTexture);
+    SDL_DestroyTexture(m_CoinEmptyTexture);
     SDL_DestroyTexture(m_TopTexture);
     SDL_DestroyTexture(m_LevelArrowTexture);
     SDL_DestroyTexture(m_TitleArrowTexture);
@@ -195,6 +200,16 @@ void LevelSelect::render() const {
     const int bestPercentY = m_EnterLevel.getY() + m_EnterLevel.getH() + MARGIN;
     Text::renderTexture(m_Renderer, m_BestPercentTexture, m_Game->getWidth()/2, bestPercentY, true, false, 0.5f);
     Text::renderTexture(m_Renderer, m_BestPracticePercentTexture, m_Game->getWidth()/2, bestPercentY + 2*MARGIN, true, false, 0.5f);
+    // the three coins of a built-in level
+    if (m_LevelSelected < Config::LEVEL_COUNT) {
+        constexpr int COIN_SIZE = 72;
+        constexpr int COIN_GAP = 22;
+        const int left = m_Game->getWidth()/2 - (3*COIN_SIZE + 2*COIN_GAP)/2;
+        for (int i = 0; i < 3; i++) {
+            const SDL_Rect coin = { left + i*(COIN_SIZE + COIN_GAP), bestPercentY + 4*MARGIN, COIN_SIZE, COIN_SIZE };
+            SDL_RenderCopy(m_Renderer, (m_Coins[m_LevelSelected] >> i) & 1 ? m_CoinTexture : m_CoinEmptyTexture, NULL, &coin);
+        }
+    }
 }
 
 int LevelSelect::getBestPercentage() const {
@@ -205,6 +220,15 @@ void LevelSelect::setBestPercentage(int value) {
     m_BestLevelPercentages[m_LevelSelected] = value;
     Storage::setInt(Storage::BEST + m_LevelSelected, value);
     updateBestPercentTexture();
+}
+
+int LevelSelect::getSavedCoins() const {
+    return m_Coins[m_LevelSelected];
+}
+
+void LevelSelect::saveCoins(int coins) {
+    m_Coins[m_LevelSelected] |= coins;
+    Storage::setInt(Storage::COINS + m_LevelSelected, m_Coins[m_LevelSelected]);
 }
 
 int LevelSelect::getBestPracticePercentage() const {

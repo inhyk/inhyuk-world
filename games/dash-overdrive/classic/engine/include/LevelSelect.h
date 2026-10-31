@@ -23,6 +23,9 @@ public:
     int getBestPercentage() const;
     void setBestPercentage(int value);
     int getBestPracticePercentage() const;
+    // Coins kept by finishing the level, one bit per coin.
+    int getSavedCoins() const;
+    void saveCoins(int coins);
     void setBestPracticePercentage(int value);
     inline SDL_Texture *getLevelNameTexture() const { return m_LevelNameTexture; }
     inline static LevelSelect &get() { return m_LevelSelect; }
@@ -48,6 +51,8 @@ private:
     SDL_Rect m_RightCornerRect;
     SDL_Rect m_TopRect;
     SDL_Texture *m_CornerTexture;
+    SDL_Texture *m_CoinTexture;
+    SDL_Texture *m_CoinEmptyTexture;
     SDL_Texture *m_TopTexture;
     SDL_Texture *m_LevelArrowTexture;
     SDL_Texture *m_TitleArrowTexture;
@@ -58,6 +63,7 @@ private:
     Mix_Chunk *m_PlaySound;
     std::array<int, Config::SLOT_COUNT> m_BestLevelPercentages;
     std::array<int, Config::SLOT_COUNT> m_BestPracticePercentages;
+    std::array<int, Config::SLOT_COUNT> m_Coins;
     bool m_IsMouseHeld;
     bool m_IsEscapeHeld;
     bool m_IsSpaceHeld;

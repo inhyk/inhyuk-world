@@ -15,7 +15,8 @@ enum class ObjectType {
     NORMAL_PORTAL,
     DECO,
     BG_TRIGGER,
-    G_TRIGGER
+    G_TRIGGER,
+    COIN
 };
 
 class Object {
@@ -29,6 +30,9 @@ public:
     void render() const;
     // Light poles (ids 15-17) flash a little star on their ball now and then.
     inline void setSparkle(bool sparkle) { m_Sparkle = sparkle; }
+    // Coins are numbered 0-2 from left to right; other objects have -1.
+    inline void setCoinIndex(int index) { m_CoinIndex = index; }
+    inline int getCoinIndex() const { return m_CoinIndex; }
 
 protected:
     Game *m_Game;
@@ -43,6 +47,7 @@ protected:
     bool m_FlipY;
     SDL_Texture *m_ObjectTexture;
     bool m_Sparkle = false;
+    int m_CoinIndex = -1;
 
     void renderSparkle(int x, int y) const;
 };

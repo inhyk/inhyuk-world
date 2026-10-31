@@ -18,6 +18,7 @@ test('fifteen built levels use only objects the engine knows', () => {
     const text = readFileSync(new URL(`leveldata/${index}.level`, res), 'utf8');
     const ids = text.split(';').slice(1).filter(Boolean).map(row => Number(row.split(',')[1]));
     assert.ok(ids.length > 100, `level ${index + 1} has objects`);
+    assert.equal(ids.filter(id => id === 201).length, 3, `level ${index + 1} has three coins`);
     for (const id of ids) assert.ok(OBJECTS[id], `level ${index + 1} object ${id}`);
     const level = parseLevel(text);
     // the end of the level lines up with its song

@@ -51,6 +51,8 @@ private:
     SDL_Texture *m_LevelPercentTexture;
     SDL_Texture *m_LevelCompleteTextTexture;
     SDL_Texture *m_LoadingTexture;
+    SDL_Texture *m_CoinTexture;
+    SDL_Texture *m_CoinEmptyTexture;
     Mix_Chunk *m_LevelCompleteSound;
     Mix_Music *m_PracticeMusic;
     Mix_Music *m_Song = nullptr;
@@ -100,6 +102,7 @@ private:
     void startSong();
     void renderPause() const;
     void renderEndBlocks() const;
+    void renderCoins() const;
     void renderLevelCompleteMenu() const;
     void pause();
     void resume();

@@ -62,6 +62,8 @@ void PlayingState::init(Game *game) {
     m_LevelPercentTexture = Text::createTexture(m_Renderer, "0.00%");
     m_LevelCompleteTextTexture = Text::createTexture(m_Renderer, "Level Complete!");
     m_LoadingTexture = Text::createTexture(m_Renderer, "Loading music...");
+    m_CoinTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinIcon.png");
+    m_CoinEmptyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinEmpty.png");
     m_LevelCompleteSound = Mix_LoadWAV("res/sfx/levelComplete.ogg");
     if (m_LevelCompleteSound == nullptr) {
         std::cerr << "Failed to load levelComplete.ogg! " << SDL_GetError() << '\n';
@@ -135,6 +137,8 @@ void PlayingState::destroy() {
     SDL_DestroyTexture(m_LevelPercentTexture);
     SDL_DestroyTexture(m_LevelCompleteTextTexture);
     SDL_DestroyTexture(m_LoadingTexture);
+    SDL_DestroyTexture(m_CoinTexture);
+    SDL_DestroyTexture(m_CoinEmptyTexture);
     Mix_FreeChunk(m_LevelCompleteSound);
     Mix_FreeMusic(m_PracticeMusic);
 }
@@ -367,6 +371,8 @@ void PlayingState::updateEndLevel(float deltaTime) {
             LevelSelect::get().setBestPracticePercentage(100);
         } else {
             LevelSelect::get().setBestPercentage(100);
+            // coins only count when the level is finished without practice
+            LevelSelect::get().saveCoins(m_Player.getCoins());
         }
     }
 }
@@ -411,6 +417,7 @@ void PlayingState::render() const {
         Text::renderTexture(m_Renderer, m_NewBestTexture, m_Game->getWidth()/2, m_Game->getHeight()/2, true, true);
     }
     Text::renderTexture(m_Renderer, m_LevelPercentTexture, m_Game->getWidth()/2, 10, true, false, 0.5f);
+    renderCoins();
     if (!m_IsTimerFinished && m_Song == nullptr && m_LevelBeginTimer <= 0) {
         Text::renderTexture(m_Renderer, m_LoadingTexture, m_Game->getWidth()/2, m_Game->getHeight()/3, true, true, 0.6f);
     }
@@ -451,6 +458,25 @@ void PlayingState::renderEndBlocks() const {
     for (int i = 0; i < BLOCK_HEIGHT_LIMIT; i += Config::TILE_SIZE) {
         SDL_RenderCopyEx(m_Renderer, m_LevelEndBlockTexture, NULL, &dst, -90.0, NULL, SDL_FLIP_NONE);
         dst.y += Config::TILE_SIZE;
+    }
+}
+
+void PlayingState::renderCoins() const {
+    // top left: coins of this run, faint ones were kept from earlier runs
+    const int count = m_LevelManager.getCoinCount();
+    const int saved = m_Level < Config::LEVEL_COUNT ? LevelSelect::get().getSavedCoins() : 0;
+    for (int i = 0; i < count; i++) {
+        const SDL_Rect coin = { 24 + i * 70, 20, 60, 60 };
+        if (m_Player.hasCoin(i)) {
+            SDL_SetTextureAlphaMod(m_CoinTexture, 255);
+            SDL_RenderCopy(m_Renderer, m_CoinTexture, NULL, &coin);
+        } else if ((saved >> i) & 1) {
+            SDL_SetTextureAlphaMod(m_CoinTexture, 110);
+            SDL_RenderCopy(m_Renderer, m_CoinTexture, NULL, &coin);
+            SDL_SetTextureAlphaMod(m_CoinTexture, 255);
+        } else {
+            SDL_RenderCopy(m_Renderer, m_CoinEmptyTexture, NULL, &coin);
+        }
     }
 }
 

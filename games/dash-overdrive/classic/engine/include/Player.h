@@ -47,6 +47,7 @@ struct PlayerSimState {
     Gamemode gamemode;
     std::pair<float, float> bounds;
     std::vector<int> pressedOrbs;
+    int coins;
 };
 
 class Game;
@@ -82,6 +83,8 @@ public:
     // Ship sections and upside-down cube sections have a visible floor and ceiling.
     inline bool hasBounds() const { return m_Gamemode == Gamemode::SHIP || m_HasBounds; }
     inline std::pair<float, float> getBounds() const { return m_Bounds; }
+    inline bool hasCoin(int index) const { return (m_Coins >> index) & 1; }
+    inline int getCoins() const { return m_Coins; }
 
 private:
     Game *m_Game;
@@ -91,6 +94,9 @@ private:
     int m_ShipHeight;
     SDL_Texture *m_CheckpointTexture;
     Mix_Chunk *m_DeathSound;
+    Mix_Chunk *m_CoinSound;
+    // coins picked up in this run, one bit per coin
+    int m_Coins = 0;
     SDL_FPoint m_Position;
     SDL_FPoint m_PreviousPosition;
     float m_XVelocity = DEFAULT_X_VELOCITY;

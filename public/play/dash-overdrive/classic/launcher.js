@@ -36,7 +36,10 @@ function storedNumber(key) {
 
 function bestText(index) {
   const best = storedNumber(100 + index);
-  return best >= 100 ? '클리어! 100%' : best > 0 ? `최고 기록 ${best}%` : '아직 도전 전';
+  const coinBits = storedNumber(300 + index);
+  const coins = (coinBits & 1) + ((coinBits >> 1) & 1) + ((coinBits >> 2) & 1);
+  const record = best >= 100 ? '클리어! 100%' : best > 0 ? `최고 기록 ${best}%` : '아직 도전 전';
+  return `${record} · 코인 ${coins}/3`;
 }
 
 function buildChoices() {

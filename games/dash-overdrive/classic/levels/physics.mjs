@@ -47,6 +47,8 @@ export const OBJECTS = {
   39: {type: 'hazard', hitbox: [48, f(15.8), 24, f(22.4)], w: 120, h: 54},
   40: {type: 'block', hitbox: [0, 0, 120, 54], w: 120, h: 54},
   41: {type: 'deco', w: 78, h: 278},
+  // coins are picked up but never change the movement
+  201: {type: 'coin', hitbox: [20, 20, 80, 80], w: 120, h: 120},
 };
 
 function rotateHitbox([x, y, w, h], rotations) {

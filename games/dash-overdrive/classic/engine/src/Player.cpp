@@ -55,6 +55,10 @@ void Player::init(Game *game) {
     if (m_DeathSound == nullptr) {
         std::cerr << "Failed to load deathSound.ogg! " << SDL_GetError() << std::endl;
     }
+    m_CoinSound = Mix_LoadWAV("res/sfx/coin.ogg");
+    if (m_CoinSound == nullptr) {
+        std::cerr << "Failed to load coin.ogg! " << SDL_GetError() << std::endl;
+    }
 }
 
 void Player::reset() {
@@ -74,6 +78,7 @@ void Player::reset() {
     m_Gamemode = Gamemode::CUBE;
     m_PressedOrbs.clear();
     m_Checkpoints.clear();
+    m_Coins = 0;
     for (Trigger &trigger : PlayingState::get().getTriggers()) {
         trigger.reset();
     }
@@ -83,6 +88,7 @@ Player::~Player() {
     SDL_DestroyTexture(m_ShipTexture);
     SDL_DestroyTexture(m_CheckpointTexture);
     Mix_FreeChunk(m_DeathSound);
+    Mix_FreeChunk(m_CoinSound);
 }
 
 void Player::update(float deltaTime) {
@@ -163,7 +169,8 @@ PlayerSimState Player::saveSimState() const {
         m_GravityMultiplier,
         m_Gamemode,
         m_Bounds,
-        {}
+        {},
+        m_Coins
     };
     const LevelManager &level = PlayingState::get().getLevel();
     for (const Object *orb : m_PressedOrbs) {
@@ -187,6 +194,7 @@ void Player::restoreSimState(const PlayerSimState &state) {
     m_GravityMultiplier = state.gravityMultiplier;
     m_Gamemode = state.gamemode;
     m_Bounds = state.bounds;
+    m_Coins = state.coins;
     m_PressedOrbs.clear();
     const LevelManager &level = PlayingState::get().getLevel();
     for (int index : state.pressedOrbs) {
@@ -231,6 +239,7 @@ void Player::respawn() {
     Background &background = m_Game->getBackground();
     Ground &ground = m_Game->getGround();
     if (!PlayingState::get().isInPractice() || m_Checkpoints.empty()) {
+        m_Coins = 0;
         m_Hitbox.x = -TILE;
         m_Hitbox.y = FLOOR_Y - TILE;
         m_Game->setCameraPosition({0, 0});
@@ -382,6 +391,15 @@ void Player::collideWithObject(const Object &object) {
         }
         break;
     }
+    case ObjectType::COIN:
+        // Coins never change the movement; the level checker relies on that.
+        if (object.getCoinIndex() >= 0 && !hasCoin(object.getCoinIndex())) {
+            m_Coins |= 1 << object.getCoinIndex();
+            if (!m_SimInput) {
+                Mix_PlayChannel(-1, m_CoinSound, 0);
+            }
+        }
+        break;
     case ObjectType::UPSIDE_DOWN_PORTAL:
         if (m_GravityMultiplier == -1) {
             break;

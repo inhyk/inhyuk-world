@@ -18,81 +18,81 @@
   "levels": "games/dash-overdrive/classic/levels/generate.mjs",
   "check": "games/dash-overdrive/classic/levels/verify.mjs"
  },
- "packageBytes": 2855070,
- "packageSha256": "71b6f7d7d92a0071925c40d07a8afbcbb63aa4e94316795b35cfb27b43a8836f",
- "wasmSha256": "c5a9f2c752e99bc4e60f9ad8e846c6f99fa2919fb785cc17460ce1f4861122fa",
+ "packageBytes": 2897408,
+ "packageSha256": "25c54b9eb340559ffc264203a0c5287cb02cf9e6a8850a547ba5a1cc39a46564",
+ "wasmSha256": "f0f4f955d84ca9a201790cb91e98b6041f5e54a1daffae1c956637e5f07429e1",
  "levels": [
   {
    "level": 1,
    "name": "Neon Start",
    "bpm": 124.632,
    "songSeconds": 64,
-   "objects": 1048,
-   "sha256": "1c1b6c5a5628c4c01f9379c108c259b92c1f2a3a2f7c3d647b5a5d9533d855cb"
+   "objects": 1051,
+   "sha256": "dda5ad02bf82d6ce39b9cec186e5fc8adcf459ed347bdef0e6e7bba01e71cc6d"
   },
   {
    "level": 2,
    "name": "Pixel Hop",
    "bpm": 138.48,
    "songSeconds": 68,
-   "objects": 1138,
-   "sha256": "67db7512d1da8241e3a0096fdec179001d00640ee22eb33b3d3632585042c431"
+   "objects": 1141,
+   "sha256": "3630417c8887098cb7be4908adb727cc0c4b08063cf2a69a082fedbb21840b15"
   },
   {
    "level": 3,
    "name": "Blue Ladder",
    "bpm": 124.632,
    "songSeconds": 72,
-   "objects": 1004,
-   "sha256": "d1c948d7dcaf89e717e4360b084e2aaa2b8187584771e01f4de5f4c02a0fb9ab"
+   "objects": 1007,
+   "sha256": "a91544a3d9b4a4d48e7fbdd045a866407e32d0515b438844f727e47b16b30d30"
   },
   {
    "level": 4,
    "name": "Desert Wind",
    "bpm": 138.48,
    "songSeconds": 74,
-   "objects": 1481,
-   "sha256": "2485d1137591ccefc9b35362e2e7b26e44de054e5a1b647d6ee3c7326319a08e"
+   "objects": 1484,
+   "sha256": "d288a2cc8e7c6ee5a6dc3032712427b1e0f5f5b11bf5ffc82f363bf0c7968367"
   },
   {
    "level": 5,
    "name": "Iron Gate",
    "bpm": 155.79,
    "songSeconds": 78,
-   "objects": 1766,
-   "sha256": "32faf99e07d75c2450263bd42eeaa06076e9df62fcb32cf7d0f6c78057352c88"
+   "objects": 1769,
+   "sha256": "3d1402623c5c6cb3e21bb2ce4b5953a6badc1c5751839ba107c40f33b0bbe0c1"
   },
   {
    "level": 6,
    "name": "Night Rail",
    "bpm": 124.632,
    "songSeconds": 80,
-   "objects": 2050,
-   "sha256": "e1799fbe81966fe47102d373a462d393cd2ccd1f4ad965ced6a1c56326837219"
+   "objects": 2053,
+   "sha256": "8b52d91f20f64da175cc84e09e0d680e57fa35916befe9bff8e8ca043285bb61"
   },
   {
    "level": 7,
    "name": "Sky Rocket",
    "bpm": 155.79,
    "songSeconds": 82,
-   "objects": 1680,
-   "sha256": "fb408ed3fbbc2ac85eb9a18582aa07c639582bdf6a58d92e3688c0796939d3cd"
+   "objects": 1683,
+   "sha256": "73c2daaccc5468e58266d3e134b8cb7d1a572c6ffc20d7ce04572277d9b60a8f"
   },
   {
    "level": 8,
    "name": "Crystal Cave",
    "bpm": 138.48,
    "songSeconds": 84,
-   "objects": 1542,
-   "sha256": "b80cac4e2528cb80b13c4ad069ad220aa70b3674931c1ee78da29c95936c02c5"
+   "objects": 1547,
+   "sha256": "ebee663b64bc293144fe2179cc0bbd2cfb24aa85c9cd47b0d742170422ed71e1"
   },
   {
    "level": 9,
    "name": "Thunder Road",
    "bpm": 178.05,
    "songSeconds": 86,
-   "objects": 1493,
-   "sha256": "a0d4bdf04cad5bc55feef4dc3c9d690703515e1a8b582565f38e77102e081fee"
+   "objects": 1496,
+   "sha256": "59c52b85dda0c02fb9800199aa61baeb9e42fbffb6f2a0b6aec005dc48930c2c"
   },
   {
    "level": 10,
@@ -100,47 +100,47 @@
    "bpm": 155.79,
    "songSeconds": 88,
    "objects": 1741,
-   "sha256": "04a7f0d8721eacb7c18c715fc5688cd11eb687e606749caeb7b103972e8ca171"
+   "sha256": "e17021b9e4b48ecaf65ccd82105b1613a5c88e2e1531902c6eb0a22c2857d8ec"
   },
   {
    "level": 11,
    "name": "Star Factory",
    "bpm": 138.48,
    "songSeconds": 90,
-   "objects": 2159,
-   "sha256": "bacc8fce42a06a3a37818c641c95b953de925b3cd4c3878016874602d427b84b"
+   "objects": 2162,
+   "sha256": "63e9cae13a4a443cad89d580c168db3873375326f9f092c342ea4f8e710e4610"
   },
   {
    "level": 12,
    "name": "Frost Bite",
    "bpm": 178.05,
    "songSeconds": 92,
-   "objects": 2002,
-   "sha256": "a63fd3655b0e655306e6cdc0e879c0e8d6a36fcc20cc1de08ecb3328fe472661"
+   "objects": 2005,
+   "sha256": "0ce437b7aa732f7a5bf1bd8b9adf6fc50d7b8be22bec6cb0499026e5084972b0"
   },
   {
    "level": 13,
    "name": "Laser Maze",
    "bpm": 155.79,
    "songSeconds": 94,
-   "objects": 1752,
-   "sha256": "7384d82c9a977e463acd7ff5e846d50fe6a702c981f662a0eab42c66c09d5feb"
+   "objects": 1755,
+   "sha256": "54dd026b93764397d29c84302754a42c519cf8f4e0800d814b63dc5d522dacfd"
   },
   {
    "level": 14,
    "name": "Black Hole",
    "bpm": 138.48,
    "songSeconds": 96,
-   "objects": 2361,
-   "sha256": "5629d214f82d54b85da5c370569dad26d9b762f8433c72c8f6dde7555dbcb454"
+   "objects": 2359,
+   "sha256": "779c675a7ac34efa0804ec16ff185e71666e7fdf83d6d46be334f364b228daea"
   },
   {
    "level": 15,
    "name": "Overdrive",
    "bpm": 178.05,
    "songSeconds": 100,
-   "objects": 2079,
-   "sha256": "b53417de43358c7e7c4756f7bf8bbc3ce32fc75f3f2a7454a5111603778f12d3"
+   "objects": 2082,
+   "sha256": "9ec5b7ceb4a7928aab2f15de6c7c6c8afd03f9c41ab98998d15f4155d2f7f34d"
   }
  ]
 }
