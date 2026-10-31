@@ -64,6 +64,15 @@ CLASSIC_EXPORT void classic_start_level(int level) {
     game.pushState(PlayingState::get());
 }
 
+CLASSIC_EXPORT void classic_set_creator(int on) {
+    game.setCreatorMode(on != 0);
+    LevelSelect::get().selectLevel(LevelSelect::get().getLevelSelected());
+}
+
+CLASSIC_EXPORT int classic_creator() {
+    return game.isCreatorMode() ? 1 : 0;
+}
+
 CLASSIC_EXPORT int classic_total_coins() {
     return LevelSelect::get().getTotalCoins();
 }

@@ -100,6 +100,7 @@ void Game::quit() {
     for (SDL_Texture *skin : m_Skins) {
         SDL_DestroyTexture(skin);
     }
+    SDL_DestroyTexture(m_CreatorTexture);
     SDL_DestroyRenderer(m_Renderer);
     SDL_DestroyWindow(m_Window);
     Mix_FreeMusic(m_MenuLoop);
@@ -124,6 +125,9 @@ void Game::render() {
         m_Ground.render();
     }
     m_GameStates.top()->render();
+    if (m_CreatorMode) {
+        Text::renderTexture(m_Renderer, m_CreatorTexture, 24, m_Height - 70, false, false, 0.4f);
+    }
     SDL_RenderPresent(m_Renderer);
 }
 
@@ -205,6 +209,13 @@ void Game::popState() {
     }
     m_GameStates.top()->exit();
     m_GameStates.pop();
+}
+
+void Game::setCreatorMode(bool on) {
+    m_CreatorMode = on;
+    if (m_CreatorTexture == nullptr) {
+        m_CreatorTexture = Text::createTexture(m_Renderer, "CREATOR MODE");
+    }
 }
 
 void Game::popToRoot() {

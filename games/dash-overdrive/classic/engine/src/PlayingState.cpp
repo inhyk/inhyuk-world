@@ -367,7 +367,9 @@ void PlayingState::updateEndLevel(float deltaTime) {
         m_ShouldEndLevel = false;
         m_ExitButton.setPosition(m_Game->getWidth()/2, m_Game->getHeight()/2, true, true);
         Mix_PlayChannel(-1, m_LevelCompleteSound, 0);
-        if (m_IsInPractice) {
+        if (m_Game->isCreatorMode()) {
+            // creator runs are not records
+        } else if (m_IsInPractice) {
             LevelSelect::get().setBestPracticePercentage(100);
         } else {
             LevelSelect::get().setBestPercentage(100);
@@ -385,6 +387,9 @@ void PlayingState::updateLevelComplete(bool isEscapeReleased) {
 }
 
 void PlayingState::updateNewBest() {
+    if (m_Game->isCreatorMode()) {
+        return;
+    }
     LevelSelect &levelSelect = LevelSelect::get();
     if (m_IsInPractice) {
         int currentBest = levelSelect.getBestPracticePercentage();

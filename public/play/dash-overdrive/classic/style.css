@@ -67,6 +67,8 @@ h1 span{color:var(--acid)}
 .editor-confirm p{margin:0 0 16px;font-size:16px}
 .editor-confirm button{margin:0 4px}
 
+.toast{position:fixed;top:76px;left:50%;transform:translateX(-50%);z-index:8;background:#14200a;color:#bfff59;border:1px solid #bfff59;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;box-shadow:0 10px 30px #0008;max-width:92vw;text-align:center}
+body.creator header strong span::after{content:' · 제작자 모드';color:#ffd23d}
 footer{position:fixed;bottom:0;left:0;right:0;min-height:54px;display:flex;align-items:center;justify-content:space-between;padding:10px 4%;gap:14px;background:var(--navy);font-size:10px;color:var(--muted);line-height:1.7}
 kbd{border:1px solid #ffffff30;border-radius:3px;padding:2px 4px;font-size:9px}
 .rotate{display:none}

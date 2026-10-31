@@ -47,9 +47,37 @@ function totalCoins() {
   return total;
 }
 
+// Creator mode: type 1 3 5 7 0 (the designer's code) to turn it on or off.
+// Every level opens, nothing hurts, hitboxes show and nothing is saved.
+const CREATOR_CODE = '13570';
+let creator = false;
+let typed = '';
+const toast = document.getElementById('toast');
+let toastTimer = 0;
+function showToast(text) {
+  toast.textContent = text;
+  toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.hidden = true;
+  }, 2600);
+}
+window.addEventListener('keydown', event => {
+  if (!/^[0-9]$/.test(event.key)) return;
+  typed = (typed + event.key).slice(-CREATOR_CODE.length);
+  if (typed !== CREATOR_CODE || !ready) return;
+  typed = '';
+  creator = !creator;
+  Module._classic_set_creator(creator ? 1 : 0);
+  document.body.classList.toggle('creator', creator);
+  showToast(creator ? '🛠️ 제작자 모드 켜짐: 모든 단계 열림 · 무적 · 히트박스 보기 (기록은 저장 안 돼)' : '제작자 모드 꺼짐');
+  if (!launcher.hidden) buildChoices();
+  updateChoice();
+}, true);
+
 // Coins still needed to open a level; 0 when it is open.
 function coinsNeeded(index) {
-  if (index < SECRET_FIRST) return 0;
+  if (creator || index < SECRET_FIRST) return 0;
   return Math.max(0, SECRET_COINS[index - SECRET_FIRST] - totalCoins());
 }
 
@@ -272,6 +300,7 @@ setInterval(() => {
 
 window.render_classic_status = () => JSON.stringify({
   ready,
+  creator,
   state: ready ? Module._classic_state() : -1,
   level: ready ? Module._classic_level() + 1 : selected,
   percent: ready ? Module._classic_percent() / 100 : 0,

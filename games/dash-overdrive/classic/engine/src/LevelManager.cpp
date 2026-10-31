@@ -335,5 +335,22 @@ void LevelManager::render() const {
             continue;
         }
         gameObject.render();
+        if (m_Game->isCreatorMode() && gameObject.getHitbox().has_value()) {
+            const SDL_FRect box = gameObject.getHitbox().value();
+            const SDL_FRect drawn = { box.x - m_Game->getCameraPosition().x, box.y - m_Game->getCameraPosition().y, box.w, box.h };
+            SDL_Renderer *renderer = m_Game->getRenderer();
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+            switch (gameObject.getType()) {
+            case ObjectType::HAZARD: SDL_SetRenderDrawColor(renderer, 255, 30, 30, 120); break;
+            case ObjectType::BLOCK: SDL_SetRenderDrawColor(renderer, 40, 150, 255, 60); break;
+            default: SDL_SetRenderDrawColor(renderer, 90, 255, 120, 70); break;
+            }
+            SDL_RenderFillRectF(renderer, &drawn);
+            // a 3 pixel outline so it shows at any screen size
+            for (int i = 0; i < 3; i++) {
+                const SDL_FRect edge = { drawn.x + i, drawn.y + i, drawn.w - 2 * i, drawn.h - 2 * i };
+                SDL_RenderDrawRectF(renderer, &edge);
+            }
+        }
     }
 }

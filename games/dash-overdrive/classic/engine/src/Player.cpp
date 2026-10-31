@@ -628,6 +628,20 @@ void Player::render() const {
         renderShip(skin);
         break;
     }
+    if (m_Game->isCreatorMode()) {
+        // full box (spikes, landing) and inner box (block hits)
+        const SDL_FPoint camera = m_Game->getCameraPosition();
+        SDL_SetRenderDrawBlendMode(m_Renderer, SDL_BLENDMODE_BLEND);
+        const SDL_FRect outer = { m_Hitbox.x - camera.x, m_Hitbox.y - camera.y, TILE, TILE };
+        SDL_SetRenderDrawColor(m_Renderer, 255, 60, 60, 255);
+        for (int i = 0; i < 3; i++) {
+            const SDL_FRect edge = { outer.x + i, outer.y + i, outer.w - 2 * i, outer.h - 2 * i };
+            SDL_RenderDrawRectF(m_Renderer, &edge);
+        }
+        const SDL_FRect inner = { outer.x + TILE / 3, outer.y + TILE / 3, TILE / 3, TILE / 3 };
+        SDL_SetRenderDrawColor(m_Renderer, 60, 160, 255, 160);
+        SDL_RenderFillRectF(m_Renderer, &inner);
+    }
 }
 
 void Player::renderCube(SDL_Texture *skin) const {
@@ -710,6 +724,10 @@ void Player::renderDeath(SDL_Texture *skin) const {
 }
 
 void Player::die() {
+    // creator mode: nothing hurts (the level checker always plays for real)
+    if (!m_SimInput && m_Game->isCreatorMode()) {
+        return;
+    }
     m_IsDead = true;
     m_DeadTimer = 90;
     m_DeathPosition = { m_Hitbox.x, m_Hitbox.y };

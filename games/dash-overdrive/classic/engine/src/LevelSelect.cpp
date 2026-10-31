@@ -264,7 +264,7 @@ int LevelSelect::getTotalCoins() const {
 }
 
 int LevelSelect::coinsNeeded(int level) const {
-    if (level < Config::SECRET_FIRST || level >= Config::LEVEL_COUNT) {
+    if (m_Game->isCreatorMode() || level < Config::SECRET_FIRST || level >= Config::LEVEL_COUNT) {
         return 0;
     }
     const int needed = Config::SECRET_COINS[level - Config::SECRET_FIRST] - getTotalCoins();

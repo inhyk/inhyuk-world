@@ -57,12 +57,18 @@ public:
     inline Ground &getGround() { return m_Ground; }
     inline Background &getBackground() { return m_Background; }
     inline void restartMenuLoop() { Mix_PlayMusic(m_MenuLoop, -1); }
+    // Creator mode (the page turns it on when 1 3 5 7 0 is typed): every level
+    // open, no deaths, hitboxes shown, nothing saved.
+    inline bool isCreatorMode() const { return m_CreatorMode; }
+    void setCreatorMode(bool on);
 
 private:
     SDL_Window *m_Window;
     SDL_Renderer *m_Renderer;
     std::array<SDL_Texture *, Config::SKIN_COUNT> m_Skins;
     int m_SelectedSkin = 0;
+    bool m_CreatorMode = false;
+    SDL_Texture *m_CreatorTexture = nullptr;
     SDL_Point m_MousePosition;
     SDL_FPoint m_CameraPosition = { 0, 0 };
     float m_TargetY = 0;
