@@ -85,3 +85,7 @@ tools/node_modules/
 # 젤리 타워 아이폰 앱 (apps/jelly-tower): 설치 패키지와 빌드해서 넣는 웹 파일
 /apps/jelly-tower/node_modules/
 /apps/jelly-tower/www/
+
+# 콩떡이 동영상: 원본 햄스터 영상과 만들기 중간 파일
+/games/kongtteok/clips/
+/games/kongtteok/build/
