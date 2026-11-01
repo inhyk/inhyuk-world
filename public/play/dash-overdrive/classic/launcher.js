@@ -2,7 +2,7 @@
 'use strict';
 // The page around the WebAssembly engine: level picker, song downloads,
 // touch input and the hooks the engine calls (Module.classic*).
-const VERSION = 'classic-original-1';
+const VERSION = 'classic-original-2';
 const CLASSIC_LEVELS = [
   ['Neon Start', 'easy'], ['Pixel Hop', 'easy'], ['Blue Ladder', 'normal'], ['Desert Wind', 'normal'],
   ['Iron Gate', 'hard'], ['Night Rail', 'hard'], ['Sky Rocket', 'hard'], ['Crystal Cave', 'harder'],
@@ -63,7 +63,7 @@ function showToast(text) {
   }, 2600);
 }
 window.addEventListener('keydown', event => {
-  if (!/^[0-9]$/.test(event.key)) return;
+  if (!/^[0-9]$/.test(event.key) || (event.target instanceof HTMLElement && event.target.matches('input, select, textarea'))) return;
   typed = (typed + event.key).slice(-CREATOR_CODE.length);
   if (typed !== CREATOR_CODE || !ready) return;
   typed = '';
@@ -167,15 +167,21 @@ function prepareSong(index) {
 }
 
 function panelOpen() {
-  return !launcher.hidden || Boolean(window.classicEditor?.isOpen());
+  return !launcher.hidden || Boolean(window.classicEditor?.isOpen()) || Boolean(window.classicOnline?.isOpen());
 }
+
+const isField = target => target instanceof HTMLElement && target.matches('input, select, textarea');
 
 // While a page panel is open the engine must not see the keyboard.
 for (const type of ['keydown', 'keyup']) {
   window.addEventListener(type, event => {
     if (!panelOpen()) return;
+    // a text box keeps its keys; it stops them from reaching the game itself
+    if (isField(event.target)) return;
     event.stopImmediatePropagation();
-    if (window.classicEditor?.isOpen()) {
+    if (window.classicOnline?.isOpen()) {
+      if (type === 'keydown' && event.key === 'Escape') window.classicOnline.close();
+    } else if (window.classicEditor?.isOpen()) {
       window.classicEditor.handleKey(event);
     } else if (type === 'keydown' && event.key === 'Escape') {
       showLauncher(false);

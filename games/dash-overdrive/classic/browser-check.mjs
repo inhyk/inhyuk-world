@@ -8,6 +8,12 @@ const page_ = `${base}/play/dash-overdrive/classic/index.html`;
 const browser = await chromium.launch({headless: true});
 const errors = [];
 const status = page => page.evaluate(() => JSON.parse(window.render_classic_status()));
+// the engine reads keys once per frame, so hold each key for a moment
+async function tap(page, key) {
+  await page.keyboard.down(key);
+  await page.waitForTimeout(80);
+  await page.keyboard.up(key);
+}
 
 async function open(viewport, query = '', touch = false) {
   const context = await browser.newContext({viewport, hasTouch: touch, isMobile: touch});
@@ -32,15 +38,15 @@ try {
     await page.waitForTimeout(80);
     await page.mouse.up();
     await page.waitForFunction(() => JSON.parse(window.render_classic_status()).state === 1);
-    await page.keyboard.press('Space');
+    await tap(page, 'Space');
     await page.waitForFunction(() => JSON.parse(window.render_classic_status()).state === 2);
     assert.equal((await status(page)).level, 1);
     await page.waitForTimeout(2000);
     assert.ok((await status(page)).percent > 0, 'the cube runs');
-    await page.keyboard.press('Escape');
+    await tap(page, 'Escape');
     await page.waitForTimeout(200);
     assert.equal((await status(page)).paused, true);
-    await page.keyboard.press('Space');
+    await tap(page, 'Space');
     await page.waitForTimeout(200);
     assert.equal((await status(page)).paused, false);
     console.log('title, level select, level 1, pause and resume passed');

@@ -79,6 +79,7 @@ public:
     inline int getGravityMultiplier() const { return m_GravityMultiplier; }
     inline SDL_FPoint getPosition() const { return m_Position; }
     inline float getYVelocity() const { return m_YVelocity; }
+    inline float getRotation() const { return m_Rotation; }
     inline bool isGrounded() const { return m_IsGrounded; }
     // Ship sections and upside-down cube sections have a visible floor and ceiling.
     inline bool hasBounds() const { return m_Gamemode == Gamemode::SHIP || m_HasBounds; }

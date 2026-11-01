@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1030">
 <title>DASH / OVERDRIVE · CLASSIC</title>
-<link rel="stylesheet" href="style.css?v=classic-original-1">
+<link rel="stylesheet" href="style.css?v=classic-original-2">
 </head>
 <body>
 <header>
   <a href="/play/dash-overdrive" target="_top">← OVERDRIVE</a>
   <strong id="now-playing">DASH / OVERDRIVE <span>CLASSIC</span></strong>
   <div>
+    <button id="online-open" type="button">👥 같이 하기</button>
     <button id="select" type="button">단계 선택</button>
     <button id="full" type="button" aria-label="전체 화면">⛶</button>
   </div>
@@ -61,14 +62,35 @@
   </div>
 </section>
 
+<section id="online" class="online" hidden aria-label="같이 하기">
+  <div class="online-card">
+    <div class="online-head"><strong>👥 같이 하기</strong><button id="online-close" type="button" aria-label="같이 하기 닫기">✕</button></div>
+    <div id="online-join">
+      <button id="online-create" type="button" class="primary">방 만들기</button>
+      <div class="online-code-row"><input id="online-code" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="방 코드 6글자" aria-label="방 코드"><button id="online-enter" type="button">들어가기</button></div>
+      <p class="online-note">방 코드로 친구랑 같은 단계를 동시에 달려. 나까지 4명이 같이 할 수 있어.</p>
+    </div>
+    <div id="online-room" hidden>
+      <p class="online-note">방 코드</p>
+      <p id="online-room-code" class="online-room-code"></p>
+      <ul id="online-players" class="online-players"></ul>
+      <div id="online-host" class="online-host"><label>단계 <select id="online-level"></select></label><button id="online-go" type="button" class="primary">같이 시작 ▶</button></div>
+      <p id="online-wait" class="online-note" hidden>방장이 단계를 고르면 같이 시작해.</p>
+      <button id="online-leave" type="button">방 나가기</button>
+    </div>
+    <p id="online-status" class="online-status" role="status" aria-live="polite"></p>
+  </div>
+</section>
+<div id="race" class="race" hidden aria-label="같이 달리는 친구들"></div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <footer>
   <span><kbd>SPACE</kbd> / 클릭 / 터치 : 점프 · 비행선은 꾹 누르기</span>
   <span><kbd>ESC</kbd> 일시정지 · 연습 모드에서 <kbd>Z</kbd> 체크포인트 / <kbd>X</kbd> 삭제</span>
   <span class="rotate">휴대폰은 가로 화면이 좋아 ↻</span>
 </footer>
-<script src="launcher.js?v=classic-original-1"></script>
-<script src="editor.js?v=classic-original-1"></script>
-<script src="engine/DashClassic.js?v=classic-original-1"></script>
+<script src="launcher.js?v=classic-original-2"></script>
+<script src="editor.js?v=classic-original-2"></script>
+<script type="module" src="online.mjs?v=classic-original-2"></script>
+<script src="engine/DashClassic.js?v=classic-original-2"></script>
 </body>
 </html>
