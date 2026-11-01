@@ -32,6 +32,9 @@ public:
     static constexpr int GHOST_COUNT = 3;
     void setGhost(int slot, bool visible, float x, float y, float rotation, bool ship, int gravity, int skin);
     int visibleGhosts() const;
+    // Online race: after dying, watch a friend instead of starting again.
+    inline bool isSpectating() const { return m_Spectating >= 0; }
+    inline void setSpectating(int slot) { m_Spectating = slot >= 0 && slot < GHOST_COUNT ? slot : -1; }
     inline static PlayingState &get() { return m_PlayingState; }
 
     // Level checker: runs the real physics without drawing or sound.
@@ -68,6 +71,10 @@ private:
         int skin = 0;
     };
     std::array<Ghost, GHOST_COUNT> m_Ghosts;
+    int m_Spectating = -1;
+    SDL_Texture *m_SpectatingTexture;
+    SDL_Texture *m_NewSkinTexture;
+    bool m_UnlockedSkin = false;
     Mix_Chunk *m_LevelCompleteSound;
     Mix_Music *m_PracticeMusic;
     Mix_Music *m_Song = nullptr;

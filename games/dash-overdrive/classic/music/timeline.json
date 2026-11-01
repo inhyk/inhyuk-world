@@ -1487,6 +1487,192 @@
           "type": "end"
         }
       ]
+    },
+    {
+      "index": 18,
+      "name": "Volt Rush",
+      "bpm": 155.79,
+      "durationSeconds": 112,
+      "beatSeconds": 0.385134,
+      "totalBeats": 290.808,
+      "difficulty": "extreme",
+      "style": "electric hard dance: sawtooth stabs, sirens, a breakdown with a ticking build",
+      "key": "B minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.45
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.65
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 0.85
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 208,
+          "endBeat": 272,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 272,
+          "endBeat": 290.808,
+          "energy": 0.4
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 207.5,
+          "type": "stop"
+        },
+        {
+          "beat": 208,
+          "type": "drop"
+        },
+        {
+          "beat": 284,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "name": "Endless Dash",
+      "bpm": 178.05,
+      "durationSeconds": 120,
+      "beatSeconds": 0.336984,
+      "totalBeats": 356.1,
+      "difficulty": "final (hardest)",
+      "style": "triumphant speed anthem: driving kicks, huge chords, hero lead, three drops each bigger than the last",
+      "key": "E major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.45
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.7
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 96,
+          "energy": 0.85
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 208,
+          "energy": 0.93
+        },
+        {
+          "name": "breakdown 2",
+          "startBeat": 208,
+          "endBeat": 224,
+          "energy": 0.6
+        },
+        {
+          "name": "build 3",
+          "startBeat": 224,
+          "endBeat": 256,
+          "energy": 0.9
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 256,
+          "endBeat": 336,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 336,
+          "endBeat": 356.1,
+          "energy": 0.4
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 255.5,
+          "type": "stop"
+        },
+        {
+          "beat": 256,
+          "type": "drop"
+        },
+        {
+          "beat": 348,
+          "type": "end"
+        }
+      ]
     }
   ]
 }

@@ -61,27 +61,31 @@ export const LEVELS = [
   {name: 'Golden Key', bpm: 138.48, seconds: 102, colors: [[[255, 196, 40], [176, 112, 0]], [[60, 40, 120], [26, 14, 70]]]},
   {name: 'Secret Core', bpm: 178.05, seconds: 106, colors: [[[40, 230, 210], [0, 140, 130]], [[120, 20, 60], [60, 0, 30]]]},
   {name: 'Last Dash', bpm: 178.05, seconds: 110, colors: [[[255, 60, 60], [150, 10, 20]], [[20, 20, 40], [6, 6, 16]], [[191, 255, 89], [90, 170, 30]]]},
+  {name: 'Volt Rush', bpm: 155.79, seconds: 112, colors: [[[255, 236, 60], [190, 150, 0]], [[60, 60, 80], [24, 24, 36]]]},
+  {name: 'Endless Dash', bpm: 178.05, seconds: 120, colors: [[[191, 255, 89], [90, 170, 30]], [[40, 92, 236], [20, 50, 180]], [[255, 64, 128], [170, 20, 80]], [[255, 210, 60], [200, 120, 0]]]},
 ];
+// levels built with the black blocks (the designer's sketch: like the black blocks of a fifth level)
+const BLACK_BLOCK_LEVELS = new Set([4, 13, 18, 19]);
 
 // How hard each level is. margin = half of the narrowest allowed tap window in
 // 60 fps frames; runway = free tiles between pieces.
 function tuning(d) {
   return {
-    margin: [3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1][d],
-    runway: [[1, 4], [1, 3], [1, 3], [1, 3], [1, 2], [1, 2], [0, 2], [0, 2], [0, 2], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 0]][d],
-    shipGap: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3][d],
-    shipSpacing: [6, 6, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3][d],
-    shipShift: [2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4][d],
+    margin: [3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1][d],
+    runway: [[1, 4], [1, 3], [1, 3], [1, 3], [1, 2], [1, 2], [0, 2], [0, 2], [0, 2], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 0], [0, 0], [0, 0]][d],
+    shipGap: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3][d],
+    shipSpacing: [6, 6, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3][d],
+    shipShift: [2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4][d],
     shipSpikes: d >= 1,
     shipSpikesInNarrowGaps: d >= 12,
     shipFloorSpikes: d >= 4,
     shipCeilingSpikes: d >= 7,
-    shipDelay: [4, 4, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
-    shipAim: [40, 38, 36, 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 12, 11, 10, 10][d],
+    shipDelay: [4, 4, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
+    shipAim: [40, 38, 36, 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 12, 11, 10, 10, 9, 8][d],
     halfBeats: d >= 3,
     maxSurface: d < 2 ? 3 : 4,
-    comboMax: [2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7][d],
-    comboGapMax: [3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
+    comboMax: [2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8][d],
+    comboGapMax: [3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
   };
 }
 
@@ -136,7 +140,7 @@ const make = {
   spike: (c, r, flipY = false) => ({id: 8, x: gx(c), y: gy(r), flipY}),
   // small spikes sit on the floor of their cell, or hang from its roof
   small: (c, r, flipY = false) => ({id: 39, x: gx(c), y: (flipY ? 23.25 : 6.75) + 30 * r, flipY}),
-  slab: (c, r) => ({id: 40, x: gx(c), y: 23.25 + 30 * r}),
+  slab: (c, r, id = 40) => ({id, x: gx(c), y: 23.25 + 30 * r}),
   pad: (c, r, flipY = false) => ({id: 35, x: gx(c), y: (flipY ? 28 : 2) + 30 * r, flipY}),
   orb: (c, r) => ({id: 36, x: gx(c), y: gy(r)}),
   shipPortal: (c, r) => ({id: 13, x: gx(c), y: 42 + 30 * r}),
@@ -224,8 +228,9 @@ class LevelBuilder {
     this.beatTiles = SPEED_PER_FRAME * 60 / TILE * 60 / this.spec.bpm;
     // each level gets its own block patterns for platforms and ship walls
     const styles = [1, 2, 3, 4, 6, 7];
-    this.platformBlock = styles[index % styles.length];
-    this.wallBlock = styles[(index * 5 + 3) % styles.length];
+    this.platformBlock = BLACK_BLOCK_LEVELS.has(index) ? 202 : styles[index % styles.length];
+    this.wallBlock = BLACK_BLOCK_LEVELS.has(index) ? 202 : styles[(index * 5 + 3) % styles.length];
+    this.slabBlock = BLACK_BLOCK_LEVELS.has(index) ? 203 : 40;
   }
 
   pick(list) {
@@ -429,7 +434,7 @@ class LevelBuilder {
         // a lone block to jump over (or onto and off again)
         const height = name === 'pillar' && this.index >= 2 && s + 2 <= this.tune.maxSurface && this.random() < 0.3 ? 2 : 1;
         if (height === 2) return null;
-        cells.push([start, s, make.block(start, s)]);
+        cells.push([start, s, make.block(start, s, this.platformBlock)]);
         if (name === 'pillarSpike') hazard(start + 1, 0);
         lastObstacle = start + (name === 'pillarSpike' ? 1 : 0);
         end = lastObstacle + 5;
@@ -446,7 +451,7 @@ class LevelBuilder {
           if (kind === 'spike1') hazard(c++, 0);
           else if (kind === 'spike2') { hazard(c++, 0); hazard(c++, 0); }
           else if (kind === 'small') { smallHazard(c++, 0); smallHazard(c++, 0); }
-          else cells.push([c, s, make.block(c++, s)]);
+          else cells.push([c, s, make.block(c++, s, this.platformBlock)]);
           lastObstacle = c - 1;
           c += this.range(2, this.tune.comboGapMax);
         }
@@ -494,8 +499,8 @@ class LevelBuilder {
           cells.push([c, 0, make.spike(c, 0)]);
           cells.push([c + 1, 0, make.spike(c + 1, 0)]);
           c += 2;
-          cells.push([c, 1, make.slab(c, 0)]);
-          cells.push([c + 1, 1, make.slab(c + 1, 0)]);
+          cells.push([c, 1, make.slab(c, 0, this.slabBlock)]);
+          cells.push([c + 1, 1, make.slab(c + 1, 0, this.slabBlock)]);
           c += 2;
         }
         end = c + 3;
@@ -548,7 +553,7 @@ class LevelBuilder {
         if (upside || s >= this.tune.maxSurface) return null;
         // spikes hang from a low roof on both sides of a floor spike: the jump
         // must be right in the middle
-        for (let c = start - 1; c <= start + 5; c++) cells.push([c, s + 3, make.block(c, s + 3)]);
+        for (let c = start - 1; c <= start + 5; c++) cells.push([c, s + 3, make.block(c, s + 3, this.platformBlock)]);
         cells.push([start, s + 2, make.spike(start, s + 2, true)]);
         cells.push([start + 4, s + 2, make.spike(start + 4, s + 2, true)]);
         hazard(start + 2, 0);
@@ -659,7 +664,7 @@ class LevelBuilder {
     const roofFrom = start + 2;
     const portal = start + 4;
     const cells = [];
-    for (let c = roofFrom; c < portal + 6; c++) cells.push([c, CEILING_ROW, make.block(c, CEILING_ROW)]);
+    for (let c = roofFrom; c < portal + 6; c++) cells.push([c, CEILING_ROW, make.block(c, CEILING_ROW, this.wallBlock)]);
     const entry = {name: 'upsidePortal', start, end: portal + 6, surface: 0, taps: 0, cells, extra: [make.upsidePortal(portal, 0)], lastObstacle: portal};
     // done when the cube rests on the roof
     if (!this.tryUpside(entry)) return false;
@@ -670,7 +675,7 @@ class LevelBuilder {
     // exit: blue portal, the cube drops to the floor
     const exitStart = this.column + 2;
     const exitCells = [];
-    for (let c = this.column; c < exitStart + 2; c++) exitCells.push([c, CEILING_ROW, make.block(c, CEILING_ROW)]);
+    for (let c = this.column; c < exitStart + 2; c++) exitCells.push([c, CEILING_ROW, make.block(c, CEILING_ROW, this.wallBlock)]);
     const exit = {name: 'normalPortal', start: exitStart, end: exitStart + 6, surface: 0, taps: 0, cells: exitCells, extra: [make.normalPortal(exitStart, CEILING_ROW - 1)], lastObstacle: exitStart};
     if (!this.tryPiece(exit)) throw new Error(`level ${this.index + 1}: upside exit failed`);
     this.upsideRanges = this.upsideRanges || [];

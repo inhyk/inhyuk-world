@@ -95,6 +95,11 @@ CLASSIC_EXPORT void classic_set_ghost(int slot, int visible, float x, float y, f
     PlayingState::get().setGhost(slot, visible != 0, x, y, rotation, ship != 0, gravity, skin);
 }
 
+// -1 stops watching; the player then starts again on the next frame.
+CLASSIC_EXPORT void classic_spectate(int slot) {
+    PlayingState::get().setSpectating(slot);
+}
+
 CLASSIC_EXPORT int classic_ghost_count() {
     return PlayingState::get().visibleGhosts();
 }

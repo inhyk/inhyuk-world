@@ -266,6 +266,9 @@ const PORTAL_SCHEMES = {
   gravityUp: { light: '#fff2a8', mid: '#ffc23d', deep: '#ff7d22' },
   cube: { light: '#f2ffcc', mid: ACID, deep: '#5aa81d' },
   ship: { light: '#ffc6f5', mid: '#ff4fd8', deep: '#8f3dff' },
+  ball: { light: '#ffcfb0', mid: '#ff6a3d', deep: '#d8263a' },
+  ufo: { light: '#fffbd2', mid: '#ffe04d', deep: '#f2a900' },
+  wave: { light: '#d4fffb', mid: '#3fefe2', deep: '#00a3d6' },
 };
 
 function portalSymbol(kind, cx, cy, br) {
@@ -290,6 +293,39 @@ function portalSymbol(kind, cx, cy, br) {
       `<rect x="${n2(cx - h)}" y="${n2(cy - h)}" width="${n2(2 * h)}" height="${n2(2 * h)}" rx="${s(0.2)}" fill="${WHITE}" ${line}/>` +
       `<circle cx="${n2(cx - br * 0.2)}" cy="${n2(cy - br * 0.05)}" r="${s(0.09)}" fill="${NAVY}"/>` +
       `<circle cx="${n2(cx + br * 0.2)}" cy="${n2(cy - br * 0.05)}" r="${s(0.09)}" fill="${NAVY}"/>`
+    );
+  }
+  if (kind === 'ball' || kind === 'ufo' || kind === 'wave') {
+    const X = (v) => n2(cx + v * br);
+    const Y = (v) => n2(cy + v * br);
+    if (kind === 'ball') {
+      return (
+        `<circle cx="${n2(cx)}" cy="${n2(cy)}" r="${s(0.6)}" fill="${WHITE}" ${line}/>` +
+        `<path d="M${X(-0.56)} ${Y(-0.16)} Q${X(0)} ${Y(0.22)} ${X(0.56)} ${Y(-0.16)}" fill="none" stroke="#ff5a3d" stroke-width="${n2(br * 0.16)}" stroke-linecap="round"/>` +
+        `<path d="M${X(-0.14)} ${Y(-0.56)} Q${X(0.2)} ${Y(-0.1)} ${X(0.06)} ${Y(0.58)}" fill="none" stroke="${NAVY}" stroke-width="${n2(br * 0.08)}" stroke-linecap="round"/>`
+      );
+    }
+    if (kind === 'ufo') {
+      return (
+        `<path d="M${X(-0.32)} ${Y(0.08)} A${s(0.32)} ${s(0.36)} 0 0 1 ${X(0.32)} ${Y(0.08)} Z" fill="#a8f4ff" ${line}/>` +
+        `<ellipse cx="${n2(cx)}" cy="${Y(0.16)}" rx="${s(0.74)}" ry="${s(0.25)}" fill="${WHITE}" ${line}/>` +
+        [-0.42, 0, 0.42].map((k) => `<circle cx="${X(k)}" cy="${Y(0.17)}" r="${s(0.075)}" fill="${NAVY}"/>`).join('')
+      );
+    }
+    // wave: zigzag that ends in an arrowhead
+    const P = [[-0.62, 0.36], [-0.3, -0.16], [0, 0.3], [0.3, -0.18]].map(([x, y]) => [cx + x * br, cy + y * br]);
+    const [ax, ay] = P[3];
+    const [bx, by] = P[2];
+    const ang = Math.atan2(ay - by, ax - bx);
+    const h = br * 0.42;
+    const tip = [ax + Math.cos(ang) * h, ay + Math.sin(ang) * h];
+    const l = [ax + Math.cos(ang + Math.PI / 2) * h * 0.62, ay + Math.sin(ang + Math.PI / 2) * h * 0.62];
+    const r = [ax + Math.cos(ang - Math.PI / 2) * h * 0.62, ay + Math.sin(ang - Math.PI / 2) * h * 0.62];
+    const d = `M${pts(P)}`;
+    return (
+      `<path d="${d}" fill="none" stroke="${NAVY}" stroke-width="${n2(br * 0.3)}" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<path d="${poly([l, tip, r])}" fill="${WHITE}" ${line}/>` +
+      `<path d="${d}" fill="none" stroke="${WHITE}" stroke-width="${n2(br * 0.15)}" stroke-linecap="round" stroke-linejoin="round"/>`
     );
   }
   // rocket pointing right
@@ -805,6 +841,491 @@ function lock() {
 function lockSmall() {
   const { defs, body } = padlockParts(false);
   return svg(64, 76, defs, `<g transform="scale(.4)">${body}</g>`);
+}
+
+// ================================================================ skins 12-23 (second set) and the locked-slot cover
+
+// cube with a non-square silhouette: the 11 px navy outline is drawn inside the shape
+function skinShape({ shape, colors, defs = '', pattern = '', face = '' }) {
+  const [c0, c1, c2] = colors;
+  const D =
+    lin('body', 17, 17, 168, 168, [[0, c0], [0.5, c1], [1, c2]]) +
+    lin('bevel', 17, 17, 168, 168, [[0, WHITE, 0.55], [0.42, WHITE, 0], [0.58, NAVY, 0], [1, NAVY, 0.32]]) +
+    `<clipPath id="sc"><path d="${shape}"/></clipPath>` +
+    defs;
+  const body =
+    `<path d="${shape}" fill="url(#body)"/>` +
+    `<g clip-path="url(#sc)">${pattern}<path d="${shape}" fill="none" stroke="url(#bevel)" stroke-width="36"/><path d="${shape}" fill="none" stroke="${NAVY}" stroke-width="22"/></g>` +
+    `<rect x="29" y="26" width="70" height="12" rx="6" fill="${WHITE}" fill-opacity=".42"/><circle cx="111" cy="32" r="6" fill="${WHITE}" fill-opacity=".42"/>` +
+    face;
+  return svg(185, 185, D, body);
+}
+
+// head that starts lower so a horn/antenna/stem/crown can sit above it inside the 185 px frame
+const tallHead = (top) =>
+  `<rect x="6" y="${top}" width="173" height="${179 - top}" rx="31" fill="${NAVY}"/><rect x="17" y="${top + 11}" width="151" height="${157 - top}" rx="20" fill="url(#body)"/>`;
+const headGloss = (top) => `<rect x="29" y="${top + 9}" width="60" height="10" rx="5" fill="${WHITE}" fill-opacity=".42"/>`;
+
+const SKINS_2 = [
+  // 12: ninja
+  () =>
+    cube({
+      colors: ['#717ca3', '#414a6e', '#222844'],
+      defs: lin('band', 0, 42, 0, 62, [[0, '#ff8591'], [0.5, '#ff3d55'], [1, '#c81e3c']]),
+      pattern:
+        `<rect x="19.5" y="19.5" width="146" height="146" rx="18" fill="none" stroke="#a3add3" stroke-opacity=".5" stroke-width="3"/>` +
+        `<rect x="10" y="72" width="165" height="40" fill="#ffdcbf"/><path d="M10 72 H175 M10 112 H175" stroke="${NAVY}" stroke-width="4"/>` +
+        `<rect x="10" y="42" width="165" height="20" fill="url(#band)"/><path d="M10 42 H175 M10 62 H175" stroke="${NAVY}" stroke-width="3.5"/>` +
+        `<path d="M40 146 Q92.5 157 145 146" fill="none" stroke="${NAVY}" stroke-opacity=".35" stroke-width="3" stroke-linecap="round"/>`,
+      face:
+        `<ellipse cx="65" cy="94" rx="9.5" ry="11" fill="${NAVY}"/><ellipse cx="120" cy="94" rx="9.5" ry="11" fill="${NAVY}"/>` +
+        `<circle cx="62" cy="90" r="3.4" fill="${WHITE}"/><circle cx="117" cy="90" r="3.4" fill="${WHITE}"/>` +
+        `<path d="M50 80 L77 86 M135 80 L108 86" stroke="${NAVY}" stroke-width="5" stroke-linecap="round"/>` +
+        `<path d="M150 50 Q164 40 177 30 L177 45 Q165 51 152 56 Z M150 55 Q164 63 176 74 L170 80 Q159 68 149 60 Z" fill="url(#band)" stroke="${NAVY}" stroke-width="3" stroke-linejoin="round"/>` +
+        `<rect x="140" y="43" width="17" height="17" rx="5" fill="url(#band)" stroke="${NAVY}" stroke-width="3"/>`,
+    }),
+  // 13: retro robot with an antenna
+  () =>
+    cube({
+      colors: ['#ffd9ad', '#eea15c', '#bf6427'],
+      frame:
+        `<path d="M92.5 42 V24" stroke="${NAVY}" stroke-width="12" stroke-linecap="round"/><path d="M92.5 42 V24" stroke="#dfe4ee" stroke-width="5" stroke-linecap="round"/>` +
+        `<circle cx="92.5" cy="18" r="8.5" fill="${PINK}" stroke="${NAVY}" stroke-width="4"/><circle cx="89.5" cy="15" r="2.6" fill="${WHITE}"/>` +
+        tallHead(34),
+      inner: [17, 45, 151, 123],
+      gloss: false,
+      pattern: `<path d="M17 74 H168" stroke="${NAVY}" stroke-opacity=".18" stroke-width="3"/>`,
+      face:
+        headGloss(34) +
+        [[31, 60], [154, 60], [31, 154], [154, 154]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.2" fill="#ffe6c7" stroke="${NAVY}" stroke-width="2.2"/>`).join('') +
+        [63, 122].map((x) => `<circle cx="${x}" cy="102" r="21" fill="${NAVY}"/><circle cx="${x}" cy="102" r="15.5" fill="#fff8e8"/><circle cx="${x + 3}" cy="104" r="7.5" fill="${NAVY}"/><circle cx="${x - 3}" cy="97" r="3.4" fill="${WHITE}"/>`).join('') +
+        `<rect x="62" y="132" width="61" height="24" rx="8" fill="${NAVY}"/>` +
+        [70, 83, 96, 109].map((x) => `<rect x="${x}" y="137" width="6" height="14" rx="3" fill="#ffe9a8"/>`).join(''),
+    }),
+  // 14: dragon
+  () =>
+    cube({
+      colors: ['#a6f2ad', '#43cf6e', '#1d8c4b'],
+      frame:
+        `<path d="M40 50 Q24 32 29 13 Q47 23 64 42 Z M145 50 Q161 32 156 13 Q138 23 121 42 Z" fill="#fff0c4" stroke="${NAVY}" stroke-width="9" stroke-linejoin="round"/>` +
+        tallHead(32),
+      inner: [17, 43, 151, 125],
+      gloss: false,
+      pattern:
+        [[60, 0], [73, 9]]
+          .map(([y, off]) => [0, 1, 2, 3, 4].map((i) => {
+            const x = 56 + off + i * 18;
+            return `<path d="M${x - 9} ${y} Q${x} ${y + 10} ${x + 9} ${y}" fill="none" stroke="#167a3e" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>`;
+          }).join(''))
+          .join('') +
+        `<ellipse cx="92.5" cy="178" rx="52" ry="30" fill="#dcf8a8"/>`,
+      face:
+        headGloss(32) +
+        [64, 121].map((x) => `<ellipse cx="${x}" cy="100" rx="15" ry="16" fill="#fff4a8" stroke="${NAVY}" stroke-width="4.5"/><ellipse cx="${x + 1}" cy="101" rx="4.6" ry="11" fill="${NAVY}"/><circle cx="${x - 5}" cy="94" r="3.2" fill="${WHITE}"/>`).join('') +
+        `<ellipse cx="82" cy="128" rx="3.8" ry="2.8" fill="${NAVY}"/><ellipse cx="103" cy="128" rx="3.8" ry="2.8" fill="${NAVY}"/>` +
+        `<path d="M66 138 Q92.5 156 119 138" fill="none" stroke="${NAVY}" stroke-width="5.5" stroke-linecap="round"/>` +
+        `<path d="M75 143 L79 153 L84 146 Z M110 143 L106 153 L101 146 Z" fill="${WHITE}" stroke="${NAVY}" stroke-width="2.2" stroke-linejoin="round"/>` +
+        blush(126, '#ff9a6b', 0.5),
+    }),
+  // 15: ghost (wavy bottom edge)
+  () => {
+    const w = 173 / 4;
+    let bottom = '';
+    for (let i = 1; i <= 4; i++) bottom += ` A${n2(w / 2)} 13 0 0 1 ${n2(179 - i * w)} 166`;
+    return skinShape({
+      shape: `M37 6 H148 Q179 6 179 37 V166${bottom} V37 Q6 6 37 6 Z`,
+      colors: [WHITE, '#f3efff', '#cfc5f2'],
+      face:
+        eyesRound(66, 119, 86, 13, 17) +
+        `<ellipse cx="92.5" cy="124" rx="9.5" ry="11.5" fill="${NAVY}"/><ellipse cx="92.5" cy="130" rx="6" ry="4" fill="#ff8fb3"/>` +
+        blush(112, '#ff9ac8', 0.55),
+    });
+  },
+  // 16: pumpkin
+  () =>
+    cube({
+      colors: ['#ffc56e', '#ff8f22', '#d8600c'],
+      frame:
+        `<path d="M92.5 42 Q90 28 98 17" fill="none" stroke="${NAVY}" stroke-width="17" stroke-linecap="round"/><path d="M92.5 42 Q90 28 98 17" fill="none" stroke="#5aa832" stroke-width="8" stroke-linecap="round"/>` +
+        `<path d="M101 27 Q119 11 138 22 Q120 37 101 27 Z" fill="#7fd04a" stroke="${NAVY}" stroke-width="4" stroke-linejoin="round"/>` +
+        tallHead(30),
+      inner: [17, 41, 151, 127],
+      gloss: false,
+      pattern: `<path d="M56 41 Q38 104 56 168 M129 41 Q147 104 129 168 M92.5 41 V168" fill="none" stroke="#b9500a" stroke-opacity=".5" stroke-width="4.5"/>`,
+      face:
+        headGloss(30) +
+        `<path d="M46 102 L82 102 L64 74 Z M103 102 L139 102 L121 74 Z" fill="${NAVY}" stroke="${NAVY}" stroke-width="4" stroke-linejoin="round"/>` +
+        `<path d="M56 99 L72 99 L64 88 Z M113 99 L129 99 L121 88 Z" fill="${GOLD}"/>` +
+        `<path d="M85 116 L100 116 L92.5 106 Z" fill="${NAVY}" stroke="${NAVY}" stroke-width="3" stroke-linejoin="round"/>` +
+        `<path d="M48 124 Q92.5 172 137 124 Q92.5 142 48 124 Z" fill="${NAVY}" stroke="${NAVY}" stroke-width="4" stroke-linejoin="round"/>` +
+        `<path d="M70 131 h11 v9 h-11 Z M104 131 h11 v9 h-11 Z" fill="#ff9a2f"/>` +
+        `<path d="M74 142 Q92.5 153 111 142" fill="none" stroke="${GOLD}" stroke-opacity=".7" stroke-width="3" stroke-linecap="round"/>`,
+    }),
+  // 17: rainbow
+  () => {
+    const bands = ['#ff4f5e', '#ff9a3d', '#ffd23d', '#6fd85a', '#4fa8ff', '#9b7bff'];
+    const arcs = bands.map((c, i) => `<circle cx="92.5" cy="190" r="${185 - i * 17}" fill="${c}"/>`).join('') + `<circle cx="92.5" cy="190" r="83" fill="url(#body)"/>`;
+    const cloud = (x, y) =>
+      `<g fill="${WHITE}" stroke="#cfe3ff" stroke-width="3"><circle cx="${x - 14}" cy="${y + 4}" r="13"/><circle cx="${x}" cy="${y - 6}" r="17"/><circle cx="${x + 15}" cy="${y + 4}" r="13"/></g>` +
+      `<rect x="${x - 26}" y="${y}" width="52" height="17" fill="${WHITE}"/>`;
+    return cube({
+      colors: [WHITE, '#f7faff', '#e6eeff'],
+      pattern: arcs + cloud(30, 152) + cloud(155, 152),
+      face:
+        eyesRound(72, 113, 126, 10, 13) +
+        `<path d="M81 145 Q92.5 156 104 145" fill="none" stroke="${NAVY}" stroke-width="5" stroke-linecap="round"/>` +
+        `<ellipse cx="58" cy="143" rx="7" ry="4.5" fill="#ff8fb3" fill-opacity=".6"/><ellipse cx="127" cy="143" rx="7" ry="4.5" fill="#ff8fb3" fill-opacity=".6"/>`,
+    });
+  },
+  // 18: tiger stripes
+  () => {
+    const wedge = (q) => `<path d="${poly(q)}" fill="${NAVY}" stroke="${NAVY}" stroke-width="3" stroke-linejoin="round"/>`;
+    const side = [[[17, 56], [54, 66], [17, 78]], [[17, 98], [48, 106], [17, 116]], [[17, 138], [42, 145], [17, 154]]];
+    const stripes =
+      side.map(wedge).join('') +
+      side.map((q) => wedge(q.map(([x, y]) => [185 - x, y]))).join('') +
+      wedge([[74, 17], [80, 40], [86, 17]]) + wedge([[87.5, 17], [92.5, 46], [97.5, 17]]) + wedge([[99, 17], [105, 40], [111, 17]]);
+    return cube({
+      colors: ['#ffd98c', '#ffad3a', '#ec8312'],
+      pattern: stripes + `<ellipse cx="92.5" cy="140" rx="40" ry="25" fill="#fff6e6"/>`,
+      face:
+        eyesRound(64, 121, 96, 11, 14) +
+        `<path d="M84 122 H101 Q101 127 92.5 132 Q84 127 84 122 Z" fill="#ff7f8f" stroke="${NAVY}" stroke-width="3" stroke-linejoin="round"/>` +
+        `<path d="M80 141 Q86 148 92.5 140 Q99 148 105 141" fill="none" stroke="${NAVY}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>` +
+        [[68, 136], [64, 146], [73, 150], [117, 136], [121, 146], [112, 150]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.4" fill="${NAVY}"/>`).join(''),
+    });
+  },
+  // 19: astronaut helmet
+  () =>
+    cube({
+      colors: [WHITE, '#eaeff8', '#bcc6dc'],
+      defs:
+        lin('vis', 0, 52, 0, 138, [[0, '#4a72f0'], [0.45, '#18287f'], [1, NAVY]]) +
+        `<clipPath id="vc"><rect x="34" y="52" width="117" height="86" rx="30"/></clipPath>`,
+      face:
+        `<circle cx="24" cy="95" r="8" fill="#d7ddeb" stroke="${NAVY}" stroke-width="3"/><circle cx="161" cy="95" r="8" fill="#d7ddeb" stroke="${NAVY}" stroke-width="3"/>` +
+        `<rect x="28" y="46" width="129" height="98" rx="36" fill="${NAVY}"/>` +
+        `<rect x="34" y="52" width="117" height="86" rx="30" fill="url(#vis)"/>` +
+        `<g clip-path="url(#vc)"><path d="M46 72 Q58 60 84 60" fill="none" stroke="${WHITE}" stroke-opacity=".7" stroke-width="6" stroke-linecap="round"/>` +
+        `<path d="${sparkle(131, 72, 6)}" fill="${WHITE}" fill-opacity=".85"/><circle cx="56" cy="124" r="2" fill="${WHITE}" fill-opacity=".7"/><circle cx="138" cy="116" r="1.6" fill="${WHITE}" fill-opacity=".7"/></g>` +
+        `<ellipse cx="72" cy="99" rx="8" ry="10.5" fill="${WHITE}"/><ellipse cx="113" cy="99" rx="8" ry="10.5" fill="${WHITE}"/>` +
+        `<path d="M83 119 Q92.5 127 102 119" fill="none" stroke="${WHITE}" stroke-width="4.5" stroke-linecap="round"/>` +
+        `<circle cx="148" cy="30" r="6" fill="${ACID}" stroke="${NAVY}" stroke-width="3"/>` +
+        `<path d="${starPath(46, 157, 8, 3.6)}" fill="${GOLD}" stroke="${NAVY}" stroke-width="2.4" stroke-linejoin="round"/>` +
+        `<rect x="98" y="152" width="40" height="10" rx="5" fill="#ff5a6e" stroke="${NAVY}" stroke-width="2.4"/>`,
+    }),
+  // 20: cactus with a flower
+  () => {
+    const petals = [0, 72, 144, 216, 288]
+      .map((a) => {
+        const r = ((a - 90) * Math.PI) / 180;
+        return `<circle cx="${n2(146 + 8 * Math.cos(r))}" cy="${n2(25 + 8 * Math.sin(r))}" r="7.5"/>`;
+      })
+      .join('');
+    return cube({
+      colors: ['#c4f5a0', '#72cf5e', '#36984c'],
+      pattern:
+        `<path d="M50 10 V175 M92.5 10 V175 M135 10 V175" stroke="#23803f" stroke-opacity=".38" stroke-width="5"/>` +
+        `<path d="M57 10 V175 M99.5 10 V175 M142 10 V175" stroke="${WHITE}" stroke-opacity=".2" stroke-width="3"/>` +
+        [[50, 36], [50, 152], [135, 152], [92.5, 162], [30, 132], [158, 124], [30, 62]]
+          .map(([x, y]) => `<path d="M${x - 4} ${y - 3} L${x} ${y} L${x + 4} ${y - 3} M${x} ${y} V${y - 5}" fill="none" stroke="${WHITE}" stroke-width="2" stroke-linecap="round"/>`)
+          .join(''),
+      face:
+        eyesRound(66, 119, 96, 11, 14) +
+        `<path d="M74 122 Q92.5 138 111 122" fill="none" stroke="${NAVY}" stroke-width="5.5" stroke-linecap="round"/>` +
+        blush(116, '#ff7aa6', 0.55) +
+        `<g fill="#ff7ab8" stroke="${NAVY}" stroke-width="3">${petals}</g><circle cx="146" cy="25" r="6" fill="${GOLD}" stroke="${NAVY}" stroke-width="2.6"/>`,
+    });
+  },
+  // 21: ice cube with a snow cap
+  () =>
+    cube({
+      colors: ['#e2f8ff', '#7fd2ff', '#2f8ee0'],
+      pattern:
+        `<rect x="36" y="46" width="114" height="108" rx="16" fill="${WHITE}" fill-opacity=".16" stroke="${WHITE}" stroke-opacity=".5" stroke-width="3"/>` +
+        [[46, 142, 5], [140, 134, 4], [131, 152, 6.5], [42, 70, 3.5], [148, 68, 3]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${WHITE}" stroke-opacity=".75" stroke-width="2"/>`).join('') +
+        `<path d="M10 10 H175 V36 Q168 44 161 38 Q156 56 149 40 Q141 48 133 38 Q125 54 117 38 Q109 46 101 36 Q94 50 87 38 Q79 46 71 36 Q63 54 55 38 Q47 46 39 36 Q31 50 24 38 Q17 44 10 36 Z" fill="${WHITE}" stroke="#bfe6ff" stroke-width="3"/>`,
+      face:
+        eyesRound(66, 119, 100, 11, 14) +
+        `<path d="M72 132 q5.2 -6 10.4 0 t10.4 0 t10.4 0 t10.4 0" fill="none" stroke="${NAVY}" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>` +
+        blush(122, '#ff9ac0', 0.5),
+    }),
+  // 22: lava rock
+  () => {
+    const cracks = ['M17 60 L40 66 L54 54 L76 62', 'M108 17 L116 40 L140 50 L168 44', 'M17 130 L38 122 L52 136 L72 130', 'M118 168 L130 146 L152 140 L168 128', 'M84 168 L90 152 L80 142'];
+    const draw = (w, c) => cracks.map((d) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
+    const grin = 'M70 128 L81 136 L92.5 127 L104 136 L115 128';
+    return cube({
+      colors: ['#6b3429', '#3e1b17', '#210c0c'],
+      defs: blur('lv', 3.5),
+      pattern:
+        `<g filter="url(#lv)">${draw(10, '#ff5a1f')}</g>` + draw(4.5, '#ffb23d') + draw(1.6, '#fff1a8') +
+        `<rect x="19.5" y="19.5" width="146" height="146" rx="18" fill="none" stroke="#a9502e" stroke-opacity=".75" stroke-width="3"/>`,
+      face:
+        `<g filter="url(#lv)"><ellipse cx="66" cy="96" rx="15" ry="16" fill="#ff6a1f"/><ellipse cx="119" cy="96" rx="15" ry="16" fill="#ff6a1f"/>` +
+        `<path d="${grin}" fill="none" stroke="#ff6a1f" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/></g>` +
+        `<ellipse cx="66" cy="96" rx="10.5" ry="12.5" fill="${GOLD}"/><ellipse cx="119" cy="96" rx="10.5" ry="12.5" fill="${GOLD}"/>` +
+        `<ellipse cx="63" cy="92" rx="4" ry="5" fill="#fff6c8"/><ellipse cx="116" cy="92" rx="4" ry="5" fill="#fff6c8"/>` +
+        `<path d="${grin}" fill="none" stroke="${GOLD}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`,
+    });
+  },
+  // 23: king with a crown
+  () =>
+    cube({
+      colors: ['#e2b8ff', '#a95eff', '#6a2bcf'],
+      defs: lin('crown', 0, 20, 0, 54, [[0, '#fff3a8'], [0.5, GOLD], [1, '#f0a020']]),
+      frame: tallHead(36),
+      inner: [17, 47, 151, 121],
+      gloss: false,
+      pattern:
+        `<rect x="10" y="150" width="165" height="22" fill="#fff8ec"/><path d="M10 150 H175" stroke="${NAVY}" stroke-opacity=".35" stroke-width="3"/>` +
+        [36, 64, 92.5, 121, 149].map((x) => `<path d="M${x} 156 l3 5 l-3 5 l-3 -5 Z" fill="${NAVY}"/>`).join(''),
+      face:
+        `<rect x="26" y="58" width="12" height="40" rx="6" fill="${WHITE}" fill-opacity=".35"/>` +
+        eyesRound(66, 119, 100, 11, 14) +
+        `<path d="M70 124 Q92.5 146 115 124" fill="none" stroke="${NAVY}" stroke-width="6" stroke-linecap="round"/>` +
+        blush(122, '#ff8fc8', 0.6) +
+        `<path d="M40 54 L40 30 L63 42 L92.5 20 L122 42 L145 30 L145 54 Z" fill="url(#crown)" stroke="${NAVY}" stroke-width="5.5" stroke-linejoin="round"/>` +
+        `<circle cx="40" cy="27" r="5" fill="${PINK}" stroke="${NAVY}" stroke-width="2.5"/><circle cx="92.5" cy="16" r="6" fill="${ACID}" stroke="${NAVY}" stroke-width="2.6"/><circle cx="145" cy="27" r="5" fill="#45d4ff" stroke="${NAVY}" stroke-width="2.5"/>` +
+        `<circle cx="66" cy="47" r="3.5" fill="#45d4ff"/><circle cx="92.5" cy="45" r="4" fill="${PINK}"/><circle cx="119" cy="47" r="3.5" fill="${ACID}"/>`,
+    }),
+];
+
+// dark translucent cover with a small padlock, laid over a locked 180 x 180 skin slot
+function skinLock() {
+  const { defs, body } = padlockParts(false);
+  const s = 0.44;
+  return svg(
+    180,
+    180,
+    defs,
+    `<rect x="2" y="2" width="176" height="176" rx="36" fill="${NAVY}" fill-opacity=".64"/>` +
+      `<rect x="9" y="9" width="162" height="162" rx="29" fill="none" stroke="${WHITE}" stroke-opacity=".22" stroke-width="2.5"/>` +
+      `<g transform="translate(${n2(90 - 80 * s)} ${n2(92 - 95 * s)}) scale(${s})">${body}</g>`,
+  );
+}
+
+// ================================================================ black blocks (glossy near-black body, crisp light rim)
+
+const BLACK_RIM = [[0, WHITE], [0.35, '#eceef5'], [0.7, '#c3c6d3'], [1, '#8b8ea2']];
+const BLACK_GLASS = [[0, '#1c1c28'], [1, '#0d0d14']];
+
+function blackParts(w, h, pattern) {
+  const r = h >= 100 ? 13 : 11;
+  const defs =
+    lin('rim', 4, 4, w - 4, h - 4, BLACK_RIM) +
+    lin('glass', 0, 12, 0, h - 12, BLACK_GLASS) +
+    lin('shine', 12, 12, 12 + Math.min(w, h) * 0.5, 12 + Math.min(w, h) * 0.5, [[0, WHITE, 0.16], [1, WHITE, 0]]) +
+    `<clipPath id="gc"><rect x="12" y="12" width="${w - 24}" height="${h - 24}" rx="${r - 6}"/></clipPath>` +
+    blur('soft', 3);
+  const body =
+    `<rect width="${w}" height="${h}" fill="${NAVY}"/>` +
+    `<rect x="4" y="4" width="${w - 8}" height="${h - 8}" rx="${r}" fill="url(#rim)"/>` +
+    `<rect x="10" y="10" width="${w - 20}" height="${h - 20}" rx="${r - 4.5}" fill="#05050b"/>` +
+    `<rect x="12" y="12" width="${w - 24}" height="${h - 24}" rx="${r - 6}" fill="url(#glass)"/>` +
+    `<g clip-path="url(#gc)">` +
+    `<rect x="12" y="12" width="${w - 24}" height="${h - 24}" rx="${r - 6}" fill="none" stroke="${WHITE}" stroke-opacity=".13" stroke-width="8" filter="url(#soft)"/>` +
+    pattern +
+    `<path d="M12 12 H${12 + Math.min(w, h) * 0.64} L12 ${12 + Math.min(w, h) * 0.64} Z" fill="url(#shine)"/>` +
+    `</g>` +
+    `<path d="M7 ${Math.min(42, h - 24)} V20 Q7 7 20 7 H42" fill="none" stroke="${WHITE}" stroke-width="2.4" stroke-linecap="round"/>`;
+  return svg(w, h, defs, body);
+}
+
+function blackBlock() {
+  return blackParts(
+    120,
+    120,
+    `<path d="M60 33 L87 60 L60 87 L33 60 Z" fill="#191926" stroke="#34344c" stroke-width="3.5" stroke-linejoin="round"/>` +
+      `<circle cx="60" cy="60" r="5" fill="#3a3a55"/>` +
+      `<path d="M12 104 L104 12 H112 L12 112 Z" fill="${WHITE}" fill-opacity=".04"/>`,
+  );
+}
+
+function blackSlab() {
+  return blackParts(120, 54, [42, 60, 78].map((x) => `<circle cx="${x}" cy="27" r="3.8" fill="#34344c"/>`).join(''));
+}
+
+// ================================================================ speed gates, colored orbs and pads, mode bodies, debris
+
+const SPEED_SCHEMES = {
+  slow: { light: '#ffdcae', mid: '#ff9a3d', deep: '#e0601a' },
+  normal: { light: '#c4dcff', mid: '#3f7dff', deep: '#1f3cc4' },
+  fast: { light: '#e6ffc2', mid: '#7fe03a', deep: '#3c9a1c' },
+  veryFast: { light: '#ffd0f2', mid: '#ff4fc8', deep: '#bf1f96' },
+};
+
+// forward-leaning rounded gate with n white chevrons (same chevron size at every speed, so the count reads)
+function speedPortal(scheme, n) {
+  const sc = SPEED_SCHEMES[scheme];
+  const cx = 55;
+  const cy = 75;
+  const g = { x: 12, y: 5, w: 86, h: 140, r: 30 };
+  const inset = (d) => `x="${g.x + d}" y="${g.y + d}" width="${g.w - 2 * d}" height="${g.h - 2 * d}" rx="${Math.max(4, g.r - d)}"`;
+  const defs =
+    lin('rim', g.x, 0, g.x + g.w, 0, [[0, sc.deep], [0.5, sc.mid], [1, sc.light]]) +
+    rad('field', cx, cy, 72, [[0, sc.mid, 0.12], [0.7, sc.mid, 0.24], [1, sc.light, 0.55]]) +
+    blur('soft', 3);
+  const step = n >= 4 ? 13.5 : 15;
+  const half = 9;
+  const tall = 23;
+  const x0 = cx + 1 - ((n - 1) * step) / 2;
+  let chev = '';
+  for (let i = 0; i < n; i++) {
+    const x = x0 + i * step;
+    chev += `M${n2(x - half)} ${cy - tall} L${n2(x + half)} ${cy} L${n2(x - half)} ${cy + tall} `;
+  }
+  const body =
+    `<g transform="translate(${cx} ${cy}) skewX(-7) translate(${-cx} ${-cy})">` +
+    `<rect ${inset(0)} fill="${NAVY}"/>` +
+    `<rect ${inset(5)} fill="url(#rim)"/>` +
+    `<rect ${inset(12)} fill="${NAVY}"/>` +
+    `<rect ${inset(14)} fill="url(#field)"/>` +
+    `<rect ${inset(14)} fill="none" stroke="${sc.light}" stroke-opacity=".6" stroke-width="5" filter="url(#soft)"/>` +
+    [-46, 46].map((dy) => `<path d="M${cx - 20} ${cy + dy} H${cx + 20}" stroke="${WHITE}" stroke-opacity=".4" stroke-width="3" stroke-linecap="round"/>`).join('') +
+    `<path d="M${g.x + 9} ${g.y + 46} V${g.y + 32} Q${g.x + 9} ${g.y + 9} ${g.x + 32} ${g.y + 9} H${g.x + 52}" fill="none" stroke="${WHITE}" stroke-opacity=".8" stroke-width="2.5" stroke-linecap="round"/>` +
+    `</g>` +
+    `<path d="${chev}" fill="none" stroke="${NAVY}" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<path d="${chev}" fill="none" stroke="${WHITE}" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return svg(110, 150, defs, body);
+}
+
+const ORB_SCHEMES = {
+  pink: { halo: '#ff5cc8', ring: ['#ffd9f2', '#ff5cc8', '#c81f8a'], core: [WHITE, '#ffeaf8', '#ffa3de'] },
+  blue: { halo: '#3fc0ff', ring: ['#d2f6ff', '#3fc0ff', '#1f5ee0'], core: [WHITE, '#e6f9ff', '#94deff'] },
+};
+
+// same build as the gold orb (36), recolored, with a small hint symbol in the core
+function coloredOrb(kind) {
+  const S = ORB_SCHEMES[kind];
+  const defs =
+    rad('halo', 60, 60, 60, [[0.6, S.halo, 0.6], [0.8, S.halo, 0.2], [1, S.halo, 0]]) +
+    lin('ring', 22, 16, 98, 104, [[0, S.ring[0]], [0.45, S.ring[1]], [1, S.ring[2]]]) +
+    rad('core', 53, 51, 40, [[0, S.core[0]], [0.42, S.core[1]], [1, S.core[2]]]);
+  const symbol =
+    kind === 'pink'
+      ? `<path d="M49 69 L60 58 L71 69" fill="none" stroke="${NAVY}" stroke-opacity=".55" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>`
+      : `<path d="M60 45 V75 M51 54 L60 45 L69 54 M51 66 L60 75 L69 66" fill="none" stroke="${NAVY}" stroke-opacity=".6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const body =
+    `<circle cx="60" cy="60" r="60" fill="url(#halo)"/>` +
+    `<circle cx="60" cy="60" r="52" fill="${NAVY}"/>` +
+    `<circle cx="60" cy="60" r="48" fill="url(#ring)"/>` +
+    `<circle cx="60" cy="60" r="37.5" fill="${NAVY}"/>` +
+    `<circle cx="60" cy="60" r="34" fill="url(#core)"/>` +
+    `<path d="${ellipseArc(60, 60, 43, 43, 195, 265)}" fill="none" stroke="${WHITE}" stroke-opacity=".8" stroke-width="3.5" stroke-linecap="round"/>` +
+    `<path d="${ellipseArc(60, 60, 43, 43, 20, 45)}" fill="none" stroke="${WHITE}" stroke-opacity=".45" stroke-width="2.5" stroke-linecap="round"/>` +
+    symbol +
+    `<path d="${sparkle(42, 42, 7)}" fill="${WHITE}"/>`;
+  return svg(120, 120, defs, body);
+}
+
+const PAD_SCHEMES = {
+  pink: { glow: '#ff5cc8', plate: ['#ffe3f5', '#ff6fd0', '#cc2a92'] },
+  blue: { glow: '#3fc0ff', plate: ['#dcf7ff', '#4fc8ff', '#1f68dc'] },
+};
+
+// same build as the gold pad (35), recolored; the blue (gravity) pad gets up+down marks
+function coloredPad(kind) {
+  const S = PAD_SCHEMES[kind];
+  const defs =
+    rad('glow', 50, 10, 50, [[0, S.glow, 0.85], [0.6, S.glow, 0.35], [1, S.glow, 0]], 'gradientTransform="translate(50 10) scale(1 .3) translate(-50 -10)"') +
+    lin('plate', 0, 4, 0, 16, [[0, S.plate[0]], [0.4, S.plate[1]], [1, S.plate[2]]]);
+  const top = 'M3 16 L7.5 6 Q9 3.6 12 3.6 H88 Q91 3.6 92.5 6 L97 16';
+  const mark = (x) =>
+    kind === 'pink'
+      ? `M${x - 6} 13 L${x} 8.2 L${x + 6} 13`
+      : `M${x - 5} 10 L${x} 6.8 L${x + 5} 10 M${x - 5} 11.8 L${x} 15 L${x + 5} 11.8`;
+  const body =
+    `<ellipse cx="50" cy="10" rx="50" ry="15" fill="url(#glow)"/>` +
+    `<path d="${top} Z" fill="url(#plate)"/>` +
+    `<path d="M11 6.6 H89" stroke="${WHITE}" stroke-opacity=".9" stroke-width="1.6" stroke-linecap="round"/>` +
+    `<path d="${[30, 50, 70].map(mark).join(' ')}" fill="none" stroke="${NAVY}" stroke-width="${kind === 'pink' ? 2.4 : 2.1}" stroke-linecap="round" stroke-linejoin="round"/>` +
+    `<path d="${top}" fill="none" stroke="${NAVY}" stroke-width="2.6" stroke-linejoin="round"/>`;
+  return svg(100, 16, defs, body);
+}
+
+// ball mode: round shell with a transparent 64 x 64 window (28..92) for the cube face
+function ballBody() {
+  const sector = (a0, a1, r0, r1) => {
+    const p = (a, r) => [60 + r * Math.cos((a * Math.PI) / 180), 60 + r * Math.sin((a * Math.PI) / 180)];
+    const [x0, y0] = p(a0, r1);
+    const [x1, y1] = p(a1, r1);
+    const [x2, y2] = p(a1, r0);
+    const [x3, y3] = p(a0, r0);
+    return `M${n2(x0)} ${n2(y0)} A${r1} ${r1} 0 0 1 ${n2(x1)} ${n2(y1)} L${n2(x2)} ${n2(y2)} A${r0} ${r0} 0 0 0 ${n2(x3)} ${n2(y3)} Z`;
+  };
+  const defs =
+    rad('shell', 44, 38, 76, [[0, '#93b3ff'], [0.5, '#3f6dff'], [1, '#1a37a2']]) +
+    lin('bump', 0, 0, 120, 120, [[0, '#efffc6'], [0.5, ACID], [1, '#78c62a']]) +
+    `<mask id="win" maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="120"><rect width="120" height="120" fill="${WHITE}"/><rect x="28" y="28" width="64" height="64" rx="18" fill="#000000"/></mask>`;
+  const body =
+    `<g mask="url(#win)">` +
+    `<circle cx="60" cy="60" r="58" fill="${NAVY}"/>` +
+    `<circle cx="60" cy="60" r="53.5" fill="url(#shell)"/>` +
+    [45, 135, 225, 315].map((a) => `<path d="${sector(a - 17, a + 17, 44, 53.5)}" fill="url(#bump)" stroke="${NAVY}" stroke-width="3.5" stroke-linejoin="round"/>`).join('') +
+    [0, 90, 180, 270].map((a) => `<circle cx="${n2(60 + 48.5 * Math.cos((a * Math.PI) / 180))}" cy="${n2(60 + 48.5 * Math.sin((a * Math.PI) / 180))}" r="4" fill="#dfe7ff" stroke="${NAVY}" stroke-width="2"/>`).join('') +
+    `<path d="${ellipseArc(60, 60, 50, 50, 200, 250)}" fill="none" stroke="${WHITE}" stroke-opacity=".75" stroke-width="3" stroke-linecap="round"/>` +
+    `<rect x="23.5" y="23.5" width="73" height="73" rx="23" fill="${NAVY}"/>` +
+    `<rect x="25.5" y="25.5" width="69" height="69" rx="21" fill="none" stroke="#a9c0ff" stroke-opacity=".7" stroke-width="1.6"/>` +
+    `</g>`;
+  return svg(120, 120, defs, body);
+}
+
+// ufo mode: saucer; the cube (x 43-110, y -26..41) sits in an open glass cup on top, like the ship's cockpit
+function ufoBody() {
+  const defs =
+    lin('top', 0, 40, 0, 57, [[0, '#f6f9ff'], [1, '#b4c4ec']]) +
+    lin('bot', 0, 57, 0, 74, [[0, '#3f6dff'], [1, '#1a35a0']]) +
+    lin('pod', 0, 64, 0, 84, [[0, '#2a4cc9'], [1, '#13246e']]) +
+    lin('rim', 0, 26, 0, 34, [[0, WHITE], [1, '#a9c0ff']]) +
+    lin('cup', 0, 6, 0, 32, [[0, '#e2fcff', 0.18], [1, '#45c8ff', 0.42]]) +
+    lin('collar', 0, 30, 0, 48, [[0, '#e6edff'], [1, '#9fb2e2']]) +
+    rad('beam', 74.5, 84, 26, [[0, '#9ff6ff', 0.8], [1, '#9ff6ff', 0]], 'gradientTransform="translate(74.5 84) scale(1 .35) translate(-74.5 -84)"') +
+    `<clipPath id="disc"><ellipse cx="74.5" cy="57" rx="71" ry="17"/></clipPath>`;
+  const lights = [17, 37, 57, 92, 112, 132].map((x, i) => `<circle cx="${x}" cy="57.5" r="3.2" fill="${i % 2 ? GOLD : WHITE}" stroke="${NAVY}" stroke-width="1.6"/>`).join('');
+  const body =
+    `<ellipse cx="74.5" cy="84" rx="26" ry="9" fill="url(#beam)"/>` +
+    `<ellipse cx="74.5" cy="73" rx="27" ry="10" fill="url(#pod)" stroke="${NAVY}" stroke-width="3.5"/>` +
+    `<ellipse cx="74.5" cy="76" rx="9" ry="3.5" fill="#9ff6ff"/>` +
+    `<ellipse cx="74.5" cy="57" rx="71" ry="17" fill="url(#bot)"/>` +
+    `<g clip-path="url(#disc)"><rect x="0" y="36" width="149" height="18.5" fill="url(#top)"/>` +
+    `<rect x="0" y="53" width="149" height="9" fill="${ACID}"/><path d="M0 53 H149 M0 62 H149" stroke="${NAVY}" stroke-width="2"/>` +
+    `<path d="M14 49 Q74.5 41 135 49" fill="none" stroke="${WHITE}" stroke-opacity=".8" stroke-width="2.6" stroke-linecap="round"/></g>` +
+    lights +
+    `<ellipse cx="74.5" cy="57" rx="71" ry="17" fill="none" stroke="${NAVY}" stroke-width="4"/>` +
+    `<path d="M33 47 L40 31 H113 L120 47 Z" fill="url(#collar)" stroke="${NAVY}" stroke-width="3.5" stroke-linejoin="round"/>` +
+    `<path d="M36 8 C36 22 46 30 76.5 30 C107 30 117 22 117 8" fill="url(#cup)" stroke="${WHITE}" stroke-opacity=".75" stroke-width="2.2"/>` +
+    `<ellipse cx="76.5" cy="8" rx="40.5" ry="4.5" fill="none" stroke="${WHITE}" stroke-opacity=".9" stroke-width="2.4"/>` +
+    `<path d="M44 13 Q46 22 57 26" fill="none" stroke="${WHITE}" stroke-opacity=".75" stroke-width="3" stroke-linecap="round"/>` +
+    `<rect x="37" y="26" width="79" height="8" rx="4" fill="url(#rim)" stroke="${NAVY}" stroke-width="3"/>`;
+  return svg(149, 88, defs, body);
+}
+
+// wave mode: dart pointing right (the engine rotates it)
+function waveBody() {
+  const dart = poly([[84, 45], [13, 15], [29, 45], [13, 75]]);
+  const defs =
+    lin('dart', 13, 15, 84, 75, [[0, '#efffc6'], [0.45, ACID], [1, '#6fbe24']]) +
+    `<clipPath id="dc"><path d="${dart}"/></clipPath>`;
+  const body =
+    `<path d="${dart}" fill="url(#dart)" stroke="${NAVY}" stroke-width="6" stroke-linejoin="round"/>` +
+    `<g clip-path="url(#dc)"><path d="M84 45 L13 15 L22 45 Z" fill="${WHITE}" fill-opacity=".22"/><path d="M84 45 L22 45 L13 75 Z" fill="${NAVY}" fill-opacity=".12"/></g>` +
+    `<path d="${poly([[70, 45], [33, 31], [40, 45], [33, 59]])}" fill="${BLUE}" stroke="${NAVY}" stroke-width="3" stroke-linejoin="round"/>` +
+    `<path d="M24 23 L66 40" stroke="${WHITE}" stroke-opacity=".75" stroke-width="2.6" stroke-linecap="round"/>` +
+    `<circle cx="50" cy="45" r="4.5" fill="${WHITE}" stroke="${NAVY}" stroke-width="2"/>`;
+  return svg(90, 90, defs, body);
+}
+
+// death debris: square, triangle, circle in plain white (the engine tints them)
+function debris() {
+  return svg(
+    96,
+    32,
+    '',
+    `<rect x="4" y="4" width="24" height="24" rx="3" fill="${WHITE}"/>` +
+      `<path d="M48 4.5 L60.5 27.5 H35.5 Z" fill="${WHITE}" stroke="${WHITE}" stroke-width="1" stroke-linejoin="round"/>` +
+      `<circle cx="80" cy="16" r="12" fill="${WHITE}"/>`,
+  );
 }
 
 // ================================================================ UI
@@ -1324,11 +1845,30 @@ const SPRITES = [
   { file: 'objects/21.png', w: 168, h: 52, svg: () => tufts(168, 52, 21, 4, DECO_SPARKLES[21]) },
   { file: 'objects/41.png', w: 78, h: 278, svg: chainLantern },
   { file: 'objects/201.png', w: 120, h: 120, svg: coin },
+  { file: 'objects/202.png', w: 120, h: 120, svg: blackBlock },
+  { file: 'objects/203.png', w: 120, h: 54, svg: blackSlab },
+  { file: 'objects/210.png', w: 132, h: 335, svg: () => portal(132, 335, 'ball', 'ball') },
+  { file: 'objects/211.png', w: 132, h: 335, svg: () => portal(132, 335, 'ufo', 'ufo') },
+  { file: 'objects/212.png', w: 132, h: 335, svg: () => portal(132, 335, 'wave', 'wave') },
+  { file: 'objects/213.png', w: 110, h: 150, svg: () => speedPortal('slow', 1) },
+  { file: 'objects/214.png', w: 110, h: 150, svg: () => speedPortal('normal', 2) },
+  { file: 'objects/215.png', w: 110, h: 150, svg: () => speedPortal('fast', 3) },
+  { file: 'objects/216.png', w: 110, h: 150, svg: () => speedPortal('veryFast', 4) },
+  { file: 'objects/220.png', w: 120, h: 120, svg: () => coloredOrb('pink') },
+  { file: 'objects/221.png', w: 120, h: 120, svg: () => coloredOrb('blue') },
+  { file: 'objects/222.png', w: 100, h: 16, svg: () => coloredPad('pink') },
+  { file: 'objects/223.png', w: 100, h: 16, svg: () => coloredPad('blue') },
+  { file: 'ball.png', w: 120, h: 120, svg: ballBody },
+  { file: 'ufo.png', w: 149, h: 88, svg: ufoBody },
+  { file: 'wave.png', w: 90, h: 90, svg: waveBody },
+  { file: 'debris.png', w: 96, h: 32, svg: debris },
   { file: 'coinIcon.png', w: 64, h: 64, svg: coinIcon },
   { file: 'coinEmpty.png', w: 64, h: 64, svg: coinEmpty },
   { file: 'lock.png', w: 160, h: 190, svg: lock },
   { file: 'lockSmall.png', w: 64, h: 76, svg: lockSmall },
   ...SKINS.map((make, i) => ({ file: `skins/${i}.png`, w: 185, h: 185, svg: make })),
+  ...SKINS_2.map((make, i) => ({ file: `skins/${12 + i}.png`, w: 185, h: 185, svg: make })),
+  { file: 'skinLock.png', w: 180, h: 180, svg: skinLock },
   { file: 'ship.png', w: 149, h: 88, svg: ship },
   { file: 'checkpoint.png', w: 100, h: 100, svg: checkpoint },
   { file: 'background.png', w: 2048, h: 2048, raw: backgroundTexture },

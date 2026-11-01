@@ -78,6 +78,9 @@ void LevelManager::initBlocks() {
         SDL_FRect { 0, 0, 120, 54 },
     };
     m_IDToObjectData[41].type = ObjectType::DECO;
+    // black block and black half slab
+    m_IDToObjectData[202] = m_IDToObjectData[1];
+    m_IDToObjectData[203] = m_IDToObjectData[40];
     // collectible coin, three in every built-in level
     m_IDToObjectData[201] = {
         ObjectType::COIN,

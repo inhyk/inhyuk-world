@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1030">
 <title>DASH / OVERDRIVE · CLASSIC</title>
-<link rel="stylesheet" href="style.css?v=classic-original-2">
+<link rel="stylesheet" href="style.css?v=classic-original-4">
 </head>
 <body>
 <header>
   <a href="/play/dash-overdrive" target="_top">← OVERDRIVE</a>
   <strong id="now-playing">DASH / OVERDRIVE <span>CLASSIC</span></strong>
   <div>
+    <button id="social-open" type="button" class="social-open" aria-label="로그인"><span aria-hidden="true">👤</span><span id="social-label" class="social-label">로그인</span><i id="social-badge" class="social-badge" hidden></i></button>
     <button id="online-open" type="button">👥 같이 하기</button>
     <button id="select" type="button">단계 선택</button>
     <button id="full" type="button" aria-label="전체 화면">⛶</button>
@@ -21,9 +22,9 @@
 
 <main id="launcher" hidden>
   <div class="intro">
-    <div class="eyebrow">CLASSIC · 15 + 3 SECRET LEVELS</div>
+    <div class="eyebrow">CLASSIC · 15 + 5 SECRET LEVELS</div>
     <h1>새로 만든 맵.<br><span>끝까지 달려!</span></h1>
-    <p>큐브로 뛰고, 비행선으로 날고, 중력을 뒤집어.<br>1단계부터 15단계까지 점점 어려워져.<br>단계마다 숨은 코인 3개는 끝까지 깨야 모여.<br>코인 10개, 20개, 30개를 모으면 비밀 단계가 하나씩 열려.</p>
+    <p>큐브로 뛰고, 비행선으로 날고, 중력을 뒤집어.<br>1단계부터 15단계까지 점점 어려워져.<br>단계마다 숨은 코인 3개는 끝까지 깨야 모여.<br>코인을 10개, 20개, 30개, 40개, 50개 모으면 비밀 단계가 하나씩 열려.<br>단계를 하나 깰 때마다 새 스킨도 하나씩 생겨.</p>
     <p class="coin-total" id="coin-total">모은 코인 0개</p>
   </div>
   <section class="choices" id="choices" aria-label="단계 선택"></section>
@@ -41,7 +42,10 @@
     <label>노래 <select id="editor-song"></select></label>
     <label>색 <select id="editor-colors"></select></label>
     <span id="editor-saved" class="editor-saved">저장됨</span>
+    <span class="editor-height"><button id="editor-down" type="button" aria-label="아래로">▼</button><span id="editor-height">바닥</span><button id="editor-up" type="button" aria-label="위로">▲</button></span>
     <div class="editor-actions">
+      <button id="editor-copy" type="button">맵 코드 복사</button>
+      <button id="editor-paste" type="button">코드로 불러오기</button>
       <button id="editor-clear" type="button">모두 지우기</button>
       <button id="editor-test" type="button" class="primary">▶ 해 보기</button>
       <button id="editor-close" type="button" aria-label="맵 만들기 닫기">✕</button>
@@ -54,7 +58,13 @@
     <button class="editor-scroll" id="editor-right" type="button" aria-label="오른쪽으로">▶</button>
   </div>
   <input id="editor-position" type="range" min="0" max="380" value="0" aria-label="맵 위치">
-  <p class="editor-help">칸을 누르면 놓고, 같은 칸을 다시 누르면 지워져. 큐브는 왼쪽 초록 줄에서 출발해.</p>
+  <p class="editor-help">칸을 누르면 놓고, 같은 칸을 다시 누르면 지워져. 큐브는 왼쪽 초록 줄에서 출발해. ▲ ▼로 더 높이 올라가서 놓을 수 있어.</p>
+  <div id="editor-share" class="editor-confirm editor-share" hidden>
+    <p id="editor-share-note"></p>
+    <textarea id="editor-share-text" rows="4" spellcheck="false" aria-label="맵 코드"></textarea>
+    <button id="editor-share-load" type="button">불러오기</button>
+    <button id="editor-share-close" type="button">닫기</button>
+  </div>
   <div id="editor-confirm" class="editor-confirm" hidden>
     <p>만든 맵을 모두 지울까?</p>
     <button id="editor-confirm-yes" type="button">지우기</button>
@@ -81,16 +91,84 @@
     <p id="online-status" class="online-status" role="status" aria-live="polite"></p>
   </div>
 </section>
+<section id="social" class="online social" hidden aria-label="계정과 친구">
+  <div class="online-card social-card">
+    <div class="online-head"><strong id="social-title">👤 로그인</strong><button id="social-close" type="button" aria-label="닫기">✕</button></div>
+    <div id="social-login">
+      <div class="social-tabs">
+        <button id="social-mode-login" type="button" aria-pressed="true">로그인</button>
+        <button id="social-mode-signup" type="button" aria-pressed="false">새 계정 만들기</button>
+      </div>
+      <form id="social-login-form" class="social-form" novalidate>
+        <label for="social-nick">닉네임</label>
+        <input id="social-nick" maxlength="10" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="2~10글자">
+        <label for="social-pass">비밀번호</label>
+        <input id="social-pass" type="password" maxlength="16" autocomplete="current-password" placeholder="4~16글자">
+        <label for="social-pass2" class="signup-only">비밀번호 한 번 더</label>
+        <input id="social-pass2" class="signup-only" type="password" maxlength="16" autocomplete="new-password" placeholder="똑같이 한 번 더">
+        <button id="social-submit" type="submit" class="primary">로그인</button>
+      </form>
+      <ul class="social-rules signup-only">
+        <li>닉네임은 2~10글자. 한글, 영어, 숫자, _ 만 돼. 다른 사람이 쓰는 닉네임은 못 써.</li>
+        <li>욕, 전화번호, 인터넷 주소, 숫자 7개 이상은 닉네임에 못 넣어.</li>
+        <li>진짜 이름, 학교, 전화번호는 닉네임에 쓰지 마.</li>
+        <li>비밀번호는 4~16글자.</li>
+        <li>이메일은 안 받아. 비밀번호를 잊으면 되찾을 수 없으니 꼭 기억해 둬!</li>
+      </ul>
+      <p class="online-note">젤리 타워 같은 seonn.dev 의 다른 게임도 같은 계정으로 들어가.</p>
+    </div>
+    <div id="social-home" hidden>
+      <div class="social-me"><i id="social-live" class="social-dot" aria-hidden="true"></i><span id="social-me"></span><button id="social-logout" type="button">로그아웃</button></div>
+      <form id="social-search" class="social-row-form"><input id="social-q" maxlength="10" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="친구 닉네임 찾기" aria-label="친구 닉네임 찾기"><button type="submit">🔍 찾기</button></form>
+      <div id="social-results" class="social-list"></div>
+      <p id="social-in-title" class="social-sub" hidden>나한테 온 친구 요청</p>
+      <div id="social-in" class="social-list"></div>
+      <p id="social-out-title" class="social-sub" hidden>내가 보낸 친구 요청</p>
+      <div id="social-out" class="social-list"></div>
+      <p class="social-sub">친구</p>
+      <div id="social-friends" class="social-list"></div>
+      <p class="online-note">친구가 이 게임을 켜 두었을 때 채팅하고 같이 달릴 수 있어.</p>
+    </div>
+    <div id="social-chat" hidden>
+      <div class="social-chat-head"><button id="social-back" type="button">← 친구</button><b id="social-with"></b></div>
+      <p id="social-chat-state" class="online-note"></p>
+      <div id="social-lines" class="social-lines" role="log" aria-live="polite"></div>
+      <form id="social-say-form" class="social-row-form"><input id="social-say" maxlength="100" autocomplete="off" placeholder="할 말을 적어 줘" aria-label="할 말"><button id="social-send" type="submit" class="primary">보내기</button></form>
+      <p class="social-hint">진짜 이름, 학교, 전화번호는 말하지 마. 욕, 전화번호, 주소는 가려서 보내져.</p>
+      <div class="social-tools">
+        <button id="social-race" type="button">🏁 같이 달리기</button>
+        <button id="social-block" type="button">🚫 차단</button>
+        <button id="social-report" type="button">🚨 신고</button>
+        <button id="social-hangup" type="button">👋 나가기</button>
+      </div>
+    </div>
+    <p id="social-status" class="online-status" role="status" aria-live="polite"></p>
+    <div id="social-ask" class="social-ask" hidden role="alertdialog" aria-labelledby="social-ask-text">
+      <div class="social-ask-box">
+        <p id="social-ask-text"></p>
+        <textarea id="social-ask-reason" maxlength="200" rows="3" placeholder="무엇이 싫었는지 적어 줘 (안 적어도 돼)" aria-label="신고하는 까닭"></textarea>
+        <div class="social-ask-row"><button id="social-ask-no" type="button">그만두기</button><button id="social-ask-ok" type="button" class="primary">확인</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+<div id="social-invite" class="social-invite" hidden role="alertdialog" aria-labelledby="social-invite-text">
+  <p id="social-invite-text"></p>
+  <small id="social-invite-left"></small>
+  <div class="social-ask-row"><button id="social-invite-no" type="button">다음에</button><button id="social-invite-yes" type="button" class="primary">좋아!</button></div>
+</div>
 <div id="race" class="race" hidden aria-label="같이 달리는 친구들"></div>
+<div id="watch" class="watch" hidden><b id="watch-name">관전 중</b><button id="watch-retry" type="button">다시 달리기 ▶</button></div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <footer>
   <span><kbd>SPACE</kbd> / 클릭 / 터치 : 점프 · 비행선은 꾹 누르기</span>
   <span><kbd>ESC</kbd> 일시정지 · 연습 모드에서 <kbd>Z</kbd> 체크포인트 / <kbd>X</kbd> 삭제</span>
   <span class="rotate">휴대폰은 가로 화면이 좋아 ↻</span>
 </footer>
-<script src="launcher.js?v=classic-original-2"></script>
-<script src="editor.js?v=classic-original-2"></script>
-<script type="module" src="online.mjs?v=classic-original-2"></script>
-<script src="engine/DashClassic.js?v=classic-original-2"></script>
+<script src="launcher.js?v=classic-original-4"></script>
+<script src="editor.js?v=classic-original-4"></script>
+<script type="module" src="online.mjs?v=classic-original-4"></script>
+<script type="module" src="social-ui.mjs?v=classic-original-4"></script>
+<script src="engine/DashClassic.js?v=classic-original-4"></script>
 </body>
 </html>

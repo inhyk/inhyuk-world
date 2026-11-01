@@ -63,10 +63,39 @@ int Game::init() {
     Text::init();
     for (int i = 0; i < Config::SKIN_COUNT; i++) {
         const std::string path = "res/gfx/skins/" + std::to_string(i) + ".png";
-        m_Skins[i] = IMG_LoadTexture(m_Renderer, path.c_str());
-        if (m_Skins[i] == nullptr) {
+        m_Skins[i] = nullptr;
+        m_SkinColors[i] = { 191, 255, 89, 255 };
+        SDL_Surface *loaded = IMG_Load(path.c_str());
+        if (loaded == nullptr) {
             std::cerr << "Failed to load " << path << "! " << SDL_GetError() << '\n';
+            continue;
         }
+        SDL_Surface *surface = SDL_ConvertSurfaceFormat(loaded, SDL_PIXELFORMAT_RGBA32, 0);
+        SDL_FreeSurface(loaded);
+        if (surface == nullptr) {
+            continue;
+        }
+        // the skin's main colour: average of its solid, not too dark pixels
+        unsigned long long red = 0, green = 0, blue = 0, count = 0;
+        SDL_LockSurface(surface);
+        for (int y = 0; y < surface->h; y += 2) {
+            const Uint8 *row = static_cast<const Uint8 *>(surface->pixels) + y * surface->pitch;
+            for (int x = 0; x < surface->w; x += 2) {
+                const Uint8 *pixel = row + x * 4;
+                if (pixel[3] > 200 && pixel[0] + pixel[1] + pixel[2] > 150) {
+                    red += pixel[0];
+                    green += pixel[1];
+                    blue += pixel[2];
+                    count++;
+                }
+            }
+        }
+        SDL_UnlockSurface(surface);
+        if (count > 0) {
+            m_SkinColors[i] = { static_cast<Uint8>(red / count), static_cast<Uint8>(green / count), static_cast<Uint8>(blue / count), 255 };
+        }
+        m_Skins[i] = SDL_CreateTextureFromSurface(m_Renderer, surface);
+        SDL_FreeSurface(surface);
     }
     m_SelectedSkin = std::clamp(Storage::getInt(Storage::SKIN, 0), 0, Config::SKIN_COUNT - 1);
 
@@ -78,6 +107,9 @@ int Game::init() {
     LevelSelect::get().init(this);
     PlayingState::get().init(this);
     SkinSelect::get().init(this);
+    if (!isSkinUnlocked(m_SelectedSkin)) {
+        m_SelectedSkin = 0;
+    }
 
     pushState(TitleScreen::get());
 
@@ -222,6 +254,10 @@ void Game::popToRoot() {
     while (m_GameStates.size() > 1) {
         popState();
     }
+}
+
+bool Game::isSkinUnlocked(int skin) const {
+    return m_CreatorMode || skin < Config::FREE_SKINS || LevelSelect::get().isCleared(skin - Config::FREE_SKINS);
 }
 
 void Game::setSelectedSkin(int skin) {

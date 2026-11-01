@@ -12,8 +12,8 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const provenance = JSON.parse(read('provenance.json'));
 const report = JSON.parse(readFileSync(new URL('./levels/report.json', import.meta.url), 'utf8'));
 
-test('eighteen built levels use only objects the engine knows', () => {
-  assert.equal(LEVELS.length, 18);
+test('twenty built levels use only objects the engine knows', () => {
+  assert.equal(LEVELS.length, 20);
   for (let index = 0; index < LEVELS.length; index++) {
     const text = readFileSync(new URL(`leveldata/${index}.level`, res), 'utf8');
     const ids = text.split(';').slice(1).filter(Boolean).map(row => Number(row.split(',')[1]));
