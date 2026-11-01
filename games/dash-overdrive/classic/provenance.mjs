@@ -26,6 +26,7 @@ const provenance = {
       'Title screen with SKINS, PLAY and CREATE buttons and a parade of every skin',
       'Skin picker, saved best percentages, songs downloaded per level',
       'Extra level slot for the map maker and level-checker functions (sim_*)',
+      'Ball, UFO and wave modes, speed gates, pink and blue orbs and pads (own tuning numbers and art), mirrored in levels/physics.mjs',
     ],
   },
   font: 'Lilita One, SIL Open Font License 1.1',

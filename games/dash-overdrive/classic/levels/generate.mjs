@@ -1,4 +1,6 @@
-// Builds the 15 built-in levels of Dash Overdrive Classic into res/leveldata/.
+// Builds the 20 built-in levels of Dash Overdrive Classic into res/leveldata/.
+// Levels 19 and 20 follow a plan per song section with the ball, UFO and wave
+// modes, speed gates and pink and blue orbs and pads (the designer's plan item 2).
 //
 // A level is built left to right, one piece at a time. Each piece is played by
 // the engine's own physics (physics.mjs) from the exact moment the previous
@@ -9,7 +11,7 @@
 //
 // node games/dash-overdrive/classic/levels/generate.mjs [level numbers...]
 import {readFileSync, writeFileSync, existsSync, mkdirSync} from 'node:fs';
-import {parseLevel, newPlayer, clonePlayer, step, TILE, SPEED_PER_FRAME} from './physics.mjs';
+import {parseLevel, newPlayer, clonePlayer, step, TILE, SPEED_PER_FRAME, SPEED_MULTIPLIERS, NORMAL_SPEED, speedOf} from './physics.mjs';
 
 const OUT = new URL('../res/leveldata/', import.meta.url);
 const REPORT = new URL('./report.json', import.meta.url);
@@ -61,8 +63,33 @@ export const LEVELS = [
   {name: 'Golden Key', bpm: 138.48, seconds: 102, colors: [[[255, 196, 40], [176, 112, 0]], [[60, 40, 120], [26, 14, 70]]]},
   {name: 'Secret Core', bpm: 178.05, seconds: 106, colors: [[[40, 230, 210], [0, 140, 130]], [[120, 20, 60], [60, 0, 30]]]},
   {name: 'Last Dash', bpm: 178.05, seconds: 110, colors: [[[255, 60, 60], [150, 10, 20]], [[20, 20, 40], [6, 6, 16]], [[191, 255, 89], [90, 170, 30]]]},
-  {name: 'Volt Rush', bpm: 155.79, seconds: 112, colors: [[[255, 236, 60], [190, 150, 0]], [[60, 60, 80], [24, 24, 36]]]},
-  {name: 'Endless Dash', bpm: 178.05, seconds: 120, colors: [[[191, 255, 89], [90, 170, 30]], [[40, 92, 236], [20, 50, 180]], [[255, 64, 128], [170, 20, 80]], [[255, 210, 60], [200, 120, 0]]]},
+  // Levels 19 and 20 (the designer's plan item 2) meet every mode, speed gate,
+  // orb and pad. One step per song section: the mode and the speed gate
+  // (0 slow, 1 normal, 2 fast, 3 very fast) at its start.
+  {name: 'Volt Rush', bpm: 155.79, seconds: 112, colors: [[[255, 236, 60], [190, 150, 0]], [[60, 60, 80], [24, 24, 36]]],
+    plan: [
+      {type: 'cube', speed: 1}, // intro: pink orbs and pink pads
+      {type: 'ball', speed: 2}, // verse
+      {type: 'blue', speed: 1}, // build: blue pad up, blue orb down
+      {type: 'ship', speed: 1}, // drop
+      {type: 'ufo', speed: 0}, // breakdown
+      {type: 'cube', speed: 1}, // build 2
+      {type: 'wave', speed: 2}, // drop 2
+      {type: 'cube', speed: 1}, // outro
+    ]},
+  {name: 'Endless Dash', bpm: 178.05, seconds: 120, colors: [[[191, 255, 89], [90, 170, 30]], [[40, 92, 236], [20, 50, 180]], [[255, 64, 128], [170, 20, 80]], [[255, 210, 60], [200, 120, 0]]],
+    plan: [
+      {type: 'cube', speed: 1}, // intro
+      {type: 'ball', speed: 2}, // build
+      {type: 'ship', speed: 1}, // drop
+      {type: 'ufo', speed: 0}, // breakdown
+      {type: 'blue', speed: 1}, // build 2
+      {type: 'wave', speed: 2}, // drop 2
+      {type: 'ball', speed: 0}, // breakdown 2
+      {type: 'cube', speed: 1}, // build 3
+      {type: 'wave', speed: 3}, // drop 3: very fast
+      {type: 'cube', speed: 1}, // outro
+    ]},
 ];
 // levels built with the black blocks (the designer's sketch: like the black blocks of a fifth level)
 const BLACK_BLOCK_LEVELS = new Set([4, 13, 18, 19]);
@@ -108,8 +135,15 @@ const PIECES = [
   {name: 'ceilingSpikes', from: 4, weight: 3},
   {name: 'padSpikes', from: 2, weight: 2},
   {name: 'combo', from: 0, weight: 6},
+  // levels 19 and 20 only
+  {name: 'pinkPad', from: 18, weight: 3},
+  {name: 'pinkOrbPit', from: 18, weight: 3},
 ];
-const UPSIDE_PIECES = ['spikes1', 'spikes2', 'spikes3', 'small', 'orbPit', 'combo', 'combo'];
+const UPSIDE_PIECES = ['spikes1', 'spikes2', 'spikes3', 'small', 'orbPit', 'combo', 'combo', 'pinkOrbPit'];
+const BALL_PIECES = ['spikes', 'spikes', 'small', 'block', 'zig', 'zig'];
+// mode sections: how many columns the ball, UFO or wave part may take before
+// the rest of the song section runs as a cube again
+const MODE_COLUMNS = {ball: 64, ufo: 72, wave: 84};
 
 function mulberry32(seed) {
   return function random() {
@@ -145,6 +179,14 @@ const make = {
   orb: (c, r) => ({id: 36, x: gx(c), y: gy(r)}),
   shipPortal: (c, r) => ({id: 13, x: gx(c), y: 42 + 30 * r}),
   cubePortal: (c, r) => ({id: 12, x: gx(c), y: 42 + 30 * r}),
+  // ball, UFO and wave portals sit on row r like the cube and ship portals
+  modePortal: (mode, c, r) => ({id: {ship: 13, ball: 210, ufo: 211, wave: 212}[mode], x: gx(c), y: 42 + 30 * r}),
+  // speed gates stand on row r: 0 slow (1 arrow) ... 3 very fast (4 arrows)
+  speedGate: (c, r, speed) => ({id: 213 + speed, x: gx(c), y: 18.75 + 30 * r}),
+  pinkOrb: (c, r) => ({id: 220, x: gx(c), y: gy(r)}),
+  blueOrb: (c, r) => ({id: 221, x: gx(c), y: gy(r)}),
+  pinkPad: (c, r) => ({id: 222, x: gx(c), y: 2 + 30 * r}),
+  bluePad: (c, r) => ({id: 223, x: gx(c), y: 2 + 30 * r}),
   upsidePortal: (c, r) => ({id: 11, x: gx(c), y: 36.5 + 30 * r}),
   // centred on the cube running upside down in row r
   normalPortal: (c, r) => ({id: 10, x: gx(c), y: gy(r)}),
@@ -178,7 +220,7 @@ export function shipBot(path, aim = 0, delay = 0) {
   let held = false;
   return (player, dt) => {
     const framesAhead = 6;
-    const ahead = player.x + SPEED_PER_FRAME * framesAhead;
+    const ahead = player.x + speedOf(player) * framesAhead;
     const target = path(ahead) + aim;
     const predicted = player.y + player.vy * 0.9 * framesAhead;
     if (predicted > target + 8) held = true;
@@ -188,6 +230,42 @@ export function shipBot(path, aim = 0, delay = 0) {
     return queue.length > lag ? queue[queue.length - 1 - lag] : false;
   };
 }
+
+// UFO bot: a short click (a hop) whenever the box is about to sink below the
+// path while falling, so it bobs around the path.
+const UFO_DIP = 80;
+export function ufoBot(path, aim = 0, delay = 0) {
+  const queue = [];
+  let last = false;
+  return (player, dt) => {
+    const target = path(player.x + speedOf(player) * 6) + aim;
+    const g = player.gravity;
+    const predicted = player.y + player.vy * 0.9 * 3;
+    const falling = player.vy * g >= -2;
+    const low = g === 1 ? predicted > target + UFO_DIP : predicted < target - UFO_DIP;
+    const press = falling && low && !last;
+    last = press;
+    queue.push(press);
+    const lag = Math.round(delay / dt);
+    return queue.length > lag ? queue[queue.length - 1 - lag] : false;
+  };
+}
+
+// Wave bot: holds to climb (or to dive when upside down) toward the path.
+export function waveBot(path, aim = 0, delay = 0) {
+  const queue = [];
+  let up = false;
+  return (player, dt) => {
+    const target = path(player.x + speedOf(player) * 2) + aim;
+    if (player.y > target + 6) up = true;
+    else if (player.y < target - 6) up = false;
+    queue.push(player.gravity === 1 ? up : !up);
+    const lag = Math.round(delay / dt);
+    return queue.length > lag ? queue[queue.length - 1 - lag] : false;
+  };
+}
+
+export const BOTS = {ship: shipBot, ufo: ufoBot, wave: waveBot};
 
 // Plays from a saved state until done(player) or death.
 function play(level, start, dts, plan, done, maxSteps = 4000) {
@@ -199,7 +277,7 @@ function play(level, start, dts, plan, done, maxSteps = 4000) {
     const dt = dts[index % dts.length];
     const tick = tickAt(dts, index);
     let held = tapHeld(plan.taps, tick);
-    if (player.ship && plan.bot) held = plan.bot(player, dt);
+    if (plan.bot && player.mode === plan.mode) held = plan.bot(player, dt);
     const status = step(player, level, held, dt);
     inputs.push(held ? 1 : 0);
     if (status === 1) return {ok: false, x: player.x, steps: index + 1};
@@ -225,7 +303,14 @@ class LevelBuilder {
     this.tracks = TRACKS.map(track => ({...track, state: {player: newPlayer(), steps: 0}, inputs: []}));
     this.pieces = [];
     this.minMargin = Infinity;
+    this.baseBeatTiles = SPEED_PER_FRAME * 60 / TILE * 60 / this.spec.bpm;
     this.beatTiles = SPEED_PER_FRAME * 60 / TILE * 60 / this.spec.bpm;
+    // speed gates change how many tiles a beat is: the song keeps time from the
+    // last gate on (the player starts at column -1 on beat 0, normal speed)
+    this.speed = NORMAL_SPEED;
+    this.marks = [{column: -1, beat: 0, speed: NORMAL_SPEED}];
+    this.modeRanges = [];
+    this.flights = [];
     // each level gets its own block patterns for platforms and ship walls
     const styles = [1, 2, 3, 4, 6, 7];
     this.platformBlock = BLACK_BLOCK_LEVELS.has(index) ? 202 : styles[index % styles.length];
@@ -270,11 +355,42 @@ class LevelBuilder {
   // ---- placing pieces -----------------------------------------------------
 
   beatColumn(minimum) {
-    // x of beat k is -120 + k * beat; a jump made on the beat clears an
-    // obstacle about two tiles later.
+    // x of beat k is -120 + k * beat (counted from the last speed gate); a
+    // jump made on the beat clears an obstacle about two tiles later.
     const step = this.beatTiles / 2;
-    const k = Math.ceil((minimum - 2 + 1) / step);
-    return Math.round(-1 + k * step + 2);
+    const mark = this.marks.at(-1);
+    const k = Math.ceil((minimum - 2 - mark.column) / step + 2 * mark.beat);
+    return Math.round(mark.column + (k - 2 * mark.beat) * step + 2);
+  }
+
+  // Column the player reaches on a beat of the song, with the speed gates so far.
+  columnAtBeat(beat) {
+    const mark = this.marks.at(-1);
+    return Math.round((beat - mark.beat) * this.beatTiles + (mark.column + 1)) - 1;
+  }
+
+  // Last column of the level: the song's end minus a few seconds.
+  totalColumns() {
+    const mark = this.marks.at(-1);
+    const markSeconds = mark.beat * 60 / this.spec.bpm;
+    return Math.floor((this.spec.seconds - 4.5 - markSeconds) * SPEED_PER_FRAME * SPEED_MULTIPLIERS[mark.speed] * 60 / TILE + (mark.column + 1)) - 1;
+  }
+
+  // A speed gate on the running surface right here.
+  addSpeedGate(speed) {
+    if (speed === this.speed) return;
+    const start = this.column;
+    const gate = start + 1;
+    const cells = [];
+    this.ground(cells, start, start + 3, false);
+    const piece = {name: 'speed', start, end: start + 3, surface: this.surface, taps: 0, cells, extra: [make.speedGate(gate, this.surface, speed)], lastObstacle: gate};
+    if (!this.tryPiece(piece)) throw new Error(`level ${this.index + 1}: speed gate failed at ${start}`);
+    // the player's box touches the gate's hitbox (x + 10) about a tile early
+    const column = gate - 110 / TILE;
+    const mark = this.marks.at(-1);
+    this.marks.push({column, beat: mark.beat + (column - mark.column) / this.beatTiles, speed});
+    this.speed = speed;
+    this.beatTiles = this.baseBeatTiles * SPEED_MULTIPLIERS[speed];
   }
 
   // Tries a piece with every tap time; keeps it if it is fair. Returns true when kept.
@@ -286,7 +402,7 @@ class LevelBuilder {
     const doneX = (piece.end - 2) * TILE;
     const isDone = player => player.posX >= doneX && player.grounded && !player.held;
     const startTick = Math.round(startTrack.state.steps * 2);
-    const lastTick = startTick + Math.ceil(((piece.lastObstacle + 1) * TILE - startTrack.state.player.x) / SPEED_PER_FRAME + 4) * 2;
+    const lastTick = startTick + Math.ceil(((piece.lastObstacle + 1) * TILE - startTrack.state.player.x) / speedOf(startTrack.state.player) + 4) * 2;
 
     // A piece that needs no taps must work without them, and a piece that
     // needs taps must not.
@@ -345,6 +461,15 @@ class LevelBuilder {
       }
       results.push(result);
     }
+    // levels 19 and 20: every frame rate must end the piece the same way (same
+    // mode, speed, gravity and height), or later pieces would differ between them
+    if (this.spec.plan && results.some(result => !sameRoute(result.player, results[0].player))) {
+      if (process.env.DEBUG_PIECES) console.log('routes differ after', piece.name, piece.start, results.map(r => `${r.player.mode}/${r.player.speed}/${r.player.gravity}/${r.player.y}`).join(' '));
+      return false;
+    }
+    // ... and on the surface the next piece is built for (a fast pad or ring
+    // jump must not throw the cube past the end of its platform)
+    if (this.spec.plan && !onExpectedSurface(results[0].player, piece)) return false;
     this.tracks.forEach((track, i) => {
       track.state = {player: results[i].player, steps: results[i].steps};
       track.inputs.push(...results[i].inputs);
@@ -549,6 +674,36 @@ class LevelBuilder {
         taps = 2;
         break;
       }
+      case 'pinkOrbPit': {
+        // a pink ring gives a smaller jump than the yellow one
+        const width = this.range(3, 5);
+        if (upside || s === 0) {
+          for (let c = start; c < start + width; c++) hazard(c, 0);
+          this.ground(cells, from, start + width + 4, upside);
+        } else {
+          this.ground(cells, from, start, false);
+          for (let c = start; c < start + width; c++) cells.push([c, 0, make.spike(c, 0)]);
+          this.ground(cells, start + width, start + width + 4, false);
+        }
+        extra.push(make.pinkOrb(start + Math.floor(width / 2), row(this.range(1, 2))));
+        end = start + width + 4;
+        lastObstacle = start + width - 1;
+        taps = 2;
+        break;
+      }
+      case 'pinkPad': {
+        if (upside) return null;
+        // a pink pad gives a small bounce over one or two spikes
+        this.ground(cells, from, start + 1, false);
+        extra.push(make.pinkPad(start, s));
+        const count = this.range(1, 2);
+        for (let i = 0; i < count; i++) hazard(start + 1 + i, 0);
+        end = start + 1 + count + 4;
+        this.ground(cells, start + 1, end, false);
+        lastObstacle = start + count;
+        taps = 0;
+        break;
+      }
       case 'ceilingSpikes': {
         if (upside || s >= this.tune.maxSurface) return null;
         // spikes hang from a low roof on both sides of a floor spike: the jump
@@ -600,7 +755,7 @@ class LevelBuilder {
     const doneX = (piece.end - 2) * TILE;
     const isDone = player => player.posX >= doneX && player.grounded && !player.held;
     const startTick = Math.round(startTrack.state.steps * 2);
-    const lastTick = startTick + Math.ceil(((piece.lastObstacle + 1) * TILE - startTrack.state.player.x) / SPEED_PER_FRAME + 4) * 2;
+    const lastTick = startTick + Math.ceil(((piece.lastObstacle + 1) * TILE - startTrack.state.player.x) / speedOf(startTrack.state.player) + 4) * 2;
     const chosen = [];
     let margin = Infinity;
     const jumps = piece.taps === 'pair' ? 2 : piece.count;
@@ -640,6 +795,15 @@ class LevelBuilder {
   }
 
   stepDownToFloor(limit) {
+    // levels 19 and 20 drop off the ledge to the floor in one go, so the mode
+    // parts after it keep their room
+    if (this.spec.plan && this.surface > 1) {
+      const start = this.column + 2;
+      const cells = [];
+      this.ground(cells, this.column, start, false);
+      const piece = {name: 'dropDown', start, end: start + 4, surface: 0, taps: 0, cells, extra: [], lastObstacle: start};
+      if (this.tryPiece(piece)) return;
+    }
     while (this.surface > 0) {
       const start = this.column + 2;
       const piece = this.cubePiece('stepDown', start, false);
@@ -702,13 +866,19 @@ class LevelBuilder {
     return true;
   }
 
-  shipSection(endColumn) {
+  // Ship, UFO and wave parts: walls with gaps between the floor and the
+  // ceiling, flown by a bot that must also get through when it reacts late or
+  // aims off-centre.
+  shipSection(endColumn, mode = 'ship') {
     this.stepDownToFloor(endColumn);
     const t = this.tune;
     const start = this.column + 1;
     const portal = start + 1;
     const cells = [];
-    const extra = [make.shipPortal(portal, 0)];
+    const extra = [mode === 'ship' ? make.shipPortal(portal, 0) : make.modePortal(mode, portal, 0)];
+    // the UFO bobs up and down, so it gets one more row; the last gate too
+    const baseGap = mode === 'ufo' ? t.shipGap + 1 : t.shipGap;
+    const exitGap = mode === 'ufo' ? 4 : 3;
     const waypoints = [[portal * TILE, 816]];
     const top = 9; // highest row inside the ship bounds
     // The ship starts on the floor, so the first gap is low; later gaps move
@@ -719,7 +889,7 @@ class LevelBuilder {
     const exitColumn = endColumn - 7;
     let first = true;
     while (c < exitColumn - 4) {
-      const gap = t.shipGap + (this.random() < 0.3 ? 1 : 0);
+      const gap = baseGap + (this.random() < 0.3 ? 1 : 0);
       if (!first) center += (this.random() * 2 - 1) * Math.min(t.shipShift, spacing * 0.6);
       const spiky = t.shipSpikes && !first;
       first = false;
@@ -758,7 +928,7 @@ class LevelBuilder {
     waypoints.push([(exitColumn - 1) * TILE, exitY], [(exitColumn + 4) * TILE, exitY]);
     extra.push(make.cubePortal(exitColumn, exitRow));
     for (let r = 0; r < exitRow; r++) cells.push([exitColumn, r, make.block(exitColumn, r, this.wallBlock)]);
-    for (let r = exitRow + 3; r <= top; r++) cells.push([exitColumn, r, make.block(exitColumn, r, this.wallBlock)]);
+    for (let r = exitRow + exitGap; r <= top; r++) cells.push([exitColumn, r, make.block(exitColumn, r, this.wallBlock)]);
     const path = pathFrom(waypoints);
     const end = exitColumn + 6;
     if (exitRow > 0) {
@@ -769,28 +939,31 @@ class LevelBuilder {
     const objects = this.allObjects({cells, extra});
     const level = parseLevel(this.levelText(objects, this.tracks[0].state.player.x / TILE));
     const doneX = (end - 2) * TILE;
-    const isDone = player => player.posX >= doneX && player.grounded && !player.ship;
+    const isDone = player => player.posX >= doneX && player.grounded && player.mode === 'cube';
     // the bot must also survive reacting late and aiming off-centre
     const variants = [
       {aim: 0, delay: 0}, {aim: 0, delay: t.shipDelay}, {aim: t.shipAim, delay: 0}, {aim: -t.shipAim, delay: 0},
     ];
+    const bot = BOTS[mode];
     for (const track of this.tracks) {
       for (const variant of variants) {
-        const result = play(level, track.state, track.dts, {taps: this.taps, bot: shipBot(path, variant.aim, variant.delay)}, isDone, 6000);
+        const result = play(level, track.state, track.dts, {taps: this.taps, mode, bot: bot(path, variant.aim, variant.delay)}, isDone, 6000);
         if (!result.ok) {
           if (process.env.DEBUG_SHIP) {
             console.log('ship fail', this.index + 1, 'track', track.name, variant, 'at tile', (result.x / TILE).toFixed(1), 'start', start, 'gap', t.shipGap, result.timeout ? 'timeout' : '');
             const near = level.objects.filter(o => Math.abs(o.x - result.x) < 360).map(o => `${o.id}@${(o.x / TILE).toFixed(1)},${((FLOOR - o.y) / TILE).toFixed(1)}`);
             console.log('   near', near.join(' '));
-            const probe = play(level, track.state, track.dts, {taps: this.taps, bot: shipBot(path, variant.aim, variant.delay)}, p => p.x > result.x - 200, 6000);
-            console.log('   before death y', probe.player?.y, 'vy', probe.player?.vy, 'ship', probe.player?.ship, 'bounds', probe.player?.boundsTop, probe.player?.boundsBottom, 'target', path(result.x));
+            const probe = play(level, track.state, track.dts, {taps: this.taps, mode, bot: bot(path, variant.aim, variant.delay)}, p => p.x > result.x - 200, 6000);
+            console.log('   before death y', probe.player?.y, 'vy', probe.player?.vy, 'mode', probe.player?.mode, 'bounds', probe.player?.boundsTop, probe.player?.boundsBottom, 'target', path(result.x));
             process.exit(0);
           }
           return false;
         }
       }
     }
-    const results = this.tracks.map(track => play(level, track.state, track.dts, {taps: this.taps, bot: shipBot(path)}, isDone, 6000));
+    const results = this.tracks.map(track => play(level, track.state, track.dts, {taps: this.taps, mode, bot: bot(path)}, isDone, 6000));
+    // levels 19 and 20: every frame rate lands on the block floor behind the last gate
+    if (this.spec.plan && results.some(result => !result.ok || result.player.y !== FLOOR - TILE * (exitRow + 1))) return false;
     this.tracks.forEach((track, i) => {
       track.state = {player: results[i].player, steps: results[i].steps};
       track.inputs.push(...results[i].inputs);
@@ -799,19 +972,23 @@ class LevelBuilder {
     this.extra.push(...extra);
     this.column = end;
     this.surface = exitRow;
-    this.shipPaths = this.shipPaths || [];
-    this.shipPaths.push(waypoints);
+    if (mode === 'ship') {
+      this.shipPaths = this.shipPaths || [];
+      this.shipPaths.push(waypoints);
+    } else {
+      this.flights.push({mode, waypoints});
+    }
     this.shipRanges = this.shipRanges || [];
     this.shipRanges.push([start, end]);
-    this.pieces.push({name: 'ship', column: start, gates: waypoints.length});
+    this.pieces.push({name: mode, column: start, gates: waypoints.length});
     return true;
   }
 
-  // Tries a ship section; makes it gentler until the bot gets through.
-  addShipSection(endColumn) {
+  // Tries a ship (or UFO, wave) section; makes it gentler until the bot gets through.
+  addShipSection(endColumn, mode = 'ship') {
     const saved = {random: this.random, tune: this.tune};
     for (let attempt = 0; attempt < 12; attempt++) {
-      if (this.shipSection(endColumn)) return true;
+      if (this.shipSection(endColumn, mode)) return true;
       if (attempt % 3 === 2) {
         this.tune = {...this.tune, shipGap: this.tune.shipGap + 1, shipShift: Math.max(1, this.tune.shipShift - 1)};
       }
@@ -819,6 +996,126 @@ class LevelBuilder {
     }
     this.tune = saved.tune;
     return false;
+  }
+
+  // ---- ball: rolls on the floor or under a block roof, a tap flips it -------
+
+  // side 0 = the floor (row 0), side 1 = under the roof (row CEILING_ROW - 1)
+  ballRow(side) {
+    return side === 0 ? 0 : CEILING_ROW - 1;
+  }
+
+  roof(cells, from, to) {
+    for (let c = from; c < to; c++) cells.push([c, CEILING_ROW, make.block(c, CEILING_ROW, this.wallBlock)]);
+  }
+
+  ballPiece(kind, start) {
+    const side = this.ballSide;
+    const cells = [];
+    const on = (s, c, what) => {
+      const r = this.ballRow(s);
+      if (what === 'spike') cells.push([c, r, make.spike(c, r, s === 1)]);
+      else if (what === 'small') cells.push([c, r, make.small(c, r, s === 1)]);
+      else cells.push([c, r, make.block(c, r, this.platformBlock)]);
+    };
+    let lastObstacle;
+    let next = 1 - side;
+    let taps = 1;
+    if (kind === 'zig') {
+      // one side, then the other: two flips
+      const first = this.range(1, 2);
+      for (let i = 0; i < first; i++) on(side, start + i, 'spike');
+      const second = start + first + this.range(3, 4);
+      const count = this.range(1, 2);
+      for (let i = 0; i < count; i++) on(1 - side, second + i, 'spike');
+      lastObstacle = second + count - 1;
+      next = side;
+      taps = 'chain';
+    } else {
+      const count = kind === 'small' ? this.range(2, 4) : kind === 'block' ? this.range(1, 2) : this.range(1, 3);
+      for (let i = 0; i < count; i++) on(side, start + i, kind === 'spikes' ? 'spike' : kind);
+      lastObstacle = start + count - 1;
+    }
+    const end = lastObstacle + 4;
+    this.roof(cells, this.column, end);
+    return {name: `ball-${kind}`, start, end, surface: 0, taps, count: 2, cells, extra: [], lastObstacle, side: next};
+  }
+
+  addBallPiece(limit) {
+    for (let attempt = 0; attempt < 40; attempt++) {
+      // a flip crosses about two and a half tiles, so pieces get a little room
+      let start = this.column + this.range(2, 3);
+      const aligned = this.beatColumn(this.column + 2);
+      if (aligned <= this.column + 3) start = aligned;
+      const piece = this.ballPiece(this.pick(BALL_PIECES), start);
+      if (piece.end > limit) continue;
+      const kept = piece.taps === 'chain' ? this.tryChain(piece) : this.tryPiece(piece);
+      if (kept) {
+        this.ballSide = piece.side;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  ballSection(endColumn) {
+    this.stepDownToFloor(endColumn);
+    const start = this.column;
+    const portal = start + 2;
+    // runway, the ball portal on the floor, then the roof starts
+    const cells = [];
+    this.roof(cells, portal + 1, portal + 6);
+    const entry = {name: 'ballPortal', start, end: portal + 6, surface: 0, taps: 0, cells, extra: [make.modePortal('ball', portal, 0)], lastObstacle: portal};
+    if (!this.tryPiece(entry)) return false;
+    this.ballSide = 0;
+    const ballRunway = () => {
+      const runway = {name: 'ballRunway', start: this.column, end: this.column + 2, surface: 0, taps: 0, cells: [], extra: [], lastObstacle: this.column + 2};
+      this.roof(runway.cells, this.column, this.column + 2);
+      if (!this.tryPiece(runway)) throw new Error(`level ${this.index + 1}: ball runway failed at ${this.column}`);
+    };
+    while (this.column < endColumn - 10) {
+      if (!this.addBallPiece(endColumn - 6)) ballRunway();
+    }
+    // back on the floor before the cube portal
+    for (let tries = 0; this.ballSide === 1; tries++) {
+      if (tries > 20) throw new Error(`level ${this.index + 1}: ball stuck on the roof at ${this.column}`);
+      const piece = this.ballPiece('spikes', this.column + 3);
+      if (this.tryPiece(piece)) this.ballSide = 0;
+      else ballRunway();
+    }
+    const exitStart = this.column + 2;
+    const exitCells = [];
+    this.roof(exitCells, this.column, exitStart + 1);
+    const exit = {name: 'ballExit', start: exitStart, end: exitStart + 6, surface: 0, taps: 0, cells: exitCells, extra: [make.cubePortal(exitStart, 0)], lastObstacle: exitStart};
+    if (!this.tryPiece(exit)) throw new Error(`level ${this.index + 1}: ball exit failed`);
+    this.modeRanges.push([start, this.column]);
+    return true;
+  }
+
+  // ---- blue pad and blue orb: upside down under a roof and back -------------
+
+  blueSection(endColumn) {
+    this.stepDownToFloor(endColumn);
+    const start = this.column;
+    const pad = start + 3;
+    const cells = [];
+    this.roof(cells, pad - 1, pad + 7);
+    // the blue pad flips the cube up onto the roof
+    const entry = {name: 'bluePad', start, end: pad + 7, surface: 0, taps: 0, cells, extra: [make.bluePad(pad, 0)], lastObstacle: pad};
+    if (!this.tryUpside(entry)) return false;
+    const upsideEnd = Math.min(endColumn, this.column + 40);
+    this.cubeSection(upsideEnd - 12, true);
+    // a blue ring just before spikes hanging from the roof: tap it to fall back down
+    const orb = this.column + 2;
+    const exitCells = [];
+    this.roof(exitCells, this.column, orb + 9);
+    for (let c = orb + 1; c < orb + 7; c++) exitCells.push([c, CEILING_ROW - 1, make.spike(c, CEILING_ROW - 1, true)]);
+    const exit = {name: 'blueOrb', start: orb, end: orb + 10, surface: 0, taps: 1, cells: exitCells, extra: [make.blueOrb(orb, CEILING_ROW - 1)], lastObstacle: orb + 6};
+    if (!this.tryPiece(exit)) throw new Error(`level ${this.index + 1}: blue orb exit failed at ${orb}`);
+    this.upsideRanges = this.upsideRanges || [];
+    this.upsideRanges.push([start, this.column]);
+    this.cubeSection(endColumn);
+    return true;
   }
 
   colorChange(column, colors, duration = 0.6) {
@@ -829,7 +1126,7 @@ class LevelBuilder {
   // Light poles with a ball on top (the designer's sketch: they sparkle now
   // and then) stand on free block tops and on the floor, away from ship parts.
   addPoles() {
-    const skip = (this.shipRanges || []).concat(this.upsideRanges || []);
+    const skip = (this.shipRanges || []).concat(this.upsideRanges || [], this.modeRanges);
     for (let c = 6; c < this.column - 4; c += this.range(7, 13)) {
       if (skip.some(([from, to]) => c >= from - 2 && c <= to + 2)) continue;
       let top = -1;
@@ -859,17 +1156,17 @@ class LevelBuilder {
     for (const held of this.tracks[0].inputs) {
       step(player, level, held === 1, 1);
       if (player.grounded) groundY = player.y;
-      frames.push({x: player.x, y: player.y, vy: player.vy, ship: player.ship, gravity: player.gravity, grounded: player.grounded, height: Math.abs(player.y - groundY)});
+      frames.push({x: player.x, y: player.y, vy: player.vy, mode: player.mode, gravity: player.gravity, grounded: player.grounded, height: Math.abs(player.y - groundY)});
     }
     const total = frames.length;
     const tops = [];
     for (let i = 1; i < total; i++) {
       const before = frames[i - 1];
       const now = frames[i];
-      if (!now.ship && !now.grounded && before.vy * now.gravity < 0 && now.vy * now.gravity >= 0) tops.push(i);
+      if (now.mode === 'cube' && !now.grounded && before.vy * now.gravity < 0 && now.vy * now.gravity >= 0) tops.push(i);
     }
     const highest = (from, to) => tops.filter(i => i >= from * total && i <= to * total).sort((a, b) => frames[b].height - frames[a].height)[0];
-    const flight = frames.map((f, i) => i).filter(i => frames[i].ship && i >= 0.3 * total && i <= 0.75 * total);
+    const flight = frames.map((f, i) => i).filter(i => frames[i].mode === 'ship' && i >= 0.3 * total && i <= 0.75 * total);
     const picks = [highest(0.1, 0.38), flight.length ? flight[Math.floor(flight.length * 0.55)] : highest(0.4, 0.68), highest(0.7, 0.94)];
     for (const i of picks) {
       if (i === undefined) continue;
@@ -895,11 +1192,12 @@ class LevelBuilder {
   // ---- whole level --------------------------------------------------------
 
   build(sections) {
-    const totalColumns = Math.floor((this.spec.seconds - 4.5) * SPEED_PER_FRAME * 60 / TILE) - 1;
     this.addRunway(8);
     let colorIndex = 0;
     for (const section of sections) {
-      const endColumn = Math.min(totalColumns - 8, Math.round(section.endBeat * this.beatTiles) - 1);
+      // a speed gate opens the section; the song's beats then fall on new columns
+      if (section.speed !== undefined) this.addSpeedGate(section.speed);
+      const endColumn = Math.min(this.totalColumns() - 8, this.columnAtBeat(section.endBeat));
       if (endColumn - this.column < 16) continue;
       if (colorIndex !== section.colors) {
         colorIndex = section.colors;
@@ -910,14 +1208,22 @@ class LevelBuilder {
         const shipEnd = Math.min(endColumn, this.column + 64 + 2 * this.index);
         this.addShipSection(shipEnd);
         this.cubeSection(endColumn);
+      } else if (section.type === 'ufo' || section.type === 'wave') {
+        this.addShipSection(Math.min(endColumn, this.column + MODE_COLUMNS[section.type]), section.type);
+        this.cubeSection(endColumn);
+      } else if (section.type === 'ball') {
+        this.ballSection(Math.min(endColumn, this.column + MODE_COLUMNS.ball));
+        this.cubeSection(endColumn);
+      } else if (section.type === 'blue') {
+        if (!this.blueSection(endColumn)) this.cubeSection(endColumn);
       } else if (section.type === 'upside') {
         if (!this.upsideSection(endColumn)) this.cubeSection(endColumn);
       } else {
         this.cubeSection(endColumn);
       }
     }
-    this.stepDownToFloor(totalColumns);
-    this.addRunway(Math.max(this.column + 4, totalColumns));
+    this.stepDownToFloor(this.totalColumns());
+    this.addRunway(Math.max(this.column + 4, this.totalColumns()));
     // the level ends at the last object: a trigger marks the end column
     this.extra.push(make.trigger(this.column, 29, this.spec.colors[colorIndex % this.spec.colors.length][0], 0.5));
     this.placeCoins();
@@ -939,6 +1245,17 @@ class LevelBuilder {
 function levelHeader([background, ground]) {
   const color = ([r, g, b]) => `1_${r}_2_${g}_3_${b}`;
   return `kS29,${color(background)},kS30,${color(ground)}`;
+}
+
+function onExpectedSurface(player, piece) {
+  if (player.mode === 'ball') return player.y === (piece.side === 1 ? FLOOR - TILE * CEILING_ROW : FLOOR - TILE);
+  if (player.mode !== 'cube') return true;
+  if (player.gravity === -1) return player.y === FLOOR - TILE * CEILING_ROW;
+  return player.y === FLOOR - TILE * (piece.surface + 1);
+}
+
+function sameRoute(a, b) {
+  return a.mode === b.mode && a.speed === b.speed && a.gravity === b.gravity && Math.abs(a.y - b.y) < 1;
 }
 
 function longestRun(results) {
@@ -975,6 +1292,12 @@ function sectionsFor(index, timeline) {
       {name: 'outro', startBeat: q * 7, endBeat: totalBeats, energy: 0.3},
     ];
   }
+  if (spec.plan) {
+    return raw.map((section, i) => {
+      const {type, speed} = spec.plan[i] || {type: 'cube'};
+      return {type, speed, endBeat: Math.min(section.endBeat, totalBeats), colors: type === 'cube' ? 0 : (i % 2) + 1};
+    });
+  }
   const sections = [];
   let drops = 0;
   raw.forEach((section, i) => {
@@ -1004,7 +1327,13 @@ mkdirSync(OUT, {recursive: true});
 for (let index = 0; index < LEVELS.length; index++) {
   if (wanted.length && !wanted.includes(index + 1)) continue;
   const started = Date.now();
-  const builder = new LevelBuilder(index).build(sectionsFor(index, songs));
+  const builder = new LevelBuilder(index);
+  try {
+    builder.build(sectionsFor(index, songs));
+  } catch (error) {
+    if (process.env.DEBUG_PIECES) console.log(builder.pieces.map(p => `${p.name}@${p.column}${p.margin !== undefined ? '/' + p.margin : ''}`).join(' '), 'speed', builder.speed, 'player', JSON.stringify(builder.tracks[0].state.player));
+    throw error;
+  }
   const text = builder.text();
   writeFileSync(new URL(`${index}.level`, OUT), text);
   const parsed = parseLevel(text);
@@ -1016,10 +1345,13 @@ for (let index = 0; index < LEVELS.length; index++) {
     taps: builder.taps,
     pieces: builder.pieces.length,
     ships: builder.pieces.filter(p => p.name === 'ship').length,
+    ...(builder.spec.plan ? {modes: ['ball', 'ufo', 'wave', 'bluePad', 'blueOrb'].map(name => `${name} ${builder.pieces.filter(p => p.name === name || p.name === `${name}Portal`).length}`).join(', ')} : {}),
     upside: builder.pieces.filter(p => p.name === 'upsidePortal').length,
     narrowestWindow: builder.minMargin === Infinity ? null : builder.minMargin * 2 + 1,
     coins: parsed.objects.filter(o => o.id === 201).length,
     shipPaths: builder.shipPaths || [],
+    ...(builder.flights.length ? {flights: builder.flights} : {}),
+    ...(builder.marks.length > 1 ? {speeds: builder.marks.slice(1).map(mark => mark.speed)} : {}),
     inputs: Object.fromEntries(builder.tracks.map(track => [track.name, runLength(track.inputs)])),
   };
   if (process.env.DEBUG_PIECES) console.log(builder.pieces.map(p => `${p.name}@${p.column}${p.margin !== undefined ? '/' + p.margin : ''}`).join(' '));

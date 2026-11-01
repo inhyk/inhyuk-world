@@ -56,7 +56,7 @@ void Background::setMoving(bool value) {
 
 void Background::update(float delta) {
     if (m_IsMoving) {
-        m_Position.x -= 2 * delta;
+        m_Position.x -= 2 * m_Speed * delta;
         if (m_Position.x < -m_BackgroundSize) {
             m_Position.x += m_BackgroundSize;
         }

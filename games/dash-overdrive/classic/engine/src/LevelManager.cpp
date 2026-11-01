@@ -86,6 +86,31 @@ void LevelManager::initBlocks() {
         ObjectType::COIN,
         SDL_FRect { 20, 20, 80, 80 },
     };
+    // ball, UFO and wave portals: same size as the cube and ship portals
+    m_IDToObjectData[210] = m_IDToObjectData[12];
+    m_IDToObjectData[210].type = ObjectType::BALL_PORTAL;
+    m_IDToObjectData[211] = m_IDToObjectData[12];
+    m_IDToObjectData[211].type = ObjectType::UFO_PORTAL;
+    m_IDToObjectData[212] = m_IDToObjectData[12];
+    m_IDToObjectData[212].type = ObjectType::WAVE_PORTAL;
+    // speed gates (1 to 4 arrows): the hitbox reaches half a tile past the
+    // picture above and below so a jump over the gate still counts
+    const ObjectType speeds[4] = { ObjectType::SPEED_SLOW, ObjectType::SPEED_NORMAL, ObjectType::SPEED_FAST, ObjectType::SPEED_VERY_FAST };
+    for (int i = 0; i < 4; i++) {
+        m_IDToObjectData[213 + i] = {
+            speeds[i],
+            SDL_FRect { 5, -60, 100, 270 },
+        };
+    }
+    // pink and blue orbs and pads, sized like the yellow ones
+    m_IDToObjectData[220] = m_IDToObjectData[36];
+    m_IDToObjectData[220].type = ObjectType::PINK_ORB;
+    m_IDToObjectData[221] = m_IDToObjectData[36];
+    m_IDToObjectData[221].type = ObjectType::BLUE_ORB;
+    m_IDToObjectData[222] = m_IDToObjectData[35];
+    m_IDToObjectData[222].type = ObjectType::PINK_PAD;
+    m_IDToObjectData[223] = m_IDToObjectData[35];
+    m_IDToObjectData[223].type = ObjectType::BLUE_PAD;
 }
 
 void LevelManager::reset(int level) {

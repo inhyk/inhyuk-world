@@ -19,11 +19,22 @@
     {id: 8, name: '가시'},
     {id: 39, name: '작은 가시'},
     {id: 35, name: '점프 패드'},
+    {id: 222, name: '분홍 패드'},
+    {id: 223, name: '파랑 패드'},
     {id: 36, name: '점프 링'},
+    {id: 220, name: '분홍 링'},
+    {id: 221, name: '파랑 링'},
     {id: 13, name: '비행선 포털'},
     {id: 12, name: '큐브 포털'},
+    {id: 210, name: '공 포털'},
+    {id: 211, name: 'UFO 포털'},
+    {id: 212, name: '웨이브 포털'},
     {id: 11, name: '중력 뒤집기'},
     {id: 10, name: '중력 되돌리기'},
+    {id: 213, name: '느린 속도'},
+    {id: 214, name: '보통 속도'},
+    {id: 215, name: '빠른 속도'},
+    {id: 216, name: '아주 빠른 속도'},
     {id: 201, name: '코인'},
     {id: 0, name: '지우개'},
   ];
@@ -90,11 +101,23 @@
     8: r => 30 * r + 15,
     39: r => 6.75 + 30 * r,
     35: r => 2 + 30 * r,
+    222: r => 2 + 30 * r,
+    223: r => 2 + 30 * r,
     36: r => 30 * r + 15,
+    220: r => 30 * r + 15,
+    221: r => 30 * r + 15,
     13: r => 42 + 30 * r,
     12: r => 42 + 30 * r,
+    210: r => 42 + 30 * r,
+    211: r => 42 + 30 * r,
+    212: r => 42 + 30 * r,
     11: r => 36.5 + 30 * r,
     10: r => 36.5 + 30 * r,
+    // speed gates stand on the cell's floor
+    213: r => 18.75 + 30 * r,
+    214: r => 18.75 + 30 * r,
+    215: r => 18.75 + 30 * r,
+    216: r => 18.75 + 30 * r,
     201: r => 30 * r + 15,
   };
 
@@ -251,8 +274,9 @@
     switch (id) {
       case 40: case 203: return [x, bottom - size, size, size * 0.45];
       case 39: return [x, bottom - size * 0.45, size, size * 0.45];
-      case 35: return [x + size * 0.08, bottom - size * 0.14, size * 0.84, size * 0.14];
-      case 13: case 12: return [x - size * 0.05, bottom - size * 2.8, size * 1.1, size * 2.8];
+      case 35: case 222: case 223: return [x + size * 0.08, bottom - size * 0.14, size * 0.84, size * 0.14];
+      case 13: case 12: case 210: case 211: case 212: return [x - size * 0.05, bottom - size * 2.8, size * 1.1, size * 2.8];
+      case 213: case 214: case 215: case 216: return [x + size * 0.04, bottom - size * 1.25, size * 0.92, size * 1.25];
       case 11: case 10: return [x + size * 0.1, bottom - size * 2.43, size * 0.8, size * 2.43];
       default: return [x, bottom - size, size, size];
     }

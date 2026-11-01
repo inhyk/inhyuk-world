@@ -30,7 +30,8 @@ public:
     inline void setCustomSong(int song) { m_CustomSong = song; }
     // Friends in an online race, drawn see-through where the page says they are.
     static constexpr int GHOST_COUNT = 3;
-    void setGhost(int slot, bool visible, float x, float y, float rotation, bool ship, int gravity, int skin);
+    // mode is the friend's Gamemode number (0 cube, 1 ship, 2 ball, 3 UFO, 4 wave)
+    void setGhost(int slot, bool visible, float x, float y, float rotation, int mode, int gravity, int skin);
     int visibleGhosts() const;
     // Online race: after dying, watch a friend instead of starting again.
     inline bool isSpectating() const { return m_Spectating >= 0; }
@@ -60,13 +61,12 @@ private:
     SDL_Texture *m_LoadingTexture;
     SDL_Texture *m_CoinTexture;
     SDL_Texture *m_CoinEmptyTexture;
-    SDL_Texture *m_GhostShipTexture;
     struct Ghost {
         bool visible = false;
         float x = 0;
         float y = 0;
         float rotation = 0;
-        bool ship = false;
+        Gamemode mode = Gamemode::CUBE;
         int gravity = 1;
         int skin = 0;
     };

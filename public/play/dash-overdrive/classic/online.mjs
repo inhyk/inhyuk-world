@@ -6,7 +6,8 @@
 // Messages carry numbers only:
 //   {t:'hi', s}                              my skin, sent when someone joins
 //   {t:'start', l}                           the host picks a level and everyone starts it
-//   {t:'pos', l, x, y, r, m, g, d, p, s}     15 times a second while playing
+//   {t:'pos', l, x, y, r, m, g, d, p, s, v}  15 times a second while playing
+//                                            (m mode 0 cube 1 ship 2 ball 3 UFO 4 wave, v speed gate 0-3)
 //   {t:'done', l}                            reached the end of the level
 //   {t:'map', i, n, c, s, k}                 the host's own map, in parts: cells [col, row, id, ...]
 // After dying in a race you watch the friend who is furthest ahead until you
@@ -20,6 +21,9 @@ const RACE_LEVELS = 15; // secret levels stay single player: not everyone has th
 const CUSTOM_LEVEL = 20; // the map maker's slot in the engine
 const MAP_PART = 1500; // numbers per map message, well under the 16 KB limit
 const PIXELS_PER_MS = 20.772 * 60 / 1000;
+// speed gates: slow, normal, fast, very fast (engine SPEED_MULTIPLIERS)
+const SPEEDS = [0.8, 1, 1.25, 1.5];
+const MODE_COUNT = 5;
 const COLORS = ['#bfff59', '#59d8ff', '#ff7ad9', '#ffd23d'];
 const LEVEL_NAMES = ['Neon Start', 'Pixel Hop', 'Blue Ladder', 'Desert Wind', 'Iron Gate', 'Night Rail', 'Sky Rocket',
   'Crystal Cave', 'Thunder Road', 'Lava Lift', 'Star Factory', 'Frost Bite', 'Laser Maze', 'Black Hole', 'Overdrive'];
@@ -150,7 +154,8 @@ const hooks = {
       player.skin = Math.max(0, Math.min(23, number(data.s) | 0));
       player.pos = {
         level: number(data.l, -1) | 0, x: number(data.x), y: number(data.y), rotation: number(data.r),
-        ship: data.m === 1, gravity: data.g === -1 ? -1 : 1, dead: data.d === 1, percent: Math.max(0, Math.min(10000, number(data.p) | 0)),
+        mode: Math.max(0, Math.min(MODE_COUNT - 1, number(data.m) | 0)), speed: Math.max(0, Math.min(SPEEDS.length - 1, number(data.v, 1) | 0)),
+        gravity: data.g === -1 ? -1 : 1, dead: data.d === 1, percent: Math.max(0, Math.min(10000, number(data.p) | 0)),
       };
       player.at = performance.now();
     } else if (data.t === 'done' && (number(data.l, -1) | 0) === racing) {
@@ -257,7 +262,7 @@ setInterval(() => {
   room.send({
     t: 'pos', l: Module._classic_level(), x: Math.round(Module._sim_x() * 10) / 10, y: Math.round(Module._sim_y() * 10) / 10,
     r: Math.round(Module._classic_player_rotation()), m: Module._sim_mode(), g: Module._sim_gravity(),
-    d: Module._classic_player_dead(), p: percent, s: Module._classic_player_skin(),
+    d: Module._classic_player_dead(), p: percent, s: Module._classic_player_skin(), v: Module._classic_player_speed(),
   });
   if (percent >= 10000 && !sentDone && racing === Module._classic_level()) {
     sentDone = true;
@@ -281,7 +286,7 @@ function drawGhosts() {
       player.shown = null;
       continue;
     }
-    const ahead = Math.min(now - player.at, 200) * PIXELS_PER_MS;
+    const ahead = Math.min(now - player.at, 200) * PIXELS_PER_MS * SPEEDS[pos.speed];
     const target = {x: pos.x + ahead, y: pos.y, rotation: pos.rotation};
     // a jump back (respawn) snaps instead of sliding
     if (!player.shown || Math.abs(player.shown.x - target.x) > 600) player.shown = {...target};
@@ -290,7 +295,7 @@ function drawGhosts() {
       player.shown.y += (target.y - player.shown.y) * 0.45;
       player.shown.rotation = target.rotation;
     }
-    Module._classic_set_ghost(player.slot, 1, player.shown.x, player.shown.y, player.shown.rotation, pos.ship ? 1 : 0, pos.gravity, player.skin);
+    Module._classic_set_ghost(player.slot, 1, player.shown.x, player.shown.y, player.shown.rotation, pos.mode, pos.gravity, player.skin);
   }
 }
 requestAnimationFrame(drawGhosts);

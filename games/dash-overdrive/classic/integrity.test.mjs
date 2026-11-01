@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, existsSync, readdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {parseLevel, OBJECTS} from './levels/physics.mjs';
+import {parseLevel, OBJECTS, SPEED_MULTIPLIERS} from './levels/physics.mjs';
 import {LEVELS} from './levels/generate.mjs';
 
 const root = new URL('../../../public/play/dash-overdrive/classic/', import.meta.url);
@@ -11,6 +11,21 @@ const read = path => readFileSync(new URL(path, root));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const provenance = JSON.parse(read('provenance.json'));
 const report = JSON.parse(readFileSync(new URL('./levels/report.json', import.meta.url), 'utf8'));
+
+// Seconds from the start (x = -120) to the end of a level, through its speed gates.
+function levelSeconds(level) {
+  const gates = level.objects.filter(object => object.type === 'speed').sort((a, b) => a.hitbox.x - b.hitbox.x);
+  let x = -120;
+  let speed = 1;
+  let seconds = 0;
+  for (const gate of gates) {
+    const at = gate.hitbox.x - 120;
+    seconds += (at - x) / (20.772 * 60 * SPEED_MULTIPLIERS[speed]);
+    x = at;
+    speed = gate.speed;
+  }
+  return seconds + (level.furthestX - x) / (20.772 * 60 * SPEED_MULTIPLIERS[speed]);
+}
 
 test('twenty built levels use only objects the engine knows', () => {
   assert.equal(LEVELS.length, 20);
@@ -22,7 +37,7 @@ test('twenty built levels use only objects the engine knows', () => {
     for (const id of ids) assert.ok(OBJECTS[id], `level ${index + 1} object ${id}`);
     const level = parseLevel(text);
     // the end of the level lines up with its song
-    const seconds = (level.furthestX + 120) / (20.772 * 60);
+    const seconds = levelSeconds(level);
     assert.ok(seconds < LEVELS[index].seconds - 2 && seconds > LEVELS[index].seconds - 8, `level ${index + 1} length ${seconds}`);
   }
 });

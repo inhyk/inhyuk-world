@@ -91,8 +91,14 @@ CLASSIC_EXPORT int classic_player_skin() {
     return game.getSelectedSkin();
 }
 
-CLASSIC_EXPORT void classic_set_ghost(int slot, int visible, float x, float y, float rotation, int ship, int gravity, int skin) {
-    PlayingState::get().setGhost(slot, visible != 0, x, y, rotation, ship != 0, gravity, skin);
+// mode: 0 cube, 1 ship, 2 ball, 3 UFO, 4 wave
+CLASSIC_EXPORT void classic_set_ghost(int slot, int visible, float x, float y, float rotation, int mode, int gravity, int skin) {
+    PlayingState::get().setGhost(slot, visible != 0, x, y, rotation, mode, gravity, skin);
+}
+
+// speed gate the player last went through: 0 slow, 1 normal, 2 fast, 3 very fast
+CLASSIC_EXPORT int classic_player_speed() {
+    return PlayingState::get().getPlayer().getSpeed();
 }
 
 // -1 stops watching; the player then starts again on the next frame.
@@ -159,7 +165,9 @@ CLASSIC_EXPORT void sim_restore(int slot) {
 CLASSIC_EXPORT float sim_x() { return PlayingState::get().getPlayer().getPosition().x; }
 CLASSIC_EXPORT float sim_y() { return PlayingState::get().getPlayer().getPosition().y; }
 CLASSIC_EXPORT float sim_vy() { return PlayingState::get().getPlayer().getYVelocity(); }
-CLASSIC_EXPORT int sim_mode() { return PlayingState::get().getPlayer().getGamemode() == Gamemode::SHIP ? 1 : 0; }
+// 0 cube, 1 ship, 2 ball, 3 UFO, 4 wave
+CLASSIC_EXPORT int sim_mode() { return static_cast<int>(PlayingState::get().getPlayer().getGamemode()); }
+CLASSIC_EXPORT int sim_speed() { return PlayingState::get().getPlayer().getSpeed(); }
 CLASSIC_EXPORT int sim_gravity() { return PlayingState::get().getPlayer().getGravityMultiplier(); }
 CLASSIC_EXPORT int sim_grounded() { return PlayingState::get().getPlayer().isGrounded() ? 1 : 0; }
 CLASSIC_EXPORT int sim_end_x() { return PlayingState::get().getLevel().getFurthestX(); }

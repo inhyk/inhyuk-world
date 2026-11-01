@@ -16,7 +16,19 @@ enum class ObjectType {
     DECO,
     BG_TRIGGER,
     G_TRIGGER,
-    COIN
+    COIN,
+    // plan 2: the other modes, speed gates and coloured orbs and pads
+    BALL_PORTAL,
+    UFO_PORTAL,
+    WAVE_PORTAL,
+    SPEED_SLOW,
+    SPEED_NORMAL,
+    SPEED_FAST,
+    SPEED_VERY_FAST,
+    PINK_ORB,
+    BLUE_ORB,
+    PINK_PAD,
+    BLUE_PAD
 };
 
 class Object {

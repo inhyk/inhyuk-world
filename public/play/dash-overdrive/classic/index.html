@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1030">
 <title>DASH / OVERDRIVE · CLASSIC</title>
-<link rel="stylesheet" href="style.css?v=classic-original-4">
+<link rel="stylesheet" href="style.css?v=classic-original-5">
 </head>
 <body>
 <header>
@@ -18,13 +18,13 @@
     <button id="full" type="button" aria-label="전체 화면">⛶</button>
   </div>
 </header>
-<div class="game-frame"><canvas id="canvas" tabindex="0" aria-label="대쉬 오버드라이브 클래식. 스페이스, 클릭, 터치로 점프. 비행선은 누르고 있으면 올라가. Esc로 일시정지."></canvas></div>
+<div class="game-frame"><canvas id="canvas" tabindex="0" aria-label="대쉬 오버드라이브 클래식. 스페이스, 클릭, 터치로 점프. 비행선과 웨이브는 누르고 있으면 올라가. 공은 눌러서 뒤집고, UFO는 누를 때마다 떠. Esc로 일시정지."></canvas></div>
 
 <main id="launcher" hidden>
   <div class="intro">
     <div class="eyebrow">CLASSIC · 15 + 5 SECRET LEVELS</div>
     <h1>새로 만든 맵.<br><span>끝까지 달려!</span></h1>
-    <p>큐브로 뛰고, 비행선으로 날고, 중력을 뒤집어.<br>1단계부터 15단계까지 점점 어려워져.<br>단계마다 숨은 코인 3개는 끝까지 깨야 모여.<br>코인을 10개, 20개, 30개, 40개, 50개 모으면 비밀 단계가 하나씩 열려.<br>단계를 하나 깰 때마다 새 스킨도 하나씩 생겨.</p>
+    <p>큐브로 뛰고, 비행선으로 날고, 중력을 뒤집어.<br>1단계부터 15단계까지 점점 어려워져.<br>단계마다 숨은 코인 3개는 끝까지 깨야 모여.<br>코인을 10개, 20개, 30개, 40개, 50개 모으면 비밀 단계가 하나씩 열려.<br>19, 20단계에서는 공, UFO, 웨이브, 속도 문도 나와.<br>단계를 하나 깰 때마다 새 스킨도 하나씩 생겨.</p>
     <p class="coin-total" id="coin-total">모은 코인 0개</p>
   </div>
   <section class="choices" id="choices" aria-label="단계 선택"></section>
@@ -161,14 +161,14 @@
 <div id="watch" class="watch" hidden><b id="watch-name">관전 중</b><button id="watch-retry" type="button">다시 달리기 ▶</button></div>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <footer>
-  <span><kbd>SPACE</kbd> / 클릭 / 터치 : 점프 · 비행선은 꾹 누르기</span>
+  <span><kbd>SPACE</kbd> / 클릭 / 터치 : 점프 · 비행선과 웨이브는 꾹 누르기</span>
   <span><kbd>ESC</kbd> 일시정지 · 연습 모드에서 <kbd>Z</kbd> 체크포인트 / <kbd>X</kbd> 삭제</span>
   <span class="rotate">휴대폰은 가로 화면이 좋아 ↻</span>
 </footer>
-<script src="launcher.js?v=classic-original-4"></script>
-<script src="editor.js?v=classic-original-4"></script>
-<script type="module" src="online.mjs?v=classic-original-4"></script>
-<script type="module" src="social-ui.mjs?v=classic-original-4"></script>
-<script src="engine/DashClassic.js?v=classic-original-4"></script>
+<script src="launcher.js?v=classic-original-5"></script>
+<script src="editor.js?v=classic-original-5"></script>
+<script type="module" src="online.mjs?v=classic-original-5"></script>
+<script type="module" src="social-ui.mjs?v=classic-original-5"></script>
+<script src="engine/DashClassic.js?v=classic-original-5"></script>
 </body>
 </html>

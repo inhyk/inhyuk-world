@@ -14,6 +14,8 @@ public:
     SDL_FPoint getPosition() const;
     void resetPosition();
     void setMoving(bool value);
+    // follows the player's speed gates (1 is normal)
+    inline void setSpeed(float speed) { m_Speed = speed; }
     void update(float delta);
     void render() const;
     std::array<float, 3> getColor() const;
@@ -40,4 +42,5 @@ private:
     bool m_IsMoving;
     bool m_IsFading;
     float m_FadeTime = 0;
+    float m_Speed = 1;
 };
