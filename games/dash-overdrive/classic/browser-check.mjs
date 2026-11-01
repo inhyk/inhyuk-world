@@ -67,10 +67,27 @@ try {
     assert.match(text, /^kS29,1_\d+_2_\d+_3_\d+,kS30,/);
     assert.equal(text.split(';').filter(row => row.startsWith('1,1,')).length, 2);
     await page.click('#editor-test');
-    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 19);
+    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 21);
     await page.evaluate(() => Module._classic_go_title());
     await page.waitForFunction(() => JSON.parse(window.render_classic_status()).editor);
-    console.log('map maker passed');
+    // no height limit: place a block high up
+    for (let i = 0; i < 5; i++) await page.click('#editor-up');
+    await page.mouse.click(grid.x + grid.width * 0.45, grid.y + grid.height * 0.3);
+    const high = await page.evaluate(() => window.classicEditor.map().cells.filter(([, r]) => r > 12).length);
+    assert.equal(high, 1, 'a block above the old limit');
+    // share code: copy, clear, load it back
+    await page.click('#editor-copy');
+    await page.waitForFunction(() => document.getElementById('editor-share-text').value.startsWith('DOC1.'));
+    const code = await page.inputValue('#editor-share-text');
+    await page.click('#editor-share-close');
+    await page.click('#editor-clear');
+    await page.click('#editor-confirm-yes');
+    assert.equal(await page.evaluate(() => window.classicEditor.map().cells.length), 0);
+    await page.click('#editor-paste');
+    await page.fill('#editor-share-text', code);
+    await page.click('#editor-share-load');
+    await page.waitForFunction(() => window.classicEditor.map().cells.length === 3);
+    console.log('map maker passed (height, share code)');
     await context.close();
   }
   for (const viewport of [{width: 390, height: 844}, {width: 844, height: 390}]) {

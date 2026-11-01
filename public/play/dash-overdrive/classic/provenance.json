@@ -18,9 +18,9 @@
   "levels": "games/dash-overdrive/classic/levels/generate.mjs",
   "check": "games/dash-overdrive/classic/levels/verify.mjs"
  },
- "packageBytes": 3116140,
- "packageSha256": "4e34582ae357187bb3ec6a4d79c804905d43ffd4d636aa2ada6224b2f42fa1d5",
- "wasmSha256": "b46d9300d5e012f90c2c365e7d182c3421cb96b4fcbd3acee30a8641c51abf50",
+ "packageBytes": 3227059,
+ "packageSha256": "6e7e6d7016089a11dc28afbaa9043349b578cfbc804ec32ee955a89cd969514d",
+ "wasmSha256": "4d8d4c13200f0c7c80f86a55a4684fce87cf0f355f8dd0f38864092afd940d31",
  "levels": [
   {
    "level": 1,
@@ -36,7 +36,7 @@
    "bpm": 138.48,
    "songSeconds": 68,
    "objects": 1286,
-   "sha256": "1bc92f44df57641e729b69223ed77648d8f8aad61b5d40fb2024847226d1bc7c"
+   "sha256": "6bb7ff6e1feaf28d9b18805ad5007aea1f4e9d570f2cc5b3995c5d7819cd0b46"
   },
   {
    "level": 3,
@@ -44,7 +44,7 @@
    "bpm": 124.632,
    "songSeconds": 72,
    "objects": 1807,
-   "sha256": "b29f74d08c3e33de0af89da8bc27fd270bf19ae451eb285aed780648a4d10796"
+   "sha256": "df6e84173ea41be5614b1a1b83684436694d3d73f2c273e617009ea102755b04"
   },
   {
    "level": 4,
@@ -52,7 +52,7 @@
    "bpm": 138.48,
    "songSeconds": 74,
    "objects": 1525,
-   "sha256": "a45efe603965afc5d1a402bb99b49075501f0676bd85b466030727f314d2b81b"
+   "sha256": "16bd23a177fdd7a37b4f7a9d660f230be0dfd3cf0572537a06fc04d611773a5f"
   },
   {
    "level": 5,
@@ -60,7 +60,7 @@
    "bpm": 155.79,
    "songSeconds": 78,
    "objects": 1851,
-   "sha256": "64da9843020f5a0954ed645d71d1a28cf8a9c645aea3de74d70499a025fcaa50"
+   "sha256": "0eb98111f6eb89a748cb6a1bf5ae61e8a08140863302f1c4f7c365141484a7ab"
   },
   {
    "level": 6,
@@ -68,7 +68,7 @@
    "bpm": 124.632,
    "songSeconds": 80,
    "objects": 1925,
-   "sha256": "c86f654bbae112271e5e047dee8334eea682dac9712fafc623abbe95d68f1b39"
+   "sha256": "c78f42a789cadee209773c6cc8fd852568521aa5d3d700748f7d62edbc5df57c"
   },
   {
    "level": 7,
@@ -84,7 +84,7 @@
    "bpm": 138.48,
    "songSeconds": 84,
    "objects": 1744,
-   "sha256": "e5c7f029d0d742431416823ce06ecd808bdf7a2e1907ba78e9c69595b8bfdd51"
+   "sha256": "e96631151afdf4da690cfd6f67102130b8861c1c9d4a8e8ca222af0f1da6083c"
   },
   {
    "level": 9,
@@ -92,7 +92,7 @@
    "bpm": 178.05,
    "songSeconds": 86,
    "objects": 1830,
-   "sha256": "8f745c40df78e2386383fe0db03bf4f528f0cc9df1b318e85125ee2e6666cf45"
+   "sha256": "a839d16a592ac04255deca6cbcf0e41a5fd6174632294dbebb82802c1dfc3c6b"
   },
   {
    "level": 10,
@@ -100,7 +100,7 @@
    "bpm": 155.79,
    "songSeconds": 88,
    "objects": 1996,
-   "sha256": "d4efa4d60d0677778637bf98b7fbddc8f4ce292e2d75a3dc5ad47b5bb5a51e23"
+   "sha256": "9671b60750b24f439c3c9ca25dc3353501e9d13e056a60ff7c84f1a3f6320640"
   },
   {
    "level": 11,
@@ -108,7 +108,7 @@
    "bpm": 138.48,
    "songSeconds": 90,
    "objects": 2334,
-   "sha256": "f86ee0e12097cf8c7b7f11533caf886795377b283e811367f2cd0dfc043c32b4"
+   "sha256": "e01a58346785755f8e1a4c6bb1962f5c350be73015a81fdfe22a31299a103d29"
   },
   {
    "level": 12,
@@ -116,7 +116,7 @@
    "bpm": 178.05,
    "songSeconds": 92,
    "objects": 2382,
-   "sha256": "d13ce585691c67bbc7690ec561957419dd17a910a70cfc479150c00712843e38"
+   "sha256": "605cd13b447087d4519c06d55fe799d9d70e05c7d9b0cf17269090b4e4327bcc"
   },
   {
    "level": 13,
@@ -132,7 +132,7 @@
    "bpm": 138.48,
    "songSeconds": 96,
    "objects": 2796,
-   "sha256": "e5fae0f3cb9acccbbf15119735f7a9447aa25bac48572453c48e3e6305491ac6"
+   "sha256": "9a4af9d84c04b4052696f72c39043c36ac86ff7704fead16e9c21581cb09547d"
   },
   {
    "level": 15,
@@ -140,7 +140,7 @@
    "bpm": 178.05,
    "songSeconds": 100,
    "objects": 2308,
-   "sha256": "892c8371efd6061c828a4738aec811779a8afd3f42ca990d0453b50eefeffe92"
+   "sha256": "d2cb6852849905bd49fba20aa3f32b841c3733832107f5a7c26624644af768a2"
   },
   {
    "level": 16,
@@ -148,7 +148,7 @@
    "bpm": 138.48,
    "songSeconds": 102,
    "objects": 2176,
-   "sha256": "a268d20d5b8d626411308f2d945f5c5b1e5a23aef2ae9ed251c749169054959c"
+   "sha256": "719c3a80f209ff0ac51dc113f490eb537440102a4307b5a5b8be174b3c1ee5f1"
   },
   {
    "level": 17,
@@ -156,7 +156,7 @@
    "bpm": 178.05,
    "songSeconds": 106,
    "objects": 2561,
-   "sha256": "b1842b660821058348b6745bd4be328e3d15c9fee617495213e67bc91c46204f"
+   "sha256": "2a3e6fb13f20d990d5c64ae0346317380e5fe56d665c767e4c4bd4998c5343a4"
   },
   {
    "level": 18,
@@ -164,7 +164,23 @@
    "bpm": 178.05,
    "songSeconds": 110,
    "objects": 2221,
-   "sha256": "4c50a581d0e4715b9fee16fd2968307fb30c234f247aefc3f521897420f11707"
+   "sha256": "191d7a2f0ce972be4be4396c8fcd8e6195b9a540f3eb9aa7a25c0235b4df0c25"
+  },
+  {
+   "level": 19,
+   "name": "Volt Rush",
+   "bpm": 155.79,
+   "songSeconds": 112,
+   "objects": 3084,
+   "sha256": "d881eb51f1fbef511b8f637e166a7faa8496ad892a04bbae09877fd0f3512665"
+  },
+  {
+   "level": 20,
+   "name": "Endless Dash",
+   "bpm": 178.05,
+   "songSeconds": 120,
+   "objects": 2738,
+   "sha256": "d5cd7f7b3cee3170fbd08ce7427ebaa88e6c812178bec25bfc2a1631f81e0914"
   }
  ]
 }

@@ -47,6 +47,7 @@ void Player::init(Game *game) {
         std::cerr << "Failed to load ship.png! " << SDL_GetError() << std::endl;
     }
     SDL_QueryTexture(m_ShipTexture, NULL, NULL, &m_ShipWidth, &m_ShipHeight);
+    m_DebrisTexture = IMG_LoadTexture(m_Renderer, "res/gfx/debris.png");
     m_CheckpointTexture = IMG_LoadTexture(m_Renderer, "res/gfx/checkpoint.png");
     if (m_CheckpointTexture == nullptr) {
         std::cerr << "Failed to load checkpoint.png! " << SDL_GetError() << std::endl;
@@ -87,6 +88,7 @@ void Player::reset() {
 Player::~Player() {
     SDL_DestroyTexture(m_ShipTexture);
     SDL_DestroyTexture(m_CheckpointTexture);
+    SDL_DestroyTexture(m_DebrisTexture);
     Mix_FreeChunk(m_DeathSound);
     Mix_FreeChunk(m_CoinSound);
 }
@@ -120,7 +122,10 @@ void Player::simUpdate(bool held, float deltaTime) {
 void Player::step(float deltaTime, bool mouseClicked, bool mouseReleased) {
     if (m_IsDead) {
         m_DeadTimer -= deltaTime;
-        if (m_DeadTimer < 0) {
+        if (!m_SimInput) {
+            updateDebris(deltaTime);
+        }
+        if (m_DeadTimer < 0 && !PlayingState::get().isSpectating()) {
             respawn();
         }
         return;
@@ -686,40 +691,115 @@ void Player::renderShip(SDL_Texture *skin) const {
     SDL_RenderCopyExF(m_Renderer, m_ShipTexture, NULL, &shipDST, m_Rotation, NULL, flip);
 }
 
+float Player::debrisFloor(float x, float fromY) const {
+    float floor = hasBounds() ? m_Bounds.second : FLOOR_Y;
+    const LevelManager &level = PlayingState::get().getLevel();
+    const std::vector<const Object *> &collidables = level.getCollidables();
+    for (std::size_t i = level.firstCollidableFrom(x - 2 * TILE); i < collidables.size(); i++) {
+        const SDL_FRect box = collidables[i]->getHitbox().value();
+        if (box.x > x) {
+            break;
+        }
+        if (collidables[i]->getType() == ObjectType::BLOCK && x < box.x + box.w && box.y >= fromY && box.y < floor) {
+            floor = box.y;
+        }
+    }
+    return floor;
+}
+
+void Player::spawnDebris() {
+    m_Debris.clear();
+    m_DebrisPiles.clear();
+    unsigned int random = static_cast<unsigned int>(std::abs(m_DeathPosition.x)) * 2654435761u + 7u;
+    const auto next = [&random]() {
+        random = random * 1664525u + 1013904223u;
+        return static_cast<float>((random >> 8) & 0xFFFF) / 65535.0f;
+    };
+    for (int i = 0; i < 28; i++) {
+        Debris piece;
+        piece.x = m_DeathPosition.x + TILE * (0.2f + 0.6f * next());
+        piece.y = m_DeathPosition.y + TILE * (0.2f + 0.6f * next());
+        piece.xVelocity = -7.0f + 16.0f * next();
+        piece.yVelocity = -24.0f + 16.0f * next();
+        piece.rotation = 360.0f * next();
+        piece.spin = -14.0f + 28.0f * next();
+        piece.size = 16.0f + 16.0f * next();
+        piece.shape = static_cast<int>(next() * 2.999f);
+        piece.resting = false;
+        m_Debris.push_back(piece);
+    }
+}
+
+void Player::updateDebris(float deltaTime) {
+    for (Debris &piece : m_Debris) {
+        if (piece.resting) {
+            continue;
+        }
+        piece.yVelocity += 1.4f * deltaTime;
+        piece.xVelocity *= std::pow(0.985f, deltaTime);
+        piece.x += piece.xVelocity * deltaTime;
+        piece.y += piece.yVelocity * deltaTime;
+        piece.rotation += piece.spin * deltaTime;
+        if (piece.yVelocity <= 0) {
+            continue;
+        }
+        // land on the floor, a block, or the powder already lying there
+        const int column = static_cast<int>(std::floor(piece.x / 18.0f));
+        float pile = 0;
+        for (const auto &[at, height] : m_DebrisPiles) {
+            if (std::abs(at - column) <= 1) {
+                pile = std::max(pile, height);
+            }
+        }
+        const float surface = debrisFloor(piece.x, piece.y - piece.yVelocity * deltaTime) - pile;
+        if (piece.y + piece.size / 2 < surface) {
+            continue;
+        }
+        piece.y = surface - piece.size / 2;
+        if (piece.yVelocity > 9.0f) {
+            piece.yVelocity *= -0.3f;
+            piece.xVelocity *= 0.5f;
+            continue;
+        }
+        piece.resting = true;
+        piece.rotation = std::round(piece.rotation / 90.0f) * 90.0f;
+        bool added = false;
+        for (auto &[at, height] : m_DebrisPiles) {
+            if (at == column) {
+                height = std::max(height, pile) + piece.size * 0.7f;
+                added = true;
+            }
+        }
+        if (!added) {
+            m_DebrisPiles.push_back({ column, pile + piece.size * 0.7f });
+        }
+    }
+}
+
 void Player::renderDeath(SDL_Texture *skin) const {
-    // Eight small copies of the cube fly apart and fade out.
-    constexpr float DURATION = 40.0f;
-    const float elapsed = 90.0f - m_DeadTimer;
-    if (elapsed > DURATION) {
-        return;
-    }
-    const float progress = elapsed / DURATION;
+    (void)skin;
     const SDL_FPoint camera = m_Game->getCameraPosition();
-    const float centerX = m_DeathPosition.x + TILE / 2 - camera.x;
-    const float centerY = m_DeathPosition.y + TILE / 2 - camera.y;
-    const float size = TILE * 0.32f * (1.0f - 0.5f * progress);
-    const Uint8 alpha = static_cast<Uint8>(255 * (1.0f - progress));
-    SDL_SetTextureAlphaMod(skin, alpha);
-    for (int i = 0; i < 8; i++) {
-        const float angle = (i * 45.0f + 22.5f) * DEGREES_TO_RADIANS;
-        const float distance = 30.0f + 260.0f * std::sqrt(progress);
-        const SDL_FRect dst = {
-            centerX + std::cos(angle) * distance - size / 2,
-            centerY + std::sin(angle) * distance - size / 2,
-            size,
-            size
-        };
-        SDL_RenderCopyExF(m_Renderer, skin, NULL, &dst, progress * 540.0f + i * 40.0f, NULL, SDL_FLIP_NONE);
+    const float elapsed = DEATH_FRAMES - m_DeadTimer;
+    // a quick white ring, then the powder
+    if (elapsed < 14.0f) {
+        const float progress = elapsed / 14.0f;
+        const float centerX = m_DeathPosition.x + TILE / 2 - camera.x;
+        const float centerY = m_DeathPosition.y + TILE / 2 - camera.y;
+        SDL_SetRenderDrawBlendMode(m_Renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(m_Renderer, 255, 255, 255, static_cast<Uint8>(220 * (1.0f - progress)));
+        const float ring = 30.0f + 150.0f * progress;
+        for (int i = 0; i < 24; i++) {
+            const float angle = i * 15.0f * DEGREES_TO_RADIANS;
+            const SDL_FRect dot = { centerX + std::cos(angle) * ring - 5, centerY + std::sin(angle) * ring - 5, 10, 10 };
+            SDL_RenderFillRectF(m_Renderer, &dot);
+        }
     }
-    SDL_SetTextureAlphaMod(skin, 255);
-    // a quick white ring
-    SDL_SetRenderDrawBlendMode(m_Renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(m_Renderer, 255, 255, 255, static_cast<Uint8>(200 * (1.0f - progress)));
-    const float ring = 40.0f + 220.0f * progress;
-    for (int i = 0; i < 24; i++) {
-        const float angle = i * 15.0f * DEGREES_TO_RADIANS;
-        const SDL_FRect dot = { centerX + std::cos(angle) * ring - 5, centerY + std::sin(angle) * ring - 5, 10, 10 };
-        SDL_RenderFillRectF(m_Renderer, &dot);
+    const SDL_Color color = m_Game->getSkinColor(m_Game->getSelectedSkin());
+    SDL_SetTextureColorMod(m_DebrisTexture, color.r, color.g, color.b);
+    for (const Debris &piece : m_Debris) {
+        const SDL_Rect source = { piece.shape * 32, 0, 32, 32 };
+        const SDL_FRect dst = { piece.x - piece.size / 2 - camera.x, piece.y - piece.size / 2 - camera.y, piece.size, piece.size };
+        SDL_RenderCopyExF(m_Renderer, m_DebrisTexture, &source, &dst, piece.rotation, NULL, SDL_FLIP_NONE);
     }
 }
 
@@ -729,7 +809,7 @@ void Player::die() {
         return;
     }
     m_IsDead = true;
-    m_DeadTimer = 90;
+    m_DeadTimer = DEATH_FRAMES;
     m_DeathPosition = { m_Hitbox.x, m_Hitbox.y };
     m_Position = m_PreviousPosition;
     m_Hitbox.x = m_PreviousPosition.x;
@@ -738,6 +818,7 @@ void Player::die() {
     if (m_SimInput) {
         return;
     }
+    spawnDebris();
     if (!PlayingState::get().isInPractice()) {
         Mix_HaltMusic();
     }

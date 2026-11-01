@@ -57,6 +57,8 @@ class Trigger;
 class Player {
 public:
     static constexpr float DEFAULT_X_VELOCITY = 20.772f;
+    // frames from death to respawn: the powder lands and piles up first
+    static constexpr float DEATH_FRAMES = 105.0f;
 
     Player() = default;
     ~Player();
@@ -144,4 +146,23 @@ private:
     void renderCube(SDL_Texture *skin) const;
     void renderShip(SDL_Texture *skin) const;
     void renderDeath(SDL_Texture *skin) const;
+    // Death powder (the designer's sketch: it falls and piles up after a second):
+    // little shapes in the skin's colour that drop onto the floor or the blocks.
+    struct Debris {
+        float x;
+        float y;
+        float xVelocity;
+        float yVelocity;
+        float rotation;
+        float spin;
+        float size;
+        int shape;
+        bool resting;
+    };
+    std::vector<Debris> m_Debris;
+    std::vector<std::pair<int, float>> m_DebrisPiles;
+    SDL_Texture *m_DebrisTexture;
+    void spawnDebris();
+    void updateDebris(float deltaTime);
+    float debrisFloor(float x, float fromY) const;
 };

@@ -960,8 +960,9 @@ function renderSection(ctx, sec, next) {
   if (L.stab && S.stab) padSec(ctx, sec, S.stab.patch, { bars, stem: 'stab', ...S.stab });
   if (L.arp && S.arp) arpSec(ctx, sec, S.arp.patch, S.arp, { bars, ...(S.arp[sec.type] ?? {}) });
   const hooks = L.hooks;
-  if (L.lead === 'soft') leadSec(ctx, sec, S.softLead ?? S.lead, { bars, hooks, gain: S.softGain ?? 0.85 });
-  else if (L.lead === 'tease') leadSec(ctx, sec, S.teaseLead ?? S.lead, { bars, hooks, gain: 0.55 });
+  const nc = S.softChords === false;
+  if (L.lead === 'soft') leadSec(ctx, sec, S.softLead ?? S.lead, { bars, hooks, gain: S.softGain ?? 0.85, noChords: nc });
+  else if (L.lead === 'tease') leadSec(ctx, sec, S.teaseLead ?? S.lead, { bars, hooks, gain: 0.55, noChords: nc });
   else if (L.lead) {
     leadSec(ctx, sec, S.lead, { bars, hooks });
     if (sec.type === 'drop' && sec.n >= 2 && S.double !== false) leadSec(ctx, sec, S.lead2 ?? S.lead, { bars, hooks, oct: S.doubleOct ?? 1, gain: S.doubleGain ?? 0.38 });
@@ -1698,6 +1699,91 @@ SONGS[17] = {
     for (let b = 4; b < bars; b += 4) hit(ctx, 'x', ctx.t(sec.bar0 + b), 0.8);
     drumsSec(ctx, sec, { r: 'x.x.x.x.x.x.x.x.' }, bars);
     impact(ctx.mx, ctx.t(sec.bar0), { g: 0.3, f0: 70, f1: 28 });
+  },
+};
+
+// ------------------------------------------------------------------ levels 19-20 (files 18-19)
+const SIREN = { osc: [{ w: 'sq', pw: 0.5 }, { w: 'saw', det: 12, g: 0.5 }], a: 0.05, d: 0.3, s: 0.9, r: 0.3, vib: { r: 1.3, d: 4, dl: 0 },
+  flt: { t: 'bp', f: 1600, q: 1.3, kt: 0.6 }, gain: 0.07, rev: 0.4, dly: 0.35, mono: true };
+SONGS[18] = {
+  index: 18, name: 'Volt Rush', bpm: 155.79, dur: 112, difficulty: 'extreme', style: 'electric hard dance: sawtooth stabs, sirens, a breakdown with a ticking build', keyName: 'B minor',
+  key: 'B', mode: 'minor', seed: 118, hookTonic: 59, leadChords: 2, softChords: false, q: 2, maxBytes: 1400000, mix: { kick: 0.7, lead: 1.6, fx: 0.7 },
+  form: [['intro', 8, 0.45], ['verse', 8, 0.65], ['build', 4, 0.8], ['drop', 16, 0.95], ['break', 8, 0.5], ['build', 8, 0.85], ['drop', 16, 1], ['outro', 0, 0.4]],
+  prog: ['Bm D A E', 'Em G A F#'],
+  hooks: ["1':3 1':3 7:2 1':2 3':2 1':2 5:2 | 3':3 3':3 2':2 3':2 5':2 3':2 1':2 | 2':3 2':3 1':2 2':2 4':2 2':2 7:2 | 4':3 4':3 3':2 4':2 #6':2 4':2 1':2",
+    "4':4 3':2 1':2 6:4 4':4 | 3':4 1':2 6:2 3:4 3':4 | 2':4 7:2 4:2 2:4 2':4 | 5:4 #7:4 2':4 5':4"],
+  kick: { f0: 260, f1: 62, pd: 0.025, hold: 0.02, dec: 0.17, drive: 3.5, click: 0.6, lp: 6500 },
+  kit: { c: { ...KIT.c, g: 0.48, rev: 0.22 }, k2: { tone: 0.6, f: 2400, td: 0.012, noise: 0.5, hp: 4000, nd: 0.008, g: 0.12, pan: 0.2 } },
+  drums: {
+    intro: { k: 'x...x...x...x...', h: 'g.g.g.g.g.g.g.g.' },
+    verse: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.' },
+    build: { k: 'x...x...x...x...', h: 'x.x.x.x.x.x.x.x.' },
+    drop: { k: 'x...x...x...x...', c: '....X.......X...', H: '..x...x...x...x.', h: 'xxgxxxgxxxgxxxgx' },
+    break: { h: 'g...g...g...g...' },
+    outro: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw', uni: 2, spr: 12 }, { w: 'sin', oct: -1, g: 0.8 }], a: 0.07, d: 0.05, s: 1, r: 0.03, drive: 2.5, flt: { t: 'lp', f: 500, q: 1.2, env: 1.2, fa: 0.08, fd: 0.05, fs: 1 }, gain: 0.2, gate: 0.95 },
+  bassPat: { drop: '..R-..R-..R-..R-', verse: '..R...R...R...R.', build: 'R.R.R.R.R.R.R.R.', outro: '..R-..R-..R-..R-' },
+  padPatch: DARKPAD({ gain: 0.045 }),
+  arp: { patch: { ...PT.pluck, gain: 0.1 }, pat: '0123', rate: 4, lo: 59, hi: 81 },
+  lead: { osc: [{ w: 'saw', uni: 5, spr: 25, wid: 0.9 }, { w: 'sq', oct: -1, g: 0.3 }], a: 0.002, d: 0.18, s: 0.35, r: 0.1, drive: 1.6, flt: { t: 'lp', f: 2400, q: 1, env: 1.8, fd: 0.12 }, gain: 0.06, rev: 0.25, dly: 0.15 },
+  softLead: { ...PT.bell, gain: 0.12 }, teaseLead: { ...PT.pluck, gain: 0.1 },
+  layers: { verse: { arp: 1 }, build: { lead: 'tease' } },
+  sc: { depth: 0.5, rel: 0.5 }, rt: 2.2, revWet: 0.45, dlyBeats: 0.75, dlyFb: 0.35,
+  extra(ctx, sec, L, bars) {
+    const mx = ctx.mx, t0 = ctx.t(sec.bar0);
+    if (sec.type === 'drop') play(mx, SIREN, [{ t: t0, d: 2 * ctx.barS, m: 83 }], { gain: ctx.g('fx') });
+    if (sec.type === 'build') play(mx, { ...SIREN, vib: { r: 2.2, d: 2, dl: 0 }, glide: sec.bars * ctx.barS * 0.9 }, [{ t: t0, d: 0.01, m: 71 }, { t: t0 + 0.01, d: sec.bars * ctx.barS - 0.2, m: 83, slide: true }], { gain: 0.8 * ctx.g('fx') });
+    if (sec.type === 'build' && sec.n === 2) {
+      const total = bars * 16;
+      for (let s = 0; s < total;) {
+        const x = s / total, t = ctx.t(sec.bar0, s);
+        if (!ctx.stopped(t)) hit(ctx, 'k2', t, 0.45 + 0.55 * x);
+        s += x < 0.25 ? 4 : x < 0.5 ? 2 : x < 0.8 ? 1 : 0.5;
+      }
+    }
+  },
+};
+SONGS[19] = {
+  index: 19, name: 'Endless Dash', bpm: 178.05, dur: 120, difficulty: 'final (hardest)', style: 'triumphant speed anthem: driving kicks, huge chords, hero lead, three drops each bigger than the last', keyName: 'E major',
+  key: 'E', mode: 'major', seed: 119, hookTonic: 64, q: 2, maxBytes: 1400000, mix: { pad: 0.6, lead: 1.2 }, doubleOct: -1, doubleGain: 0.45,
+  form: [['intro', 8, 0.45], ['build', 4, 0.7], ['drop', 12, 0.85], ['break', 8, 0.5], ['build', 4, 0.8], ['drop', 16, 0.93], ['break', 4, 0.6], ['build', 8, 0.9], ['drop', 20, 1], ['outro', 0, 0.4]],
+  prog: ['E B C#m A', 'F#m A B B'],
+  hooks: ["1':2 1':2 2':2 3':4 2':2 1':2 5:2 | 7:2 7:2 1':2 2':4 1':2 7:2 5:2 | 6:2 6:2 7:2 1':4 7:2 6:2 3:2 | 4:2 6:2 1':2 4':6 3':2 2':2",
+    "2':4 4':4 6':6 4':2 | 4':4 6':4 1'':6 6':2 | 7':4 5':4 2':4 7':4 | 5':8 7':4 5':4"],
+  kick: { f0: 220, f1: 52, dec: 0.18, drive: 2.4, click: 0.55 },
+  kit: { c: { ...KIT.c, g: 0.48, rev: 0.22 }, m: { ...KIT.m, g: 0.36, rev: 0.25 } },
+  drums: {
+    intro: { k: 'x...x...x...x...', H: '..x...x...x...x.' },
+    build: { k: 'x...x...x...x...', h: '..x...x...x...x.' },
+    drop: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.', h: 'xgxgxgxgxgxgxgxg' },
+    break: { h: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw' }, { w: 'sin', oct: -1, g: 0.6 }], a: 0.001, d: 0.08, s: 0.45, r: 0.03, drive: 1.6, flt: { t: 'lp', f: 400, q: 1.2, env: 2.2, fd: 0.06 }, gain: 0.22, gate: 0.85 },
+  bassPat: { drop: '.ROR.ROR.ROR.ROR', build: 'R.R.R.R.R.R.R.R.', outro: '.ROR.ROR.ROR.ROR' },
+  padPatch: SUPERSAW({ a: 0.25, d: 0.6, s: 0.85, r: 0.6, gain: 0.05, flt: { t: 'lp', f: 4200, q: 0.6 } }),
+  stab: { patch: SUPERSAW({ a: 0.002, d: 0.18, s: 0.3, r: 0.1, gain: 0.05 }), pat: '..x...x...x...x.', gate: 0.7, lo: 59, hi: 80 },
+  arp: { patch: { ...PT.pluck, gain: 0.1 }, pat: '01234321', rate: 4, lo: 64, hi: 88 },
+  lead: { osc: [{ w: 'saw', uni: 5, spr: 22, wid: 0.8 }, { w: 'sq', pw: 0.3, g: 0.45 }], a: 0.006, d: 0.35, s: 0.8, r: 0.25, hp: 140, vib: { r: 5.6, d: 0.14, dl: 0.25 },
+    flt: { t: 'lp', f: 2600, q: 0.8, env: 1.3, fa: 0.03, fd: 0.3, kt: 0.4 }, gain: 0.1, rev: 0.3, dly: 0.25, mono: true, glide: 0.04, legato: true },
+  softLead: { ...PT.bell, gain: 0.12 }, teaseLead: { ...PT.pluck, gain: 0.1 },
+  layers: { build: { lead: 'tease' }, drop: { stab: 0 } },
+  sc: { depth: 0.5, rel: 0.55 }, rt: 2.6, revWet: 0.5, dlyBeats: 0.75, dlyFb: 0.38, riserG: 0.09, impactG: 0.32,
+  extra(ctx, sec, L, bars) {
+    if (sec.type !== 'drop' || sec.n < 2) return;
+    const S = ctx.S;
+    padSec(ctx, sec, S.stab.patch, { bars, ...S.stab, stem: 'stab' });
+    drumsSec(ctx, sec, { r: 'x.x.x.x.x.x.x.x.' }, bars);
+    if (sec.n < 3) return;
+    padSec(ctx, sec, SUPERSAW({ a: 0.003, d: 0.1, s: 0.7, r: 0.05, gain: 0.035 }), { bars, pat: 'x.xx.xx.x.xx.xx.', gate: 0.6, lo: 64, hi: 84, stem: 'pad' });
+    padSec(ctx, sec, CHOIR({ gain: 0.06 }), { bars, lo: 57, hi: 76 });
+    arpSec(ctx, sec, S.arp.patch, S.arp, { bars });
+    for (let b = 4; b < bars; b += 4) {
+      hit(ctx, 'x', ctx.t(sec.bar0 + b), 0.85);
+      [[12, 150], [13, 125], [14, 105], [15, 88]].forEach(([s, f]) => drum(ctx.mx, ctx.t(sec.bar0 + b - 1, s), { ...S.kit.m, f, v: 0.9 * TRIM.drums * ctx.g('drums') }));
+    }
+    impact(ctx.mx, ctx.t(sec.bar0), { g: 0.3, f0: 75, f1: 28 });
   },
 };
 

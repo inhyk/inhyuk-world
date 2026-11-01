@@ -33,7 +33,10 @@ public:
     inline GameState *getState() const { return m_GameStates.top(); }
 
     inline SDL_Texture *getSkinTexture(int skin) const { return m_Skins[skin]; }
+    // average colour of a skin, used for its death powder
+    inline SDL_Color getSkinColor(int skin) const { return m_SkinColors[skin]; }
     inline int getSelectedSkin() const { return m_SelectedSkin; }
+    bool isSkinUnlocked(int skin) const;
     void setSelectedSkin(int skin);
 
     inline SDL_Renderer *getRenderer() const { return m_Renderer; }
@@ -68,6 +71,7 @@ private:
     SDL_Window *m_Window;
     SDL_Renderer *m_Renderer;
     std::array<SDL_Texture *, Config::SKIN_COUNT> m_Skins;
+    std::array<SDL_Color, Config::SKIN_COUNT> m_SkinColors;
     int m_SelectedSkin = 0;
     bool m_CreatorMode = false;
     bool m_ShowHitboxes = true;

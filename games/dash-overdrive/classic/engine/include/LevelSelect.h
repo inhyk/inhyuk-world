@@ -21,6 +21,7 @@ public:
     inline int getLevelSelected() const { return m_LevelSelected; }
     void selectLevel(int level);
     int getBestPercentage() const;
+    inline bool isCleared(int level) const { return level >= 0 && level < Config::SLOT_COUNT && m_BestLevelPercentages[level] >= 100; }
     void setBestPercentage(int value);
     int getBestPracticePercentage() const;
     // Coins kept by finishing the level, one bit per coin.
@@ -39,12 +40,12 @@ private:
     constexpr static std::array<std::string_view, Config::SLOT_COUNT> m_LevelStrings = {
         "Neon Start", "Pixel Hop", "Blue Ladder", "Desert Wind", "Iron Gate", "Night Rail", "Sky Rocket",
         "Crystal Cave", "Thunder Road", "Lava Lift", "Star Factory", "Frost Bite", "Laser Maze",
-        "Black Hole", "Overdrive", "Golden Key", "Secret Core", "Last Dash", "My Level"
+        "Black Hole", "Overdrive", "Golden Key", "Secret Core", "Last Dash", "Volt Rush", "Endless Dash", "My Level"
     };
     constexpr static std::array<std::string_view, Config::SLOT_COUNT> m_Difficulties = {
         "Easy", "Easy", "Normal", "Normal", "Hard", "Hard", "Hard",
         "Harder", "Harder", "Harder", "Insane", "Insane", "Insane",
-        "Demon", "Demon", "Secret", "Secret", "Secret", "Map Maker"
+        "Demon", "Demon", "Secret", "Secret", "Secret", "Secret", "Secret", "Map Maker"
     };
     Button m_LeftLevelArrow;
     Button m_RightLevelArrow;

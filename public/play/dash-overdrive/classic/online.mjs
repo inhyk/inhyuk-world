@@ -8,12 +8,17 @@
 //   {t:'start', l}                           the host picks a level and everyone starts it
 //   {t:'pos', l, x, y, r, m, g, d, p, s}     15 times a second while playing
 //   {t:'done', l}                            reached the end of the level
+//   {t:'map', i, n, c, s, k}                 the host's own map, in parts: cells [col, row, id, ...]
+// After dying in a race you watch the friend who is furthest ahead until you
+// press "다시 달리기" (the designer's plan: 죽으면 상대를 관전).
 import {Room, DEFAULT_SERVER, normaliseCode} from './net-client/index.mjs';
 
 const GAME = 'dash-classic';
 const MAX_PLAYERS = 4;
 const SEND_MS = 66;
 const RACE_LEVELS = 15; // secret levels stay single player: not everyone has them open
+const CUSTOM_LEVEL = 20; // the map maker's slot in the engine
+const MAP_PART = 1500; // numbers per map message, well under the 16 KB limit
 const PIXELS_PER_MS = 20.772 * 60 / 1000;
 const COLORS = ['#bfff59', '#59d8ff', '#ff7ad9', '#ffd23d'];
 const LEVEL_NAMES = ['Neon Start', 'Pixel Hop', 'Blue Ladder', 'Desert Wind', 'Iron Gate', 'Night Rail', 'Sky Rocket',
@@ -35,9 +40,13 @@ const race = $('race');
 let room = null;
 let racing = -1; // level of the current race, -1 when none
 let sentDone = false;
+let watching = null; // peer id being watched after dying
+let waitForRespawn = false; // after "다시 달리기", until the cube is back
+let mapParts = []; // a map arriving from the host
 const players = new Map(); // peer id -> {slot, skin, pos, at, shown, done}
 
 LEVEL_NAMES.forEach((name, index) => levelSelect.add(new Option(`${index + 1}. ${name}`, String(index))));
+levelSelect.add(new Option('🛠️ 내가 만든 맵', 'custom'));
 
 const engineReady = () => Boolean(window.Module?._classic_state) && window.render_classic_status && JSON.parse(window.render_classic_status()).ready;
 const playing = () => engineReady() && Module._classic_state() === 2;
@@ -94,6 +103,7 @@ function render() {
 function startRace(level) {
   racing = level;
   sentDone = false;
+  stopWatching(false);
   for (const player of players.values()) {
     player.done = false;
     player.pos = null;
@@ -130,12 +140,18 @@ const hooks = {
     const player = addPlayer(from);
     const number = (value, fallback = 0) => (Number.isFinite(value) ? value : fallback);
     if (data.t === 'hi') {
-      player.skin = Math.max(0, Math.min(11, number(data.s) | 0));
+      player.skin = Math.max(0, Math.min(23, number(data.s) | 0));
+    } else if (data.t === 'map' && from === room.hostId) {
+      const part = number(data.i, -1) | 0;
+      const total = number(data.n, 0) | 0;
+      if (part === 0) mapParts = [];
+      if (part >= 0 && part < total && total <= 40 && Array.isArray(data.c)) mapParts[part] = {cells: data.c, song: number(data.s), colors: number(data.k)};
     } else if (data.t === 'start' && from === room.hostId) {
       const level = number(data.l, -1) | 0;
       if (level >= 0 && level < RACE_LEVELS) startRace(level);
+      else if (level === CUSTOM_LEVEL && loadReceivedMap()) startRace(CUSTOM_LEVEL);
     } else if (data.t === 'pos') {
-      player.skin = Math.max(0, Math.min(11, number(data.s) | 0));
+      player.skin = Math.max(0, Math.min(23, number(data.s) | 0));
       player.pos = {
         level: number(data.l, -1) | 0, x: number(data.x), y: number(data.y), rotation: number(data.r),
         ship: data.m === 1, gravity: data.g === -1 ? -1 : 1, dead: data.d === 1, percent: Math.max(0, Math.min(10000, number(data.p) | 0)),
@@ -165,9 +181,72 @@ async function open(code) {
   render();
 }
 
+// The host's map: flat numbers [col, row, id, ...] split into parts.
+function sendMyMap() {
+  const data = window.classicEditor?.map();
+  if (!data || data.cells.length === 0) return false;
+  const flat = data.cells.flat();
+  const total = Math.max(1, Math.ceil(flat.length / MAP_PART));
+  for (let i = 0; i < total; i++) room.send({t: 'map', i, n: total, c: flat.slice(i * MAP_PART, (i + 1) * MAP_PART), s: data.song, k: data.colors});
+  return writeMap(data);
+}
+
+function loadReceivedMap() {
+  if (!mapParts.length || mapParts.some(part => !part)) return false;
+  const flat = mapParts.flatMap(part => part.cells);
+  const cells = [];
+  for (let i = 0; i + 2 < flat.length; i += 3) cells.push([flat[i], flat[i + 1], flat[i + 2]]);
+  return writeMap({cells, song: mapParts[0].song, colors: mapParts[0].colors});
+}
+
+function writeMap(data) {
+  if (!window.classicEditor || !window.FS) return false;
+  FS.writeFile(`/res/leveldata/${CUSTOM_LEVEL}.level`, window.classicEditor.levelTextFor(data));
+  Module._classic_set_custom_song(Number.isInteger(data.song) ? data.song : 0);
+  return true;
+}
+
+// ---- watching a friend after dying -----------------------------------------
+const watchBar = $('watch');
+function stopWatching(respawn = true) {
+  if (watching !== null && engineReady()) Module._classic_spectate(-1);
+  waitForRespawn = respawn && watching !== null;
+  watching = null;
+  watchBar.hidden = true;
+  if (respawn) $('canvas').focus();
+}
+
+function watchFriend() {
+  if (waitForRespawn) {
+    if (!engineReady() || !Module._classic_player_dead()) waitForRespawn = false;
+    return;
+  }
+  if (!room?.active || racing < 0 || !playing() || !Module._classic_player_dead()) return;
+  const now = performance.now();
+  const alive = [...players.entries()].filter(([, p]) => p.slot >= 0 && p.pos && !p.pos.dead && p.pos.level === racing && now - p.at < 1500 && !p.done);
+  const current = alive.find(([id]) => id === watching);
+  if (watching !== null && !current) {
+    // the friend died, finished or left: run again
+    stopWatching();
+    return;
+  }
+  if (watching !== null || alive.length === 0) return;
+  alive.sort((a, b) => b[1].pos.percent - a[1].pos.percent);
+  const [id, friend] = alive[0];
+  watching = id;
+  Module._classic_spectate(friend.slot);
+  $('watch-name').textContent = `${label(id)} 관전 중`;
+  watchBar.hidden = false;
+}
+$('watch-retry').addEventListener('click', () => stopWatching());
+window.addEventListener('keydown', event => {
+  if (watching !== null && (event.code === 'Space' || event.key === 'Enter')) stopWatching();
+}, true);
+
 function leave() {
   if (room) room.leave();
   room = null;
+  stopWatching(false);
   racing = -1;
   for (const id of [...players.keys()]) removePlayer(id);
   hideGhosts();
@@ -194,6 +273,7 @@ setInterval(() => {
 function drawGhosts() {
   requestAnimationFrame(drawGhosts);
   if (!engineReady()) return;
+  watchFriend();
   const now = performance.now();
   const myLevel = playing() ? Module._classic_level() : -1;
   for (const player of players.values()) {
@@ -283,6 +363,15 @@ $('online-leave').addEventListener('click', () => {
 });
 $('online-go').addEventListener('click', () => {
   if (!room?.host || room.peers.length === 0) return;
+  if (levelSelect.value === 'custom') {
+    if (!sendMyMap()) {
+      setStatus('맵 만들기에서 먼저 맵을 만들어 줘.');
+      return;
+    }
+    room.send({t: 'start', l: CUSTOM_LEVEL});
+    startRace(CUSTOM_LEVEL);
+    return;
+  }
   const level = Number(levelSelect.value) | 0;
   room.send({t: 'start', l: level});
   startRace(level);

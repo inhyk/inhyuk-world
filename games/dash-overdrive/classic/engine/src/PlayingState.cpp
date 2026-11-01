@@ -65,6 +65,8 @@ void PlayingState::init(Game *game) {
     m_CoinTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinIcon.png");
     m_CoinEmptyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinEmpty.png");
     m_GhostShipTexture = IMG_LoadTexture(m_Renderer, "res/gfx/ship.png");
+    m_SpectatingTexture = Text::createTexture(m_Renderer, "Watching your friend");
+    m_NewSkinTexture = Text::createTexture(m_Renderer, "New skin unlocked!");
     m_LevelCompleteSound = Mix_LoadWAV("res/sfx/levelComplete.ogg");
     if (m_LevelCompleteSound == nullptr) {
         std::cerr << "Failed to load levelComplete.ogg! " << SDL_GetError() << '\n';
@@ -141,6 +143,8 @@ void PlayingState::destroy() {
     SDL_DestroyTexture(m_CoinTexture);
     SDL_DestroyTexture(m_CoinEmptyTexture);
     SDL_DestroyTexture(m_GhostShipTexture);
+    SDL_DestroyTexture(m_SpectatingTexture);
+    SDL_DestroyTexture(m_NewSkinTexture);
     Mix_FreeChunk(m_LevelCompleteSound);
     Mix_FreeMusic(m_PracticeMusic);
 }
@@ -169,6 +173,8 @@ void PlayingState::enter() {
     for (Ghost &ghost : m_Ghosts) {
         ghost.visible = false;
     }
+    m_Spectating = -1;
+    m_UnlockedSkin = false;
     m_LevelBeginTimer = 60;
     m_SongWaitTime = 0;
     m_SongMissing = false;
@@ -309,6 +315,16 @@ void PlayingState::update(float deltaTime) {
         m_IsSongPlaying = true;
     }
     m_Player.update(deltaTime);
+    if (isSpectating() && m_Ghosts[m_Spectating].visible) {
+        // the camera follows the friend being watched, like it follows the player
+        const Ghost &ghost = m_Ghosts[m_Spectating];
+        const SDL_FPoint camera = m_Game->getCameraPosition();
+        m_Game->setCameraX(ghost.x - Config::TILE_SIZE * 6);
+        float target = camera.y;
+        if (ghost.y - target < Config::HEIGHT / 4) target = ghost.y - Config::HEIGHT / 4;
+        if (ghost.y - target > Config::HEIGHT - 4 * Config::TILE_SIZE) target = ghost.y - (Config::HEIGHT - 4 * Config::TILE_SIZE);
+        m_Game->smoothCameraYScroll(std::min(target, 0.0f));
+    }
     const std::pair<float, float> bounds = m_Player.getBounds();
     ground.setBounds(m_Player.hasBounds(), bounds.first, bounds.second);
 
@@ -377,9 +393,11 @@ void PlayingState::updateEndLevel(float deltaTime) {
         } else if (m_IsInPractice) {
             LevelSelect::get().setBestPracticePercentage(100);
         } else {
+            const bool firstClear = !LevelSelect::get().isCleared(m_Level);
             LevelSelect::get().setBestPercentage(100);
             // coins only count when the level is finished without practice
             LevelSelect::get().saveCoins(m_Player.getCoins());
+            m_UnlockedSkin = firstClear && m_Level < Config::LEVEL_COUNT && Config::FREE_SKINS + m_Level < Config::SKIN_COUNT;
         }
     }
 }
@@ -435,6 +453,9 @@ void PlayingState::render() const {
     if (m_IsInPractice) {
         m_PlaceCheckpointButton.render();
         m_RemoveCheckpointButton.render();
+    }
+    if (isSpectating()) {
+        Text::renderTexture(m_Renderer, m_SpectatingTexture, m_Game->getWidth()/2, 110, true, false, 0.5f);
     }
     if (m_IsPaused) {
         renderPause();
@@ -540,6 +561,13 @@ void PlayingState::renderCoins() const {
 
 void PlayingState::renderLevelCompleteMenu() const {
     Text::renderTexture(m_Renderer, m_LevelCompleteTextTexture, m_Game->getWidth()/2, m_Game->getHeight()/4, true, true);
+    if (m_UnlockedSkin) {
+        // the new skin, under the title
+        const int skin = Config::FREE_SKINS + m_Level;
+        const SDL_Rect box = { m_Game->getWidth()/2 - 60, m_Game->getHeight()/4 + 70, 120, 120 };
+        SDL_RenderCopy(m_Renderer, m_Game->getSkinTexture(skin), NULL, &box);
+        Text::renderTexture(m_Renderer, m_NewSkinTexture, m_Game->getWidth()/2, m_Game->getHeight()/4 + 200, true, false, 0.5f);
+    }
     m_ExitButton.render();
 }
 

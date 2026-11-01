@@ -18,6 +18,11 @@ void SkinSelect::init(Game *game) {
         std::cerr << "Failed to load skin picker textures! " << SDL_GetError() << std::endl;
     }
     m_HeadingTexture = Text::createTexture(m_Renderer, "SKINS");
+    m_LockTexture = IMG_LoadTexture(m_Renderer, "res/gfx/skinLock.png");
+    m_HintTexture = Text::createTexture(m_Renderer, "Finish a level to get a new skin");
+    for (int i = 0; i < Config::SKIN_COUNT; i++) {
+        m_LevelTextures[i] = i < Config::FREE_SKINS ? nullptr : Text::createTexture(m_Renderer, "Lv " + std::to_string(i - Config::FREE_SKINS + 1));
+    }
     int backWidth = 0;
     int backHeight = 0;
     SDL_QueryTexture(m_BackTexture, NULL, NULL, &backWidth, &backHeight);
@@ -27,7 +32,7 @@ void SkinSelect::init(Game *game) {
     const int gridWidth = COLUMNS * SLOT_SIZE + (COLUMNS - 1) * SLOT_GAP;
     const int gridHeight = rows * SLOT_SIZE + (rows - 1) * SLOT_GAP;
     const int left = m_Game->getWidth() / 2 - gridWidth / 2;
-    const int top = 560 - gridHeight / 2;
+    const int top = 600 - gridHeight / 2;
     for (int i = 0; i < Config::SKIN_COUNT; i++) {
         const int x = left + (i % COLUMNS) * (SLOT_SIZE + SLOT_GAP);
         const int y = top + (i / COLUMNS) * (SLOT_SIZE + SLOT_GAP);
@@ -40,6 +45,11 @@ void SkinSelect::destroy() {
     SDL_DestroyTexture(m_SelectedTexture);
     SDL_DestroyTexture(m_BackTexture);
     SDL_DestroyTexture(m_HeadingTexture);
+    SDL_DestroyTexture(m_LockTexture);
+    SDL_DestroyTexture(m_HintTexture);
+    for (SDL_Texture *texture : m_LevelTextures) {
+        SDL_DestroyTexture(texture);
+    }
 }
 
 void SkinSelect::enter() {
@@ -72,24 +82,25 @@ void SkinSelect::update(float deltaTime) {
     }
     for (int i = 0; i < Config::SKIN_COUNT; i++) {
         m_SlotButtons[i].update();
-        if (m_SlotButtons[i].isPressed()) {
+        if (m_SlotButtons[i].isPressed() && m_Game->isSkinUnlocked(i)) {
             m_Game->setSelectedSkin(i);
         }
     }
 }
 
 void SkinSelect::render() const {
-    Text::renderTexture(m_Renderer, m_HeadingTexture, m_Game->getWidth() / 2, 130, true, true, 0.8f);
+    Text::renderTexture(m_Renderer, m_HeadingTexture, m_Game->getWidth() / 2, 110, true, true, 0.8f);
+    Text::renderTexture(m_Renderer, m_HintTexture, m_Game->getWidth() / 2, 200, true, false, 0.4f);
     m_BackButton.render();
     const int selected = m_Game->getSelectedSkin();
     for (int i = 0; i < Config::SKIN_COUNT; i++) {
         const Button &slot = m_SlotButtons[i];
         if (i == selected) {
-            const SDL_Rect glow = { slot.getX() - 10, slot.getY() - 10, SLOT_SIZE + 20, SLOT_SIZE + 20 };
+            const SDL_Rect glow = { slot.getX() - 9, slot.getY() - 9, SLOT_SIZE + 18, SLOT_SIZE + 18 };
             SDL_RenderCopy(m_Renderer, m_SelectedTexture, NULL, &glow);
         }
         slot.render();
-        const float size = i == selected ? 136.0f + std::sin(m_Time * 0.1f) * 6.0f : 128.0f;
+        const float size = i == selected ? 112.0f + std::sin(m_Time * 0.1f) * 5.0f : 106.0f;
         const SDL_FRect skin = {
             slot.getX() + (SLOT_SIZE - size) / 2.0f,
             slot.getY() + (SLOT_SIZE - size) / 2.0f,
@@ -97,5 +108,11 @@ void SkinSelect::render() const {
             size
         };
         SDL_RenderCopyF(m_Renderer, m_Game->getSkinTexture(i), NULL, &skin);
+        if (!m_Game->isSkinUnlocked(i)) {
+            // locked: dark cover with a padlock and the level that opens it
+            const SDL_Rect cover = { slot.getX(), slot.getY(), SLOT_SIZE, SLOT_SIZE };
+            SDL_RenderCopy(m_Renderer, m_LockTexture, NULL, &cover);
+            Text::renderTexture(m_Renderer, m_LevelTextures[i], slot.getX() + SLOT_SIZE / 2, slot.getY() + SLOT_SIZE - 44, true, false, 0.32f);
+        }
     }
 }

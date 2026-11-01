@@ -2,19 +2,19 @@
 'use strict';
 // The page around the WebAssembly engine: level picker, song downloads,
 // touch input and the hooks the engine calls (Module.classic*).
-const VERSION = 'classic-original-2';
+const VERSION = 'classic-original-3';
 const CLASSIC_LEVELS = [
   ['Neon Start', 'easy'], ['Pixel Hop', 'easy'], ['Blue Ladder', 'normal'], ['Desert Wind', 'normal'],
   ['Iron Gate', 'hard'], ['Night Rail', 'hard'], ['Sky Rocket', 'hard'], ['Crystal Cave', 'harder'],
   ['Thunder Road', 'harder'], ['Lava Lift', 'harder'], ['Star Factory', 'insane'], ['Frost Bite', 'insane'],
   ['Laser Maze', 'insane'], ['Black Hole', 'demon'], ['Overdrive', 'demon'],
-  ['Golden Key', 'secret'], ['Secret Core', 'secret'], ['Last Dash', 'secret'],
+  ['Golden Key', 'secret'], ['Secret Core', 'secret'], ['Last Dash', 'secret'], ['Volt Rush', 'secret'], ['Endless Dash', 'secret'],
 ];
 const DIFFICULTY_NAMES = {easy: '쉬움', normal: '보통', hard: '어려움', harder: '더 어려움', insane: '아주 어려움', demon: '데몬', secret: '비밀 단계'};
-// secret levels 16-18 open at 10, 20 and 30 coins (engine: Config::SECRET_COINS)
+// secret levels 16-20 open at 10 to 50 coins (engine: Config::SECRET_COINS)
 const SECRET_FIRST = 15;
-const SECRET_COINS = [10, 20, 30];
-const CUSTOM_LEVEL = 18;
+const SECRET_COINS = [10, 20, 30, 40, 50];
+const CUSTOM_LEVEL = 20;
 const STATE_PLAYING = 2;
 
 const canvas = document.getElementById('canvas');

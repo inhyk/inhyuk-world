@@ -45,10 +45,36 @@ await b.click('#online-leave');
 await a.waitForFunction(() => document.querySelectorAll('#online-players li').length === 1 || window.classicOnline.status().peers === 0, null, {timeout: 20000});
 await a.waitForTimeout(400);
 const ghostsAfter = await a.evaluate(() => window.classicOnline.status().ghosts);
+// race on the host's own map, then watch the host after dying
+const c = await player(1);
+await c.evaluate(() => localStorage.setItem('dash-classic:editor', JSON.stringify({cells: [[25, 0, 8], [26, 0, 8], [27, 0, 8], [40, 0, 1], [41, 1, 1], [55, 0, 8]], song: 3, colors: 2})));
+await c.reload();
+await c.waitForFunction(() => window.render_classic_status && JSON.parse(window.render_classic_status()).ready && window.classicOnline, null, {timeout: 60000});
+const d = await player(2);
+await c.click('#online-open');
+await c.click('#online-create');
+await c.waitForFunction(() => document.getElementById('online-room-code').textContent.length === 6, null, {timeout: 20000});
+const code2 = await c.textContent('#online-room-code');
+await d.click('#online-open');
+await d.fill('#online-code', code2);
+await d.click('#online-enter');
+await c.waitForFunction(() => document.querySelectorAll('#online-players li').length === 2, null, {timeout: 20000});
+await c.evaluate(() => { Module._classic_set_creator(1); Module._classic_set_hitboxes(0); });
+await c.selectOption('#online-level', 'custom');
+await c.click('#online-go');
+for (const page of [c, d]) await page.waitForFunction(() => JSON.parse(window.render_classic_status()).state === 2 && JSON.parse(window.render_classic_status()).level === 21, null, {timeout: 20000});
+const sameMap = await d.evaluate(() => new TextDecoder().decode(FS.readFile('/res/leveldata/20.level')));
+assert.match(sameMap, /1,8,2,765,3,15/, 'the friend got the host map');
+// the friend runs into the first spike and then watches the host
+await d.waitForFunction(() => !document.getElementById('watch').hidden, null, {timeout: 20000});
+assert.match(await d.textContent('#watch-name'), /관전/);
+await d.click('#watch-retry');
+await d.waitForFunction(() => document.getElementById('watch').hidden && JSON.parse(window.render_classic_status()).percent < 3, null, {timeout: 5000, polling: 50});
+
 assert.equal(ghostsA, 1, 'host sees the friend');
 assert.equal(ghostsB, 1, 'friend sees the host');
 assert.equal(raceA, true, 'race board shows');
 assert.equal(ghostsAfter, 0, 'the friend disappears after leaving');
 assert.deepEqual(errors, []);
-console.log(`online race passed (room ${code})`);
+console.log(`online race passed (rooms ${code}, ${code2}): ghosts, race board, own map, watching`);
 await browser.close();

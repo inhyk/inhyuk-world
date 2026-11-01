@@ -3,13 +3,19 @@
 // in this browser and played in the engine's extra level slot (15).
 (() => {
   const COLUMNS = 400;
+  // The designer asked for no height limit: maps go up to 40 rows, and the
+  // view shows 11 of them at a time (scroll with ▲ ▼).
+  const MAX_ROWS = 40;
   const ROWS = 11;
   const VIEW_ROWS = 12; // rows plus a strip of floor
   const STORAGE_KEY = 'dash-classic:editor';
-  const CUSTOM_LEVEL = 18;
+  const CUSTOM_LEVEL = 20;
+  const CODE_PREFIX = 'DOC1.';
   const TOOLS = [
     {id: 1, name: '블록'},
     {id: 40, name: '반 블록'},
+    {id: 202, name: '검은 블록'},
+    {id: 203, name: '검은 반 블록'},
     {id: 8, name: '가시'},
     {id: 39, name: '작은 가시'},
     {id: 35, name: '점프 패드'},
@@ -23,7 +29,7 @@
   ];
   const SONGS = ['Neon Start', 'Pixel Hop', 'Blue Ladder', 'Desert Wind', 'Iron Gate', 'Night Rail', 'Sky Rocket',
     'Crystal Cave', 'Thunder Road', 'Lava Lift', 'Star Factory', 'Frost Bite', 'Laser Maze', 'Black Hole', 'Overdrive',
-    'Golden Key', 'Secret Core', 'Last Dash'];
+    'Golden Key', 'Secret Core', 'Last Dash', 'Volt Rush', 'Endless Dash'];
   const PALETTES = [
     {name: '파랑', bg: [40, 125, 255], ground: [0, 86, 230]},
     {name: '초록', bg: [40, 200, 120], ground: [0, 140, 90]},
@@ -46,6 +52,7 @@
   let map = load();
   let tool = 1;
   let scroll = -2; // first visible column; -2 shows the start
+  let rowScroll = 0; // lowest visible row
   let painting = null;
   let hover = null;
   let testing = false;
@@ -78,6 +85,8 @@
   const yFor = {
     1: r => 30 * r + 15,
     40: r => 23.25 + 30 * r,
+    202: r => 30 * r + 15,
+    203: r => 23.25 + 30 * r,
     8: r => 30 * r + 15,
     39: r => 6.75 + 30 * r,
     35: r => 2 + 30 * r,
@@ -89,14 +98,15 @@
     201: r => 30 * r + 15,
   };
 
-  function levelText() {
-    const palette = PALETTES[map.colors] || PALETTES[0];
+  function levelText(source = map) {
+    const palette = PALETTES[source.colors] || PALETTES[0];
     const color = ([r, g, b]) => `1_${r}_2_${g}_3_${b}`;
     const header = `kS29,${color(palette.bg)},kS30,${color(palette.ground)}`;
     const objects = [];
     let last = 0;
-    for (const [key, id] of map.cells) {
+    for (const [key, id] of source.cells) {
       const [c, r] = key.split(',').map(Number);
+      if (!yFor[id]) continue;
       objects.push(`1,${id},2,${gx(c)},3,${yFor[id](r)}`);
       last = Math.max(last, c);
     }
@@ -105,6 +115,81 @@
     objects.push(`1,29,2,${30 * end},3,0,7,${palette.bg[0]},8,${palette.bg[1]},9,${palette.bg[2]},10,0.5`);
     return `${header};${objects.join(';')};`;
   }
+
+  // ---- sharing: a map code anyone can paste into their own map maker ------
+  const ALLOWED = new Set(TOOLS.map(tool => tool.id).filter(Boolean));
+  function fromData(data) {
+    const cells = new Map();
+    if (data && Array.isArray(data.cells)) {
+      for (const cell of data.cells.slice(0, 6000)) {
+        if (!Array.isArray(cell) || cell.length !== 3) continue;
+        const [c, r, id] = cell.map(Number);
+        if (Number.isInteger(c) && Number.isInteger(r) && c >= 0 && c < COLUMNS && r >= 0 && r < MAX_ROWS && ALLOWED.has(id)) cells.set(`${c},${r}`, id);
+      }
+    }
+    const song = Number.isInteger(data?.song) && data.song >= 0 && data.song < SONGS.length ? data.song : 0;
+    const colors = Number.isInteger(data?.colors) && data.colors >= 0 && data.colors < PALETTES.length ? data.colors : 0;
+    return {cells, song, colors};
+  }
+  const toBase64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const fromBase64 = text => Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/')), ch => ch.charCodeAt(0));
+  async function squeeze(bytes, mode) {
+    const stream = new Blob([bytes]).stream().pipeThrough(mode === 'in' ? new CompressionStream('deflate-raw') : new DecompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  async function exportCode() {
+    const data = {cells: [...map.cells].map(([key, id]) => [...key.split(',').map(Number), id]), song: map.song, colors: map.colors};
+    const json = new TextEncoder().encode(JSON.stringify(data));
+    return CODE_PREFIX + toBase64(await squeeze(json, 'in'));
+  }
+  async function importCode(text) {
+    const code = String(text).trim().replace(/\s+/g, '');
+    if (!code.startsWith(CODE_PREFIX)) throw Error('맵 코드가 아니야');
+    const json = new TextDecoder().decode(await squeeze(fromBase64(code.slice(CODE_PREFIX.length)), 'out'));
+    return fromData(JSON.parse(json));
+  }
+  const shareBox = document.getElementById('editor-share');
+  const shareText = document.getElementById('editor-share-text');
+  const shareNote = document.getElementById('editor-share-note');
+  for (const type of ['keydown', 'keyup', 'keypress']) shareText.addEventListener(type, event => event.stopPropagation());
+  document.getElementById('editor-copy').addEventListener('click', async () => {
+    shareBox.hidden = false;
+    shareBox.dataset.mode = 'copy';
+    shareText.value = await exportCode();
+    shareText.readOnly = true;
+    shareText.select();
+    document.getElementById('editor-share-load').hidden = true;
+    try {
+      await navigator.clipboard.writeText(shareText.value);
+      shareNote.textContent = '복사했어! 친구에게 이 코드를 보내 주면 친구가 "코드로 불러오기"로 내 맵을 할 수 있어.';
+    } catch {
+      shareNote.textContent = '이 코드를 꾹 눌러 복사해서 친구에게 보내 줘.';
+    }
+  });
+  document.getElementById('editor-paste').addEventListener('click', () => {
+    shareBox.hidden = false;
+    shareText.value = '';
+    shareText.readOnly = false;
+    document.getElementById('editor-share-load').hidden = false;
+    shareNote.textContent = '친구가 보낸 맵 코드를 붙여 넣어 줘. 지금 맵은 그 맵으로 바뀌어.';
+    shareText.focus();
+  });
+  document.getElementById('editor-share-load').addEventListener('click', async () => {
+    try {
+      const loaded = await importCode(shareText.value);
+      map = loaded;
+      save();
+      songSelect.value = String(map.song);
+      colorSelect.value = String(map.colors);
+      shareBox.hidden = true;
+      draw();
+    } catch {
+      shareNote.textContent = '코드를 읽지 못했어. 처음부터 끝까지 다 붙여 넣었는지 봐 줘.';
+    }
+  });
+  document.getElementById('editor-share-close').addEventListener('click', () => {
+    shareBox.hidden = true;
+  });
 
   function test() {
     if (!window.FS || !window.classicStartLevel) return;
@@ -162,9 +247,9 @@
   function rect(id, c, r) {
     const size = cellSize();
     const x = (c - scroll) * size;
-    const bottom = (ROWS - r) * size;
+    const bottom = (ROWS - (r - rowScroll)) * size;
     switch (id) {
-      case 40: return [x, bottom - size, size, size * 0.45];
+      case 40: case 203: return [x, bottom - size, size, size * 0.45];
       case 39: return [x, bottom - size * 0.45, size, size * 0.45];
       case 35: return [x + size * 0.08, bottom - size * 0.14, size * 0.84, size * 0.14];
       case 13: case 12: return [x - size * 0.05, bottom - size * 2.8, size * 1.1, size * 2.8];
@@ -180,10 +265,21 @@
     const {width, height} = canvas;
     context.fillStyle = `rgb(${palette.bg.join(',')})`;
     context.fillRect(0, 0, width, height);
-    context.fillStyle = `rgb(${palette.ground.join(',')})`;
-    context.fillRect(0, ROWS * size, width, height - ROWS * size);
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, ROWS * size - 2, width, 4);
+    if (rowScroll === 0) {
+      context.fillStyle = `rgb(${palette.ground.join(',')})`;
+      context.fillRect(0, ROWS * size, width, height - ROWS * size);
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, ROWS * size - 2, width, 4);
+    } else {
+      context.fillStyle = 'rgba(0,0,0,0.25)';
+      context.fillRect(0, ROWS * size, width, height - ROWS * size);
+    }
+    // row numbers on the left
+    context.fillStyle = 'rgba(255,255,255,0.7)';
+    context.font = `${Math.round(size * 0.26)}px sans-serif`;
+    for (let r = rowScroll; r < rowScroll + ROWS; r++) {
+      if (r % 5 === 0) context.fillText(`↑${r}`, 4, (ROWS - (r - rowScroll)) * size - 4);
+    }
     context.strokeStyle = 'rgba(255,255,255,0.14)';
     context.lineWidth = 1;
     for (let c = Math.floor(scroll); c <= scroll + visibleColumns(); c++) {
@@ -208,13 +304,13 @@
     // the start: the cube begins one tile before column 0
     const startX = (-1 - scroll) * size;
     const player = sprites.get('player');
-    if (player?.complete) context.drawImage(player, startX, (ROWS - 1) * size, size, size);
+    if (player?.complete && rowScroll === 0) context.drawImage(player, startX, (ROWS - 1) * size, size, size);
     context.fillStyle = '#7cff4c';
     context.fillRect((0 - scroll) * size - 2, 0, 4, ROWS * size);
 
     for (const [key, id] of map.cells) {
       const [c, r] = key.split(',').map(Number);
-      if (c < scroll - 2 || c > scroll + visibleColumns() + 1) continue;
+      if (c < scroll - 2 || c > scroll + visibleColumns() + 1 || r < rowScroll - 3 || r > rowScroll + ROWS) continue;
       const [x, y, w, h] = rect(id, c, r);
       const sprite = sprites.get(id);
       if (sprite?.complete && sprite.naturalWidth) {
@@ -231,7 +327,7 @@
       const [c, r] = hover;
       context.strokeStyle = tool ? '#bfff59' : '#ff5a7a';
       context.lineWidth = 3;
-      context.strokeRect((c - scroll) * size + 2, (ROWS - 1 - r) * size + 2, size - 4, size - 4);
+      context.strokeRect((c - scroll) * size + 2, (ROWS - 1 - (r - rowScroll)) * size + 2, size - 4, size - 4);
     }
   }
 
@@ -241,8 +337,8 @@
     const ratio = canvas.width / box.width;
     const size = cellSize();
     const c = Math.floor((event.clientX - box.left) * ratio / size + scroll);
-    const r = ROWS - 1 - Math.floor((event.clientY - box.top) * ratio / size);
-    if (c < 0 || c >= COLUMNS || r < 0 || r >= ROWS) return null;
+    const r = rowScroll + ROWS - 1 - Math.floor((event.clientY - box.top) * ratio / size);
+    if (c < 0 || c >= COLUMNS || r < 0 || r >= MAX_ROWS) return null;
     return [c, r];
   }
 
@@ -282,9 +378,21 @@
   });
   canvas.addEventListener('wheel', event => {
     event.preventDefault();
+    if (event.shiftKey) {
+      scrollRows(rowScroll + (event.deltaY > 0 ? -1 : 1));
+      return;
+    }
     const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
     scrollTo(scroll + delta / 40);
   }, {passive: false});
+
+  function scrollRows(row) {
+    rowScroll = Math.max(0, Math.min(MAX_ROWS - ROWS, row));
+    document.getElementById('editor-height').textContent = rowScroll ? `높이 ${rowScroll}~${rowScroll + ROWS - 1}` : '바닥';
+    draw();
+  }
+  document.getElementById('editor-up').addEventListener('click', () => scrollRows(rowScroll + 4));
+  document.getElementById('editor-down').addEventListener('click', () => scrollRows(rowScroll - 4));
 
   function scrollTo(column) {
     scroll = Math.max(-2, Math.min(COLUMNS - visibleColumns() + 2, column));
@@ -386,7 +494,12 @@
       if (event.key === 'Escape') close();
       else if (event.key === 'ArrowLeft') scrollTo(Math.round(scroll) - 4);
       else if (event.key === 'ArrowRight') scrollTo(Math.round(scroll) + 4);
+      else if (event.key === 'ArrowUp') scrollRows(rowScroll + 1);
+      else if (event.key === 'ArrowDown') scrollRows(rowScroll - 1);
     },
     levelText,
+    // for the online race: the saved map, and turning a received one into a level
+    map: () => ({cells: [...map.cells].map(([key, id]) => [...key.split(',').map(Number), id]), song: map.song, colors: map.colors}),
+    levelTextFor: data => levelText(fromData(data)),
   };
 })();
