@@ -18,8 +18,8 @@
   "levels": "games/dash-overdrive/classic/levels/generate.mjs",
   "check": "games/dash-overdrive/classic/levels/verify.mjs"
  },
- "packageBytes": 3227059,
- "packageSha256": "6e7e6d7016089a11dc28afbaa9043349b578cfbc804ec32ee955a89cd969514d",
+ "packageBytes": 3701748,
+ "packageSha256": "a407a8f0c1b21989a3ca10e79427b8506ff9b94ddb83154950766ebc6126e693",
  "wasmSha256": "4d8d4c13200f0c7c80f86a55a4684fce87cf0f355f8dd0f38864092afd940d31",
  "levels": [
   {
