@@ -12,7 +12,7 @@
 // After dying in a race you watch the friend who is furthest ahead until you
 // press "다시 달리기" (the designer's plan: 죽으면 상대를 관전).
 import {Room, normaliseCode} from './net-client/index.mjs';
-import {GAME, server} from './net.mjs';
+import {GAME, server, offSite, OFF_SITE_MESSAGE} from './net.mjs';
 
 const MAX_PLAYERS = 4;
 const SEND_MS = 66;
@@ -171,7 +171,7 @@ async function open(code) {
     await room.open(code);
     if (room.host) setStatus('방을 만들었어. 친구에게 방 코드를 알려 줘!');
   } catch (error) {
-    setStatus(error.message || '방에 들어가지 못했어. 다시 해 볼래?');
+    setStatus(offSite ? OFF_SITE_MESSAGE : error.message || '방에 들어가지 못했어. 다시 해 볼래?');
     room = null;
   }
   render();

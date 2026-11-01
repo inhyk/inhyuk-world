@@ -16,7 +16,7 @@
 //   ({t:'race', c:[...]}: strings in a friend room are filtered by the server). The friend presses
 //   들어가기 to join, then it is the usual race (the host picks a level and starts).
 import {Account, Social, ALPHABET} from './net-client/index.mjs';
-import {GAME, server, testServer} from './net.mjs';
+import {GAME, server, testServer, offSite, OFF_SITE_MESSAGE} from './net.mjs';
 
 const CHAT_MAX = 100;      // letters in one line (the server cuts at 200)
 // The server takes 5 chat lines at once, then one a second. Keep one line under that
@@ -377,7 +377,7 @@ async function submitLogin(event) {
     setStatus('');
     toast(signup ? `환영해, ${user.nickname}! 이제 친구를 찾아 봐.` : `다시 왔구나, ${user.nickname}!`);
   } catch (error) {
-    setStatus(error?.message || '서버에 연결하지 못했어. 인터넷을 확인해 줘.');
+    setStatus(offSite ? OFF_SITE_MESSAGE : error?.message || '서버에 연결하지 못했어. 인터넷을 확인해 줘.');
   }
   busy = false;
   paint();
