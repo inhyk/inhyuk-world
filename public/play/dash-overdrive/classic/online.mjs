@@ -8,9 +8,9 @@
 //   {t:'start', l}                           the host picks a level and everyone starts it
 //   {t:'pos', l, x, y, r, m, g, d, p, s}     15 times a second while playing
 //   {t:'done', l}                            reached the end of the level
-import {Room, DEFAULT_SERVER, normaliseCode} from './net-client/index.mjs';
+import {Room, normaliseCode} from './net-client/index.mjs';
+import {GAME, server} from './net.mjs';
 
-const GAME = 'dash-classic';
 const MAX_PLAYERS = 4;
 const SEND_MS = 66;
 const RACE_LEVELS = 15; // secret levels stay single player: not everyone has them open
@@ -18,10 +18,6 @@ const PIXELS_PER_MS = 20.772 * 60 / 1000;
 const COLORS = ['#bfff59', '#59d8ff', '#ff7ad9', '#ffd23d'];
 const LEVEL_NAMES = ['Neon Start', 'Pixel Hop', 'Blue Ladder', 'Desert Wind', 'Iron Gate', 'Night Rail', 'Sky Rocket',
   'Crystal Cave', 'Thunder Road', 'Lava Lift', 'Star Factory', 'Frost Bite', 'Laser Maze', 'Black Hole', 'Overdrive'];
-// Tests point the page at a server on this computer with ?net=http://127.0.0.1:8787.
-const LOOPBACK = /^(https?|wss?):\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?\/?$/;
-const asked = new URLSearchParams(location.search).get('net');
-const server = asked && LOOPBACK.test(asked) ? asked.replace(/\/+$/, '') : DEFAULT_SERVER;
 
 const $ = id => document.getElementById(id);
 const panel = $('online');
@@ -303,4 +299,17 @@ window.classicOnline = {
   isOpen: () => !panel.hidden,
   close,
   status: () => ({room: room?.code || '', host: Boolean(room?.host), peers: room?.peers.length || 0, racing, ghosts: engineReady() ? Module._classic_ghost_count() : 0}),
+  // "같이 달리기" from the friends panel (social-ui.mjs): make a room (or keep the one
+  // I am in) and give back its code, or go into a friend's room by its code.
+  async host() {
+    show();
+    if (!room?.active) await open();
+    return room?.active ? room.code : '';
+  },
+  async join(code) {
+    const wanted = normaliseCode(code);
+    show();
+    if (!room?.active || room.code !== wanted) await open(wanted);
+    return Boolean(room?.active);
+  },
 };

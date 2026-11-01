@@ -167,7 +167,7 @@ function prepareSong(index) {
 }
 
 function panelOpen() {
-  return !launcher.hidden || Boolean(window.classicEditor?.isOpen()) || Boolean(window.classicOnline?.isOpen());
+  return !launcher.hidden || Boolean(window.classicEditor?.isOpen()) || Boolean(window.classicOnline?.isOpen()) || Boolean(window.classicSocial?.isOpen());
 }
 
 const isField = target => target instanceof HTMLElement && target.matches('input, select, textarea');
@@ -179,7 +179,9 @@ for (const type of ['keydown', 'keyup']) {
     // a text box keeps its keys; it stops them from reaching the game itself
     if (isField(event.target)) return;
     event.stopImmediatePropagation();
-    if (window.classicOnline?.isOpen()) {
+    if (window.classicSocial?.isOpen()) {
+      if (type === 'keydown' && event.key === 'Escape') window.classicSocial.close();
+    } else if (window.classicOnline?.isOpen()) {
       if (type === 'keydown' && event.key === 'Escape') window.classicOnline.close();
     } else if (window.classicEditor?.isOpen()) {
       window.classicEditor.handleKey(event);

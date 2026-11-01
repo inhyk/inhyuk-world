@@ -138,3 +138,77 @@ h1{font-size:30px;margin-bottom:8px}
 .editor-help{display:none}
 footer{min-height:36px;padding:4px 4%}
 }
+
+/* ===== 계정, 친구, 친구 채팅 (social-ui.mjs) ===== */
+.social-open{position:relative;display:inline-flex;align-items:center;gap:5px;max-width:160px}
+.social-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.social-open.in{border-color:#bfff5980;color:var(--acid)}
+.social-badge{position:absolute;top:-7px;right:-7px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#ff5c8a;color:#fff;font-size:11px;font-weight:700;font-style:normal;line-height:18px;text-align:center}
+.social{display:flex;align-items:center;justify-content:center}
+.social-card{width:min(480px,100%);max-height:100%;overflow:auto;overscroll-behavior:contain;word-break:keep-all;overflow-wrap:anywhere}
+.toast,.social-invite{word-break:keep-all}
+.social-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px}
+.social-tabs button[aria-pressed=true]{border-color:var(--acid);color:var(--acid);background:#bfff5914;font-weight:700}
+.social-form{display:grid;gap:6px}
+.social-form label{font-size:12px;color:var(--muted);margin-top:4px}
+.social-card input,.social-card textarea{width:100%;min-width:0;background:#0b1030;color:#fff;border:1px solid #ffffff40;border-radius:8px;padding:10px 12px;font-size:16px}
+.social-card textarea{resize:none}
+.social-form .primary{margin-top:10px;padding:12px;font-size:16px}
+.social-rules{margin:14px 0 0;padding-left:18px;font-size:12px;line-height:1.7;color:var(--muted)}
+.social-me{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px}
+.social-me span{flex:1;min-width:0;overflow-wrap:anywhere}
+.social-me button,.social-chat-head button,.social-row button{padding:7px 10px;font-size:12px}
+.social-row-form{display:flex;gap:8px}
+.social-row-form input{flex:1}
+.social-row-form button{flex:0 0 auto}
+.social-sub{margin:16px 0 6px;font-size:12px;font-weight:700;color:var(--acid);letter-spacing:1px}
+.social-list{display:grid;gap:6px}
+.social-list:not(:empty){margin-top:8px}
+.social-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:8px 10px;border-radius:10px;background:#ffffff08;border:1px solid #ffffff14}
+.social-who{flex:1 1 110px;min-width:0;display:grid}
+.social-who b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.social-who small{font-size:11px;color:var(--muted)}
+.social-dot{width:10px;height:10px;border-radius:50%;background:#ffffff33;flex:0 0 auto}
+.social-dot.on{background:#59ff8a;box-shadow:0 0 8px #59ff8a99}
+.social-empty{margin:4px 0;font-size:12px;color:var(--muted)}
+.social-chat-head{display:flex;align-items:center;gap:10px}
+.social-chat-head b{font-size:18px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#social-chat-state{margin-top:8px}
+.social-lines{height:clamp(140px,36dvh,300px);overflow-y:auto;margin:10px 0;padding:10px;border-radius:12px;background:#0b1030;border:1px solid #ffffff1f;display:flex;flex-direction:column;gap:8px}
+.social-line{max-width:85%;display:grid;gap:2px}
+.social-line b{font-size:11px;color:var(--muted)}
+.social-line span{padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap}
+.social-line.them{align-self:flex-start}
+.social-line.them span{background:var(--blue);border-top-left-radius:4px}
+.social-line.me{align-self:flex-end;text-align:right}
+.social-line.me span{background:var(--acid);color:#14200a;border-top-right-radius:4px;text-align:left}
+.social-lines .social-empty,.social-note{align-self:center;margin:0;font-size:12px;color:var(--muted);text-align:center}
+.social-offer{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;color:#ffd23d;font-weight:700}
+.social-offer button{padding:7px 12px;font-size:13px}
+.social-hint{margin:6px 0 0;font-size:11px;color:var(--muted);line-height:1.5}
+.social-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.social-tools button{flex:1 1 auto;padding:8px 10px;font-size:13px}
+.social-ask{position:fixed;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;padding:16px;background:#05081ccc}
+.social-ask-box{width:min(380px,100%);background:#18215a;border:1px solid #ffffff33;border-radius:14px;padding:18px;box-shadow:0 20px 60px #000a}
+.social-ask-box p{margin:0 0 12px;font-size:15px;line-height:1.6}
+.social-ask-row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.social-invite{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:9;width:min(360px,calc(100vw - 32px));background:#18215a;border:2px solid var(--acid);border-radius:14px;padding:14px 16px;box-shadow:0 16px 50px #000b}
+.social-invite p{margin:0;font-size:16px;font-weight:700;overflow-wrap:anywhere}
+.social-invite small{display:block;margin-top:4px;color:var(--muted);font-size:12px}
+.social-invite button{border:1px solid #ffffff33;background:#ffffff0d;color:#fff;border-radius:8px;padding:10px 14px;font-size:14px}
+.social-invite button.primary{background:var(--acid);color:#14200a;border-color:var(--acid);font-weight:900}
+@media(max-width:760px){
+.social{inset:56px 0 82px;padding:10px}
+.social-invite{bottom:92px}
+/* the header fits one more button on phones: smaller buttons, the title gives way first */
+header>div{gap:6px}
+header strong{flex-shrink:6;min-width:0}
+header button{padding:6px 8px;word-break:keep-all}
+}
+@media(max-width:600px){.social-open .social-label{display:none}}
+@media(max-width:340px){header strong{display:none}}
+@media(max-height:560px) and (min-width:600px){
+.social{inset:44px 0 36px;padding:8px}
+.social-invite{bottom:44px}
+}
+/* ===== 계정, 친구, 친구 채팅 끝 ===== */
