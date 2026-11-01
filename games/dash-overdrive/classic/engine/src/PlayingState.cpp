@@ -597,7 +597,10 @@ void PlayingState::updateLevelCompleteTextTexture() {
 }
 
 bool PlayingState::playerShouldIgnoreMouseClicks() const {
-    return m_PauseButton.mouseIntersects() || m_PlaceCheckpointButton.mouseIntersects() || m_RemoveCheckpointButton.mouseIntersects();
+    // The checkpoint buttons only exist in practice mode; outside it their spot
+    // at the bottom of the screen is ordinary playfield and clicks there jump.
+    return m_PauseButton.mouseIntersects() ||
+           (m_IsInPractice && (m_PlaceCheckpointButton.mouseIntersects() || m_RemoveCheckpointButton.mouseIntersects()));
 }
 
 int PlayingState::simLoad(int level) {

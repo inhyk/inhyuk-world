@@ -58,6 +58,29 @@ try {
     await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 5);
     console.log('page level picker passed');
 
+    // a click at the bottom middle jumps outside practice (the hidden checkpoint
+    // buttons there used to swallow it)
+    await page.evaluate(() => { Module._classic_set_creator(1); Module._classic_set_hitboxes(0); Module._classic_start_level(0); });
+    await page.waitForFunction(() => Module._classic_state() === 2 && Module._classic_percent() > 50, null, {timeout: 30000});
+    await page.waitForTimeout(700);
+    const canvas = await page.locator('#canvas').boundingBox();
+    await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height * 0.95);
+    const spun = page.evaluate(() => new Promise(done => {
+      const started = performance.now();
+      const look = () => {
+        if (Math.round(Module._classic_player_rotation()) % 90 !== 0) done(true);
+        else if (performance.now() - started > 450) done(false);
+        else requestAnimationFrame(look);
+      };
+      look();
+    }));
+    await page.mouse.down();
+    await page.waitForTimeout(80);
+    await page.mouse.up();
+    assert.equal(await spun, true, 'a click at the bottom middle jumps');
+    await page.evaluate(() => { Module._classic_set_creator(0); Module._classic_go_title(); });
+    console.log('bottom click passed');
+
     // map maker: place a few things and play the map
     await page.evaluate(() => Module._classic_go_title());
     await page.evaluate(() => window.classicEditor.open());
