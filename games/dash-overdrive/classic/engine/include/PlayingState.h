@@ -28,6 +28,10 @@ public:
     inline SDL_Color getInitialBackground() const { return m_InitialBackground; }
     inline SDL_Color getInitialGround() const { return m_InitialGround; }
     inline void setCustomSong(int song) { m_CustomSong = song; }
+    // Friends in an online race, drawn see-through where the page says they are.
+    static constexpr int GHOST_COUNT = 3;
+    void setGhost(int slot, bool visible, float x, float y, float rotation, bool ship, int gravity, int skin);
+    int visibleGhosts() const;
     inline static PlayingState &get() { return m_PlayingState; }
 
     // Level checker: runs the real physics without drawing or sound.
@@ -53,6 +57,17 @@ private:
     SDL_Texture *m_LoadingTexture;
     SDL_Texture *m_CoinTexture;
     SDL_Texture *m_CoinEmptyTexture;
+    SDL_Texture *m_GhostShipTexture;
+    struct Ghost {
+        bool visible = false;
+        float x = 0;
+        float y = 0;
+        float rotation = 0;
+        bool ship = false;
+        int gravity = 1;
+        int skin = 0;
+    };
+    std::array<Ghost, GHOST_COUNT> m_Ghosts;
     Mix_Chunk *m_LevelCompleteSound;
     Mix_Music *m_PracticeMusic;
     Mix_Music *m_Song = nullptr;
@@ -103,6 +118,7 @@ private:
     void renderPause() const;
     void renderEndBlocks() const;
     void renderCoins() const;
+    void renderGhosts() const;
     void renderLevelCompleteMenu() const;
     void pause();
     void resume();

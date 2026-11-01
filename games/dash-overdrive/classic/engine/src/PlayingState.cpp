@@ -64,6 +64,7 @@ void PlayingState::init(Game *game) {
     m_LoadingTexture = Text::createTexture(m_Renderer, "Loading music...");
     m_CoinTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinIcon.png");
     m_CoinEmptyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinEmpty.png");
+    m_GhostShipTexture = IMG_LoadTexture(m_Renderer, "res/gfx/ship.png");
     m_LevelCompleteSound = Mix_LoadWAV("res/sfx/levelComplete.ogg");
     if (m_LevelCompleteSound == nullptr) {
         std::cerr << "Failed to load levelComplete.ogg! " << SDL_GetError() << '\n';
@@ -139,6 +140,7 @@ void PlayingState::destroy() {
     SDL_DestroyTexture(m_LoadingTexture);
     SDL_DestroyTexture(m_CoinTexture);
     SDL_DestroyTexture(m_CoinEmptyTexture);
+    SDL_DestroyTexture(m_GhostShipTexture);
     Mix_FreeChunk(m_LevelCompleteSound);
     Mix_FreeMusic(m_PracticeMusic);
 }
@@ -164,6 +166,9 @@ void PlayingState::enter() {
     m_Game->setCameraPosition({0, 0});
     const int exitX = m_Game->getWidth()/2 + (m_EnterPracticeButton.getW() + MARGIN + m_ResumeButton.getW() + MARGIN - m_ExitButton.getW())/2;
     m_ExitButton.setPosition(exitX, m_Game->getHeight()/2, false, true);
+    for (Ghost &ghost : m_Ghosts) {
+        ghost.visible = false;
+    }
     m_LevelBeginTimer = 60;
     m_SongWaitTime = 0;
     m_SongMissing = false;
@@ -411,6 +416,7 @@ void PlayingState::updateNewBest() {
 
 void PlayingState::render() const {
     m_LevelManager.render();
+    renderGhosts();
     // Keep the player in front of blocks and decorations. Drawing it first makes
     // the cube look like it slides behind obstacles while running into them.
     m_Player.render();
@@ -463,6 +469,53 @@ void PlayingState::renderEndBlocks() const {
     for (int i = 0; i < BLOCK_HEIGHT_LIMIT; i += Config::TILE_SIZE) {
         SDL_RenderCopyEx(m_Renderer, m_LevelEndBlockTexture, NULL, &dst, -90.0, NULL, SDL_FLIP_NONE);
         dst.y += Config::TILE_SIZE;
+    }
+}
+
+void PlayingState::setGhost(int slot, bool visible, float x, float y, float rotation, bool ship, int gravity, int skin) {
+    if (slot < 0 || slot >= GHOST_COUNT) {
+        return;
+    }
+    m_Ghosts[slot] = { visible, x, y, rotation, ship, gravity < 0 ? -1 : 1, std::clamp(skin, 0, Config::SKIN_COUNT - 1) };
+}
+
+int PlayingState::visibleGhosts() const {
+    int count = 0;
+    for (const Ghost &ghost : m_Ghosts) {
+        count += ghost.visible ? 1 : 0;
+    }
+    return count;
+}
+
+void PlayingState::renderGhosts() const {
+    const SDL_FPoint camera = m_Game->getCameraPosition();
+    const float tile = static_cast<float>(Config::TILE_SIZE);
+    for (const Ghost &ghost : m_Ghosts) {
+        if (!ghost.visible) {
+            continue;
+        }
+        SDL_Texture *skin = m_Game->getSkinTexture(ghost.skin);
+        SDL_SetTextureAlphaMod(skin, 130);
+        const SDL_RendererFlip flip = ghost.gravity == 1 ? SDL_FLIP_NONE : SDL_FLIP_VERTICAL;
+        if (ghost.ship) {
+            // same layout as Player::renderShip
+            int shipWidth = 0;
+            int shipHeight = 0;
+            SDL_QueryTexture(m_GhostShipTexture, NULL, NULL, &shipWidth, &shipHeight);
+            const float x = ghost.x - camera.x;
+            const float y = ghost.y - camera.y;
+            const SDL_FRect cube = { x + tile * 6 / 25, ghost.gravity == 1 ? y + tile / 20 : y + tile * 2 / 5, tile * 14 / 25, tile * 14 / 25 };
+            const SDL_FRect ship = { x - (shipWidth - tile) / 2, ghost.gravity == 1 ? y + tile - shipHeight : y, static_cast<float>(shipWidth), static_cast<float>(shipHeight) };
+            const SDL_FPoint center = { ship.x + ship.w / 2 - cube.x, ship.y + ship.h / 2 - cube.y };
+            SDL_SetTextureAlphaMod(m_GhostShipTexture, 130);
+            SDL_RenderCopyExF(m_Renderer, skin, NULL, &cube, ghost.rotation, &center, flip);
+            SDL_RenderCopyExF(m_Renderer, m_GhostShipTexture, NULL, &ship, ghost.rotation, NULL, flip);
+            SDL_SetTextureAlphaMod(m_GhostShipTexture, 255);
+        } else {
+            const SDL_FRect cube = { ghost.x - camera.x, ghost.y - camera.y, tile, tile };
+            SDL_RenderCopyExF(m_Renderer, skin, NULL, &cube, ghost.rotation, NULL, SDL_FLIP_NONE);
+        }
+        SDL_SetTextureAlphaMod(skin, 255);
     }
 }
 

@@ -67,6 +67,30 @@ h1 span{color:var(--acid)}
 .editor-confirm p{margin:0 0 16px;font-size:16px}
 .editor-confirm button{margin:0 4px}
 
+.online{position:fixed;inset:64px 0 54px;z-index:5;background:#0b1030cc;display:grid;place-items:center;padding:16px}
+.online-card{width:min(440px,100%);background:#141c4a;border:1px solid #ffffff2e;border-radius:16px;padding:20px 22px;box-shadow:0 20px 60px #0009}
+.online-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.online-head strong{font-size:18px;color:var(--acid)}
+.online-card button{border:1px solid #ffffff33;background:#ffffff0d;color:#fff;border-radius:8px;padding:10px 14px;font-size:14px}
+.online-card button.primary{background:var(--acid);color:#14200a;border-color:var(--acid);font-weight:900}
+.online-card button:disabled{opacity:.45;cursor:default}
+#online-create{width:100%;padding:14px;font-size:16px}
+.online-code-row{display:flex;gap:8px;margin-top:12px}
+.online-code-row input{flex:1;min-width:0;background:#0b1030;color:#fff;border:1px solid #ffffff40;border-radius:8px;padding:10px 12px;font-size:18px;letter-spacing:4px;text-transform:uppercase}
+.online-note{margin:12px 0 0;font-size:12px;color:var(--muted);line-height:1.6}
+.online-room-code{margin:4px 0 12px;font-size:40px;font-weight:900;letter-spacing:8px;color:#fff}
+.online-players{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+.online-players li{display:flex;align-items:center;gap:8px;font-size:14px}
+.online-dot{display:inline-block;width:12px;height:12px;border-radius:50%;flex:0 0 auto}
+.online-host{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.online-host select{background:#0b1030;color:#fff;border:1px solid #ffffff40;border-radius:8px;padding:8px}
+.online-status{margin:12px 0 0;font-size:12px;color:#ffd23d;min-height:1em}
+.race{position:fixed;top:150px;left:16px;z-index:3;background:#0b1030c8;border:1px solid #ffffff26;border-radius:12px;padding:10px 12px;display:grid;gap:6px;min-width:200px;pointer-events:none}
+.race-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.race-row b{width:28px}
+.race-bar{flex:1;height:8px;border-radius:4px;background:#ffffff22;overflow:hidden}
+.race-bar i{display:block;height:100%;background:var(--acid)}
+.race-row small{width:44px;text-align:right;color:var(--muted)}
 .toast{position:fixed;top:76px;left:50%;transform:translateX(-50%);z-index:8;background:#14200a;color:#bfff59;border:1px solid #bfff59;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;box-shadow:0 10px 30px #0008;max-width:92vw;text-align:center}
 body.creator header strong span::after{content:' · 제작자 모드';color:#ffd23d}
 footer{position:fixed;bottom:0;left:0;right:0;min-height:54px;display:flex;align-items:center;justify-content:space-between;padding:10px 4%;gap:14px;background:var(--navy);font-size:10px;color:var(--muted);line-height:1.7}

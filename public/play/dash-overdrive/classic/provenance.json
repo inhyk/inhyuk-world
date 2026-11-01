@@ -20,7 +20,7 @@
  },
  "packageBytes": 3116140,
  "packageSha256": "4e34582ae357187bb3ec6a4d79c804905d43ffd4d636aa2ada6224b2f42fa1d5",
- "wasmSha256": "0d0510c7789da20cdc4536b70141be1359d4200162bbdbf7ec523a33cd3e7441",
+ "wasmSha256": "b46d9300d5e012f90c2c365e7d182c3421cb96b4fcbd3acee30a8641c51abf50",
  "levels": [
   {
    "level": 1,

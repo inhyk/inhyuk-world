@@ -58,6 +58,13 @@ test('package holds the generated files and the MIT notice, no old game data', (
   assert.ok(!readdirSync(root).some(name => name.startsWith('reference-')));
 });
 
+test('the page uses an exact copy of the shared room client', () => {
+  for (const name of ['index.mjs', 'social.mjs']) {
+    assert.equal(read(`net-client/${name}`).toString(), readFileSync(new URL(`../../../packages/net/${name}`, import.meta.url), 'utf8'), name);
+  }
+  assert.match(read('online.mjs').toString(), /game: GAME, maxPlayers: MAX_PLAYERS/);
+});
+
 test('every level song is present and the page has no outside player', () => {
   for (let index = 0; index < LEVELS.length; index++) {
     const song = read(`music/${index}.ogg`);

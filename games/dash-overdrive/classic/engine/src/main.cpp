@@ -78,6 +78,27 @@ CLASSIC_EXPORT int classic_creator() {
     return game.isCreatorMode() ? 1 : 0;
 }
 
+// Online race: where the local player is, and where to draw friends.
+CLASSIC_EXPORT float classic_player_rotation() {
+    return PlayingState::get().getPlayer().getRotation();
+}
+
+CLASSIC_EXPORT int classic_player_dead() {
+    return PlayingState::get().getPlayer().isDead() ? 1 : 0;
+}
+
+CLASSIC_EXPORT int classic_player_skin() {
+    return game.getSelectedSkin();
+}
+
+CLASSIC_EXPORT void classic_set_ghost(int slot, int visible, float x, float y, float rotation, int ship, int gravity, int skin) {
+    PlayingState::get().setGhost(slot, visible != 0, x, y, rotation, ship != 0, gravity, skin);
+}
+
+CLASSIC_EXPORT int classic_ghost_count() {
+    return PlayingState::get().visibleGhosts();
+}
+
 CLASSIC_EXPORT int classic_total_coins() {
     return LevelSelect::get().getTotalCoins();
 }
