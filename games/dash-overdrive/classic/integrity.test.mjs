@@ -42,6 +42,16 @@ test('twenty built levels use only objects the engine knows', () => {
   }
 });
 
+test('the wave appears in every level, from level 1 on', () => {
+  for (let index = 0; index < LEVELS.length; index++) {
+    const text = readFileSync(new URL(`leveldata/${index}.level`, res), 'utf8');
+    const ids = text.split(';').slice(1).filter(Boolean).map(row => Number(row.split(',')[1]));
+    assert.ok(ids.includes(212), `level ${index + 1} has a wave portal`);
+    // the checker flies every wave part with its bot
+    assert.ok((report[index + 1].flights || []).some(flight => flight.mode === 'wave'), `level ${index + 1} wave path`);
+  }
+});
+
 test('the checker played every level to the end at 60, 120 and 144 fps', () => {
   for (let index = 0; index < LEVELS.length; index++) {
     const entry = report[index + 1];

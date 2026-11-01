@@ -2,7 +2,7 @@
 'use strict';
 // The page around the WebAssembly engine: level picker, song downloads,
 // touch input and the hooks the engine calls (Module.classic*).
-const VERSION = 'classic-original-6';
+const VERSION = 'classic-original-7';
 const CLASSIC_LEVELS = [
   ['Neon Start', 'easy'], ['Pixel Hop', 'easy'], ['Blue Ladder', 'normal'], ['Desert Wind', 'normal'],
   ['Iron Gate', 'hard'], ['Night Rail', 'hard'], ['Sky Rocket', 'hard'], ['Crystal Cave', 'harder'],

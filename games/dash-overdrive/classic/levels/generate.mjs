@@ -30,7 +30,7 @@ export const TRACKS = [
   {name: '60 uneven', dts: [MS(16), MS(17), MS(17)]},
   {name: '120 uneven', dts: [MS(8), MS(8), MS(9)]},
 ];
-const ONE = [1];
+export const ONE = [1];
 
 // Time in ticks (1/120 s) at the start of step `index`.
 export function tickAt(dts, index) {
@@ -40,7 +40,7 @@ export function tickAt(dts, index) {
   for (let i = 0; i < index % dts.length; i++) ticks += dts[i] * 2;
   return ticks;
 }
-const CEILING_ROW = 4; // block ceiling for upside-down parts
+export const CEILING_ROW = 4; // block ceiling for upside-down parts
 const FLOOR = 936;
 
 export const LEVELS = [
@@ -96,7 +96,7 @@ const BLACK_BLOCK_LEVELS = new Set([4, 13, 18, 19]);
 
 // How hard each level is. margin = half of the narrowest allowed tap window in
 // 60 fps frames; runway = free tiles between pieces.
-function tuning(d) {
+export function tuning(d) {
   return {
     margin: [3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1][d],
     runway: [[1, 4], [1, 3], [1, 3], [1, 3], [1, 2], [1, 2], [0, 2], [0, 2], [0, 2], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 0], [0, 0], [0, 0]][d],
@@ -161,14 +161,14 @@ function mulberry32(seed) {
 const gx = c => 30 * c + 15;
 const gy = r => 30 * r + 15;
 
-function objectText(o) {
+export function objectText(o) {
   const parts = [1, o.id, 2, o.x, 3, o.y];
   if (o.flipY) parts.push(5, 1);
   if (o.color) parts.push(7, o.color[0], 8, o.color[1], 9, o.color[2], 10, o.duration);
   return parts.join(',');
 }
 
-const make = {
+export const make = {
   block: (c, r, id = 1) => ({id, x: gx(c), y: gy(r)}),
   fill: (c, r) => ({id: 5, x: gx(c), y: gy(r), deco: true}),
   spike: (c, r, flipY = false) => ({id: 8, x: gx(c), y: gy(r), flipY}),
@@ -268,7 +268,7 @@ export function waveBot(path, aim = 0, delay = 0) {
 export const BOTS = {ship: shipBot, ufo: ufoBot, wave: waveBot};
 
 // Plays from a saved state until done(player) or death.
-function play(level, start, dts, plan, done, maxSteps = 4000) {
+export function play(level, start, dts, plan, done, maxSteps = 4000) {
   const player = clonePlayer(start.player);
   player.pressed = [];
   let index = start.steps;
@@ -289,7 +289,7 @@ function play(level, start, dts, plan, done, maxSteps = 4000) {
 
 // ---------------------------------------------------------------------------
 
-class LevelBuilder {
+export class LevelBuilder {
   constructor(index) {
     this.index = index;
     this.spec = LEVELS[index];
@@ -1254,7 +1254,7 @@ function onExpectedSurface(player, piece) {
   return player.y === FLOOR - TILE * (piece.surface + 1);
 }
 
-function sameRoute(a, b) {
+export function sameRoute(a, b) {
   return a.mode === b.mode && a.speed === b.speed && a.gravity === b.gravity && Math.abs(a.y - b.y) < 1;
 }
 
@@ -1361,7 +1361,7 @@ writeFileSync(REPORT, JSON.stringify(report));
 }
 
 // [value, count, value, count, ...] keeps the input log small
-function runLength(inputs) {
+export function runLength(inputs) {
   const out = [];
   for (const value of inputs) {
     if (out.length && out[out.length - 2] === value) out[out.length - 1]++;
