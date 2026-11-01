@@ -1377,5 +1377,29 @@
     "createdAt": "2026-02",
     "featured": true,
     "order": 1
+  },
+  {
+    "slug": "kongtteok",
+    "title": "콩떡이 햄찌 동영상",
+    "description": "진짜 햄스터가 말풍선으로 수다를 떨어요! 콩떡이와 친구들의 1~5화 동영상",
+    "longDescription": "말끝마다 \"~떡!\" 하는 햄스터 콩떡이와 친구들의 짧은 동영상 시리즈입니다. 화면에 나오는 햄스터는 모두 진짜 햄스터이고, 위키미디어 공용에 자유 이용 허락으로 올라온 영상을 잘라 말풍선, 햄스터 말소리, 배경 음악을 입혔습니다. 1화 간식 대작전, 2화 쌩쌩이의 100킬로 대도전, 3화 새 친구 눈송이, 4화 아기 햄스터, 5화 햄스터 운동회까지 다섯 편을 이어서 볼 수 있어요. 영상은 CC BY-SA 4.0으로 공개하고, 출처는 각 영상 끝과 페이지 아래에 있습니다.",
+    "emoji": "🐹",
+    "thumbnail": "/images/games/kongtteok-thumb.png",
+    "screenshots": [
+      "/images/games/kongtteok-thumb.png",
+      "/images/games/kongtteok-1.png",
+      "/images/games/kongtteok-2.png"
+    ],
+    "techStack": [
+      "Python",
+      "FFmpeg",
+      "HTML"
+    ],
+    "category": "동영상",
+    "playUrl": "/play/kongtteok",
+    "createdAt": "2026-11",
+    "featured": false,
+    "order": 101,
+    "githubUrl": "https://github.com/inhyk/inhyuk-world/tree/main/games/kongtteok"
   }
 ]

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#fff6e8">
+  <title>콩떡이 햄찌 동영상</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cellipse cx='8' cy='9.5' rx='6.5' ry='5.5' fill='%23f0a347'/%3E%3Ccircle cx='3.5' cy='4.5' r='2' fill='%23f0a347'/%3E%3Ccircle cx='12.5' cy='4.5' r='2' fill='%23f0a347'/%3E%3Cellipse cx='8' cy='11' rx='4' ry='3' fill='%23fff3dc'/%3E%3Ccircle cx='5.8' cy='8.2' r='.9' fill='%23222'/%3E%3Ccircle cx='10.2' cy='8.2' r='.9' fill='%23222'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #fff6e8; --paper: #ffffff; --ink: #3a2a1c; --muted: #8a7461; --line: #f0dcc0;
+      --kong: #ff9628; --ssaeng: #3c96ff; --snow: #9678ff; --hot: #c8783c; --baby: #ff6eaa; --friend: #3cbe5a;
+      --accent: #ff9628; --shadow: 0 10px 30px rgba(120, 70, 20, .12);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #1d1712; --paper: #2a211a; --ink: #fbeedd; --muted: #c3ab92; --line: #45372a; --shadow: 0 10px 30px rgba(0, 0, 0, .35); }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); }
+    body { font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px 48px; }
+    .topbar { display: flex; align-items: center; gap: 14px; padding: 14px 0; }
+    .topbar a { text-decoration: none; font-size: 14px; color: var(--muted); padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+    .topbar a:hover { color: var(--ink); }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+    .brand b { color: var(--kong); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: start; }
+    @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
+    .player { background: var(--paper); border-radius: 22px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--line); }
+    .player video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+    .now { padding: 16px 20px 20px; }
+    .now .ep { display: inline-block; font-size: 13px; font-weight: 800; color: #fff; background: var(--accent); border-radius: 999px; padding: 2px 10px; }
+    .now h1 { margin: 8px 0 4px; font-size: 26px; letter-spacing: -.03em; }
+    .now p { margin: 0; color: var(--muted); }
+    .tag { margin-top: 12px; font-size: 13px; color: var(--muted); }
+    .list { display: flex; flex-direction: column; gap: 10px; }
+    .list h2, .section h2 { font-size: 16px; margin: 0 0 4px; color: var(--muted); font-weight: 700; }
+    .card { display: grid; grid-template-columns: 136px 1fr; gap: 12px; align-items: center; width: 100%; text-align: left; font: inherit; color: inherit;
+      background: var(--paper); border: 2px solid transparent; border-radius: 16px; padding: 8px; cursor: pointer; box-shadow: var(--shadow); transition: transform .12s, border-color .12s; }
+    .card:hover { transform: translateY(-2px); }
+    .card[aria-current="true"] { border-color: var(--accent); }
+    .card img { width: 136px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; display: block; background: #000; }
+    .card .t { font-weight: 800; font-size: 15px; letter-spacing: -.02em; }
+    .card .m { font-size: 12px; color: var(--muted); }
+    .card .playing { display: none; font-size: 12px; font-weight: 800; color: var(--accent); }
+    .card[aria-current="true"] .playing { display: inline; }
+    .section { margin-top: 30px; }
+    .chars { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .char { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
+    .char b { display: inline-block; color: #fff; border-radius: 999px; padding: 1px 10px; font-size: 14px; }
+    .char p { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+    details { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; }
+    summary { cursor: pointer; font-weight: 700; }
+    .credits { font-size: 13px; color: var(--muted); padding-left: 18px; }
+    .credits li { margin: 4px 0; word-break: break-all; }
+    .note { font-size: 13px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <a href="/games" target="_top">← 게임 목록</a>
+      <span class="brand">🐹 <b>콩떡이</b> 햄찌 동영상</span>
+    </header>
+
+    <div class="layout">
+      <main>
+        <div class="player">
+          <video id="video" controls playsinline preload="metadata"></video>
+          <div class="now">
+            <span class="ep" id="nowEp">1화</span>
+            <h1 id="nowTitle"></h1>
+            <p id="nowDesc"></p>
+            <p class="tag">진짜 햄스터가 나와요! 말풍선을 읽으면서 봐 주세요. 다 보면 다음 화로 넘어가요.</p>
+          </div>
+        </div>
+      </main>
+
+      <aside class="list" aria-label="동영상 목록">
+        <h2>전체 동영상</h2>
+        <div id="cards" class="list"></div>
+      </aside>
+    </div>
+
+    <section class="section" aria-label="등장인물">
+      <h2>등장인물</h2>
+      <div class="chars">
+        <div class="char"><b style="background:var(--kong)">콩떡이</b><p>말끝마다 "~떡!" 하는 주인공. 간식 찾기 대장이지만 다리가 짧아요.</p></div>
+        <div class="char"><b style="background:var(--ssaeng)">쌩쌩이</b><p>옆집 달리기 대장. 오늘도 쳇바퀴 100킬로에 도전 중!</p></div>
+        <div class="char"><b style="background:var(--snow)">눈송이</b><p>눈처럼 하얀 잠꾸러기. 특기는 발라당 눕기.</p></div>
+        <div class="char"><b style="background:var(--hot)">호떡이</b><p>눈송이의 단짝 갈색 햄스터.</p></div>
+        <div class="char"><b style="background:var(--baby)">아기들</b><p>옆 동네에서 태어난 꼬마 햄스터들. 콩떡이를 "형아"라고 불러요.</p></div>
+        <div class="char"><b style="background:var(--friend)">친구들</b><p>콩 파티와 응원을 좋아하는 햄스터 친구들.</p></div>
+      </div>
+    </section>
+
+    <section class="section" aria-label="영상 출처">
+      <details>
+        <summary>영상 출처와 라이선스</summary>
+        <p class="note">화면에 나오는 햄스터는 모두 진짜 햄스터예요. 위키미디어 공용(Wikimedia Commons)에 자유 이용 허락으로 올라온 동영상을 잘라서 썼습니다. 햄스터 말소리와 배경 음악은 직접 합성했어요.</p>
+        <p class="note">콩떡이 햄찌 동영상 1~5화는 <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko" target="_blank" rel="noopener">CC BY-SA 4.0</a> 라이선스로 공개합니다. 각 영상 끝에도 출처가 나와요.</p>
+        <ul class="credits" id="credits"></ul>
+      </details>
+    </section>
+  </div>
+
+  <script>
+    const EPISODES = [
+      { n: 1, title: "콩떡이의 간식 대작전", desc: "간식 창고를 찾아 나선 콩떡이! 철창 넘기 작전은 성공할까?", dur: "0:59" },
+      { n: 2, title: "쌩쌩이의 100킬로 대도전", desc: "쌩쌩이가 쳇바퀴로 100킬로에 도전! 그런데 쳇바퀴는…", dur: "1:09" },
+      { n: 3, title: "새 친구 눈송이가 왔다?!", desc: "하얗고 복슬복슬한 잠꾸러기 눈송이와 친구가 될 수 있을까?", dur: "0:58" },
+      { n: 4, title: "아기 햄스터가 태어났다?!", desc: "옆 동네에 아기 햄스터가 열 마리 넘게 태어났다!", dur: "1:00" },
+      { n: 5, title: "햄스터 운동회!", desc: "철창 오르기, 쳇바퀴, 콩 먹기, 오래 자기! 금메달은 누구에게?", dur: "1:07" },
+    ];
+    const CREDITS = [{"title": "Djungarian hamster in a cage.webm", "artist": "Well-Informed Optimist", "license": "CC BY-SA 4.0"}, {"title": "Hamster on a wheel.webm", "artist": "Greg Heartsfield", "license": "CC BY 2.0"}, {"title": "Dwarf hamsters eating frozen beans - 01.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "Dwarf hamsters eating cucumber - 01.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "Dwarf hamsters running on disc.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "赤ちゃんと母親(ダークパイド)３.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "ノーマルの子供の映像３.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "Dwarf hamsters eating cooked, frozen beans - 03.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "ピュアホワイトの映像.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "イザベラホワイトの映像.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "パイド親子２.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "Dwarf hamsters eating cooked, frozen beans - 04.ogv", "artist": "Anna Frodesiak", "license": "CC0"}];
+
+    const video = document.getElementById("video");
+    const cards = document.getElementById("cards");
+    let current = 0;
+    let started = false;
+
+    EPISODES.forEach((ep, i) => {
+      const b = document.createElement("button");
+      b.className = "card";
+      b.type = "button";
+      b.innerHTML = `<img src="./posters/ep${ep.n}.jpg" alt="" loading="lazy" width="136" height="77">
+        <span><span class="m">${ep.n}화 · ${ep.dur} <span class="playing">· 보는 중</span></span><br><span class="t"></span></span>`;
+      b.querySelector(".t").textContent = ep.title;
+      b.addEventListener("click", () => { select(i, true); window.scrollTo({ top: 0, behavior: "smooth" }); });
+      cards.appendChild(b);
+    });
+
+    const list = document.getElementById("credits");
+    CREDITS.forEach((c) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = "https://commons.wikimedia.org/wiki/File:" + encodeURIComponent(c.title.replace(/ /g, "_"));
+      a.target = "_blank"; a.rel = "noopener";
+      a.textContent = c.title;
+      li.append(a, document.createTextNode(` — ${c.artist} (${c.license})`));
+      list.appendChild(li);
+    });
+
+    function select(i, play) {
+      current = i;
+      const ep = EPISODES[i];
+      video.src = `./videos/ep${ep.n}.mp4`;
+      video.poster = `./posters/ep${ep.n}.jpg`;
+      document.getElementById("nowEp").textContent = `${ep.n}화`;
+      document.getElementById("nowTitle").textContent = ep.title;
+      document.getElementById("nowDesc").textContent = ep.desc;
+      [...cards.children].forEach((c, k) => c.setAttribute("aria-current", k === i ? "true" : "false"));
+      try { history.replaceState(null, "", `#ep${ep.n}`); } catch (e) { /* 미리보기 등에서는 무시 */ }
+      if (play) video.play().catch(() => {});
+    }
+
+    video.addEventListener("play", () => { started = true; });
+    video.addEventListener("ended", () => {
+      if (started && current < EPISODES.length - 1) select(current + 1, true);
+    });
+
+    const m = /^#ep(\d)$/.exec(location.hash);
+    const start = m ? Math.min(EPISODES.length, Math.max(1, Number(m[1]))) - 1 : 0;
+    select(start, false);
+  </script>
+</body>
+</html>
