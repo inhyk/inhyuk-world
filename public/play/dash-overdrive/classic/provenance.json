@@ -8,7 +8,8 @@
    "Ship and upside-down sections draw their floor and ceiling at the same heights the player collides with",
    "Title screen with SKINS, PLAY and CREATE buttons and a parade of every skin",
    "Skin picker, saved best percentages, songs downloaded per level",
-   "Extra level slot for the map maker and level-checker functions (sim_*)"
+   "Extra level slot for the map maker and level-checker functions (sim_*)",
+   "Ball, UFO and wave modes, speed gates, pink and blue orbs and pads (own tuning numbers and art), mirrored in levels/physics.mjs"
   ]
  },
  "font": "Lilita One, SIL Open Font License 1.1",
@@ -18,9 +19,9 @@
   "levels": "games/dash-overdrive/classic/levels/generate.mjs",
   "check": "games/dash-overdrive/classic/levels/verify.mjs"
  },
- "packageBytes": 3701748,
- "packageSha256": "a407a8f0c1b21989a3ca10e79427b8506ff9b94ddb83154950766ebc6126e693",
- "wasmSha256": "4d8d4c13200f0c7c80f86a55a4684fce87cf0f355f8dd0f38864092afd940d31",
+ "packageBytes": 3711464,
+ "packageSha256": "45f532f79120daad8152681833a12ec8df06e3baf883301f73651644c41e39c4",
+ "wasmSha256": "531b31dde02a254de162afae4c4d6ef0dd2fa7b79eed76b09d66c80967e51f09",
  "levels": [
   {
    "level": 1,
@@ -171,16 +172,16 @@
    "name": "Volt Rush",
    "bpm": 155.79,
    "songSeconds": 112,
-   "objects": 3084,
-   "sha256": "d881eb51f1fbef511b8f637e166a7faa8496ad892a04bbae09877fd0f3512665"
+   "objects": 3183,
+   "sha256": "435006fe7e4f9e73f8f7995e9804c92924710d508d923c44bd5c588c596f9436"
   },
   {
    "level": 20,
    "name": "Endless Dash",
    "bpm": 178.05,
    "songSeconds": 120,
-   "objects": 2738,
-   "sha256": "d5cd7f7b3cee3170fbd08ce7427ebaa88e6c812178bec25bfc2a1631f81e0914"
+   "objects": 3063,
+   "sha256": "0462a38c0f470b1b9632a13c198b0a4a98a35f1a828b691f77eafa27efc02413"
   }
  ]
 }

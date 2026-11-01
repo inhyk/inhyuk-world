@@ -88,6 +88,71 @@ try {
     await page.click('#editor-share-load');
     await page.waitForFunction(() => window.classicEditor.map().cells.length === 3);
     console.log('map maker passed (height, share code)');
+
+    // plan 2: every new object from the palette, a share code with them, and a run through them
+    await page.click('#editor-clear');
+    await page.click('#editor-confirm-yes');
+    for (let i = 0; i < 5; i++) await page.click('#editor-down');
+    const editorBox = await page.locator('#editor-canvas').boundingBox();
+    const cell = editorBox.height / 12;
+    // scroll so column c is the second one on screen, then click it (row 0 is the lowest of 11 rows)
+    const clickCell = async (c, r) => {
+      await page.evaluate(column => {
+        const position = document.getElementById('editor-position');
+        position.value = String(column);
+        position.dispatchEvent(new Event('input'));
+      }, c - 1);
+      await page.mouse.click(editorBox.x + 1.5 * cell, editorBox.y + (10.5 - r) * cell);
+    };
+    const placed = [
+      [2, '느린 속도', 213], [4, '보통 속도', 214], [6, '빠른 속도', 215], [8, '아주 빠른 속도', 216],
+      [10, '분홍 패드', 222], [13, '분홍 링', 220], [16, '공 포털', 210], [19, 'UFO 포털', 211],
+      [22, '웨이브 포털', 212], [25, '파랑 링', 221], [27, '파랑 패드', 223],
+    ];
+    for (const [column, name] of placed) {
+      await page.locator('#editor-tools').getByRole('button', {name, exact: true}).click();
+      await clickCell(column, 0);
+    }
+    const newMap = await page.evaluate(() => window.classicEditor.map().cells.map(([c, r, id]) => `${c},${r},${id}`).sort());
+    assert.deepEqual(newMap, placed.map(([c, , id]) => `${c},0,${id}`).sort(), 'every new object is on the map');
+    const newText = await page.evaluate(() => window.classicEditor.levelText());
+    for (const [, , id] of placed) assert.match(newText, new RegExp(`;1,${id},2,`), `object ${id} in the level text`);
+    // share code round trip keeps them
+    await page.click('#editor-copy');
+    await page.waitForFunction(() => document.getElementById('editor-share-text').value.startsWith('DOC1.'));
+    const newCode = await page.inputValue('#editor-share-text');
+    await page.click('#editor-share-close');
+    await page.click('#editor-clear');
+    await page.click('#editor-confirm-yes');
+    await page.click('#editor-paste');
+    await page.fill('#editor-share-text', newCode);
+    await page.click('#editor-share-load');
+    await page.waitForFunction(count => window.classicEditor.map().cells.length === count, placed.length);
+    assert.deepEqual(await page.evaluate(() => window.classicEditor.map().cells.map(([c, r, id]) => `${c},${r},${id}`).sort()), newMap, 'share code keeps the new objects');
+    // play it (creator mode so nothing stops the run) and watch the speed, mode and gravity change
+    await page.click('#editor-test');
+    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 21);
+    await page.evaluate(() => { Module._classic_set_creator(1); Module._classic_set_hitboxes(0); });
+    const seen = await page.evaluate(() => new Promise(resolve => {
+      const result = {modes: new Set(), speeds: new Set(), gravities: new Set()};
+      const started = performance.now();
+      const look = () => {
+        if (Module._classic_state() === 2) {
+          result.modes.add(Module._sim_mode());
+          result.speeds.add(Module._classic_player_speed());
+          result.gravities.add(Module._sim_gravity());
+        }
+        if (performance.now() - started < 7000 && Module._classic_percent() < 9000) requestAnimationFrame(look);
+        else resolve({modes: [...result.modes].sort(), speeds: [...result.speeds].sort(), gravities: [...result.gravities].sort(), percent: Module._classic_percent()});
+      };
+      look();
+    }));
+    await page.evaluate(() => { Module._classic_set_creator(0); Module._classic_go_title(); });
+    assert.deepEqual(seen.speeds, [0, 1, 2, 3], 'all four speed gates');
+    assert.deepEqual(seen.modes, [0, 2, 3, 4], 'cube, ball, UFO and wave');
+    assert.deepEqual(seen.gravities, [-1, 1], 'the blue ring or pad flips gravity');
+    assert.ok(seen.percent > 0);
+    console.log(`map maker plan 2 passed (11 new objects, share code, run: modes ${seen.modes}, speeds ${seen.speeds})`);
     await context.close();
   }
   for (const viewport of [{width: 390, height: 844}, {width: 844, height: 390}]) {

@@ -47,6 +47,12 @@ void Player::init(Game *game) {
         std::cerr << "Failed to load ship.png! " << SDL_GetError() << std::endl;
     }
     SDL_QueryTexture(m_ShipTexture, NULL, NULL, &m_ShipWidth, &m_ShipHeight);
+    m_BallTexture = IMG_LoadTexture(m_Renderer, "res/gfx/ball.png");
+    m_UfoTexture = IMG_LoadTexture(m_Renderer, "res/gfx/ufo.png");
+    m_WaveTexture = IMG_LoadTexture(m_Renderer, "res/gfx/wave.png");
+    if (m_BallTexture == nullptr || m_UfoTexture == nullptr || m_WaveTexture == nullptr) {
+        std::cerr << "Failed to load ball, ufo or wave.png! " << SDL_GetError() << std::endl;
+    }
     m_DebrisTexture = IMG_LoadTexture(m_Renderer, "res/gfx/debris.png");
     m_CheckpointTexture = IMG_LoadTexture(m_Renderer, "res/gfx/checkpoint.png");
     if (m_CheckpointTexture == nullptr) {
@@ -77,6 +83,8 @@ void Player::reset() {
     m_DeadTimer = 0;
     m_GravityMultiplier = 1;
     m_Gamemode = Gamemode::CUBE;
+    setSpeed(NORMAL_SPEED);
+    m_Trail.clear();
     m_PressedOrbs.clear();
     m_Checkpoints.clear();
     m_Coins = 0;
@@ -87,6 +95,9 @@ void Player::reset() {
 
 Player::~Player() {
     SDL_DestroyTexture(m_ShipTexture);
+    SDL_DestroyTexture(m_BallTexture);
+    SDL_DestroyTexture(m_UfoTexture);
+    SDL_DestroyTexture(m_WaveTexture);
     SDL_DestroyTexture(m_CheckpointTexture);
     SDL_DestroyTexture(m_DebrisTexture);
     Mix_FreeChunk(m_DeathSound);
@@ -145,14 +156,24 @@ void Player::step(float deltaTime, bool mouseClicked, bool mouseReleased) {
     case Gamemode::SHIP:
         updateShipRotation(deltaTime);
         break;
+    default:
+        updateOtherRotation(deltaTime);
+        break;
     }
 
     scrollCamera();
+    if (!m_SimInput) {
+        updateTrail();
+    }
 
     if (m_Position.y < PlayingState::get().getMinY()) {
         die();
     }
-    if (m_IsGrounded) {
+    // A cube or ship click is kept for an orb until it lands; the ball keeps it
+    // until the button is let go (it flips on landing); UFO and wave clicks only
+    // count on the frame they happen.
+    if (m_Gamemode == Gamemode::UFO || m_Gamemode == Gamemode::WAVE ||
+        (m_IsGrounded && m_Gamemode != Gamemode::BALL)) {
         m_HasBufferedOrb = false;
     }
     m_PreviousPosition = m_Position;
@@ -173,6 +194,7 @@ PlayerSimState Player::saveSimState() const {
         m_HasBounds,
         m_GravityMultiplier,
         m_Gamemode,
+        m_Speed,
         m_Bounds,
         {},
         m_Coins
@@ -198,6 +220,7 @@ void Player::restoreSimState(const PlayerSimState &state) {
     m_HasBounds = state.hasBounds;
     m_GravityMultiplier = state.gravityMultiplier;
     m_Gamemode = state.gamemode;
+    setSpeed(state.speed);
     m_Bounds = state.bounds;
     m_Coins = state.coins;
     m_PressedOrbs.clear();
@@ -218,6 +241,7 @@ void Player::placeCheckpoint() {
         m_TargetRotation,
         m_GravityMultiplier,
         m_Gamemode,
+        m_Speed,
         m_HasBounds,
         m_Bounds,
         background.getColor(),
@@ -237,6 +261,7 @@ void Player::removeCheckpoint() {
 
 void Player::respawn() {
     m_Gamemode = Gamemode::CUBE;
+    m_Trail.clear();
     m_PressedOrbs.clear();
     m_IsDead = false;
     m_IsGrounded = false;
@@ -253,6 +278,8 @@ void Player::respawn() {
         m_GravityMultiplier = 1;
         m_YVelocity = 0;
         m_HasBounds = false;
+        // a fresh attempt always starts at normal speed
+        setSpeed(NORMAL_SPEED);
         for (Trigger &trigger : PlayingState::get().getTriggers()) {
             trigger.reset();
         }
@@ -270,6 +297,7 @@ void Player::respawn() {
         m_GravityMultiplier = latestCheckpoint.gravityMultiplier;
         m_YVelocity = latestCheckpoint.yVelocity;
         m_Gamemode = latestCheckpoint.gamemode;
+        setSpeed(latestCheckpoint.speed);
         m_HasBounds = latestCheckpoint.hasBounds;
         m_Bounds = latestCheckpoint.bounds;
         background.setColor(latestCheckpoint.backgroundColor);
@@ -323,6 +351,48 @@ void Player::updatePhysics(float deltaTime, bool mouseClicked, bool mouseRelease
         m_YVelocity = std::clamp(m_YVelocity / gravityMultiplier, -32.0f, 25.6f) * gravityMultiplier;
         break;
     }
+    case Gamemode::BALL: {
+        // A click (or a press held from the air until it lands) while touching
+        // the floor or the ceiling flips gravity.
+        if (mouseClicked) {
+            m_HasBufferedOrb = true;
+        } else if (mouseReleased) {
+            m_HasBufferedOrb = false;
+        }
+        if (m_IsGrounded && m_HasBufferedOrb) {
+            m_HasBufferedOrb = false;
+            m_GravityMultiplier = -m_GravityMultiplier;
+            m_YVelocity = BALL_FLIP_SPEED * static_cast<float>(m_GravityMultiplier);
+            m_IsGrounded = false;
+        }
+        const float ballGravity = static_cast<float>(m_GravityMultiplier);
+        m_YVelocity += BALL_GRAVITY * ballGravity * deltaTime;
+        m_YVelocity = std::clamp(m_YVelocity, -BALL_MAX_SPEED, BALL_MAX_SPEED);
+        break;
+    }
+    case Gamemode::UFO:
+        // every click is a hop, also in the air
+        if (mouseClicked) {
+            m_HasBufferedOrb = true;
+            m_YVelocity = UFO_HOP * gravityMultiplier;
+            m_IsGrounded = false;
+        } else if (mouseReleased) {
+            m_HasBufferedOrb = false;
+        }
+        m_YVelocity += UFO_GRAVITY * gravityMultiplier * deltaTime;
+        m_YVelocity = std::clamp(m_YVelocity / gravityMultiplier, -UFO_MAX_RISE, UFO_MAX_FALL) * gravityMultiplier;
+        break;
+    case Gamemode::WAVE: {
+        // straight lines at 45 degrees: up while held, down when let go
+        if (mouseClicked) {
+            m_HasBufferedOrb = true;
+        } else if (mouseReleased) {
+            m_HasBufferedOrb = false;
+        }
+        const float slope = m_XVelocity / 0.9f;
+        m_YVelocity = (m_IsMouseHeld ? -slope : slope) * gravityMultiplier;
+        break;
+    }
     }
     m_Hitbox.x += m_XVelocity * deltaTime;
     m_Hitbox.y += m_YVelocity * deltaTime * 0.9f; // why the fuck does gd multiply by 0.9?
@@ -333,7 +403,7 @@ SDL_FRect Player::innerHitbox() const {
 }
 
 void Player::handleCollisions() {
-    if (m_Gamemode == Gamemode::CUBE) {
+    if (m_Gamemode != Gamemode::SHIP) {
         m_IsGrounded = false;
     }
     collideWithGround();
@@ -348,7 +418,7 @@ void Player::handleCollisions() {
             break;
         }
         SDL_FRect probe = m_Hitbox;
-        if (object.getType() == ObjectType::BLOCK && m_Gamemode == Gamemode::CUBE) {
+        if (object.getType() == ObjectType::BLOCK && (m_Gamemode == Gamemode::CUBE || m_Gamemode == Gamemode::BALL)) {
             probe.y -= CONTACT_REACH;
             probe.h += 2 * CONTACT_REACH;
         }
@@ -368,34 +438,71 @@ void Player::handleCollisions() {
 
 void Player::collideWithObject(const Object &object) {
     const SDL_FRect hitbox = object.getHitbox().value();
+    const bool wave = m_Gamemode == Gamemode::WAVE;
     switch (object.getType()) {
     case ObjectType::HAZARD:
-        if (overlaps(m_Hitbox, hitbox)) {
+        // the wave only dies when its small box touches
+        if (overlaps(wave ? innerHitbox() : m_Hitbox, hitbox)) {
             die();
         }
         break;
     case ObjectType::BLOCK:
-        if (m_Gamemode == Gamemode::CUBE) {
+        switch (m_Gamemode) {
+        case Gamemode::CUBE:
+        case Gamemode::BALL:
             collideCubeWithBlock(hitbox);
-        } else {
+            break;
+        case Gamemode::WAVE:
+            collideWaveWithBlock(hitbox);
+            break;
+        default:
             collideShipWithBlock(hitbox);
+            break;
         }
         break;
     case ObjectType::PAD:
-        m_YVelocity = m_PadStrength * m_GravityMultiplier;
+    case ObjectType::PINK_PAD:
+        // the wave flies straight over yellow and pink pads
+        if (wave) {
+            break;
+        }
+        m_YVelocity = (object.getType() == ObjectType::PAD ? m_PadStrength : PINK_PAD_JUMP) * m_GravityMultiplier;
         // A pad wins over the floor touched in the same frame, otherwise a held
         // jump would replace the pad's launch on the next frame.
         m_IsGrounded = false;
         break;
-    case ObjectType::ORB: {
+    case ObjectType::BLUE_PAD:
+        // flips gravity once, with a small push the new way
+        if (m_PressedOrbs.count(&object) == 0) {
+            m_PressedOrbs.insert(&object);
+            setGravity(-m_GravityMultiplier, object);
+            m_YVelocity = BLUE_PAD_PUSH * m_GravityMultiplier;
+        }
+        break;
+    case ObjectType::ORB:
+    case ObjectType::PINK_ORB: {
         const bool orbHasNotBeenPressed = m_PressedOrbs.count(&object) == 0;
-        if (m_HasBufferedOrb && orbHasNotBeenPressed) {
-            m_YVelocity = m_JumpStrength * m_GravityMultiplier;
+        if (!wave && m_HasBufferedOrb && orbHasNotBeenPressed) {
+            m_YVelocity = (object.getType() == ObjectType::ORB ? m_JumpStrength : PINK_ORB_JUMP) * m_GravityMultiplier;
             m_IsGrounded = false;
             m_PressedOrbs.insert(&object);
+            if (m_Gamemode == Gamemode::BALL) {
+                // the ball's click went to the orb, not to a flip on landing
+                m_HasBufferedOrb = false;
+            }
         }
         break;
     }
+    case ObjectType::BLUE_ORB:
+        if (m_HasBufferedOrb && m_PressedOrbs.count(&object) == 0) {
+            m_PressedOrbs.insert(&object);
+            setGravity(-m_GravityMultiplier, object);
+            m_YVelocity = BLUE_ORB_PUSH * m_GravityMultiplier;
+            if (m_Gamemode == Gamemode::BALL) {
+                m_HasBufferedOrb = false;
+            }
+        }
+        break;
     case ObjectType::COIN:
         // Coins never change the movement; the level checker relies on that.
         if (object.getCoinIndex() >= 0 && !hasCoin(object.getCoinIndex())) {
@@ -410,23 +517,14 @@ void Player::collideWithObject(const Object &object) {
             break;
         }
         m_YVelocity /= 2;
-        m_GravityMultiplier = -1;
-        m_IsGrounded = false;
-        // An upside-down cube gets a ceiling to run on, placed like a ship's.
-        if (m_Gamemode == Gamemode::CUBE && !m_HasBounds) {
-            setBounds(object);
-        }
+        setGravity(-1, object);
         break;
     case ObjectType::NORMAL_PORTAL:
         if (m_GravityMultiplier == 1) {
             break;
         }
         m_YVelocity /= 2;
-        m_GravityMultiplier = 1;
-        m_IsGrounded = false;
-        if (m_Gamemode == Gamemode::CUBE) {
-            m_HasBounds = false;
-        }
+        setGravity(1, object);
         break;
     case ObjectType::SHIP_PORTAL:
         if (m_Gamemode != Gamemode::SHIP) {
@@ -436,16 +534,78 @@ void Player::collideWithObject(const Object &object) {
         m_Gamemode = Gamemode::SHIP;
         setBounds(object);
         break;
+    case ObjectType::BALL_PORTAL:
+        if (m_Gamemode != Gamemode::BALL) {
+            m_YVelocity /= 2;
+            m_Gamemode = Gamemode::BALL;
+            m_IsGrounded = false;
+            // a press held from a cube jump is not a flip
+            m_HasBufferedOrb = false;
+        }
+        setBounds(object);
+        break;
+    case ObjectType::UFO_PORTAL:
+        if (m_Gamemode != Gamemode::UFO) {
+            m_YVelocity /= 2;
+            m_Rotation = 0;
+            m_Gamemode = Gamemode::UFO;
+        }
+        setBounds(object);
+        break;
+    case ObjectType::WAVE_PORTAL:
+        if (m_Gamemode != Gamemode::WAVE) {
+            m_Rotation = 0;
+            m_Trail.clear();
+            m_Gamemode = Gamemode::WAVE;
+        }
+        setBounds(object);
+        break;
     case ObjectType::CUBE_PORTAL:
         if (m_Gamemode != Gamemode::CUBE) {
+            if (m_Gamemode != Gamemode::SHIP) {
+                // land square again
+                m_Rotation = std::round(m_Rotation / 90) * 90;
+                m_TargetRotation = m_Rotation;
+            }
             m_YVelocity /= 2;
             m_Gamemode = Gamemode::CUBE;
             m_HasBounds = m_GravityMultiplier == -1;
         }
         break;
+    case ObjectType::SPEED_SLOW:
+        setSpeed(0);
+        break;
+    case ObjectType::SPEED_NORMAL:
+        setSpeed(1);
+        break;
+    case ObjectType::SPEED_FAST:
+        setSpeed(2);
+        break;
+    case ObjectType::SPEED_VERY_FAST:
+        setSpeed(3);
+        break;
     default:
         break;
     }
+}
+
+// Gravity portals, blue orbs and blue pads. An upside-down cube gets a ceiling
+// to run on, placed like a ship's; the right way up it follows the camera again.
+void Player::setGravity(int gravity, const Object &object) {
+    m_GravityMultiplier = gravity;
+    m_IsGrounded = false;
+    if (m_Gamemode == Gamemode::CUBE) {
+        if (gravity == -1 && !m_HasBounds) {
+            setBounds(object);
+        } else if (gravity == 1) {
+            m_HasBounds = false;
+        }
+    }
+}
+
+void Player::setSpeed(int speed) {
+    m_Speed = std::clamp(speed, 0, SPEED_COUNT - 1);
+    m_XVelocity = DEFAULT_X_VELOCITY * SPEED_MULTIPLIERS[m_Speed];
 }
 
 void Player::collideCubeWithBlock(const SDL_FRect &block) {
@@ -484,9 +644,41 @@ void Player::collideShipWithBlock(const SDL_FRect &block) {
     if (m_YVelocity > 0 && m_PreviousPosition.y + TILE <= block.y + CONTACT_REACH && m_Hitbox.y + TILE >= block.y) {
         m_Hitbox.y = block.y - TILE;
         m_YVelocity = 0;
+        // a UFO stands on a block (upside down it hangs under one)
+        if (m_Gamemode == Gamemode::UFO && m_GravityMultiplier == 1) {
+            m_IsGrounded = true;
+        }
     } else if (m_YVelocity < 0 && m_PreviousPosition.y >= blockBottom - CONTACT_REACH && m_Hitbox.y <= blockBottom) {
         m_Hitbox.y = blockBottom;
         m_YVelocity = 0;
+        if (m_Gamemode == Gamemode::UFO && m_GravityMultiplier == -1) {
+            m_IsGrounded = true;
+        }
+    }
+}
+
+// The wave slides along a block it meets from above or below and breaks on its
+// side. Only its small inner box counts.
+void Player::collideWaveWithBlock(const SDL_FRect &block) {
+    if (!overlaps(innerHitbox(), block)) {
+        return;
+    }
+    const float inset = TILE / 3;
+    const float blockBottom = block.y + block.h;
+    if (m_YVelocity > 0 && m_PreviousPosition.y + TILE - inset <= block.y + CONTACT_REACH) {
+        m_Hitbox.y = block.y - TILE + inset;
+        m_YVelocity = 0;
+        if (m_GravityMultiplier == 1) {
+            m_IsGrounded = true;
+        }
+    } else if (m_YVelocity < 0 && m_PreviousPosition.y + inset >= blockBottom - CONTACT_REACH) {
+        m_Hitbox.y = blockBottom - inset;
+        m_YVelocity = 0;
+        if (m_GravityMultiplier == -1) {
+            m_IsGrounded = true;
+        }
+    } else {
+        die();
     }
 }
 
@@ -529,6 +721,39 @@ void Player::collideWithGround() {
             m_YVelocity = 0;
         }
         break;
+    case Gamemode::BALL:
+    case Gamemode::UFO:
+    case Gamemode::WAVE: {
+        // Rolls, stands or slides on the floor and the ceiling. The wave's
+        // small box (a third in from each side) is what touches them.
+        const float inset = m_Gamemode == Gamemode::WAVE ? TILE / 3 : 0.0f;
+        const float floorY = m_HasBounds ? m_Bounds.second : FLOOR_Y;
+        if (m_Hitbox.y + TILE - inset >= floorY) {
+            if (m_GravityMultiplier == 1 && m_YVelocity >= 0) {
+                m_Hitbox.y = floorY - TILE + inset;
+                m_YVelocity = 0;
+                m_IsGrounded = true;
+            } else if (m_Hitbox.y + TILE - inset > floorY) {
+                m_Hitbox.y = floorY - TILE + inset;
+                if (m_YVelocity > 0) {
+                    m_YVelocity = 0;
+                }
+            }
+        }
+        if (m_HasBounds && m_Hitbox.y + inset <= m_Bounds.first) {
+            if (m_GravityMultiplier == -1 && m_YVelocity <= 0) {
+                m_Hitbox.y = m_Bounds.first - inset;
+                m_YVelocity = 0;
+                m_IsGrounded = true;
+            } else if (m_Hitbox.y + inset < m_Bounds.first) {
+                m_Hitbox.y = m_Bounds.first - inset;
+                if (m_YVelocity < 0) {
+                    m_YVelocity = 0;
+                }
+            }
+        }
+        break;
+    }
     }
 }
 
@@ -585,6 +810,86 @@ void Player::updateShipRotation(float deltaTime) {
     }
 }
 
+void Player::updateOtherRotation(float deltaTime) {
+    switch (m_Gamemode) {
+    case Gamemode::BALL:
+        // rolls like a wheel: one turn per 120 pi pixels, backwards on the ceiling
+        m_Rotation += m_GravityMultiplier * m_XVelocity * 0.955f * deltaTime;
+        m_Rotation = std::fmod(m_Rotation, 360.0f);
+        break;
+    case Gamemode::UFO: {
+        // tips a little toward where it is going
+        const float target = std::clamp(m_YVelocity * 0.45f, -12.0f, 12.0f);
+        m_Rotation += (target - m_Rotation) * (1.0f - std::pow(0.8f, deltaTime));
+        break;
+    }
+    case Gamemode::WAVE: {
+        // points along its line, flat while sliding
+        const float target = std::atan2(m_YVelocity * 0.9f, m_XVelocity) * 57.2957795131f;
+        m_Rotation += (target - m_Rotation) * (1.0f - std::pow(0.3f, deltaTime));
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+void Player::updateTrail() {
+    if (m_Gamemode == Gamemode::WAVE) {
+        m_Trail.push_back({ m_Position.x + TILE / 2, m_Position.y + TILE / 2 });
+    }
+    // about five tiles of line; after the wave it shrinks away behind the player
+    const float keepFrom = m_Position.x + TILE / 2 - 5 * TILE;
+    std::size_t drop = 0;
+    while (drop < m_Trail.size() && (m_Trail[drop].x < keepFrom || m_Trail.size() - drop > 120)) {
+        drop++;
+    }
+    m_Trail.erase(m_Trail.begin(), m_Trail.begin() + static_cast<std::ptrdiff_t>(drop));
+}
+
+void Player::renderTrail() const {
+    if (m_Trail.size() < 2) {
+        return;
+    }
+    const SDL_FPoint camera = m_Game->getCameraPosition();
+    const SDL_Color skin = m_Game->getSkinColor(m_Game->getSelectedSkin());
+    const std::size_t count = m_Trail.size();
+    // a ribbon in the skin's colour with a white middle, thin and clear at the old end
+    for (int pass = 0; pass < 2; pass++) {
+        std::vector<SDL_Vertex> vertices;
+        std::vector<int> indices;
+        vertices.reserve(count * 2);
+        for (std::size_t i = 0; i < count; i++) {
+            const SDL_FPoint before = m_Trail[i == 0 ? 0 : i - 1];
+            const SDL_FPoint after = m_Trail[i + 1 < count ? i + 1 : i];
+            float dx = after.x - before.x;
+            float dy = after.y - before.y;
+            const float length = std::sqrt(dx * dx + dy * dy);
+            if (length > 0.001f) {
+                dx /= length;
+                dy /= length;
+            } else {
+                dx = 1;
+                dy = 0;
+            }
+            const float t = static_cast<float>(i) / static_cast<float>(count - 1);
+            const float width = (pass == 0 ? 26.0f : 9.0f) * (0.25f + 0.75f * t);
+            const Uint8 alpha = static_cast<Uint8>((pass == 0 ? 190.0f : 230.0f) * t);
+            const SDL_Color color = pass == 0 ? SDL_Color { skin.r, skin.g, skin.b, alpha } : SDL_Color { 255, 255, 255, alpha };
+            const float x = m_Trail[i].x - camera.x;
+            const float y = m_Trail[i].y - camera.y;
+            vertices.push_back({ { x - dy * width / 2, y + dx * width / 2 }, color, { 0, 0 } });
+            vertices.push_back({ { x + dy * width / 2, y - dx * width / 2 }, color, { 0, 0 } });
+            if (i > 0) {
+                const int a = static_cast<int>(i * 2) - 2;
+                indices.insert(indices.end(), { a, a + 1, a + 2, a + 1, a + 3, a + 2 });
+            }
+        }
+        SDL_SetRenderDrawBlendMode(m_Renderer, SDL_BLENDMODE_BLEND);
+        SDL_RenderGeometry(m_Renderer, nullptr, vertices.data(), static_cast<int>(vertices.size()), indices.data(), static_cast<int>(indices.size()));
+    }
+}
+
 void Player::scrollCamera() {
     static constexpr int CAMERA_SCROLL = Config::TILE_SIZE * 6;
     static constexpr int CAMERA_UP_SCROLL = Config::HEIGHT / 4;
@@ -597,7 +902,7 @@ void Player::scrollCamera() {
     }
 
     // With a floor and a ceiling on screen the camera stays where setBounds put it.
-    if (m_Gamemode == Gamemode::CUBE && !m_HasBounds) {
+    if (m_Gamemode != Gamemode::SHIP && !m_HasBounds) {
         if (m_Position.y - cameraPosition.y < CAMERA_UP_SCROLL) {
             float target = m_Position.y - CAMERA_UP_SCROLL;
             m_Game->smoothCameraYScroll(target);
@@ -625,13 +930,12 @@ void Player::render() const {
         renderDeath(skin);
         return;
     }
-    switch (m_Gamemode) {
-    case Gamemode::CUBE:
+    renderTrail();
+    if (m_Gamemode == Gamemode::CUBE) {
         renderCube(skin);
-        break;
-    case Gamemode::SHIP:
-        renderShip(skin);
-        break;
+    } else {
+        const SDL_FPoint camera = m_Game->getCameraPosition();
+        renderBody(m_Gamemode, m_Game->getSelectedSkin(), m_Position.x - camera.x, m_Position.y - camera.y, m_Rotation, m_GravityMultiplier, 255);
     }
     if (m_Game->showHitboxes()) {
         // full box (spikes, landing) and inner box (block hits)
@@ -662,33 +966,56 @@ void Player::renderCube(SDL_Texture *skin) const {
     SDL_RenderCopyExF(m_Renderer, skin, NULL, &dst, m_Rotation, NULL, SDL_FLIP_NONE);
 }
 
-void Player::renderShip(SDL_Texture *skin) const {
-    const int xDisplacement = (m_ShipWidth - m_Hitbox.w)/2;
-    SDL_FPoint cameraPosition = m_Game->getCameraPosition();
-    float cubeX = m_Position.x - cameraPosition.x + m_Hitbox.w*6/25;
-    float cubeY = m_Position.y - cameraPosition.y + m_Hitbox.w/20;
-    float shipX = m_Position.x - cameraPosition.x - xDisplacement;
-    float shipY = m_Position.y - cameraPosition.y + m_Hitbox.w - m_ShipHeight;
-    if (m_GravityMultiplier == -1) {
-        cubeY = m_Position.y - cameraPosition.y + m_Hitbox.w*2/5;
-        shipY = m_Position.y - cameraPosition.y;
+void Player::renderBody(Gamemode mode, int skinIndex, float x, float y, float rotation, int gravity, Uint8 alpha) const {
+    SDL_Texture *skin = m_Game->getSkinTexture(skinIndex);
+    SDL_SetTextureAlphaMod(skin, alpha);
+    switch (mode) {
+    case Gamemode::CUBE: {
+        const SDL_FRect cube = { x, y, TILE, TILE };
+        SDL_RenderCopyExF(m_Renderer, skin, NULL, &cube, rotation, NULL, SDL_FLIP_NONE);
+        break;
     }
-    const SDL_FRect cubeDST = {
-        cubeX,
-        cubeY,
-        static_cast<float>(m_Hitbox.w*14/25),
-        static_cast<float>(m_Hitbox.w*14/25)
-    };
-    const SDL_FRect shipDST = {
-        shipX,
-        shipY,
-        static_cast<float>(m_ShipWidth),
-        static_cast<float>(m_ShipHeight)
-    };
-    const SDL_FPoint cubeCenter = {shipDST.x + shipDST.w / 2 - cubeDST.x, shipDST.y + shipDST.h / 2 - cubeDST.y};
-    const SDL_RendererFlip flip = m_GravityMultiplier == 1 ? SDL_FLIP_NONE : SDL_FLIP_VERTICAL;
-    SDL_RenderCopyExF(m_Renderer, skin, NULL, &cubeDST, m_Rotation, &cubeCenter, flip);
-    SDL_RenderCopyExF(m_Renderer, m_ShipTexture, NULL, &shipDST, m_Rotation, NULL, flip);
+    case Gamemode::SHIP:
+    case Gamemode::UFO: {
+        // the small cube sits in the cockpit (ship) or the glass cup (UFO):
+        // both pictures are 149 x 88 with the same seat
+        SDL_Texture *body = mode == Gamemode::SHIP ? m_ShipTexture : m_UfoTexture;
+        const float bodyWidth = static_cast<float>(m_ShipWidth);
+        const float bodyHeight = static_cast<float>(m_ShipHeight);
+        const float xDisplacement = std::trunc((bodyWidth - TILE) / 2);
+        const SDL_FRect cube = { x + TILE * 6 / 25, gravity == 1 ? y + TILE / 20 : y + TILE * 2 / 5, TILE * 14 / 25, TILE * 14 / 25 };
+        const SDL_FRect frame = { x - xDisplacement, gravity == 1 ? y + TILE - bodyHeight : y, bodyWidth, bodyHeight };
+        const SDL_FPoint center = { frame.x + frame.w / 2 - cube.x, frame.y + frame.h / 2 - cube.y };
+        const SDL_RendererFlip flip = gravity == 1 ? SDL_FLIP_NONE : SDL_FLIP_VERTICAL;
+        SDL_SetTextureAlphaMod(body, alpha);
+        SDL_RenderCopyExF(m_Renderer, skin, NULL, &cube, rotation, &center, flip);
+        SDL_RenderCopyExF(m_Renderer, body, NULL, &frame, rotation, NULL, flip);
+        SDL_SetTextureAlphaMod(body, 255);
+        break;
+    }
+    case Gamemode::BALL: {
+        // the cube looks out of the round window (64 x 64 at 28, 28) and both spin together
+        const SDL_FRect face = { x + 28, y + 28, 64, 64 };
+        const SDL_FRect shell = { x, y, TILE, TILE };
+        SDL_SetTextureAlphaMod(m_BallTexture, alpha);
+        SDL_RenderCopyExF(m_Renderer, skin, NULL, &face, rotation, NULL, SDL_FLIP_NONE);
+        SDL_RenderCopyExF(m_Renderer, m_BallTexture, NULL, &shell, rotation, NULL, SDL_FLIP_NONE);
+        SDL_SetTextureAlphaMod(m_BallTexture, 255);
+        break;
+    }
+    case Gamemode::WAVE: {
+        // the dart takes a light shade of the skin's colour
+        const SDL_Color color = m_Game->getSkinColor(skinIndex);
+        const auto light = [](Uint8 channel) { return static_cast<Uint8>(255 - (255 - channel) * 0.55f); };
+        const SDL_FRect dart = { x + 15, y + 15, 90, 90 };
+        SDL_SetTextureColorMod(m_WaveTexture, light(color.r), light(color.g), light(color.b));
+        SDL_SetTextureAlphaMod(m_WaveTexture, alpha);
+        SDL_RenderCopyExF(m_Renderer, m_WaveTexture, NULL, &dart, rotation, NULL, SDL_FLIP_NONE);
+        SDL_SetTextureAlphaMod(m_WaveTexture, 255);
+        break;
+    }
+    }
+    SDL_SetTextureAlphaMod(skin, 255);
 }
 
 float Player::debrisFloor(float x, float fromY) const {

@@ -6,10 +6,19 @@
 #include <set>
 #include <utility>
 
+// The numbers are sent to friends in an online race (online.mjs "m").
 enum class Gamemode {
     CUBE,
-    SHIP
+    SHIP,
+    BALL,
+    UFO,
+    WAVE
 };
+
+// Speed gates: 1 arrow slow, 2 normal, 3 fast, 4 very fast.
+constexpr int SPEED_COUNT = 4;
+constexpr int NORMAL_SPEED = 1;
+constexpr float SPEED_MULTIPLIERS[SPEED_COUNT] = { 0.8f, 1.0f, 1.25f, 1.5f };
 
 struct Checkpoint {
     SDL_FPoint position;
@@ -19,6 +28,7 @@ struct Checkpoint {
     float targetRotation;
     int gravityMultiplier;
     Gamemode gamemode;
+    int speed;
     bool hasBounds;
     std::pair<float, float> bounds;
     std::array<float, 3> backgroundColor;
@@ -45,6 +55,7 @@ struct PlayerSimState {
     bool hasBounds;
     int gravityMultiplier;
     Gamemode gamemode;
+    int speed;
     std::pair<float, float> bounds;
     std::vector<int> pressedOrbs;
     int coins;
@@ -77,13 +88,19 @@ public:
     void die();
     bool isDead() const;
     void render() const;
+    // Draws a body for the given mode with its top-left corner at (x, y) on
+    // screen; friends' ghosts in an online race use it too.
+    void renderBody(Gamemode mode, int skin, float x, float y, float rotation, int gravity, Uint8 alpha) const;
     Gamemode getGamemode() const;
+    inline int getSpeed() const { return m_Speed; }
+    inline float getSpeedMultiplier() const { return SPEED_MULTIPLIERS[m_Speed]; }
     inline int getGravityMultiplier() const { return m_GravityMultiplier; }
     inline SDL_FPoint getPosition() const { return m_Position; }
     inline float getYVelocity() const { return m_YVelocity; }
     inline float getRotation() const { return m_Rotation; }
     inline bool isGrounded() const { return m_IsGrounded; }
-    // Ship sections and upside-down cube sections have a visible floor and ceiling.
+    // Ship, ball, UFO and wave sections and upside-down cube sections have a
+    // visible floor and ceiling.
     inline bool hasBounds() const { return m_Gamemode == Gamemode::SHIP || m_HasBounds; }
     inline std::pair<float, float> getBounds() const { return m_Bounds; }
     inline bool hasCoin(int index) const { return (m_Coins >> index) & 1; }
@@ -95,6 +112,9 @@ private:
     SDL_Texture *m_ShipTexture;
     int m_ShipWidth;
     int m_ShipHeight;
+    SDL_Texture *m_BallTexture;
+    SDL_Texture *m_UfoTexture;
+    SDL_Texture *m_WaveTexture;
     SDL_Texture *m_CheckpointTexture;
     Mix_Chunk *m_DeathSound;
     Mix_Chunk *m_CoinSound;
@@ -103,10 +123,23 @@ private:
     SDL_FPoint m_Position;
     SDL_FPoint m_PreviousPosition;
     float m_XVelocity = DEFAULT_X_VELOCITY;
+    int m_Speed = NORMAL_SPEED;
     float m_YVelocity;
     float m_JumpStrength = -44.72f;
     float m_PadStrength = -64;
     float m_Gravity = 3.456f;
+    // Our own numbers for the other modes, orbs and pads (60 fps frames).
+    static constexpr float PINK_ORB_JUMP = -32.0f;
+    static constexpr float PINK_PAD_JUMP = -42.0f;
+    static constexpr float BLUE_ORB_PUSH = 12.0f;
+    static constexpr float BLUE_PAD_PUSH = 16.0f;
+    static constexpr float BALL_GRAVITY = 2.2f;
+    static constexpr float BALL_FLIP_SPEED = 12.0f;
+    static constexpr float BALL_MAX_SPEED = 44.0f;
+    static constexpr float UFO_GRAVITY = 2.3f;
+    static constexpr float UFO_HOP = -30.0f;
+    static constexpr float UFO_MAX_RISE = 60.0f;
+    static constexpr float UFO_MAX_FALL = 30.0f;
     float m_RotationAdder = 6.92308f;
     float m_Rotation;
     float m_TargetRotation;
@@ -137,15 +170,22 @@ private:
     void collideWithObject(const Object &object);
     void collideCubeWithBlock(const SDL_FRect &block);
     void collideShipWithBlock(const SDL_FRect &block);
+    void collideWaveWithBlock(const SDL_FRect &block);
     void setBounds(const Object &portal);
+    void setGravity(int gravity, const Object &object);
+    void setSpeed(int speed);
     SDL_FRect innerHitbox() const;
     void activateTriggers(std::vector<Trigger> &triggers);
     void updateCubeRotation(float deltaTime);
     void updateShipRotation(float deltaTime);
+    void updateOtherRotation(float deltaTime);
     void scrollCamera();
     void renderCube(SDL_Texture *skin) const;
-    void renderShip(SDL_Texture *skin) const;
     void renderDeath(SDL_Texture *skin) const;
+    // The wave leaves a short fading line behind it (world positions).
+    std::vector<SDL_FPoint> m_Trail;
+    void updateTrail();
+    void renderTrail() const;
     // Death powder (the designer's sketch: it falls and piles up after a second):
     // little shapes in the skin's colour that drop onto the floor or the blocks.
     struct Debris {

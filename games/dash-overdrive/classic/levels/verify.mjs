@@ -6,7 +6,7 @@
 // node games/dash-overdrive/classic/levels/verify.mjs [--engine] [level numbers...]
 import {readFileSync} from 'node:fs';
 import {parseLevel, newPlayer, step} from './physics.mjs';
-import {shipBot, pathFrom, tapHeld, TRACKS} from './generate.mjs';
+import {BOTS, pathFrom, tapHeld, TRACKS} from './generate.mjs';
 
 const f = Math.fround;
 const args = process.argv.slice(2);
@@ -53,17 +53,19 @@ function replay(level, inputs, dts) {
   return {status: 0, x: player.x, coins: taken.size};
 }
 
-// Plays the level's taps and flies its ship parts with the bot, like a player would.
+// Plays the level's taps and flies its ship, UFO and wave parts with the
+// bots, like a player would.
 function live(level, entry, dts) {
   const player = newPlayer();
-  const bots = entry.shipPaths.map(waypoints => ({from: waypoints[0][0], to: waypoints.at(-1)[0], bot: shipBot(pathFrom(waypoints))}));
+  const flights = [...entry.shipPaths.map(waypoints => ({mode: 'ship', waypoints})), ...(entry.flights || [])];
+  const bots = flights.map(({mode, waypoints}) => ({mode, from: waypoints[0][0], to: waypoints.at(-1)[0], bot: BOTS[mode](pathFrom(waypoints))}));
   const inputs = [];
   let ticks = 0;
   for (let i = 0; i < dts.length; i++) {
     const dt = dts[i];
     let held = tapHeld(entry.taps, Math.round(ticks));
-    if (player.ship) {
-      const flight = bots.find(b => player.x >= b.from - 480 && player.x <= b.to + 480);
+    if (BOTS[player.mode]) {
+      const flight = bots.find(b => b.mode === player.mode && player.x >= b.from - 480 && player.x <= b.to + 480);
       if (flight) held = flight.bot(player, dt);
     }
     inputs.push(held ? 1 : 0);
