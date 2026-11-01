@@ -5,7 +5,9 @@
 import {chromium} from '../../../tools/node_modules/playwright/index.mjs';
 import assert from 'node:assert/strict';
 const base = process.env.BASE_URL || 'http://127.0.0.1:4173';
-const url = `${base}/play/dash-overdrive/classic/index.html?net=${process.env.NET_URL || 'http://127.0.0.1:8787'}`;
+// NET_URL=default uses the real room server (only for one check after a deploy)
+const net = process.env.NET_URL || 'http://127.0.0.1:8787';
+const url = `${base}/play/dash-overdrive/classic/index.html${net === 'default' ? '' : `?net=${net}`}`;
 const browser = await chromium.launch({headless: true});
 const errors = [];
 async function player(skin) {
