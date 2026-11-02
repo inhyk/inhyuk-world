@@ -63,6 +63,7 @@ tools/node_modules/
 
 # Generated FREE DRIVE game
 /public/play/free-drive/
+/public/play/social-game/
 
 # Generated MINERAL VALLEY
 /public/play/mineral-valley/
