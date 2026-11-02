@@ -9,7 +9,7 @@ import { LAYOUT } from './world.js';
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const OUTFIT_FOR = { work: 'suit', dinner: 'suit', visit: 'suit', trip: 'beach' };
+const OUTFIT_FOR = { work: 'suit', dinner: 'suit', visit: 'suit', trip: 'beach', trip2: 'beach' };
 
 export class Day {
   constructor(g) {
@@ -63,7 +63,7 @@ export class Day {
     const st = this.step;
     const from = Math.max(0, Math.min(this.s.step - 1, this.steps.length - 6));
     const list = this.steps.map((x, i) => ({ label: x.label + (x.count ? ` (${Math.min(this.s.counts[x.id] ?? 0, x.count)}/${x.count})` : ''), done: i < this.s.step, now: i === this.s.step })).slice(from, from + 6);
-    const title = { work: '평범한 출근 날', dinner: '오늘은 회식 날', visit: '오늘은 출장 날', trip: '주말 여행' }[this.kind];
+    const title = { work: '평범한 출근 날', dinner: '오늘은 회식 날', visit: '오늘은 출장 날', trip: '일본 여행 1일째', trip2: '일본 여행 2일째' }[this.kind];
     this.g.hud.quest(st ? st.text : '오늘 할 일 끝! 자유롭게 놀아요', list);
     this.g.hud.clock(`${this.s.day}일차 · ${weekday(this.s.day)} · ${title}`, formatClock(this.s.hour), this.s.money);
   }
@@ -190,6 +190,52 @@ export class Day {
       case 'grill':
         if (now) await this.grill(it); else hud.toast(this.kind === 'dinner' ? '회식은 퇴근하고 해요' : '오늘은 회식 날이 아니에요');
         break;
+      case 'board': {
+        const toJapan = it.site === 'airport';
+        if (!this.g.flight) { hud.toast('비행기 준비 중이에요'); break; }
+        this.busy = true;
+        await this.g.flight.fly(it.site, toJapan ? 'jpAirport' : 'airport', toJapan ? '일본으로 날아가는 중 ✈️ 창밖을 봐요!' : '집으로 돌아가는 중 ✈️');
+        this.busy = false;
+        if (st && st.id === (toJapan ? 'fly-japan' : 'fly-home')) this.complete(st.id);
+        hud.toast(toJapan ? '일본 도착! 사쿠라 공항이에요 🇯🇵' : '우리 동네 도착! 주차장에 차가 있어요', 3000);
+        break;
+      }
+      case 'pray':
+        this.g.sfx('cheers');
+        hud.toast('짝짝! 소원을 빌었어요: 내일도 즐거운 하루 🙏', 2600);
+        break;
+      case 'ramen': {
+        const bowl = this.g.places.sites.ramen?.extra?.bowl;
+        this.sit(it);
+        this.busy = true;
+        await wait(1600);
+        for (let i = 0; i < 3; i++) { this.g.sfx('eat'); await wait(450); }
+        if (bowl) bowl.visible = false;
+        eat(s, 50);
+        hud.toast('후루룩! 라멘 최고 🍜 (배고픔 +50)', 2400);
+        await wait(1300);
+        this.busy = false;
+        this.stand();
+        setTimeout(() => { if (bowl) bowl.visible = true; }, 60000);
+        if (now) this.complete('ramen');
+        break;
+      }
+      case 'souvenir':
+        if (s.money < 10000) { hud.toast('돈이 모자라요 (10,000원)'); break; }
+        s.money -= 10000; s.souvenirs = (s.souvenirs ?? 0) + 1; this.g.sfx('coin');
+        hud.toast('마네키네코 인형을 샀다! 🐱 -10,000원', 2600);
+        if (now) this.complete('souvenir');
+        break;
+      case 'futon':
+        if ((st && st.id === 'ryokan') || s.hour >= 21.5) { if (st && st.id === 'ryokan') this.s.step++; await this.sleep('ryokan'); }
+        else hud.toast(st && st.id === 'wake' ? '좋은 아침! 온천 하러 가요' : '아직 잘 시간이 아니에요');
+        break;
+      case 'onsen':
+        await this.fadeAction('♨️ 따끈따끈 온천… 아 좋다~', 'water', 1800);
+        s.hp = 100;
+        hud.toast('온천 끝! 체력이 꽉 찼어요', 2400);
+        if (now) this.complete('onsen');
+        break;
       default:
         hud.toast(it.label);
     }
@@ -214,8 +260,9 @@ export class Day {
   }
 
   // ------------------------------------------------------------------ sleeping and mornings
-  async sleep() {
+  async sleep(where = 'home') {
     this.busy = true;
+    this.s.wakeAt = where;
     const f = $('fade');
     f.textContent = '쿨쿨… 💤';
     f.classList.add('on');
@@ -228,7 +275,7 @@ export class Day {
     s.food = Math.max(25, s.food - 15);
     s.hp = Math.min(100, s.hp + 30);
     s.broken = [];
-    this.setOutfit('pajama');
+    if (where === 'home') this.setOutfit('pajama');
     this.g.onNewDay?.();
     this.wakeUp();
     f.textContent = `${s.day}일차 · ${weekday(s.day)}`;
@@ -236,14 +283,20 @@ export class Day {
     f.classList.remove('on');
     this.busy = false;
     this.g.sfx('alarm');
-    this.g.hud.toast(this.kind === 'trip' ? '주말이다! 오늘은 바다 여행 🌊' : this.kind === 'dinner' ? '따르릉! 오늘은 회식 날이에요' : this.kind === 'visit' ? '따르릉! 오늘은 별빛테크로 출장!' : '따르릉! 일어날 시간이에요', 3000);
+    this.g.hud.toast(this.kind === 'trip' ? '주말이다! 오늘은 일본 여행 ✈️' : this.kind === 'trip2' ? '료칸에서 맞는 아침! 🇯🇵' : this.kind === 'dinner' ? '따르릉! 오늘은 회식 날이에요' : this.kind === 'visit' ? '따르릉! 오늘은 별빛테크로 출장!' : '따르릉! 일어날 시간이에요', 3000);
     this.g.save();
   }
 
   /** Put the player beside the bed and the car on the driveway. */
   wakeUp() {
-    const home = this.g.places.sites.home;
     const pl = this.g.player;
+    const ry = this.g.places.sites.ryokan;
+    if (this.s.wakeAt === 'ryokan' && ry?.spawn) {
+      const [x, y, z] = xformPt(ry, ry.spawn.pos);
+      pl.place(x, y, z, (ry.spawn.yaw ?? 0) + ry.worldYaw);
+      return;
+    }
+    const home = this.g.places.sites.home;
     if (home?.spawn) {
       const [x, y, z] = xformPt(home, home.spawn.pos);
       pl.place(x, y, z, (home.spawn.yaw ?? 0) + home.worldYaw);
@@ -479,10 +532,17 @@ export class Day {
     const d = document.createElement('div');
     d.id = 'photo';
     const atBeach = this.g.player.pos.x < LAYOUT.beachX;
-    d.innerHTML = `<img src="${url}" alt="사진"><div>${atBeach ? '🌊 바다 여행' : '📷 찰칵'} · ${this.s.day}일차</div>`;
+    const jp = this.g.player.pos.x > 1500;
+    d.innerHTML = `<img src="${url}" alt="사진"><div>${jp ? '🇯🇵 일본 여행' : atBeach ? '🌊 바다' : '📷 찰칵'} · ${this.s.day}일차</div>`;
     document.body.appendChild(d);
     setTimeout(() => d.remove(), 2600);
     if (atBeach && this.step?.id === 'photo') this.complete('photo');
+    const shrine = this.g.places.sites.shrine;
+    if (shrine && this.step?.id === 'photo-jp') {
+      const c = new THREE.Vector3(...shrine.worldPos);
+      if (Math.hypot(this.g.player.pos.x - c.x, this.g.player.pos.z - c.z) < 32) this.complete('photo-jp');
+      else this.g.hud.toast('신사(빨간 문) 가까이 가서 찍어요', 1800);
+    }
   }
 }
 

@@ -5,7 +5,8 @@ export const DAY_NAMES = ['월요일', '화요일', '수요일', '목요일', '�
 /** What kind of day is day n (1-based)? Day 1 is a Monday. */
 export function dayKind(n) {
   const w = (n - 1) % 7; // 0 Mon .. 6 Sun
-  if (w === 5 || w === 6) return 'trip';     // 주말: 바다 여행
+  if (w === 5) return 'trip';                // 토요일: 일본 여행 첫째 날
+  if (w === 6) return 'trip2';               // 일요일: 일본 여행 둘째 날, 집으로
   if (w === 2) return 'dinner';              // 수요일: 회식
   if (w === 3) return 'visit';               // 목요일: 다른 회사 출장
   return 'work';
@@ -27,12 +28,24 @@ export function stepsFor(kind) {
   ];
   if (kind === 'trip') {
     return [
-      { id: 'wake', label: '일어나기', text: '주말이다! 오늘은 바다로 여행 가는 날', target: 'home:bed', auto: true },
+      { id: 'wake', label: '일어나기', text: '주말이다! 오늘은 일본으로 여행 가는 날 ✈️', target: 'home:bed', auto: true },
       { id: 'wardrobe', label: '여행 옷 입기', text: '옷장에서 여행 옷을 입어요', target: 'home:wardrobe' },
-      { id: 'drive-beach', label: '차 타고 바다 가기', text: '차 타고 바다로 가세요 (서쪽 끝)', target: 'beach:arrive' },
-      { id: 'photo', label: '바다 사진 찍기', text: '바다 앞에서 사진을 찍어요 (P)', target: 'beach:photo' },
-      { id: 'shells', label: '조개 5개 줍기', text: '모래밭에서 조개를 5개 주워요 (왼쪽 클릭)', target: 'beach:shells', count: 5 },
-      { id: 'pension', label: '펜션에서 자기', text: '바다 펜션에서 자요', target: 'pension:hotelBed' },
+      { id: 'drive-airport', label: '차 타고 공항 가기', text: '차 타고 세온 국제공항으로 가세요 (동쪽 끝)', target: 'airport:door' },
+      { id: 'fly-japan', label: '비행기 타고 일본 가기', text: '탑승구에서 비행기를 타요', target: 'airport:board' },
+      { id: 'photo-jp', label: '신사에서 사진 찍기', text: '빨간 도리이 앞에서 사진을 찍어요 (P)', target: 'shrine:photo' },
+      { id: 'ramen', label: '라멘 먹기', text: '라멘 가게에서 라멘을 먹어요', target: 'ramen:ramen' },
+      { id: 'souvenir', label: '기념품 사기', text: '기념품 가게에서 선물을 사요', target: 'souvenir:souvenir' },
+      { id: 'ryokan', label: '료칸에서 자기', text: '료칸(일본 여관)에서 자요', target: 'ryokan:futon' },
+    ];
+  }
+  if (kind === 'trip2') {
+    return [
+      { id: 'wake', label: '일어나기', text: '료칸에서 맞는 아침! 오늘은 집에 가는 날', target: 'ryokan:futon', auto: true },
+      { id: 'onsen', label: '온천 하기', text: '료칸 마당의 온천에 들어가요', target: 'ryokan:onsen' },
+      { id: 'fly-home', label: '비행기 타고 집에 가기', text: '사쿠라 공항에서 비행기를 타요', target: 'jpAirport:board' },
+      { id: 'drive-home', label: '차 타고 집에 가기', text: '공항 주차장에서 차를 타고 집으로 가요', target: 'home:door' },
+      { id: 'shower', label: '씻기', text: '욕실에서 씻어요', target: 'home:shower' },
+      { id: 'sleep', label: '잠자기', text: '침대에서 자요. 여행 재밌었다!', target: 'home:bed' },
     ];
   }
   const work = kind === 'visit'
@@ -57,7 +70,7 @@ export function stepsFor(kind) {
 /** Clock time each step sets when it is finished (time skips), or null to let time flow. */
 export const STEP_TIME = {
   wake: 7.0, 'drive-work': 9.0, work: 12.0, lunch: 13.0, work2: 18.0, meeting: 15.0, dinner: 21.0,
-  shower: 22.0, 'drive-beach': 11.0, photo: 15.0, shells: 18.6,
+  shower: 22.0, 'drive-airport': 10.0, 'photo-jp': 15.0, ramen: 18.5, souvenir: 19.5, onsen: 10.0, 'drive-home': 17.0, 'fly-japan': 13.0, 'fly-home': 15.0,
 };
 
 export function newState() {

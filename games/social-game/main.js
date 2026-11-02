@@ -15,7 +15,9 @@ import { Minimap } from './src/minimap.js';
 import { Vehicle } from './src/vehicle.js';
 import { Life } from './src/life.js';
 import { Day } from './src/quests.js';
-import { dressTown } from './src/deco.js';
+import { dressTown, dressJapan } from './src/deco.js';
+import { Flight } from './src/flight.js';
+import { Cloud } from './src/cloud.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize, dayKind } from './core.mjs';
 
@@ -45,7 +47,7 @@ async function boot() {
   pct(5); await frame();
 
   const props = {};
-  for (const name of ['nature', 'street', 'car', 'character', 'blocks']) props[name] = await optional(propMods, `./src/props/${name}.js`);
+  for (const name of ['nature', 'street', 'car', 'character', 'blocks', 'airplane', 'japan']) props[name] = await optional(propMods, `./src/props/${name}.js`);
   pct(20, 'props'); await frame();
 
   let state = deserialize(localStorage.getItem(SAVE_KEY) ?? '') ?? newState();
@@ -70,11 +72,15 @@ async function boot() {
     pct(30 + (k / SITES.length) * 40, def.key);
     await frame();
     if (!mod?.[def.fn]) continue;
-    try { places.add(def, await mod[def.fn]()); } catch (e) { console.warn('site failed', def.key, e); }
+    try { places.add(def, await mod[def.fn](def.args)); } catch (e) { console.warn('site failed', def.key, e); }
   }
   // town dressing (needs site footprints)
   let deco = { breakables: [], scatters: [] };
   try { deco = dressTown({ scene: engine.scene, props, build, colliders: col, lights, quality: engine.quality }); } catch (e) { console.warn('deco failed', e); }
+  let jdeco = { scatters: [], breakables: [], fuji: null };
+  try { jdeco = dressJapan({ scene: engine.scene, props, build, colliders: col, lights, quality: engine.quality, places }); } catch (e) { console.warn('japan deco failed', e); }
+  deco.scatters.push(...jdeco.scatters);
+  deco.breakables.push(...jdeco.breakables);
   pct(80, 'deco'); await frame();
 
   // player, car, people
@@ -102,10 +108,29 @@ async function boot() {
 
   // saved blocks and broken things
   for (const b of state.placed ?? []) build.placeBlock(b.id, b.x, b.y, b.z, b.rot ?? 0, false);
-  const save = () => {
+  let cloud = null;
+  let replacing = false; // a server save is being loaded: never write the old game over it
+  // saveLocal: this computer only (timer, closing the tab). save: also the server, after real progress.
+  const saveLocal = () => {
+    if (replacing) return;
     state.placed = build.dump();
     try { localStorage.setItem(SAVE_KEY, serialize(state)); } catch { /* storage full or blocked */ }
   };
+  const save = () => { if (replacing) return; saveLocal(); cloud?.queue(); };
+  cloud = new Cloud({
+    getState: () => { state.placed = build.dump(); const { v, ...rest } = JSON.parse(serialize(state)); void v; return rest; },
+    applyState: (data) => { replacing = true; try { localStorage.setItem(SAVE_KEY, serialize({ ...newState(), ...data })); } catch { /* blocked */ } location.reload(); },
+    toast: (t) => hud.toast(t, 2600),
+    choose: (localText, serverText) => new Promise((resolve) => {
+      $('pick-local').textContent = `💻 이 컴퓨터 기록: ${localText}`;
+      $('pick-server').textContent = `☁️ 서버 기록: ${serverText}`;
+      $('choose').classList.remove('hidden');
+      document.exitPointerLock?.();
+      const done = (v) => { $('choose').classList.add('hidden'); resolve(v); };
+      $('pick-local').onclick = () => done('local');
+      $('pick-server').onclick = () => done('server');
+    }),
+  });
   let saveTimer = null;
   build.onChange = () => { clearTimeout(saveTimer); saveTimer = setTimeout(save, 800); };
   build.onBreakProp = (e) => {
@@ -116,6 +141,8 @@ async function boot() {
 
   const minimap = new Minimap($('minimap'));
   const day = new Day({ state, hud, places, player, vehicle, sky, engine, sfx, build, input, save, life });
+  const flight = new Flight({ engine, player, build, hud, sfx, places, life, state, props, sky });
+  day.g.flight = flight;
   day.g.onNewDay = () => {
     // trees, bushes and shells grow back every morning
     for (const e of deco.breakables) if (e.broken) {
@@ -151,6 +178,8 @@ async function boot() {
   $('btn-view').addEventListener('click', toggleView);
   $('btn-help').addEventListener('click', () => $('help').classList.toggle('hidden'));
   setupTouch(input);
+  setupLogin(cloud, input, hud);
+  if (cloud.loggedIn) cloud.sync();
 
   // ------------------------------------------------------------------ frame
   let hurtT = 0;
@@ -166,8 +195,10 @@ async function boot() {
     if (input.hit('KeyV')) toggleView();
     if (input.hit('KeyH')) $('help').classList.toggle('hidden');
     if (input.hit('KeyM')) minimap.toggle();
+    if (input.hit('KeyL')) openLogin();
     if (input.hit('KeyP') && !day.seat) day.photo();
     const driving = vehicle?.driving;
+    flight.update(dt, input);
     // movement
     if (!driving) player.update(dt);
     if (vehicle) {
@@ -184,7 +215,7 @@ async function boot() {
     }
     // E: car, doors, things
     let prompt = '', action = null;
-    if (!day.seat && !day.busy) {
+    if (!day.seat && !day.busy && !flight.active) {
       if (driving) {
         if (Math.abs(vehicle.speed) < 2) { prompt = '차에서 내리기'; action = () => { vehicle.driving = false; const p = vehicle.exitPoint(); player.place(p.x, Math.max(p.y, groundAt(p.x, p.z)) + 0.05, p.z, vehicle.yaw); if (player.avatar) player.avatar.group.visible = player.view === 'third'; if (player.arm) player.arm.group.visible = player.view === 'first'; sfx('carDoor'); }; }
       } else {
@@ -219,14 +250,15 @@ async function boot() {
       player.arm.hold(p);
     }
     // body, time, world
-    const inside = places.inside(player.pos);
+    const inside = flight.active ? 'plane' : places.inside(player.pos);
     tickBody(state, dt, { running: player.speed > 5.5 && !driving, sleeping: day.busy });
     day.update(dt);
     sky.indoor = inside ? 1 : 0;
     // ambient occlusion matters most in rooms and costs a lot outside, so it runs indoors only
     if (engine.gtao) engine.gtao.enabled = !!inside || !!day.seat;
     sky.setHour(state.hour);
-    sky.focus.copy(driving ? vehicle.pos : player.pos);
+    if (!flight.active) sky.focus.copy(driving ? vehicle.pos : player.pos);
+    if (jdeco.fuji) { const fm = jdeco.fuji.material; fm.emissive.copy(engine.scene.fog.color).multiplyScalar(0.55); fm.color.setScalar(0.35 + 0.4 * sky.daylight); }
     sky.update(dt, t);
     const night = 1 - sky.daylight;
     lights.update(dt, engine.camera.position, night, inside);
@@ -253,15 +285,59 @@ async function boot() {
     minimap.draw(player.pos, driving ? vehicle.yaw : player.yaw, vehicle && !driving ? vehicle.pos : null, day.target());
   });
   engine.onUpdate((dt) => {
-    if (vehicle?.driving) vehicle.updateCamera(dt, player.view, look);
+    if (flight.active) { /* flight.update placed the camera */ }
+    else if (vehicle?.driving) vehicle.updateCamera(dt, player.view, look);
     else if (!day.seat) player.updateCamera(dt);
     input.endFrame();
   }, true);
   engine.start();
-  addEventListener('beforeunload', save);
-  setInterval(save, 15000);
-  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, kind: () => dayKind(state.day) };
+  addEventListener('beforeunload', saveLocal);
+  setInterval(saveLocal, 15000);
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, kind: () => dayKind(state.day) };
   window.__ready = true;
+}
+
+let openLogin = () => {};
+function setupLogin(cloud, input, hud) {
+  const box = $('login'), err = $('login-err');
+  const refresh = () => {
+    const on = cloud.loggedIn;
+    $('login-out').classList.toggle('hidden', on);
+    $('login-in').classList.toggle('hidden', !on);
+    $('me-nick').textContent = cloud.nickname;
+    $('cloud-status').textContent = cloud.statusText || '';
+    $('btn-login').textContent = on ? `👤 ${cloud.nickname}` : '👤 로그인';
+    $('who').textContent = on ? `${cloud.nickname} 님으로 로그인했어요 · 서버에 저장돼요` : '로그인하면 다른 컴퓨터에서도 이어서 할 수 있어요';
+    $('btn-login-start').textContent = on ? '계정' : '로그인';
+  };
+  cloud.onStatus = refresh;
+  openLogin = () => { err.textContent = ''; refresh(); box.classList.remove('hidden'); input.enabled = false; document.exitPointerLock?.(); setTimeout(() => (cloud.loggedIn ? null : $('nick').focus()), 50); };
+  const close = () => { box.classList.add('hidden'); input.enabled = true; };
+  $('btn-login').addEventListener('click', openLogin);
+  $('btn-login-start').addEventListener('click', openLogin);
+  $('login-close').addEventListener('click', close);
+  const go = async (kind) => {
+    const n = $('nick').value.trim(), p = $('pw').value;
+    if (n.length < 2 || p.length < 4) { err.textContent = '닉네임은 2글자, 비밀번호는 4글자 이상이에요.'; return; }
+    err.textContent = kind === 'signup' ? '계정 만드는 중…' : '로그인 중…';
+    for (const b of box.querySelectorAll('button')) b.disabled = true;
+    try {
+      await (kind === 'signup' ? cloud.signup(n, p) : cloud.login(n, p));
+      $('pw').value = '';
+      err.textContent = '';
+      hud.toast(kind === 'signup' ? `환영해요, ${cloud.nickname}! 계정을 만들었어요` : `${cloud.nickname} 님 안녕! 로그인했어요`, 2600);
+      refresh();
+    } catch (e) {
+      err.textContent = e?.message && !/^[a-z-]+$/.test(e.message) ? e.message : '로그인이 안 됐어요. 인터넷을 확인하고 다시 해 봐요.';
+    }
+    for (const b of box.querySelectorAll('button')) b.disabled = false;
+  };
+  $('do-login').addEventListener('click', () => go('login'));
+  $('do-signup').addEventListener('click', () => go('signup'));
+  for (const id of ['nick', 'pw']) $(id).addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.isComposing) go('login'); });
+  $('do-save').addEventListener('click', () => cloud.upload());
+  $('do-logout').addEventListener('click', async () => { await cloud.logout(); hud.toast('로그아웃했어요. 이 컴퓨터에는 계속 저장돼요', 2400); refresh(); });
+  refresh();
 }
 
 function setupTouch(input) {

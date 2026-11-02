@@ -11,11 +11,24 @@ export class Minimap {
   draw(player, yaw, car, target) {
     const g = this.g, W = this.c.width, H = this.c.height;
     const scale = this.big ? 0.75 : 1.25; // px per metre
-    const cx = this.big ? -20 : player.x, cz = this.big ? 0 : player.z;
+    const cx = this.big ? (player.x > 1500 ? LAYOUT.jx - 20 : -20) : player.x, cz = this.big ? 0 : player.z;
     const P = (x, z) => [W / 2 + (x - cx) * scale, H / 2 + (z - cz) * scale];
     g.save();
     g.clearRect(0, 0, W, H);
     g.fillStyle = '#5d7d48'; g.fillRect(0, 0, W, H);
+    if (player.x > 1500) {
+      // Japan island
+      const [, sz] = P(0, LAYOUT.jMax[1] + 22);
+      g.fillStyle = '#e3cf9a'; g.fillRect(0, sz - 10, W, 10 + H);
+      const [, sz2] = P(0, LAYOUT.jMax[1] + 40);
+      g.fillStyle = '#3f8fb0'; g.fillRect(0, sz2, W, H);
+      const [a0, b0] = P(LAYOUT.jMin[0], -LAYOUT.jRoadHalf - LAYOUT.jWalk);
+      const [a1, b1] = P(LAYOUT.jMax[0], LAYOUT.jRoadHalf + LAYOUT.jWalk);
+      g.fillStyle = '#cfc8ba'; g.fillRect(a0, b0, a1 - a0, b1 - b0);
+      const [c0, d0] = P(LAYOUT.jMin[0], -LAYOUT.jRoadHalf);
+      const [c1, d1] = P(LAYOUT.jMax[0], LAYOUT.jRoadHalf);
+      g.fillStyle = '#3c3f44'; g.fillRect(c0, d0, c1 - c0, d1 - d0);
+    }
     // beach and sea
     let [sx] = P(LAYOUT.beachX, 0);
     g.fillStyle = '#e3cf9a'; g.fillRect(0, 0, Math.max(0, sx), H);
