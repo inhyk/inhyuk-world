@@ -18,6 +18,7 @@ import { Day } from './src/quests.js';
 import { dressTown, dressJapan } from './src/deco.js';
 import { Flight } from './src/flight.js';
 import { Cloud } from './src/cloud.js';
+import { Elevators } from './src/elevator.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize, dayKind } from './core.mjs';
 
@@ -142,6 +143,8 @@ async function boot() {
   const minimap = new Minimap($('minimap'));
   const day = new Day({ state, hud, places, player, vehicle, sky, engine, sfx, build, input, save, life });
   const flight = new Flight({ engine, player, build, hud, sfx, places, life, state, props, sky });
+  let lifts = { prompt: () => null, update: () => {}, busy: false };
+  try { lifts = new Elevators({ engine, colliders: col, places, player, hud, sfx, input }); } catch (e) { console.warn('elevators failed', e); }
   day.g.flight = flight;
   day.g.onNewDay = () => {
     // trees, bushes and shells grow back every morning
@@ -199,6 +202,7 @@ async function boot() {
     if (input.hit('KeyP') && !day.seat) day.photo();
     const driving = vehicle?.driving;
     flight.update(dt, input);
+    lifts.update(dt);
     // movement
     if (!driving) player.update(dt);
     if (vehicle) {
@@ -230,6 +234,8 @@ async function boot() {
           if (to.dot(fwd) < 0.35 && d > 0.9) continue;
           cand.push({ d: d - to.dot(fwd), label: it.label, fn: () => day.use(it) });
         }
+        const lp = lifts.prompt(player.pos);
+        if (lp) cand.push({ d: 0.5, label: lp.label, fn: lp.fn });
         const door = places.doorNear(player.pos);
         if (door) cand.push({ d: 1.2, label: door.want ? '문 닫기' : '문 열기', fn: () => { door.want = door.want ? 0 : 1; sfx('door'); } });
         cand.sort((a, b) => a.d - b.d);
@@ -293,7 +299,7 @@ async function boot() {
   engine.start();
   addEventListener('beforeunload', saveLocal);
   setInterval(saveLocal, 15000);
-  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, kind: () => dayKind(state.day) };
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => dayKind(state.day) };
   window.__ready = true;
 }
 

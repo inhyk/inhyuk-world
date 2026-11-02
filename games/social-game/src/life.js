@@ -4,12 +4,25 @@ import * as THREE from 'three';
 import { LAYOUT } from './world.js';
 import { rng } from './noise.js';
 
-const ROLE_OUTFIT = { coworker: 'office', receptionist: 'office', clerk: 'office', client: 'suit', chef: 'chef', guest: 'casual' };
+const ROLE_OUTFIT = { coworker: 'office', receptionist: 'office', clerk: 'office', client: 'suit', chef: 'chef', guest: 'casual', boss: 'suit', guard: 'office', staff: 'office' };
 const HAIRS = ['short', 'spiky', 'bob', 'long', 'bun'];
 const HAIR_COLORS = [0x2a211c, 0x3b2a20, 0x1c1a1a, 0x5a3a24, 0x2e2420];
 const SKINS = [0xf1c9a5, 0xe8b894, 0xf6d5b8, 0xd9a47e];
 const CAR_COLORS = [0xd8d8d4, 0x2b2d31, 0xc23b32, 0x3f6fb5, 0x8a9096, 0xe9e4d8, 0x2f5a46, 0xb8873a];
 const STYLES = ['sedan', 'hatch', 'suv', 'taxi', 'van', 'sedan'];
+
+function nameTag(text) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(20,24,34,0.78)'; g.beginPath(); g.roundRect(4, 6, 248, 52, 18); g.fill();
+  g.fillStyle = '#ffe39a'; g.font = '32px Jua, sans-serif'; g.textAlign = 'center'; g.fillText(text, 128, 44);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: true, transparent: true }));
+  sp.scale.set(0.9, 0.225, 1);
+  sp.position.set(0, 2.05, 0);
+  return sp;
+}
 
 export class Life {
   constructor({ engine, places, buildCharacter, buildCar, colliders, groundAt }) {
@@ -39,6 +52,7 @@ export class Life {
       ch.group.position.copy(sp.wpos);
       ch.group.rotation.y = sp.wyaw;
       this.engine.scene.add(ch.group);
+      if (sp.role === 'boss') ch.group.add(nameTag('김 부장님'));
       this.people.push({ ch, mode: sp.pose === 'type' ? 'type' : sp.pose === 'sit' ? 'sit' : 'idle', base: sp.pose, site: sp.site, wave: 0, t: this.R() * 10 });
     }
     // sidewalk walkers

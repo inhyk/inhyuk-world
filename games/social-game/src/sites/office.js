@@ -1111,9 +1111,48 @@ function buildExterior(site, g, M, G) {
   put(g, CY(0.7, 0.7, 0.2, 24), M.spandrel, 9, TOP + 2.95, -5);
   for (const pz of [-6.4, -6.0]) put(g, CY(0.1, 0.1, 9, 12), M.alu, 4.5, TOP + 0.35, pz, 0, 0, PI / 2);
   put(g, CY(0.04, 0.05, 4.5, 8), M.alu, -4.5, TOP + 6.2, -6.2);
+  // ---- walkable roof (옥상 정원): elevator hut, benches, colliders ----
+  const hx = -8.6, hz0 = -5.9, hz1 = -3.3, hw = 2.6, hh = 3.0;
+  const hutWall = (x, z, w, d, y0 = TOP, y1 = TOP + hh) => { put(g, RB(w, y1 - y0, d, 0.02, 1), lime, x, (y0 + y1) / 2, z); solid(site, x, (y0 + y1) / 2, z, w, y1 - y0, d); };
+  hutWall(hx, hz0 + 0.06, hw, 0.12);                       // back
+  hutWall(hx - hw / 2 + 0.06, (hz0 + hz1) / 2, 0.12, hz1 - hz0); // sides
+  hutWall(hx + hw / 2 - 0.06, (hz0 + hz1) / 2, 0.12, hz1 - hz0);
+  hutWall(hx - 0.95, hz1 - 0.06, 0.7, 0.12);              // front, left and right of the 1.2 m doorway
+  hutWall(hx + 0.95, hz1 - 0.06, 0.7, 0.12);
+  hutWall(hx, hz1 - 0.06, 1.2, 0.12, TOP + 2.3, TOP + hh);
+  put(g, RB(hw + 0.3, 0.14, hz1 - hz0 + 0.5, 0.03, 1), M.alu, hx, TOP + hh + 0.07, (hz0 + hz1) / 2 + 0.1);
+  for (const sx of [-1, 1]) put(g, RB(0.09, 2.38, 0.14, 0.01, 1), mat('darkSteel'), hx + sx * 0.645, TOP + 1.19, hz1 - 0.02);
+  put(g, RB(1.38, 0.09, 0.14, 0.01, 1), mat('darkSteel'), hx, TOP + 2.345, hz1 - 0.02);
+  D(g, G.quad('signTop', 1.6, 0.27), G.signMat, hx, TOP + 2.65, hz1 + 0.005);
+  site.lamps.push({ pos: [hx, TOP + 2.6, hz1 + 1.2], color: 0xffe6c0, intensity: 5, range: 7 });
+  // benches looking over the front parapet
+  for (const bx of [-5.5, 0, 5.5]) {
+    const b = group(g, bx, TOP, 6.6, 0);
+    for (let i = 0; i < 4; i++) put(b, RB(1.8, 0.04, 0.11, 0.015, 1), mat('oak'), 0, 0.45, -0.2 + i * 0.13);
+    for (let i = 0; i < 3; i++) put(b, RB(1.8, 0.1, 0.035, 0.012, 1), mat('oak'), 0, 0.62 + i * 0.13, -0.32, -0.15, 0, 0);
+    for (const lx of [-0.78, 0.78]) put(b, RB(0.06, 0.45, 0.5, 0.01, 1), mat('darkSteel'), lx, 0.225, -0.07);
+    solid(site, bx, TOP + 0.4, 6.53, 1.9, 0.8, 0.6);
+  }
+  // roof colliders: deck, crown parapet, penthouse, plant, cooling tower, front planter
+  solid(site, 0, TOP - 0.15, 0, 27.6, 0.3, 19.6);
+  for (const sz of [-1, 1]) solid(site, 0, 24.4, sz * 9.95, 28.4, 1.6, 0.5);
+  for (const sx of [-1, 1]) solid(site, sx * 13.95, 24.4, 0, 0.5, 1.6, 19.4);
+  solid(site, -2, TOP + 2.0, -4.6, 6.4, 4.0, 5.0);
+  for (let i = 0; i < 3; i++) solid(site, 5 + i * 2.7, TOP + 0.9, 3, 2.3, 1.8, 1.5);
+  solid(site, 9, TOP + 1.5, -5, 2.4, 3.0, 2.4);
+  solid(site, 0, TOP + 0.35, 8.6, 18, 0.7, 1.2);
+  solid(site, 4.5, TOP + 0.35, -6.2, 9.2, 0.5, 0.7);
+  site.indoor.push({ min: [hx - hw / 2, TOP, hz0], max: [hx + hw / 2, TOP + hh, hz1] });
   // ground floor: back/side service core in stone, band above GF glass
-  put(g, RB(27.9, 4.58, 4.4, 0.03, 2), lime, 0, 2.29, -7.8);
-  for (let i = 0; i < 6; i++) put(g, box(27.92, 0.03, 4.42), M.spandrel, 0, 0.6 + i * 0.7, -7.8);
+  // (split around the elevator pocket x -2.15..-0.35, z -7.6..-5.6, up to y 2.85)
+  const coreBox = (x0, x1, z0, z1, y0, y1) => {
+    put(g, RB(x1 - x0, y1 - y0, z1 - z0, 0.03, 2), lime, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    for (let i = 0; i < 6; i++) { const by = 0.6 + i * 0.7; if (by > y0 && by < y1) put(g, box(x1 - x0 + 0.02, 0.03, z1 - z0 + 0.02), M.spandrel, (x0 + x1) / 2, by, (z0 + z1) / 2); }
+  };
+  coreBox(-13.95, -2.15, -10, -5.6, 0, 4.58);
+  coreBox(-0.35, 13.95, -10, -5.6, 0, 4.58);
+  coreBox(-2.15, -0.35, -10, -7.6, 0, 4.58);
+  coreBox(-2.15, -0.35, -7.6, -5.6, 2.85, 4.58);
   staticDoor(g, 6, 0.04, -10.0, PI, { w: 1.2, h: 2.4, leaf: metalGray(), frame: M.spandrel });
   for (const sx of [-1, 1]) put(g, RB(0.14, 0.85, 13.8, 0.01, 1), M.spandrel, sx * 13.99, 4.175, 1.5);
   put(g, RB(27.94, 0.65, 0.16, 0.01, 1), M.spandrel, 0, 4.075, 8.4);
@@ -1148,7 +1187,10 @@ function buildExterior(site, g, M, G) {
     }
     solid(site, sx * 13.97, 1.95, 1.4, 0.12, 3.6, 14);
   }
-  solid(site, 0, 2.29, -7.8, 28, 4.58, 4.4);
+  solid(site, -8.05, 2.29, -7.8, 11.8, 4.58, 4.4);
+  solid(site, 6.8, 2.29, -7.8, 14.3, 4.58, 4.4);
+  solid(site, -1.25, 2.29, -8.8, 1.8, 4.58, 2.4);
+  solid(site, -1.25, 3.7, -6.6, 1.8, 1.7, 2.0);
   // sliding doors
   for (const s of [-1, 1]) {
     const piv = group(g, s * 0.525, FLOOR, 8.5, 0);
@@ -1226,8 +1268,12 @@ function buildInterior(site, g, M, A, G) {
   put(g, plane(9.2, 5.4).rotateX(PI), mat('plaster'), 0, CEIL, 5.7);
   site.indoor.push(aabb(-13.95, 0, -5.4, 13.95, CEIL, 8.4));
   // walls
-  wallBox(-13.95, 13.95, -5.6, -5.4, F, CEIL, mat('plasterWarm'));
-  base(-13.95, 13.95, -5.4, 1);
+  // back wall with the elevator doorway (x -1.85..-0.65, up to F + 2.3)
+  wallBox(-13.95, -1.85, -5.6, -5.4, F, CEIL, mat('plasterWarm'));
+  wallBox(-0.65, 13.95, -5.6, -5.4, F, CEIL, mat('plasterWarm'));
+  wallBox(-1.85, -0.65, -5.6, -5.4, F + 2.3, CEIL, mat('plasterWarm'));
+  base(-13.95, -1.85, -5.4, 1);
+  base(-0.65, 13.95, -5.4, 1);
   // oak wainscot + rail where the back wall is free
   for (const [a, b] of [[-8.9, -6.32], [-5.18, -2.62], [2.62, 4.06], [5.14, 9.6], [12.9, 13.95]]) {
     put(g, box(b - a, 0.92, 0.02), mat('oak'), (a + b) / 2, F + 0.54, -5.39);
@@ -1519,14 +1565,40 @@ function buildInterior(site, g, M, A, G) {
   V(g, CY(0.17, 0.15, 0.5, 18), 0x2f6fb0, -3.45, F + 0.25, bz + 0.25);
   V(g, CY(0.17, 0.15, 0.5, 18), 0x3a8a4a, -3.05, F + 0.25, bz + 0.25);
   // elevator lobby wall
-  put(g, RB(5.2, CEIL - F, 0.05, 0.01, 1), mat('marble'), 0, (F + CEIL) / 2, bz + 0.025);
+  // the left elevator (x -1.25) is a real one: an opening 1.2 x 2.3 in the wall, the game adds car and doors
+  put(g, RB(0.75, CEIL - F, 0.05, 0.01, 1), mat('marble'), -2.225, (F + CEIL) / 2, bz + 0.025);
+  put(g, RB(3.25, CEIL - F, 0.05, 0.01, 1), mat('marble'), 0.975, (F + CEIL) / 2, bz + 0.025);
+  put(g, RB(1.2, CEIL - F - 2.3, 0.05, 0.01, 1), mat('marble'), -1.25, (F + 2.3 + CEIL) / 2, bz + 0.025);
+  for (const sx of [-1, 1]) put(g, RB(0.09, 2.38, 0.12, 0.01, 1), mat('darkSteel'), -1.25 + sx * 0.645, F + 1.19, bz + 0.03);
+  put(g, RB(1.38, 0.09, 0.12, 0.01, 1), mat('darkSteel'), -1.25, F + 2.345, bz + 0.03);
   for (const ex of [-1.25, 1.25]) {
-    put(g, RB(1.36, 2.42, 0.06, 0.01, 1), mat('darkSteel'), ex, F + 1.21, bz + 0.06);
-    put(g, RB(0.56, 2.25, 0.03, 0.004, 1), mat('steel'), ex - 0.282, F + 1.125, bz + 0.09);
-    put(g, RB(0.56, 2.25, 0.03, 0.004, 1), mat('steel'), ex + 0.282, F + 1.125, bz + 0.09);
+    if (ex > 0) {
+      put(g, RB(1.36, 2.42, 0.06, 0.01, 1), mat('darkSteel'), ex, F + 1.21, bz + 0.06);
+      put(g, RB(0.56, 2.25, 0.03, 0.004, 1), mat('steel'), ex - 0.282, F + 1.125, bz + 0.09);
+      put(g, RB(0.56, 2.25, 0.03, 0.004, 1), mat('steel'), ex + 0.282, F + 1.125, bz + 0.09);
+    }
     put(g, RB(0.34, 0.12, 0.03, 0.01, 1), blackPl(), ex, F + 2.6, bz + 0.07);
     D(g, G.quad('elev', 0.28, 0.105), G.mat, ex, F + 2.6, bz + 0.0865);
   }
+  // ---- office-worker routine: badge reader, coffee, team meeting, printer, the manager ----
+  const rd = group(g, -2.3, F, 6.9, 0);
+  put(rd, RB(0.16, 1.05, 0.12, 0.02, 1), mat('steel'), 0, 0.525, 0);
+  put(rd, RB(0.3, 0.06, 0.4, 0.02, 1), mat('darkSteel'), 0, 0.03, 0);
+  put(rd, RB(0.22, 0.3, 0.06, 0.02, 1), blackPl(), 0, 1.15, 0.02, -0.5, 0, 0);
+  D(rd, box(0.13, 0.13, 0.005), glow(0x3aa0ff, 2.2), 0, 1.16, 0.055, -0.5, 0, 0);
+  D(rd, box(0.16, 0.02, 0.005), glow(0x5aff9a, 1.6), 0, 1.04, 0.08, -0.5, 0, 0);
+  solid(site, -2.3, 0.55, 6.9, 0.3, 1.1, 0.3);
+  site.interactables.push({ id: 'badge', label: '사원증 찍기 (삑!)', pos: [-2.3, 1.2, 7.2], radius: 1.5 });
+  site.interactables.push({ id: 'coffee', label: '커피 타기 ☕', pos: [-7.1, 1.25, 3.8], radius: 1.4 });
+  site.interactables.push({
+    id: 'teamMeeting', label: '팀 회의 하기', pos: [11.6, 1.2, 5.7], radius: 1.6,
+    seat: { pos: [11.9, 1.3, 5.7], yaw: PI / 2, pitch: 0.02 },
+    screen: { center: [4.79, 1.75, 5.7], w: 2.2, h: 1.24, yaw: PI / 2 },
+  });
+  site.interactables.push({ id: 'print', label: '보고서 출력하기', pos: [-7.6, 1.2, -4.4], radius: 1.4 });
+  site.npcSpots.push({ pos: [7.8, F, -4.35], yaw: PI, pose: 'stand', role: 'boss' });
+  site.interactables.push({ id: 'boss', label: '부장님께 결재 받기', pos: [7.8, 1.5, -3.6], radius: 1.6 });
+  site.extra.elevator = { landings: [{ name: '1층 로비', pos: [-1.25, F, bz], yaw: 0 }, { name: '옥상 정원', pos: [-8.6, TOP, -3.3], yaw: 0 }] };
   put(g, RB(0.12, 0.26, 0.03, 0.01, 1), mat('steel'), 0, F + 1.15, bz + 0.065);
   for (const by of [0.06, -0.06]) D(g, CY(0.022, 0.022, 0.012, 14), mat('lampGlow'), 0, F + 1.15 + by, bz + 0.082, PI / 2, 0, 0);
   // extinguisher, stairs door + exit sign

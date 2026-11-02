@@ -14,7 +14,7 @@ test('a week has work, a company dinner, a business trip and a weekend trip', ()
 
 test('a normal day: wake, wash, eat, dress, drive to work, work, come home, shower, sleep', () => {
   const ids = stepsFor('work').map((s) => s.id);
-  assert.deepEqual(ids, ['wake', 'sink', 'breakfast', 'wardrobe', 'drive-work', 'work', 'lunch', 'work2', 'gohome', 'shower', 'sleep']);
+  assert.deepEqual(ids, ['wake', 'sink', 'breakfast', 'wardrobe', 'drive-work', 'badge', 'coffee', 'work', 'teamMeeting', 'lunch', 'work2', 'print', 'boss', 'badge-out', 'gohome', 'shower', 'sleep']);
   assert.ok(stepsFor('dinner').some((s) => s.id === 'dinner'));
   assert.ok(stepsFor('visit').some((s) => s.target === 'other:meeting'));
   assert.equal(stepsFor('trip').at(-1).target, 'ryokan:futon');

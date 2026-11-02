@@ -200,6 +200,44 @@ export class Day {
         hud.toast(toJapan ? '일본 도착! 사쿠라 공항이에요 🇯🇵' : '우리 동네 도착! 주차장에 차가 있어요', 3000);
         break;
       }
+      case 'badge':
+        this.g.sfx('click'); setTimeout(() => this.g.sfx('pickup'), 120);
+        if (st && st.id === 'badge') { hud.toast('삑! 출근 완료 ✅ 오늘도 화이팅!', 2400); this.complete('badge'); }
+        else if (st && st.id === 'badge-out') { hud.toast('삑! 퇴근 완료 🏠 오늘도 수고했어요!', 2600); this.complete('badge-out'); }
+        else hud.toast('삑! 사원증 확인', 1200);
+        break;
+      case 'coffee':
+        await this.fadeAction('☕ 커피 머신 위이잉…', 'water', 900);
+        eat(s, 5);
+        hud.toast('아메리카노 완성! 잠이 확 깬다 ☕', 2200);
+        if (now) this.complete('coffee');
+        break;
+      case 'teamMeeting':
+        if (!now) { hud.toast('지금은 회의 시간이 아니에요'); break; }
+        await this.meeting(it, {
+          title: '팀 회의', who: '김 부장님',
+          qs: [
+            { q: '“이번 주 우리 팀 목표가 뭐죠?”', o: ['신제품 반짝이 3000 출시!', '낮잠 많이 자기', '잘 모르겠어요'], a: 0 },
+            { q: '“그럼 오늘 할 일은?”', o: ['게임하기', '보고서 만들어서 퇴근 전에 결재 받기', '집에 일찍 가기'], a: 1 },
+          ],
+          done: () => { hud.toast('회의 끝! 오늘 할 일: 보고서 출력해서 부장님 결재 받기 📋', 3000); this.complete('teamMeeting'); },
+        });
+        break;
+      case 'print':
+        this.g.sfx('slide');
+        s.report = true;
+        hud.toast('위이잉~ 보고서 출력 완료 📄', 2200);
+        if (now) this.complete('print');
+        break;
+      case 'boss':
+        if (st && st.id === 'boss') {
+          if (!s.report) { hud.toast('부장님: “보고서는요? 프린터에서 먼저 뽑아 와요!”', 2600); break; }
+          await this.fadeAction('📋 부장님이 보고서를 읽는 중…', null, 1200);
+          s.report = false; this.g.sfx('done');
+          hud.toast('부장님: “아주 잘했어요!” 쾅! 결재 완료 ✅', 2800);
+          this.complete('boss');
+        } else hud.toast(['부장님: “오늘도 열심히!”', '부장님: “커피 한 잔 했어요?”', '부장님: “회의 때 봐요”'][Math.floor(Math.random() * 3)], 2000);
+        break;
       case 'pray':
         this.g.sfx('cheers');
         hud.toast('짝짝! 소원을 빌었어요: 내일도 즐거운 하루 🙏', 2600);
@@ -417,10 +455,10 @@ export class Day {
   }
 
   // ------------------------------------------------------------------ meeting at the other company
-  async meeting(it) {
+  async meeting(it, custom) {
     this.sit(it);
     const el = $('screen');
-    const qs = [
+    const qs = custom?.qs ?? [
       { q: '“새 제품의 좋은 점이 뭔가요?”', o: ['아주 빠르고 튼튼해요!', '잘 모르겠어요…', '점심 뭐 먹지?'], a: 0 },
       { q: '“가격은 어떻게 되나요?”', o: ['비밀이에요', '합리적인 가격으로 드릴게요', '100억 원이요!'], a: 1 },
       { q: '“언제 받을 수 있나요?”', o: ['100년 뒤에요', '다음 주에 바로 보내 드릴게요', '몰라요'], a: 1 },
@@ -431,7 +469,7 @@ export class Day {
       const show = () => {
         if (i >= qs.length) { resolve(true); return; }
         const q = qs[i];
-        el.innerHTML = `<div class="meet"><h2>발표 ${i + 1} / ${qs.length}</h2><p>별빛테크 손님: ${q.q}</p><div class="row" id="opts"></div><button class="alt exit" id="leave">나가기</button></div>`;
+        el.innerHTML = `<div class="meet"><h2>${custom?.title ?? '발표'} ${i + 1} / ${qs.length}</h2><p>${custom?.who ?? '별빛테크 손님'}: ${q.q}</p><div class="row" id="opts"></div><button class="alt exit" id="leave">나가기</button></div>`;
         const box = el.querySelector('#opts');
         this._ok = () => { this._ok = null; this.g.sfx('done'); i++; show(); };
         q.o.forEach((t, k) => { const b = document.createElement('button'); b.textContent = t; b.onclick = () => { if (k === q.a) { this.g.sfx('done'); i++; show(); } else { this.g.sfx('wrong'); box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); } }; box.appendChild(b); });
@@ -440,6 +478,7 @@ export class Day {
       show();
     });
     this.stand();
+    if (ok && custom) { custom.done?.(); return; }
     if (ok) {
       this.s.money += 30000; this.g.sfx('coin');
       this.g.hud.toast('계약 성공! 🎉 보너스 +30,000원', 3000);

@@ -57,9 +57,15 @@ export function stepsFor(kind) {
     ]
     : [
       { id: 'drive-work', label: '차 타고 회사 가기', text: '회사로 가세요', target: 'office:door' },
+      { id: 'badge', label: '사원증 찍고 출근', text: '입구 출입기에 사원증을 찍어요 (삑!)', target: 'office:badge' },
+      { id: 'coffee', label: '모닝 커피', text: '탕비실에서 커피를 타요 ☕', target: 'office:coffee' },
       { id: 'work', label: '일하기 (오전)', text: '내 자리에 앉아서 일해요', target: 'office:desk', tasks: 2 },
+      { id: 'teamMeeting', label: '팀 회의', text: '회의실에서 팀 회의를 해요', target: 'office:teamMeeting' },
       { id: 'lunch', label: '점심 먹기', text: '점심시간! 구내식당에서 밥 먹어요', target: 'office:lunch' },
       { id: 'work2', label: '일하기 (오후)', text: '오후 일도 해요', target: 'office:desk', tasks: 2 },
+      { id: 'print', label: '보고서 출력', text: '프린터에서 보고서를 뽑아요', target: 'office:print' },
+      { id: 'boss', label: '부장님 결재', text: '부장님께 보고서 결재를 받아요', target: 'office:boss' },
+      { id: 'badge-out', label: '사원증 찍고 퇴근', text: '입구 출입기에 사원증을 찍고 퇴근해요', target: 'office:badge' },
     ];
   const dinner = kind === 'dinner'
     ? [{ id: 'dinner', label: '회식하기', text: '오늘은 회식! 고깃집으로 가세요', target: 'restaurant:grill' }]
@@ -69,7 +75,7 @@ export function stepsFor(kind) {
 
 /** Clock time each step sets when it is finished (time skips), or null to let time flow. */
 export const STEP_TIME = {
-  wake: 7.0, 'drive-work': 9.0, work: 12.0, lunch: 13.0, work2: 18.0, meeting: 15.0, dinner: 21.0,
+  wake: 7.0, 'drive-work': 9.0, badge: 9.0, coffee: 9.3, work: 11.0, teamMeeting: 12.0, lunch: 13.0, work2: 16.6, print: 17.0, boss: 17.6, 'badge-out': 18.0, meeting: 15.0, dinner: 21.0,
   shower: 22.0, 'drive-airport': 10.0, 'photo-jp': 15.0, ramen: 18.5, souvenir: 19.5, onsen: 10.0, 'drive-home': 17.0, 'fly-japan': 13.0, 'fly-home': 15.0,
 };
 
