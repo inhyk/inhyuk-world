@@ -59,19 +59,30 @@ assert.ok(Math.abs(moved) > 1, 'the car drives');
 await shot('03-driving');
 await G(() => { const g = window.__game; g.vehicle.park(70, -22, 0); g.vehicle.driving = false; const e = g.places.entrance('office'); g.player.place(e.x, 0.2, e.z, 0); });
 await page.waitForTimeout(600);
-assert.equal(await step(), 'work');
+assert.equal(await step(), 'badge');
 await shot('04-office');
+await act('office:badge'); assert.equal(await step(), 'coffee');
+await act('office:coffee'); assert.equal(await step(), 'work');
 
-// work, lunch, work
+// work, team meeting, lunch, work, print, manager, badge out
 await act('office:desk'); await solveSeat();
+assert.equal(await step(), 'teamMeeting');
+await G(() => { window.__game.day.use(window.__game.places.interactables.find((i) => i.key === 'office:teamMeeting')); });
+await page.waitForTimeout(1500);
+await shot('05a-meeting');
+await solveSeat();
 assert.equal(await step(), 'lunch');
 await act('office:lunch'); assert.equal(await step(), 'work2');
 await G(() => { window.__game.day.use(window.__game.places.interactables.find((i) => i.key === 'office:desk')); });
 await page.waitForTimeout(1600);
 await shot('05-computer');
 await solveSeat();
-assert.equal(await step(), 'gohome');
+assert.equal(await step(), 'print');
 assert.ok(await G(() => window.__game.state.money) >= 80000, 'got paid');
+await act('office:boss'); assert.equal(await step(), 'print', 'no report yet');
+await act('office:print'); assert.equal(await step(), 'boss');
+await act('office:boss'); assert.equal(await step(), 'badge-out');
+await act('office:badge'); assert.equal(await step(), 'gohome');
 
 // home, shower, sleep
 await G(() => { const g = window.__game; const e = g.places.entrance('home'); g.player.place(e.x, 0.5, e.z - 3, 0); });
@@ -83,6 +94,18 @@ await page.waitForFunction(() => window.__game.state.day === 2, null, { timeout:
 assert.equal(await step(), 'wake');
 await page.waitForTimeout(1500);
 await shot('06-day2');
+
+// office elevator: lobby → roof
+await G(() => { const g = window.__game; const L = g.lifts.lifts[0].landings[0]; g.player.place(L.pos.x, L.pos.y + 0.02, L.pos.z + 2, 0); });
+await page.waitForTimeout(300);
+await G(() => { const g = window.__game; g.lifts.call(g.lifts.lifts[0], 0); });
+await page.waitForTimeout(1200);
+await G(() => { const g = window.__game; const L = g.lifts.lifts[0].landings[0]; g.player.place(L.pos.x, L.pos.y + 0.02, L.pos.z - 1, Math.PI); });
+await G(() => { const g = window.__game; g.lifts.ride(g.lifts.lifts[0], 1); });
+await page.waitForFunction(() => !window.__game.lifts.busy, null, { timeout: 20000 });
+assert.ok(await G(() => window.__game.player.pos.y) > 20, 'rode up to the roof');
+await page.waitForTimeout(600);
+await shot('06b-roof');
 
 // blocks: place and break
 const n0 = await G(() => window.__game.state.inventory.stone);
