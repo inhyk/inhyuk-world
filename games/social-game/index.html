@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<title>사회적 게임</title>
+<meta name="description" content="집에서 일어나 차 타고 회사 가고, 회식도 하고 여행도 가는 1인칭 3D 사회생활 게임" />
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud" class="hidden">
+  <div id="bars">
+    <div class="bar-row" id="hp-row">
+      <svg class="icon" viewBox="0 0 24 24" aria-label="체력"><defs><radialGradient id="gDrop" cx="40%" cy="60%" r="60%"><stop offset="0" stop-color="#ff7a7a"/><stop offset="1" stop-color="#c81e2e"/></radialGradient></defs><path d="M12 1.8C12 1.8 4.6 10.2 4.6 15.2a7.4 7.4 0 0 0 14.8 0C19.4 10.2 12 1.8 12 1.8Z" fill="url(#gDrop)" stroke="#5a0a12" stroke-width="1.2"/><ellipse cx="9.3" cy="14.6" rx="1.6" ry="2.6" fill="#fff" opacity=".55" transform="rotate(-18 9.3 14.6)"/></svg>
+      <div class="bar"><div class="fill" id="hp-fill"></div><i></i><i></i><i></i></div>
+    </div>
+    <div class="bar-row" id="food-row">
+      <svg class="icon" viewBox="0 0 24 24" aria-label="배고픔"><defs><linearGradient id="gMeat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e09a55"/><stop offset="1" stop-color="#9c4f22"/></linearGradient></defs><g transform="rotate(-40 12 12)"><rect x="2.2" y="10.6" width="8" height="2.8" rx="1.2" fill="#f4ead8" stroke="#6b5a44" stroke-width=".9"/><circle cx="2.6" cy="10.4" r="1.7" fill="#f4ead8" stroke="#6b5a44" stroke-width=".9"/><circle cx="2.6" cy="13.6" r="1.7" fill="#f4ead8" stroke="#6b5a44" stroke-width=".9"/><ellipse cx="15.2" cy="12" rx="7.2" ry="5.6" fill="url(#gMeat)" stroke="#5a2a10" stroke-width="1.1"/><ellipse cx="13.6" cy="9.8" rx="3" ry="1.3" fill="#fff" opacity=".35"/></g></svg>
+      <div class="bar food"><div class="fill" id="food-fill"></div><i></i><i></i><i></i></div>
+    </div>
+  </div>
+  <div id="clock"><span id="day">1일차 · 월요일</span><b id="time">오전 7:00</b><span id="money">0원</span></div>
+  <div id="quest"><div class="q-title">퀘스트</div><div id="quest-text">회사로 가세요</div><ul id="quest-list"></ul></div>
+  <canvas id="minimap" width="220" height="220"></canvas>
+  <div id="cross"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="hotbar"></div>
+  <div id="toast"></div>
+  <div id="buttons"><button id="btn-view" title="시점 바꾸기 (V)">1인칭</button><button id="btn-help" title="도움말 (H)">?</button></div>
+  <div id="help" class="hidden">
+    <h3>조작법</h3>
+    <p><b>W A S D</b> 걷기 · <b>Shift</b> 달리기 · <b>Space</b> 점프 · <b>마우스</b> 둘러보기</p>
+    <p><b>왼쪽 클릭 꾹</b> 블럭 깨기 · <b>오른쪽 클릭</b> 블럭 놓기 · <b>1~9 / 휠</b> 블럭 고르기 · <b>R</b> 돌리기</p>
+    <p><b>E</b> 사용하기 (문, 차, 침대…) · <b>V</b> 1인칭/3인칭 · <b>M</b> 지도 크게 · <b>H</b> 도움말</p>
+    <p>차 안: <b>W S</b> 가속/브레이크 · <b>A D</b> 핸들 · <b>E</b> 내리기</p>
+  </div>
+</div>
+<div id="screen" class="hidden"></div>
+<div id="fade"></div>
+<div id="flash"></div>
+<div id="hurt"></div>
+<div id="start">
+  <div class="card">
+    <h1>사회적 게임</h1>
+    <p class="sub">일어나서, 준비하고, 차 타고 회사 가기. 어느 날엔 회식, 출장, 여행!</p>
+    <div id="loading">불러오는 중… <span id="load-pct">0%</span></div>
+    <button id="play" class="hidden">시작하기</button>
+    <p class="keys">WASD 걷기 · 마우스 둘러보기 · E 사용 · 왼쪽 클릭 깨기 · 오른쪽 클릭 놓기 · V 시점</p>
+    <label class="q"><input type="checkbox" id="low" /> 컴퓨터가 느리면 체크 (낮은 화질)</label>
+  </div>
+</div>
+<div id="touch" class="hidden"><div id="stick"><div id="knob"></div></div><div id="tbtns"><button data-k="Space">점프</button><button data-k="KeyE">사용</button><button data-m="left">깨기</button><button data-m="right">놓기</button><button data-k="KeyV">시점</button></div></div>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

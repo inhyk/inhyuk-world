@@ -7,9 +7,9 @@
     "games/valorant"
   ],
   "scripts": {
-    "predev": "node games/pixelcraft/sync-net.mjs && npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build",
+    "predev": "node games/pixelcraft/sync-net.mjs && npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build && npm run social-game:build",
     "dev": "next dev",
-    "build": "node games/pixelcraft/sync-net.mjs && npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build && next build",
+    "build": "node games/pixelcraft/sync-net.mjs && npm run mineral-valley:build && npm run free-drive:build && npm run snowflow:build && npm run valorant:build && npm run deep-dig:build && npm run blocktopia:build && npm run soccer:build && npm run puyo-puyo:build && npm run pad-shop:build && npm run sky-obby:build && npm run keycap-tower:build && npm run social-game:build && next build",
     "start": "next start",
     "lint": "eslint",
     "snowflow:dev": "npm run dev --workspace=@inhyuk/snowflow",
@@ -17,7 +17,7 @@
     "valorant:dev": "npm run dev --workspace=@inhyuk/valorant-protocol",
     "valorant:build": "npm run build --workspace=@inhyuk/valorant-protocol",
     "test:valorant": "npm run test --workspace=@inhyuk/valorant-protocol",
-    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\" \"games/sans/core.test.mjs\" \"games/orbit-breaker/*.test.mjs\" \"games/undertale/*.test.mjs\" \"games/valorant/tests/*.test.mjs\" \"games/deep-dig/*.test.mjs\" \"games/free-drive/*.test.mjs\" \"games/mineral-valley/*.test.mjs\" \"games/soccer/*.test.mjs\" \"games/puyo-puyo/*.test.mjs\" \"games/pad-shop/*.test.mjs\" \"games/sky-obby/*.test.mjs\" \"games/keycap-tower/*.test.mjs\" \"packages/net/*.test.mjs\" \"games/geometry-dash/*.test.mjs\" \"games/sword-forge/*.test.mjs\" \"games/pixelcraft/*.test.mjs\"",
+    "test": "node --test \"games/snowflow/tests/*.test.js\" \"games/mettaton/*.test.mjs\" \"games/sans/core.test.mjs\" \"games/orbit-breaker/*.test.mjs\" \"games/undertale/*.test.mjs\" \"games/valorant/tests/*.test.mjs\" \"games/deep-dig/*.test.mjs\" \"games/free-drive/*.test.mjs\" \"games/mineral-valley/*.test.mjs\" \"games/soccer/*.test.mjs\" \"games/puyo-puyo/*.test.mjs\" \"games/pad-shop/*.test.mjs\" \"games/sky-obby/*.test.mjs\" \"games/keycap-tower/*.test.mjs\" \"packages/net/*.test.mjs\" \"games/geometry-dash/*.test.mjs\" \"games/sword-forge/*.test.mjs\" \"games/social-game/*.test.mjs\" \"games/pixelcraft/*.test.mjs\"",
     "test:pixelcraft": "node --test \"games/pixelcraft/*.test.mjs\"",
     "pixelcraft:dev": "node games/pixelcraft/dev-server.mjs",
     "test:net": "node --test \"packages/net/*.test.mjs\" && npm test --prefix services/net",
@@ -53,6 +53,9 @@
     "keycap-tower:dev": "vite --config games/keycap-tower/vite.config.js --host 0.0.0.0 --port 5191",
     "keycap-tower:build": "vite build --config games/keycap-tower/vite.config.js",
     "test:keycap-tower": "node --test games/keycap-tower/core.test.mjs",
+    "social-game:dev": "vite --config games/social-game/vite.config.js --host 127.0.0.1",
+    "social-game:build": "vite build --config games/social-game/vite.config.js",
+    "test:social-game": "node --test games/social-game/core.test.mjs",
     "test:geometry-dash": "node --test games/geometry-dash/core.test.mjs",
     "test:undertale-echo": "node --test games/undertale-echo/*.test.mjs",
     "test:undertale-echo:browser": "node games/undertale-echo/browser-check.mjs",
@@ -70,7 +73,8 @@
     "peerjs": "1.5.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "three": "^0.186.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

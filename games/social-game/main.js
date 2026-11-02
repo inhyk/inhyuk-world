@@ -1,0 +1,294 @@
+// 사회적 게임: entry point. Loads the world, buildings and props, then runs the day.
+import '@fontsource/jua';
+import './style.css';
+import * as THREE from 'three';
+import { Engine } from './src/engine.js';
+import { Sky } from './src/sky.js';
+import { buildWorld, groundAt, SITES, PARKING, LAYOUT, isRoad } from './src/world.js';
+import { Colliders } from './src/collide.js';
+import { Input, Player } from './src/player.js';
+import { Hud } from './src/hud.js';
+import { Build } from './src/build.js';
+import { Places } from './src/places.js';
+import { LightPool } from './src/lights.js';
+import { Minimap } from './src/minimap.js';
+import { Vehicle } from './src/vehicle.js';
+import { Life } from './src/life.js';
+import { Day } from './src/quests.js';
+import { dressTown } from './src/deco.js';
+import { sfx, unlock, engineSound, ambience } from './src/audio.js';
+import { newState, tickBody, fallDamage, hurt, serialize, deserialize, dayKind } from './core.mjs';
+
+const $ = (id) => document.getElementById(id);
+const T0 = performance.now();
+const pct = (n, what = '') => { $('load-pct').textContent = `${Math.round(n)}%`; console.info(`[boot] ${Math.round(n)}% ${what} ${Math.round(performance.now() - T0)}ms`); };
+const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+const SAVE_KEY = 'social-game-save-v1';
+
+// modules that may still be missing while the game is being built load optionally
+const siteMods = import.meta.glob('./src/sites/*.js');
+const propMods = import.meta.glob('./src/props/*.js');
+async function optional(map, path) {
+  if (!map[path]) return null;
+  try { return await map[path](); } catch (e) { console.warn('load failed', path, e); return null; }
+}
+
+async function boot() {
+  await document.fonts.load('40px Jua').catch(() => {});
+  const low = localStorage.getItem('social-game-low') === '1';
+  $('low').checked = low;
+  const engine = new Engine($('game'), { quality: low ? 'low' : 'high' });
+  const sky = new Sky(engine);
+  const col = new Colliders();
+  const hud = new Hud();
+  const lights = new LightPool(engine.scene, low ? 3 : 6);
+  pct(5); await frame();
+
+  const props = {};
+  for (const name of ['nature', 'street', 'car', 'character', 'blocks']) props[name] = await optional(propMods, `./src/props/${name}.js`);
+  pct(20, 'props'); await frame();
+
+  let state = deserialize(localStorage.getItem(SAVE_KEY) ?? '') ?? newState();
+  const world = buildWorld(engine.scene);
+  for (const c of world.colliders) col.add(c);
+  pct(30); await frame();
+
+  // blocks
+  const blocks = props.blocks?.BLOCKS ?? [];
+  const build = new Build({ engine, colliders: col, groundAt, blocks, state, hud, sfx, isRoad });
+  build.onLamp = (rec, on) => {
+    if (on) lights.add({ pos: [rec.x, rec.y + 0.8, rec.z], intensity: 4, range: 7, color: 0xffd9a0, when: 'night', block: rec });
+    else lights.remove((a) => a.block === rec);
+  };
+
+  // buildings
+  const places = new Places(engine, col, lights, build);
+  let k = 0;
+  for (const def of SITES) {
+    const mod = await optional(siteMods, `./src/sites/${def.mod}.js`);
+    k++;
+    pct(30 + (k / SITES.length) * 40, def.key);
+    await frame();
+    if (!mod?.[def.fn]) continue;
+    try { places.add(def, await mod[def.fn]()); } catch (e) { console.warn('site failed', def.key, e); }
+  }
+  // town dressing (needs site footprints)
+  let deco = { breakables: [], scatters: [] };
+  try { deco = dressTown({ scene: engine.scene, props, build, colliders: col, lights, quality: engine.quality }); } catch (e) { console.warn('deco failed', e); }
+  pct(80, 'deco'); await frame();
+
+  // player, car, people
+  const input = new Input(engine.canvas);
+  const player = new Player(engine, input, col, groundAt);
+  if (props.character) try {
+    player.setAvatar(props.character.buildCharacter({ outfit: state.outfit, hair: 'spiky', hairColor: 0x221a16, seed: 7 }));
+    if (props.character.buildFirstPersonArm) {
+      player.arm = props.character.buildFirstPersonArm({ outfit: state.outfit });
+      engine.camera.add(player.arm.group);
+      engine.scene.add(engine.camera);
+    }
+  } catch (e) { console.warn('character failed', e); }
+  let vehicle = null;
+  if (props.car) try {
+    vehicle = new Vehicle(engine, props.car.buildCar({ color: 0x4f8fd8, style: 'sedan' }), col, groundAt);
+    vehicle.parkAt = (where) => { const p = PARKING[where]; if (p) vehicle.park(p[0], p[1], p[2]); };
+    vehicle.parkAt('home');
+  } catch (e) { console.warn('car failed', e); vehicle = null; }
+  const life = new Life({ engine, places, buildCharacter: props.character?.buildCharacter, buildCar: props.car?.buildCar, colliders: col, groundAt });
+  try { life.spawnPeople(); } catch (e) { console.warn('people failed', e); }
+  try { life.spawnTraffic(engine.quality === 'high' ? 6 : 4); } catch (e) { console.warn('traffic failed', e); }
+  if (vehicle) vehicle.others = life.cars;
+  pct(92, 'life'); await frame();
+
+  // saved blocks and broken things
+  for (const b of state.placed ?? []) build.placeBlock(b.id, b.x, b.y, b.z, b.rot ?? 0, false);
+  const save = () => {
+    state.placed = build.dump();
+    try { localStorage.setItem(SAVE_KEY, serialize(state)); } catch { /* storage full or blocked */ }
+  };
+  let saveTimer = null;
+  build.onChange = () => { clearTimeout(saveTimer); saveTimer = setTimeout(save, 800); };
+  build.onBreakProp = (e) => {
+    if (e.item === 'shell') { state.counts.shells = (state.counts.shells ?? 0) + 1; hud.toast(`조개 +1 (${state.counts.shells}개)`, 1200); sfx('pickup'); }
+    else { state.inventory[e.item] = (state.inventory[e.item] ?? 0) + e.count; hud.toast(`${e.name} → ${build.byId[e.item]?.name ?? e.item} +${e.count}`, 1300); build.renderHotbar(); }
+    e.broken = true;
+  };
+
+  const minimap = new Minimap($('minimap'));
+  const day = new Day({ state, hud, places, player, vehicle, sky, engine, sfx, build, input, save, life });
+  day.g.onNewDay = () => {
+    // trees, bushes and shells grow back every morning
+    for (const e of deco.breakables) if (e.broken) {
+      e.broken = false; e.scatter.setVisible(e.index, true); build.addProp(e);
+      if (e.col) col.add(e.col);
+    }
+  };
+  const fresh = !localStorage.getItem(SAVE_KEY);
+  day.wakeUp();
+  day.setOutfit(state.outfit);
+  sky.setHour(state.hour, true);
+  if (blocks.length) build.renderHotbar(); else $('hotbar').classList.add('hidden');
+
+  // compile every shader now so the first look around does not freeze
+  pct(96, 'shaders'); await frame();
+  try { await engine.renderer.compileAsync(engine.scene, engine.camera); } catch (e) { console.warn('precompile', e); }
+  pct(100);
+  $('loading').classList.add('hidden');
+  $('play').classList.remove('hidden');
+  $('low').addEventListener('change', (e) => { localStorage.setItem('social-game-low', e.target.checked ? '1' : '0'); engine.setQuality(e.target.checked ? 'low' : 'high'); });
+  const start = () => {
+    $('start').classList.add('hidden');
+    hud.show();
+    unlock();
+    input.lock();
+    sfx('alarm');
+    hud.toast(fresh ? '따르릉! 1일차 아침이에요. 오른쪽 퀘스트를 따라가요' : '이어서 해요!', 3200);
+    if (matchMedia('(pointer: coarse)').matches) { $('touch').classList.remove('hidden'); input.locked = true; }
+  };
+  $('play').addEventListener('click', start);
+  engine.canvas.addEventListener('click', () => { if (!day.seat && !$('start').offsetParent) input.lock(); });
+  const toggleView = () => { player.toggleView(); hud.setView(player.view); };
+  $('btn-view').addEventListener('click', toggleView);
+  $('btn-help').addEventListener('click', () => $('help').classList.toggle('hidden'));
+  setupTouch(input);
+
+  // ------------------------------------------------------------------ frame
+  let hurtT = 0;
+  player.onLand = (h) => {
+    const dmg = fallDamage(h);
+    if (dmg > 0) { hurt(state, dmg); hurtT = 0.6; sfx('hit'); hud.toast(`아야! 체력 -${dmg}`, 1000); }
+  };
+  player.onStep = () => sfx('step', { surface: player.pos.x < LAYOUT.beachX ? 'sand' : places.inside(player.pos) ? 'wood' : 'stone' });
+  let fainting = false;
+  const look = { yaw: 0, pitch: 0 };
+
+  engine.onUpdate((dt, t) => {
+    if (input.hit('KeyV')) toggleView();
+    if (input.hit('KeyH')) $('help').classList.toggle('hidden');
+    if (input.hit('KeyM')) minimap.toggle();
+    if (input.hit('KeyP') && !day.seat) day.photo();
+    const driving = vehicle?.driving;
+    // movement
+    if (!driving) player.update(dt);
+    if (vehicle) {
+      vehicle.lights = sky.daylight < 0.4;
+      vehicle.update(dt, driving ? input : null);
+      if (driving) {
+        look.yaw = THREE.MathUtils.clamp(look.yaw - input.mouse.dx * 0.002, -1.6, 1.6) * (input.mouse.dx ? 1 : 0.97);
+        look.pitch = THREE.MathUtils.clamp(look.pitch - input.mouse.dy * 0.002, -0.5, 0.4) * (input.mouse.dy ? 1 : 0.97);
+        engineSound(vehicle.speed);
+        if (vehicle.impact > 9) { hurt(state, 5); hurtT = 0.5; sfx('hit'); hud.toast('쿵! 조심해서 운전해요', 1000); }
+        if (input.hit('KeyF')) sfx('horn');
+        player.pos.copy(vehicle.pos);
+      } else engineSound(null);
+    }
+    // E: car, doors, things
+    let prompt = '', action = null;
+    if (!day.seat && !day.busy) {
+      if (driving) {
+        if (Math.abs(vehicle.speed) < 2) { prompt = '차에서 내리기'; action = () => { vehicle.driving = false; const p = vehicle.exitPoint(); player.place(p.x, Math.max(p.y, groundAt(p.x, p.z)) + 0.05, p.z, vehicle.yaw); if (player.avatar) player.avatar.group.visible = player.view === 'third'; if (player.arm) player.arm.group.visible = player.view === 'first'; sfx('carDoor'); }; }
+      } else {
+        const cand = [];
+        if (vehicle && vehicle.pos.distanceTo(player.pos) < 3.4) cand.push({ d: vehicle.pos.distanceTo(player.pos) - 0.5, label: '차 타기', fn: () => { vehicle.driving = true; look.yaw = look.pitch = 0; if (player.avatar) player.avatar.group.visible = false; if (player.arm) player.arm.group.visible = false; sfx('carDoor'); hud.toast('W 가속 · S 브레이크 · A D 핸들 · E 내리기', 2600); } });
+        const fwd = player.forward;
+        const eye = new THREE.Vector3(player.pos.x, player.pos.y + 1.6, player.pos.z);
+        for (const it of places.interactables) {
+          const d = it.wpos.distanceTo(eye);
+          if (d > (it.radius ?? 1.8) + 0.6) continue;
+          const to = it.wpos.clone().sub(eye).normalize();
+          if (to.dot(fwd) < 0.35 && d > 0.9) continue;
+          cand.push({ d: d - to.dot(fwd), label: it.label, fn: () => day.use(it) });
+        }
+        const door = places.doorNear(player.pos);
+        if (door) cand.push({ d: 1.2, label: door.want ? '문 닫기' : '문 열기', fn: () => { door.want = door.want ? 0 : 1; sfx('door'); } });
+        cand.sort((a, b) => a.d - b.d);
+        if (cand[0]) { prompt = cand[0].label; action = cand[0].fn; }
+      }
+    }
+    hud.prompt(prompt);
+    if (action && input.hit('KeyE')) action();
+    // blocks (on foot, not in menus)
+    build.enabled = !driving && !day.seat && !day.busy && input.locked;
+    if (blocks.length) build.update(dt, input, player.pos);
+    if (player.arm) player.arm.update?.(dt, { swing: build.swing ?? 0, walk: Math.min(1, player.speed / 5) });
+    build.swing = Math.max(0, (build.swing ?? 0) - dt * 3);
+    if (player.arm && build.selectedId && player.arm.hold && player._held !== build.selectedId()) {
+      player._held = build.selectedId();
+      const p = player._held ? build.proto(player._held).clone() : null;
+      if (p) p.scale.setScalar(0.1);
+      player.arm.hold(p);
+    }
+    // body, time, world
+    const inside = places.inside(player.pos);
+    tickBody(state, dt, { running: player.speed > 5.5 && !driving, sleeping: day.busy });
+    day.update(dt);
+    sky.indoor = inside ? 1 : 0;
+    // ambient occlusion matters most in rooms and costs a lot outside, so it runs indoors only
+    if (engine.gtao) engine.gtao.enabled = !!inside || !!day.seat;
+    sky.setHour(state.hour);
+    sky.focus.copy(driving ? vehicle.pos : player.pos);
+    sky.update(dt, t);
+    const night = 1 - sky.daylight;
+    lights.update(dt, engine.camera.position, night, inside);
+    places.updateDoors(dt, [player.pos, ...life.walkers.map((w) => w.ch.group.position)], sfx);
+    life.update(dt, driving ? null : player.pos, driving ? vehicle.pos : null, night);
+    if (props.nature?.windUniform) props.nature.windUniform.value = t;
+    const wn = world.sea.material.normalMap; if (wn) { wn.offset.set(t * 0.004, t * 0.0025); }
+    if (world.foam) { world.foam.position.x = LAYOUT.beachX - 27.2 + Math.sin(t * 0.6) * 0.9; world.foam.material.opacity = 0.35 + 0.25 * Math.sin(t * 0.6 + 1); }
+    if ((deco._t = (deco._t ?? 0) - dt) <= 0) { deco._t = 0.25; for (const sc of deco.scatters) sc.update(engine.camera.position); }
+    ambience(sky.daylight, night, Math.max(0, Math.min(1, (LAYOUT.beachX + 40 - player.pos.x) / 60)));
+    hud.bars(state.hp, state.food);
+    $('hurt').style.opacity = hurtT > 0 ? 1 : 0; hurtT -= dt;
+    if (state.hp <= 0 && !fainting) {
+      fainting = true;
+      (async () => {
+        const f = $('fade'); f.textContent = '어지러워… 쓰러졌어요. 집에서 쉬어요'; f.classList.add('on');
+        if (vehicle) vehicle.driving = false;
+        await new Promise((r) => setTimeout(r, 1800));
+        state.hp = 60; state.food = Math.max(state.food, 50); state.money = Math.max(0, state.money - 5000);
+        day.wakeUp(); f.classList.remove('on'); fainting = false;
+        hud.toast('밥을 잘 챙겨 먹어요! (병원비 -5,000원)', 2600);
+      })();
+    }
+    minimap.draw(player.pos, driving ? vehicle.yaw : player.yaw, vehicle && !driving ? vehicle.pos : null, day.target());
+  });
+  engine.onUpdate((dt) => {
+    if (vehicle?.driving) vehicle.updateCamera(dt, player.view, look);
+    else if (!day.seat) player.updateCamera(dt);
+    input.endFrame();
+  }, true);
+  engine.start();
+  addEventListener('beforeunload', save);
+  setInterval(save, 15000);
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, kind: () => dayKind(state.day) };
+  window.__ready = true;
+}
+
+function setupTouch(input) {
+  const stick = $('stick'), knob = $('knob');
+  let sid = null, cx = 0, cy = 0;
+  stick.addEventListener('pointerdown', (e) => { sid = e.pointerId; const r = stick.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; stick.setPointerCapture(sid); });
+  stick.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== sid) return;
+    const dx = Math.max(-50, Math.min(50, e.clientX - cx)), dy = Math.max(-50, Math.min(50, e.clientY - cy));
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    input.stick.x = dx / 50; input.stick.y = dy / 50;
+  });
+  const end = () => { sid = null; knob.style.transform = ''; input.stick.x = input.stick.y = 0; };
+  stick.addEventListener('pointerup', end); stick.addEventListener('pointercancel', end);
+  let lid = null, lx = 0, ly = 0;
+  $('game').addEventListener('pointerdown', (e) => { if (e.pointerType !== 'touch') return; lid = e.pointerId; lx = e.clientX; ly = e.clientY; });
+  $('game').addEventListener('pointermove', (e) => { if (e.pointerId !== lid) return; input.touchLook.dx += (e.clientX - lx) * 1.4; input.touchLook.dy += (e.clientY - ly) * 1.4; lx = e.clientX; ly = e.clientY; });
+  $('game').addEventListener('pointerup', (e) => { if (e.pointerId === lid) lid = null; });
+  for (const b of document.querySelectorAll('#tbtns button')) {
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (b.dataset.k) { input.pressed.add(b.dataset.k); input.keys.add(b.dataset.k); }
+      if (b.dataset.m === 'left') { input.mouse.left = true; input.mouse.leftPressed = true; input.locked = true; }
+      if (b.dataset.m === 'right') { input.mouse.rightPressed = true; input.locked = true; }
+    });
+    b.addEventListener('pointerup', () => { if (b.dataset.k) input.keys.delete(b.dataset.k); if (b.dataset.m === 'left') input.mouse.left = false; });
+  }
+}
+
+boot().catch((e) => { console.error(e); $('loading').textContent = '오류: ' + e.message; window.__error = String(e.stack || e); window.__ready = true; });
