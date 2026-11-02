@@ -87,7 +87,7 @@ export class Day {
     if (this.timeTo != null) {
       s.hour = Math.min(this.timeTo, s.hour + dt * 2.5);
       if (s.hour >= this.timeTo) this.timeTo = null;
-    } else if (!this.busy) s.hour += dt / 90; // 1.5 real minutes per game hour
+    } else if (!this.busy) s.hour += dt / 600; // 10 real seconds per game minute (인혁: "10초마다 1분")
     if (s.hour >= 24) s.hour = 23.99;
     this.snackCd -= dt;
     // location steps
