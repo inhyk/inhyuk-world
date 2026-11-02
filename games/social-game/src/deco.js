@@ -242,3 +242,123 @@ export function dressTown({ scene, props, build, colliders, lights, quality }) {
   }
   return { root, breakables, scatters };
 }
+
+/** Japan island dressing: Fuji on the horizon, airplanes on the aprons, street lamps, vending
+ * machines, cherry trees and wooded hills. */
+export function dressJapan({ scene, props, build, colliders, lights, quality, places }) {
+  const root = new THREE.Group();
+  root.name = 'japan-deco';
+  scene.add(root);
+  const out = { scatters: [], breakables: [], fuji: null };
+  const R = rng(81);
+  const L = LAYOUT, JX = L.jx;
+  const J = props.japan, N = props.nature, A = props.airplane;
+  // parked airplanes behind both terminals
+  if (A?.buildAirplane) {
+    for (const key of ['airport', 'jpAirport']) {
+      const s = places.sites[key];
+      const ap = s?.extra?.apron;
+      if (!ap) continue;
+      const plane = A.buildAirplane().group;
+      const c = Math.cos(s.worldYaw), sn = Math.sin(s.worldYaw);
+      const [x, y, z] = [s.worldPos[0] + ap.pos[0] * c + ap.pos[2] * sn, s.worldPos[1] + ap.pos[1], s.worldPos[2] - ap.pos[0] * sn + ap.pos[2] * c];
+      plane.position.set(x, groundAt(x, z) + y, z);
+      plane.rotation.y = (ap.yaw ?? 0) + s.worldYaw;
+      root.add(plane);
+      colliders.add({ min: [x - 3, 0, z - 17], max: [x + 3, 6, z + 17], tag: 'plane' });
+    }
+    // runway and apron paving at home
+    const fl = new THREE.Group();
+    put(fl, box(150, 0.06, 26), mat('asphalt'), 262, 0.01, -78).castShadow = false;
+    for (let x = 192; x < 334; x += 10) put(fl, box(5, 0.012, 0.35), paint(0xf2f0ea, 0.6), x, 0.045, -78).castShadow = false;
+    put(fl, box(60, 0.05, 22), mat('concrete'), 262, 0.005, -55).castShadow = false;
+    const jx = places.sites.jpAirport?.worldPos[0] ?? JX - 92;
+    put(fl, box(120, 0.05, 30), mat('concrete'), jx, 0.005, -60).castShadow = false;
+    root.add(bake(fl));
+  }
+  if (J?.fujiBackdrop) {
+    const f = J.fujiBackdrop();
+    f.group.position.set(JX + 60, -2, -760);
+    f.material.fog = false;
+    f.material.needsUpdate = true;
+    f.group.traverse((o) => { o.castShadow = false; o.receiveShadow = false; });
+    root.add(f.group);
+    out.fuji = f;
+  }
+  const sites = Object.values(places.sites).filter((s) => s.def?.japan);
+  const free = (x, z, m = 2) => {
+    if (Math.abs(z) < L.jRoadHalf + L.jWalk + m && x > L.jMin[0] - 2 && x < L.jMax[0] + 2) return false;
+    if (z > L.jMax[1] + 12) return false;
+    for (const s of sites) {
+      const rot = Math.abs(Math.sin(s.worldYaw)) > 0.5, fp = s.footprint;
+      const hw = (rot ? fp.d : fp.w) / 2 + m, hd = (rot ? fp.w : fp.d) / 2 + m;
+      if (Math.abs(x - s.worldPos[0]) < hw && Math.abs(z - s.worldPos[2]) < hd) return false;
+    }
+    if (x > JX - 140 && x < JX - 40 && z < -10 && z > -100) return false; // airport and apron
+    return true;
+  };
+  if (N) {
+    const cherry = new Scatter(root, N.tree({ kind: 'cherry', seed: 11, height: 6 }), 400, { range: 80, maxRange: 80 });
+    const pine = new Scatter(root, N.tree({ kind: 'pine', seed: 12, height: 9 }), 600, { far: farTree('pine', 9), range: 80, maxRange: 900 });
+    const maple = new Scatter(root, N.tree({ kind: 'maple', seed: 13, height: 7 }), 300, { far: farTree('maple', 7), range: 80, maxRange: 900 });
+    const bush = new Scatter(root, N.bush({ seed: 14 }), 300, { range: 45, maxRange: 45 });
+    // cherry trees just behind the sidewalks
+    for (let x = L.jMin[0] + 8; x < L.jMax[0] - 6; x += 9) for (const s of [-1, 1]) {
+      const z = s * (L.jRoadHalf + L.jWalk + 1.6);
+      if (!free(x, z, -1.2)) continue;
+      cherry.add(x, groundAt(x, z), z, R() * 6.28, 0.8 + R() * 0.2);
+      colliders.add({ min: [x - 0.25, 0, z - 0.25], max: [x + 0.25, 3, z + 0.25], tag: 'tree' });
+    }
+    for (let i = 0; i < 700; i++) {
+      const x = JX - 300 + R() * 600, z = -260 + R() * 300;
+      if (!free(x, z, 3)) continue;
+      const hill = z < L.jMin[1] || x < L.jMin[0] || x > L.jMax[0];
+      const k = R();
+      if (hill) (k < 0.65 ? pine : maple).add(x, groundAt(x, z) - 0.05, z, R() * 6.28, 0.9 + R() * 0.5);
+      else if (k < 0.3) cherry.add(x, groundAt(x, z), z, R() * 6.28, 0.8 + R() * 0.3);
+      else if (k < 0.7) bush.add(x, groundAt(x, z), z, R() * 6.28, 0.8);
+    }
+    for (const sc of [cherry, pine, maple, bush]) { sc.finish(); out.scatters.push(sc); }
+    if (N.grassTuft) {
+      const { geometry, material } = N.grassTuft();
+      const proto = new THREE.Mesh(geometry, material);
+      const grass = new Scatter(root, proto, 1e6, { range: 22, maxRange: 22, cast: false });
+      for (let i = 0, c = 0; i < 30000 && c < (quality === 'high' ? 9000 : 3000); i++) {
+        const x = L.jMin[0] + R() * (L.jMax[0] - L.jMin[0]), z = -40 + R() * 80;
+        if (!free(x, z, 0.3)) continue;
+        const s = 0.7 + R() * 0.6;
+        grass.add(x, groundAt(x, z) - 0.02, z, R() * 6.28, s, s);
+        c++;
+      }
+      grass.finish();
+      out.scatters.push(grass);
+    }
+  }
+  if (J) {
+    const furn = new THREE.Group();
+    const one = (obj, x, z, ry = 0, solid = 0.3, y = 0.14) => {
+      const o = obj.group ?? obj;
+      o.position.set(x, y, z); o.rotation.y = ry; furn.add(o);
+      if (solid) colliders.add({ min: [x - solid, 0, z - solid], max: [x + solid, 1.8, z + solid], tag: 'prop' });
+      return obj;
+    };
+    for (let x = L.jMin[0] + 12; x < L.jMax[0] - 6; x += 24) {
+      const lamp = J.japaneseStreetLamp();
+      one(lamp, x, L.jRoadHalf + 0.5, Math.PI, 0.15);
+      const lp = new THREE.Vector3(...(lamp.lampPos ?? [0, 4.5, 0.4])).applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI).add(new THREE.Vector3(x, 0.14, L.jRoadHalf + 0.5));
+      lights.add({ pos: lp, intensity: 12, range: 14, color: 0xffd9a8, when: 'night' });
+      if (lamp.glowMat) lights.addGlow(lamp.glowMat);
+    }
+    const vm = (x, z, ry) => { const v = J.vendingMachine(); one(v, x, z, ry, 0.5); if (v.glowMat) lights.addGlow(v.glowMat, 'always'); };
+    vm(2153.3 - 2200 + JX, -L.jRoadHalf - L.jWalk + 0.5, 0);
+    vm(2188 - 2200 + JX, L.jRoadHalf + L.jWalk - 0.5, Math.PI);
+    vm(2224 - 2200 + JX, -L.jRoadHalf - L.jWalk + 0.5, 0);
+    one(J.postBox(), JX - 48, -L.jRoadHalf - 0.6, 0, 0.25);
+    for (let i = 0; i < 3; i++) one(J.bicycle(), JX - 12 + i * 0.7, -L.jRoadHalf - L.jWalk + 0.4, -Math.PI / 2 + 0.2, 0);
+    for (const [x, z, ry, t] of [[JX - 60, L.jRoadHalf + 1.2, Math.PI, '← 사쿠라 공항'], [JX + 18, -L.jRoadHalf - 1.2, 0, '신사 →'], [JX - 6, L.jRoadHalf + 1.2, Math.PI, '료칸 ↓']]) one(J.signBoard(t), x, z, ry, 0.1);
+    for (const [x, z] of [[JX + 25, -L.jRoadHalf - L.jWalk - 0.3], [JX + 60, -L.jRoadHalf - L.jWalk - 0.3]]) one(J.stoneLantern(), x, z, 0, 0.35);
+    for (const x of [JX + 14, JX + 70, JX + 90]) one(J.bambooFence(6), x, L.jRoadHalf + L.jWalk + 0.8, 0, 0);
+    root.add(bake(furn));
+  }
+  return out;
+}

@@ -26,7 +26,7 @@
   <div id="prompt" class="hidden"></div>
   <div id="hotbar"></div>
   <div id="toast"></div>
-  <div id="buttons"><button id="btn-view" title="시점 바꾸기 (V)">1인칭</button><button id="btn-help" title="도움말 (H)">?</button></div>
+  <div id="buttons"><button id="btn-view" title="시점 바꾸기 (V)">1인칭</button><button id="btn-help" title="도움말 (H)">?</button><button id="btn-login" title="로그인 (L)">👤 로그인</button></div>
   <div id="help" class="hidden">
     <h3>조작법</h3>
     <p><b>W A S D</b> 걷기 · <b>Shift</b> 달리기 · <b>Space</b> 점프 · <b>마우스</b> 둘러보기</p>
@@ -36,6 +36,33 @@
   </div>
 </div>
 <div id="screen" class="hidden"></div>
+<div id="login" class="modal hidden">
+  <div class="mcard">
+    <h2>👤 로그인</h2>
+    <div id="login-out">
+      <p class="small">젤리 타워랑 같은 seonn 계정이에요. 로그인하면 게임이 서버에도 저장돼서 다른 컴퓨터에서 이어서 할 수 있어요.</p>
+      <input id="nick" maxlength="10" placeholder="닉네임 (2~10글자)" autocomplete="username" />
+      <input id="pw" type="password" maxlength="16" placeholder="비밀번호 (4~16글자)" autocomplete="current-password" />
+      <div class="err" id="login-err"></div>
+      <div class="mrow"><button id="do-login">로그인</button><button id="do-signup" class="alt">새 계정 만들기</button></div>
+      <p class="small">진짜 이름, 전화번호, 학교는 쓰지 마요. 이메일이 없어서 비밀번호를 잊으면 되찾을 수 없어요.</p>
+    </div>
+    <div id="login-in" class="hidden">
+      <p class="big"><b id="me-nick"></b> 님으로 로그인했어요 👋</p>
+      <p class="small" id="cloud-status"></p>
+      <div class="mrow"><button id="do-save">지금 서버에 저장</button><button id="do-logout" class="alt">로그아웃</button></div>
+    </div>
+    <button id="login-close" class="alt close">닫기</button>
+  </div>
+</div>
+<div id="choose" class="modal hidden">
+  <div class="mcard">
+    <h2>어느 기록으로 할까?</h2>
+    <p class="small">다른 컴퓨터에서 저장한 기록이 있어요. 하나를 골라요. 안 고른 기록은 없어져요.</p>
+    <button id="pick-local" class="pick"></button>
+    <button id="pick-server" class="pick"></button>
+  </div>
+</div>
 <div id="fade"></div>
 <div id="flash"></div>
 <div id="hurt"></div>
@@ -45,6 +72,7 @@
     <p class="sub">일어나서, 준비하고, 차 타고 회사 가기. 어느 날엔 회식, 출장, 여행!</p>
     <div id="loading">불러오는 중… <span id="load-pct">0%</span></div>
     <button id="play" class="hidden">시작하기</button>
+    <div class="who"><span id="who">로그인하면 다른 컴퓨터에서도 이어서 할 수 있어요</span> <button id="btn-login-start" class="link">로그인</button></div>
     <p class="keys">WASD 걷기 · 마우스 둘러보기 · E 사용 · 왼쪽 클릭 깨기 · 오른쪽 클릭 놓기 · V 시점</p>
     <label class="q"><input type="checkbox" id="low" /> 컴퓨터가 느리면 체크 (낮은 화질)</label>
   </div>

@@ -47,7 +47,14 @@ export class Life {
       const ch = this.person(100 + i, ['casual', 'office', 'casual', 'suit'][i % 4]);
       this.engine.scene.add(ch.group);
       const x = -240 + this.R() * 500;
-      this.walkers.push({ ch, x, z: side * (LAYOUT.roadHalf + 1.2 + this.R() * 2), dir: this.R() < 0.5 ? 1 : -1, speed: 1.1 + this.R() * 0.5, pause: 0 });
+      this.walkers.push({ ch, x, z: side * (LAYOUT.roadHalf + 1.2 + this.R() * 2), dir: this.R() < 0.5 ? 1 : -1, speed: 1.1 + this.R() * 0.5, pause: 0, x0: LAYOUT.roadX[0], x1: LAYOUT.roadX[1], y: 0.16 });
+    }
+    // Japan street walkers
+    for (let i = 0; i < 6; i++) {
+      const side = i % 2 ? 1 : -1;
+      const ch = this.person(200 + i, ['casual', 'casual', 'office', 'suit'][i % 4]);
+      this.engine.scene.add(ch.group);
+      this.walkers.push({ ch, x: LAYOUT.jMin[0] + 20 + this.R() * 250, z: side * (LAYOUT.jRoadHalf + 1.1), dir: this.R() < 0.5 ? 1 : -1, speed: 1.0 + this.R() * 0.4, pause: 0, x0: LAYOUT.jMin[0], x1: LAYOUT.jMax[0], y: 0.14 });
     }
   }
 
@@ -82,11 +89,11 @@ export class Life {
       if (w.pause > 0) w.pause -= dt;
       else {
         w.x += w.dir * w.speed * dt;
-        if (w.x > x1 - 10 || w.x < x0 + 10) { w.dir *= -1; w.pause = 1 + this.R() * 2; }
+        if (w.x > w.x1 - 10 || w.x < w.x0 + 10) { w.dir *= -1; w.pause = 1 + this.R() * 2; }
         if (this.R() < dt * 0.02) w.pause = 2 + this.R() * 3;
       }
       const g = w.ch.group;
-      g.position.set(w.x, 0.16, w.z);
+      g.position.set(w.x, w.y, w.z);
       g.rotation.y = w.dir > 0 ? -Math.PI / 2 : Math.PI / 2;
       const far = g.position.distanceToSquared(cam) > 90 * 90;
       g.visible = !far;

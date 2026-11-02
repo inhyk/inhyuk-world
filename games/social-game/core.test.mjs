@@ -8,7 +8,7 @@ test('a week has work, a company dinner, a business trip and a weekend trip', ()
   assert.equal(dayKind(3), 'dinner');
   assert.equal(dayKind(4), 'visit');
   assert.equal(dayKind(6), 'trip');
-  assert.equal(dayKind(7), 'trip');
+  assert.equal(dayKind(7), 'trip2');
   assert.equal(dayKind(8), 'work');
 });
 
@@ -17,7 +17,14 @@ test('a normal day: wake, wash, eat, dress, drive to work, work, come home, show
   assert.deepEqual(ids, ['wake', 'sink', 'breakfast', 'wardrobe', 'drive-work', 'work', 'lunch', 'work2', 'gohome', 'shower', 'sleep']);
   assert.ok(stepsFor('dinner').some((s) => s.id === 'dinner'));
   assert.ok(stepsFor('visit').some((s) => s.target === 'other:meeting'));
-  assert.equal(stepsFor('trip').at(-1).target, 'pension:hotelBed');
+  assert.equal(stepsFor('trip').at(-1).target, 'ryokan:futon');
+});
+
+test('the weekend is a trip to Japan: airport, plane, shrine, ramen, souvenir, ryokan, onsen, home', () => {
+  const sat = stepsFor('trip').map((s) => s.id), sun = stepsFor('trip2').map((s) => s.id);
+  assert.deepEqual(sat, ['wake', 'wardrobe', 'drive-airport', 'fly-japan', 'photo-jp', 'ramen', 'souvenir', 'ryokan']);
+  assert.deepEqual(sun, ['wake', 'onsen', 'fly-home', 'drive-home', 'shower', 'sleep']);
+  assert.equal(stepsFor('trip2')[0].target, 'ryokan:futon');
 });
 
 test('hunger drains, an empty stomach hurts and food heals', () => {
