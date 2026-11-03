@@ -111,3 +111,11 @@ export function ambience(day, night, sea) {
     if (night > 0.5 && Math.random() < 0.8) for (let i = 0; i < 4; i++) tone(now + i * 0.06, 4200, 0.04, { type: 'square', gain: 0.008 });
   }
 }
+
+/** A soft piano-like note (Hz). */
+export function note(freq) {
+  if (!ac() || muted) return;
+  const t = ctx.currentTime;
+  tone(t, freq, 1.1, { type: 'triangle', gain: 0.18, attack: 0.005 });
+  tone(t, freq * 2, 0.6, { type: 'sine', gain: 0.05, attack: 0.005 });
+}

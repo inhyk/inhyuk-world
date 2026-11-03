@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { mat, paint } from './mat.js';
 import { box, rbox, cyl, put, bake, displace } from './geom.js';
 import { Scatter } from './scatter.js';
-import { LAYOUT, SITES, groundAt } from './world.js';
+import { LAYOUT, SITES, ROADS2, groundAt } from './world.js';
 import { rng } from './noise.js';
 
 const LOTS = [
@@ -25,6 +25,9 @@ function inRect(x, z, r, m = 0) { return x > r.x0 - m && x < r.x1 + m && z > r.z
 /** Is (x, z) free ground for scattering (not road, lot, building or path)? */
 export function freeGround(x, z, margin = 1.5) {
   if (Math.abs(z - LAYOUT.roadZ) < LAYOUT.roadHalf + LAYOUT.walk + margin && x > LAYOUT.roadX[0] - 2) return false;
+  const A2 = ROADS2.avenue2;
+  if (Math.abs(z - A2.z) < A2.half + A2.walk + margin && x > A2.x0 - 2 && x < A2.x1 + 2) return false;
+  for (const c of ROADS2.cross) if (Math.abs(x - c.x) < c.half + c.walk + margin && z > c.z0 - 2 && z < c.z1 + 2) return false;
   for (const r of [...LOTS, DRIVE, PATH, PLAZA]) if (inRect(x, z, r, margin)) return false;
   for (const s of SITES) {
     const fp = s.footprint ?? { w: 20, d: 20 };
@@ -137,15 +140,21 @@ export function dressTown({ scene, props, build, colliders, lights, quality }) {
   // street trees in the outer part of the sidewalks
   for (let x = x0 + 10; x < x1 - 6; x += 16) for (const s of [-1, 1]) {
     const z = s * (LAYOUT.roadHalf + LAYOUT.walk - 0.9);
-    const blocked = [DRIVE, PATH, PLAZA, ...LOTS].some((r) => x > r.x0 - 3 && x < r.x1 + 3 && Math.sign(r.z0 + r.z1) === s) || CROSSWALKS.some((c) => Math.abs(x - c) < 5);
+    const blocked = [DRIVE, PATH, PLAZA, ...LOTS].some((r) => x > r.x0 - 3 && x < r.x1 + 3 && Math.sign(r.z0 + r.z1) === s) || CROSSWALKS.some((c) => Math.abs(x - c) < 5) || (s > 0 && ROADS2.cross.some((c) => Math.abs(x - c.x) < c.half + c.walk + 2));
     if (!blocked) plant(Math.floor(x / 16) % 4 === 0 ? (s < 0 ? 'cherry' : 'round2') : 'round', x, z, R() * 6.28, 0.8);
   }
+  // street trees along the school street
+  { const A2 = ROADS2.avenue2;
+    for (let x = A2.x0 + 8; x < A2.x1 - 6; x += 14) for (const sd of [-1, 1]) {
+      if (ROADS2.cross.some((c) => Math.abs(x - c.x) < c.half + c.walk + 2)) continue;
+      plant(Math.floor(x / 14) % 3 === 0 ? 'cherry' : 'round', x, A2.z + sd * (A2.half + A2.walk - 0.9), R() * 6.28, 0.8);
+    } }
   // gardens, park and the hills
   const tries = (n, f) => { for (let i = 0; i < n; i++) f(); };
   const zone = (zMin, zMax, xMin = x0 + 4, xMax = x1) => [xMin + R() * (xMax - xMin), zMin + R() * (zMax - zMin)];
-  tries(900, () => {
+  tries(1400, () => {
     const north = R() < 0.55;
-    const [x, z] = zone(north ? -85 : 14, north ? -14 : 80);
+    const [x, z] = zone(north ? -85 : 14, north ? -14 : 205);
     if (!freeGround(x, z, 1.5)) return;
     const k = R();
     const far = Math.abs(z) > 48;
@@ -210,6 +219,23 @@ export function dressTown({ scene, props, build, colliders, lights, quality }) {
       lights.add({ pos: lp, intensity: 18, range: 18, color: 0xffd9a0, when: 'night' });
       colliders.add({ min: [xx - 0.15, 0, z - 0.15], max: [xx + 0.15, 6, z + 0.15], tag: 'lamp' });
     }
+    { const A2 = ROADS2.avenue2;
+      for (let x = A2.x0 + 12; x < A2.x1 - 4; x += 30) for (const sd of [-1, 1]) {
+        const xx = x + (sd > 0 ? 15 : 0);
+        if (ROADS2.cross.some((c) => Math.abs(xx - c.x) < c.half + c.walk + 1)) continue;
+        const z = A2.z + sd * (A2.half + 0.7), ry = sd < 0 ? 0 : Math.PI;
+        lamps.add(xx, 0.16, z, ry);
+        const lp = new THREE.Vector3(...(lampP.lampPos ?? [0, 6, 0])).applyAxisAngle(new THREE.Vector3(0, 1, 0), ry).add(new THREE.Vector3(xx, 0.16, z));
+        lights.add({ pos: lp, intensity: 18, range: 18, color: 0xffd9a0, when: 'night' });
+        colliders.add({ min: [xx - 0.15, 0, z - 0.15], max: [xx + 0.15, 6, z + 0.15], tag: 'lamp' });
+      }
+      for (const c of ROADS2.cross) for (let z = c.z0 + 16; z < c.z1 - 8; z += 26) {
+        const x = c.x + c.half + 0.6;
+        lamps.add(x, 0.16, z, -Math.PI / 2);
+        const lp = new THREE.Vector3(...(lampP.lampPos ?? [0, 6, 0])).applyAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2).add(new THREE.Vector3(x, 0.16, z));
+        lights.add({ pos: lp, intensity: 18, range: 18, color: 0xffd9a0, when: 'night' });
+      }
+    }
     lamps.finish();
     const furniture = new THREE.Group();
     const one = (obj, x, z, ry = 0, solid = 0.3, keep = false) => {
@@ -226,7 +252,7 @@ export function dressTown({ scene, props, build, colliders, lights, quality }) {
     colliders.add({ min: [-62.2, 0, 9.9], max: [-57.8, 2.6, 10.9], tag: 'prop' });
     for (const [x, s] of [[-128, -1], [-30, 1], [95, -1], [180, 1], [8, -1]]) one(S.bench(), x, s * (LAYOUT.roadHalf + LAYOUT.walk - 0.6), s < 0 ? 0 : Math.PI, 0.6);
     for (const [x, s] of [[-140, 1], [-20, -1], [60, 1], [150, -1], [240, -1]]) one(S.hydrant(), x, s * (LAYOUT.roadHalf + 0.9), 0, 0.2);
-    for (const [x, s] of [[-100, -1], [-40, 1], [30, 1], [130, -1], [210, 1]]) one(S.trashCan(), x, s * (LAYOUT.roadHalf + LAYOUT.walk - 0.5), 0, 0.3);
+    for (const [x, s] of [[-100, -1], [-52, 1], [30, 1], [130, -1], [210, 1]]) one(S.trashCan(), x, s * (LAYOUT.roadHalf + LAYOUT.walk - 0.5), 0, 0.3);
     one(S.signpost('세온 아파트'), -167, -12.2, 0, 0.1);
     for (const [x, z] of [[26, -12], [54, -12], [-112, -12.2], [-106, -12.2]]) one(S.planter(), x, z, 0, 0.5);
     for (let i = 0; i < 4; i++) one(S.bollard(), 58 + i * 1.2 - 2, -11.6, 0, 0.12);

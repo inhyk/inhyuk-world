@@ -97,13 +97,13 @@ export class Player {
     const len = Math.hypot(fx, fz);
     if (len > 1) { fx /= len; fz /= len; }
     const run = i.down('ShiftLeft') || i.down('ShiftRight');
-    const maxSpeed = (run ? 7.2 : 4.3) * (this.slow ?? 1);
+    const maxSpeed = (run && !this.limp ? 7.2 : 4.3) * (this.limp ? 0.38 : 1) * (this.slow ?? 1);
     const s = Math.sin(this.yaw), c = Math.cos(this.yaw);
     const wx = fx * c + fz * s, wz = -fx * s + fz * c;
     const accel = this.onGround ? 14 : 4;
     this.vel.x += (wx * maxSpeed - this.vel.x) * Math.min(1, accel * dt);
     this.vel.z += (wz * maxSpeed - this.vel.z) * Math.min(1, accel * dt);
-    if (this.onGround && i.hit('Space')) { this.vel.y = 7.2; this.onGround = false; }
+    if (this.onGround && i.hit('Space') && !this.limp) { this.vel.y = 7.2; this.onGround = false; }
     this.vel.y -= 22 * dt;
     if (this.vel.y < -40) this.vel.y = -40;
     const wasGround = this.onGround;
@@ -130,7 +130,7 @@ export class Player {
   /** Place the camera (call after update). */
   updateCamera(dt) {
     const cam = this.engine.camera;
-    const eye = new THREE.Vector3(this.pos.x, this.pos.y + EYE + Math.sin(this.bob * 2) * 0.03 * Math.min(1, this.speed / 4), this.pos.z);
+    const eye = new THREE.Vector3(this.pos.x, this.pos.y + (this.eye ?? EYE) + Math.sin(this.bob * 2) * 0.03 * Math.min(1, this.speed / 4), this.pos.z);
     const dir = new THREE.Vector3(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
     if (this.view === 'first') {
       cam.position.copy(eye);

@@ -1,5 +1,5 @@
 // Round minimap (north up): roads, buildings, the car, the quest target.
-import { LAYOUT, SITES } from './world.js';
+import { LAYOUT, SITES, ROADS2 } from './world.js';
 
 export class Minimap {
   constructor(canvas) {
@@ -41,6 +41,12 @@ export class Minimap {
     const [ax0, az0] = P(LAYOUT.roadX[0], LAYOUT.roadZ - LAYOUT.roadHalf);
     const [ax1, az1] = P(LAYOUT.roadX[1], LAYOUT.roadZ + LAYOUT.roadHalf);
     g.fillStyle = '#3c3f44'; g.fillRect(ax0, az0, ax1 - ax0, az1 - az0);
+    const rect = (x0, z0, x1, z1, c) => { const [p, q] = P(x0, z0), [r, t] = P(x1, z1); g.fillStyle = c; g.fillRect(p, q, r - p, t - q); };
+    const A2 = ROADS2.avenue2;
+    rect(A2.x0, A2.z - A2.half - A2.walk, A2.x1, A2.z + A2.half + A2.walk, '#cfc8ba');
+    for (const c of ROADS2.cross) rect(c.x - c.half - c.walk, c.z0, c.x + c.half + c.walk, c.z1, '#cfc8ba');
+    rect(A2.x0, A2.z - A2.half, A2.x1, A2.z + A2.half, '#3c3f44');
+    for (const c of ROADS2.cross) rect(c.x - c.half, c.z0, c.x + c.half, c.z1 + 1, '#3c3f44');
     // buildings
     g.font = `${this.big ? 16 : 12}px Jua, sans-serif`; g.textAlign = 'center';
     for (const s of SITES) {

@@ -19,8 +19,10 @@ import { dressTown, dressJapan } from './src/deco.js';
 import { Flight } from './src/flight.js';
 import { Cloud } from './src/cloud.js';
 import { Elevators } from './src/elevator.js';
+import { guide, guideText } from './src/nav.js';
+import { DriveTest } from './src/drivetest.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
-import { newState, tickBody, fallDamage, hurt, serialize, deserialize, dayKind } from './core.mjs';
+import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
 
 const $ = (id) => document.getElementById(id);
 const T0 = performance.now();
@@ -92,7 +94,9 @@ async function boot() {
   const input = new Input(engine.canvas);
   const player = new Player(engine, input, col, groundAt);
   if (props.character) try {
-    player.setAvatar(props.character.buildCharacter({ outfit: state.outfit, hair: 'spiky', hairColor: 0x221a16, seed: 7 }));
+    const kid = state.mode === 'kid', girl = state.gender === 'girl';
+    player.setAvatar(props.character.buildCharacter({ outfit: state.outfit, hair: kid ? (girl ? 'long' : 'short') : 'spiky', hairColor: 0x221a16, seed: girl ? 12 : 7 }));
+    if (kid) { player.avatar.group.scale.setScalar(0.72); player.eye = 1.15; player.camDist = 2.8; }
     if (props.character.buildFirstPersonArm) {
       player.arm = props.character.buildFirstPersonArm({ outfit: state.outfit });
       engine.camera.add(player.arm.group);
@@ -107,6 +111,27 @@ async function boot() {
   } catch (e) { console.warn('car failed', e); vehicle = null; }
   const life = new Life({ engine, places, buildCharacter: props.character?.buildCharacter, buildCar: props.car?.buildCar, colliders: col, groundAt });
   try { life.spawnPeople(); } catch (e) { console.warn('people failed', e); }
+  // 어린이 이야기: mom and dad at home (인혁: "어린이 모드에서는 아빠랑 엄마가 있게 해줘")
+  if (state.mode === 'kid' && places.sites.home?.def?.mod === 'apartment' && life.buildCharacter) {
+    const home = places.sites.home;
+    const xf = (p) => { const c = Math.cos(home.worldYaw), sn = Math.sin(home.worldYaw); return new THREE.Vector3(home.worldPos[0] + p[0] * c + p[2] * sn, home.worldPos[1] + p[1], home.worldPos[2] - p[0] * sn + p[2] * c); };
+    const fam = [
+      { id: 'mom', label: '엄마랑 이야기하기', look: { hair: 'bob', outfit: 'casual', hairColor: 0x3b2a20, skin: 0xf1c9a5, seed: 41 }, pos: [6.05, 21.3, -3.55], yaw: Math.PI, pose: 'idle' },
+      { id: 'dad', label: '아빠랑 이야기하기', look: { hair: 'short', outfit: 'office', hairColor: 0x221a16, skin: 0xe8b894, seed: 42 }, pos: [8.0, 21.3, 0.55], yaw: Math.PI / 2, pose: 'sit' },
+    ];
+    for (const f of fam) {
+      try {
+        const ch = life.buildCharacter(f.look);
+        const w = xf(f.pos);
+        ch.group.position.copy(w);
+        ch.group.rotation.y = f.yaw + home.worldYaw;
+        engine.scene.add(ch.group);
+        life.people.push({ ch, mode: f.pose, base: f.pose, site: 'home', wave: 0, t: 0 });
+        places.interactables.push({ id: f.id, label: f.label, site: 'home', key: `home:${f.id}`, radius: 1.8, wpos: w.clone().add(new THREE.Vector3(0, f.pose === 'sit' ? 1.1 : 1.5, 0)), seatW: null, screenW: null });
+      } catch (e) { console.warn('family failed', e); }
+    }
+  }
+  player.limp = !!state.hurt;
   try { life.spawnTraffic(engine.quality === 'high' ? 6 : 4); } catch (e) { console.warn('traffic failed', e); }
   if (vehicle) vehicle.others = life.cars;
   pct(92, 'life'); await frame();
@@ -115,9 +140,10 @@ async function boot() {
   for (const b of state.placed ?? []) build.placeBlock(b.id, b.x, b.y, b.z, b.rot ?? 0, false);
   let cloud = null;
   let replacing = false; // a server save is being loaded: never write the old game over it
+  let replacingAll = false; // a new story is starting
   // saveLocal: this computer only (timer, closing the tab). save: also the server, after real progress.
   const saveLocal = () => {
-    if (replacing) return;
+    if (replacing || replacingAll) return;
     state.placed = build.dump();
     try { localStorage.setItem(SAVE_KEY, serialize(state)); } catch { /* storage full or blocked */ }
   };
@@ -150,6 +176,9 @@ async function boot() {
   let lifts = { prompt: () => null, update: () => {}, busy: false };
   try { lifts = new Elevators({ engine, colliders: col, places, player, hud, sfx, input }); } catch (e) { console.warn('elevators failed', e); }
   day.g.flight = flight;
+  const driveTest = new DriveTest({ engine, places, vehicle, player, hud, sfx, state, day, cloud });
+  day.g.driveTest = driveTest;
+  if (!places.sites.license) state.license = true; // no test centre loaded: never lock the car
   day.g.onNewDay = () => {
     // trees, bushes and shells grow back every morning
     for (const e of deco.breakables) if (e.broken) {
@@ -157,7 +186,7 @@ async function boot() {
       if (e.col) col.add(e.col);
     }
   };
-  const fresh = !localStorage.getItem(SAVE_KEY);
+  let fresh = !localStorage.getItem(SAVE_KEY);
   day.wakeUp();
   day.setOutfit(state.outfit);
   sky.setHour(state.hour, true);
@@ -176,10 +205,33 @@ async function boot() {
     unlock();
     input.lock();
     sfx('alarm');
-    hud.toast(fresh ? '따르릉! 1일차 아침이에요. 오른쪽 퀘스트를 따라가요' : '이어서 해요!', 3200);
+    const first = state.day === 1 && state.step === 0;
+    hud.toast(first ? (state.mode === 'kid' ? '나는 이제 1학년! 오늘부터 학교에 가요 🎒' : '돈이 별로 없어요… 회사에서 일해서 1,000,000원을 모아 비행기를 타요! ✈️') : '이어서 해요!', 3600);
+    fresh = first;
+    if (fresh) setTimeout(() => hud.toast('따르릉! 1일차 아침이에요. 오른쪽 퀘스트를 따라가요', 3000), 3800);
     if (matchMedia('(pointer: coarse)').matches) { $('touch').classList.remove('hidden'); input.locked = true; }
   };
   $('play').addEventListener('click', start);
+  // story choice (인혁: 직장인 / 어린이, 어린이는 남자 / 여자)
+  const begin = (mode, gender) => {
+    replacingAll = true;
+    const fresh2 = { ...newState(), mode, gender, money: mode === 'kid' ? 10000 : 30000 };
+    try { localStorage.setItem(SAVE_KEY, serialize(fresh2)); sessionStorage.setItem('sg-autoplay', '1'); } catch { /* blocked */ }
+    location.reload();
+  };
+  $('m-office').onclick = () => begin('office');
+  $('m-kid').onclick = () => $('kid-pick').classList.remove('hidden');
+  $('m-boy').onclick = () => begin('kid', 'boy');
+  $('m-girl').onclick = () => begin('kid', 'girl');
+  if (fresh) { $('play').classList.add('hidden'); $('modes').classList.remove('hidden'); }
+  else {
+    $('play').textContent = `이어서 하기 (${state.mode === 'kid' ? (state.gender === 'girl' ? '👧 어린이' : '👦 어린이') : '👔 직장인'} · ${state.day}일차)`;
+    $('new-game').classList.remove('hidden');
+    $('new-game').onclick = () => { $('modes').classList.remove('hidden'); $('new-game').classList.add('hidden'); $('who').textContent = '새로 시작하면 지금 기록은 지워져요'; };
+  }
+  let auto = false;
+  try { auto = sessionStorage.getItem('sg-autoplay') === '1'; sessionStorage.removeItem('sg-autoplay'); } catch { /* none */ }
+  if (auto) setTimeout(start, 50);
   engine.canvas.addEventListener('click', () => { if (!day.seat && !$('start').offsetParent) input.lock(); });
   const toggleView = () => { player.toggleView(); hud.setView(player.view); };
   $('btn-view').addEventListener('click', toggleView);
@@ -190,6 +242,7 @@ async function boot() {
 
   // ------------------------------------------------------------------ frame
   let hurtT = 0;
+  let navT = 0;
   player.onLand = (h) => {
     const dmg = fallDamage(h);
     if (dmg > 0) { hurt(state, dmg); hurtT = 0.6; sfx('hit'); hud.toast(`아야! 체력 -${dmg}`, 1000); }
@@ -206,6 +259,7 @@ async function boot() {
     if (input.hit('KeyP') && !day.seat) day.photo();
     const driving = vehicle?.driving;
     flight.update(dt, input);
+    driveTest.update(dt);
     lifts.update(dt);
     // movement
     if (!driving) player.update(dt);
@@ -228,7 +282,8 @@ async function boot() {
         if (Math.abs(vehicle.speed) < 2) { prompt = '차에서 내리기'; action = () => { vehicle.driving = false; const p = vehicle.exitPoint(); player.place(p.x, Math.max(p.y, groundAt(p.x, p.z)) + 0.05, p.z, vehicle.yaw); if (player.avatar) player.avatar.group.visible = player.view === 'third'; if (player.arm) player.arm.group.visible = player.view === 'first'; sfx('carDoor'); }; }
       } else {
         const cand = [];
-        if (vehicle && vehicle.pos.distanceTo(player.pos) < 3.4) cand.push({ d: vehicle.pos.distanceTo(player.pos) - 0.5, label: '차 타기', fn: () => { vehicle.driving = true; look.yaw = look.pitch = 0; if (player.avatar) player.avatar.group.visible = false; if (player.arm) player.arm.group.visible = false; sfx('carDoor'); hud.toast('W 가속 · S 브레이크 · A D 핸들 · E 내리기', 2600); } });
+        if (vehicle && vehicle.pos.distanceTo(player.pos) < 3.4) cand.push({ d: vehicle.pos.distanceTo(player.pos) - 0.5, label: state.license ? '차 타기' : '차 타기 (면허 필요)', fn: () => {
+          if (!state.license) { hud.toast('운전면허가 없어서 운전할 수 없어요! 면허시험장에서 시험을 봐요 🪪', 3200); sfx('wrong'); return; } vehicle.driving = true; look.yaw = look.pitch = 0; if (player.avatar) player.avatar.group.visible = false; if (player.arm) player.arm.group.visible = false; sfx('carDoor'); hud.toast('W 가속 · S 브레이크 · A D 핸들 · E 내리기', 2600); } });
         const fwd = player.forward;
         const eye = new THREE.Vector3(player.pos.x, player.pos.y + 1.6, player.pos.z);
         for (const it of places.interactables) {
@@ -292,6 +347,18 @@ async function boot() {
         hud.toast('밥을 잘 챙겨 먹어요! (병원비 -5,000원)', 2600);
       })();
     }
+    // navigation box while driving
+    const navEl = $('nav');
+    const tgt = day.target();
+    if (driving && tgt && vehicle.pos.x < 1500 && tgt.x < 1500) {
+      if ((navT = navT - dt) <= 0) {
+        navT = 0.3;
+        const f = vehicle.forward;
+        const tx = guideText(guide(vehicle.pos.x, vehicle.pos.z, f.x, f.z, tgt.x, tgt.z));
+        if (tx) { $('nav-arrow').textContent = tx.arrow; $('nav-head').textContent = tx.head; $('nav-sub').textContent = tx.sub; }
+      }
+      navEl.classList.remove('hidden');
+    } else navEl.classList.add('hidden');
     minimap.draw(player.pos, driving ? vehicle.yaw : player.yaw, vehicle && !driving ? vehicle.pos : null, day.target());
   });
   engine.onUpdate((dt) => {
@@ -303,7 +370,7 @@ async function boot() {
   engine.start();
   addEventListener('beforeunload', saveLocal);
   setInterval(saveLocal, 15000);
-  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => dayKind(state.day) };
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest };
   window.__ready = true;
 }
 

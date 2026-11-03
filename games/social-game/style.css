@@ -123,3 +123,43 @@ canvas#game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: b
 
 #lift .mcard button { text-align: left; }
 #lift-ind { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); padding: 10px 26px; border-radius: 14px; background: #101418e6; color: #ffd27a; font-size: 30px; letter-spacing: 1px; border: 2px solid #3a3f48; z-index: 15; }
+
+/* car navigation, drawn by 인혁 as a box with "300m 후 ↱" */
+#nav { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); display: flex; gap: 14px; align-items: center; padding: 8px 20px 8px 14px; border-radius: 16px; background: rgba(14, 30, 48, .9); border: 3px solid #5bb0ff; color: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+#nav .arrow { font-size: 46px; line-height: 1; color: #7fe08a; width: 52px; text-align: center; }
+#nav .head { font-size: 26px; color: #ffe39a; }
+#nav .sub { font-size: 16px; color: #cfe6ff; }
+@media (max-width: 760px) { #nav { top: auto; bottom: 150px; } #nav .arrow { font-size: 32px; } #nav .head { font-size: 20px; } }
+
+#quest-goal { margin-top: 6px; font-size: 14px; color: #5a5248; }
+#quest-goal b { color: #2f8a46; font-weight: normal; }
+#quest-goal .gb { margin-top: 3px; height: 9px; border-radius: 6px; background: #e3dccf; overflow: hidden; }
+#quest-goal .gb i { display: block; height: 100%; background: linear-gradient(90deg, #5ac86a, #2f8a46); border-radius: 6px; }
+
+#test { position: absolute; left: 50%; top: 150px; transform: translateX(-50%); padding: 8px 18px; border-radius: 14px; background: rgba(255, 250, 240, .93); color: #2b2620; font-size: 18px; box-shadow: 0 6px 18px rgba(0,0,0,.3); white-space: nowrap; }
+#test b { color: #3a6fd8; font-weight: normal; }
+#license-card { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-2deg); width: min(380px, 80vw); border-radius: 16px; background: linear-gradient(160deg, #f4f8ff, #dfe9ff); color: #1f2a44; box-shadow: 0 20px 50px #0008; padding: 14px 18px; font-size: 17px; z-index: 30; animation: pop .35s; }
+#license-card .lc-top { font-size: 22px; color: #3a6fd8; border-bottom: 2px solid #b9c9ea; padding-bottom: 6px; margin-bottom: 10px; }
+#license-card .lc-body { display: flex; gap: 14px; align-items: center; line-height: 1.5; }
+#license-card .lc-photo { width: 76px; height: 92px; border-radius: 8px; background: #c9d6ee; display: flex; align-items: center; justify-content: center; font-size: 44px; }
+#license-card .lc-ok { color: #d23a3a; font-size: 20px; }
+#license-card .lc-foot { margin-top: 10px; font-size: 13px; color: #6a7590; text-align: right; }
+
+#mini { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,10,16,.35); z-index: 25; }
+#mini .tk { position: relative; height: 70px; margin: 10px 0; border-radius: 14px; background: #f0e8da; overflow: hidden; cursor: pointer; }
+#mini .tk .zone { position: absolute; top: 0; bottom: 0; width: 18%; background: rgba(90, 200, 106, .55); border-left: 3px solid #2f8a46; border-right: 3px solid #2f8a46; }
+#mini .tk .foot { position: absolute; top: 12px; font-size: 40px; transform: translateX(-50%); }
+#mini .song { font-size: 26px; letter-spacing: 2px; text-align: center; }
+#mini .song .done { color: #5ac86a; } #mini .song .now { color: #e05a3a; text-decoration: underline; }
+#mini .pkeys { display: flex; gap: 4px; justify-content: center; }
+#mini .pk { width: 48px; height: 120px; border-radius: 0 0 10px 10px; background: #fff; color: #2b2620; border: 2px solid #c8c0b0; box-shadow: 0 4px 0 #b0a898; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 8px; font-size: 18px; }
+#mini .pk small { font-size: 12px; color: #9a9080; }
+#mini .pk.on { background: #ffe39a; transform: translateY(3px); }
+
+#start .pick-title { font-size: 20px; margin: 6px 0; }
+#start .mode-row { display: flex; gap: 10px; justify-content: center; margin: 6px 0; }
+#start button.mode { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 34px; padding: 12px 10px; border-radius: 18px; background: #eef2fa; color: #2b2620; box-shadow: 0 5px 0 #c8d0e0; }
+#start button.mode b { font-size: 21px; font-weight: normal; color: #3a6fd8; }
+#start button.mode small { font-size: 13px; color: #6a6258; line-height: 1.35; }
+#start button.mode.small { flex: 0 1 140px; }
+#start button.link { margin-top: 10px; font-size: 14px; padding: 6px 14px; border-radius: 10px; background: transparent; color: #8a8070; box-shadow: none; text-decoration: underline; }

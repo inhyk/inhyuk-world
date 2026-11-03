@@ -1,15 +1,19 @@
 // The day: quest steps, interactions, sitting, time skips, sleeping, and the mini games
 // (work computer, company dinner grill, meeting presentation, beach photo).
 import * as THREE from 'three';
-import { dayKind, weekday, stepsFor, STEP_TIME, eat, workTask, checkWork, meatState, WAGE, SNACK_PRICE, formatClock } from '../core.mjs';
+import { planDay, TICKET, weekday, stepsFor, STEP_TIME, eat, workTask, checkWork, meatState, WAGE, SNACK_PRICE, formatClock } from '../core.mjs';
 import { paint } from './mat.js';
+import { note } from './audio.js';
 import { rbox } from './geom.js';
 import { LAYOUT } from './world.js';
 
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const OUTFIT_FOR = { work: 'suit', dinner: 'suit', visit: 'suit', trip: 'beach', trip2: 'beach' };
+const OUTFIT_FOR = { work: 'suit', dinner: 'suit', visit: 'suit', trip: 'beach', trip2: 'beach', rest: 'casual', school: 'casual', kidRest: 'casual' };
+// 학교종 (a traditional children's song) first line: 솔 솔 라 라 솔 솔 미
+const SONG = ['솔', '솔', '라', '라', '솔', '솔', '미', '솔', '솔', '미', '미', '레'];
+const NOTES = { 도: [262, 'A'], 레: [294, 'S'], 미: [330, 'D'], 파: [349, 'F'], 솔: [392, 'G'], 라: [440, 'H'], 시: [494, 'J'] };
 
 export class Day {
   constructor(g) {
@@ -23,8 +27,13 @@ export class Day {
   }
 
   get s() { return this.g.state; }
-  get kind() { return dayKind(this.s.day); }
-  get steps() { return stepsFor(this.kind); }
+  get plan() {
+    const s = this.s;
+    if (!s.plan || s.plan.day !== s.day) s.plan = planDay(s, { hasLicenseCenter: !!this.g.places.sites.license });
+    return s.plan;
+  }
+  get kind() { return this.plan.kind; }
+  get steps() { return stepsFor(this.kind, this.plan); }
   get step() { return this.steps[this.s.step] ?? null; }
 
   makeMarker() {
@@ -49,6 +58,7 @@ export class Day {
 
   /** World target of the current step (for the marker and the minimap). */
   target() {
+    if (this.g.driveTest?.active) return this.g.driveTest.target();
     const st = this.step;
     if (!st) return null;
     const [site, id] = st.target.split(':');
@@ -63,8 +73,10 @@ export class Day {
     const st = this.step;
     const from = Math.max(0, Math.min(this.s.step - 1, this.steps.length - 6));
     const list = this.steps.map((x, i) => ({ label: x.label + (x.count ? ` (${Math.min(this.s.counts[x.id] ?? 0, x.count)}/${x.count})` : ''), done: i < this.s.step, now: i === this.s.step })).slice(from, from + 6);
-    const title = { work: '평범한 출근 날', dinner: '오늘은 회식 날', visit: '오늘은 출장 날', trip: '일본 여행 1일째', trip2: '일본 여행 2일째' }[this.kind];
-    this.g.hud.quest(st ? st.text : '오늘 할 일 끝! 자유롭게 놀아요', list);
+    const title = { work: '평범한 출근 날', dinner: '오늘은 회식 날', visit: '오늘은 출장 날', trip: '일본 여행 1일째', trip2: '일본 여행 2일째', rest: '쉬는 날', school: '1학년 학교 가는 날', kidRest: '신나는 주말' }[this.kind];
+    const goal = this.s.mode === 'kid' || this.s.ticket || this.kind === 'trip' || this.kind === 'trip2' ? null : { label: '✈️ 비행기표 모으기', now: this.s.money, max: TICKET };
+    const text = st ? st.text + (st.wait && this._waitFor === st.id ? ` (${this.restLeft ?? st.wait}초)` : '') : '오늘 할 일 끝! 자유롭게 놀아요';
+    this.g.hud.quest(text, list, goal);
     this.g.hud.clock(`${this.s.day}일차 · ${weekday(this.s.day)} · ${title}`, formatClock(this.s.hour), this.s.money);
   }
 
@@ -96,12 +108,19 @@ export class Day {
     if (st && !this.busy) {
       const [site, id] = st.target.split(':');
       if (st.auto && !this.seat && pl.speed > 0.5) this.complete(st.id);
-      if (id === 'door' && !this.g.vehicle?.driving) {
+      if (id === 'door' && st.id !== 'hurt' && !st.wait && !this.g.vehicle?.driving) {
         const e = P.entrance(site);
         if (P.inside(pl.pos) === site || (e && e.distanceTo(pl.pos) < 7)) this.complete(st.id);
       }
       if (site === 'beach' && id === 'arrive' && where.x < LAYOUT.beachX - 4) this.complete(st.id);
       if (st.id === 'shells' && (s.counts.shells ?? 0) >= 5) this.complete(st.id);
+      if (st.wait) {
+        if (this._waitFor !== st.id) { this._waitFor = st.id; this._waitT = st.wait; }
+        this._waitT -= dt;
+        this.restLeft = Math.max(0, Math.ceil(this._waitT));
+        if (this._waitT <= 0) { this.g.hud.toast('쉬는 시간 끝!', 1500); this.complete(st.id); }
+      }
+      if (st.id === 'hurt' && !P.inside(pl.pos)) this.hurtEvent();
     }
     // marker
     const tg = this.target();
@@ -137,6 +156,12 @@ export class Day {
         if (now) this.complete('sink');
         break;
       case 'breakfast':
+        if (st && st.id === 'dinner') {
+          eat(s, 40); this.g.sfx('eat');
+          hud.toast('엄마 아빠랑 맛있는 저녁! 오늘 학교 이야기를 했어요 🍚', 2600);
+          this.complete('dinner');
+          break;
+        }
         if (now || s.hour < 11) {
           eat(s, 40); this.g.sfx('eat');
           const food = this.g.places.sites.home?.extra?.breakfastFood;
@@ -173,6 +198,7 @@ export class Day {
         if (s.money < SNACK_PRICE) { hud.toast('돈이 모자라요'); break; }
         s.money -= SNACK_PRICE; eat(s, 25); this.g.sfx('coin'); this.g.sfx('eat');
         hud.toast(`삼각김밥이랑 우유! -${SNACK_PRICE.toLocaleString()}원 (배고픔 +25)`);
+        if (st && st.id === 'snack') this.complete('snack');
         break;
       case 'lunch':
         if (now || (s.hour > 11 && s.hour < 14)) {
@@ -193,9 +219,17 @@ export class Day {
       case 'board': {
         const toJapan = it.site === 'airport';
         if (!this.g.flight) { hud.toast('비행기 준비 중이에요'); break; }
+        if (!s.ticket) {
+          if (!toJapan) { hud.toast('비행기표가 없어요'); break; }
+          if (s.money < TICKET) { hud.toast(`비행기표는 1,000,000원이에요. 지금 ${s.money.toLocaleString('ko-KR')}원… 회사에서 더 모아요!`, 3200); break; }
+          s.money -= TICKET; s.ticket = true; this.g.sfx('coin');
+          hud.toast('✈️ 비행기표 샀다! 일본 왕복 -1,000,000원', 3000);
+          await wait(900);
+        }
         this.busy = true;
         await this.g.flight.fly(it.site, toJapan ? 'jpAirport' : 'airport', toJapan ? '일본으로 날아가는 중 ✈️ 창밖을 봐요!' : '집으로 돌아가는 중 ✈️');
         this.busy = false;
+        if (!toJapan) s.ticket = false; // round trip used up
         if (st && st.id === (toJapan ? 'fly-japan' : 'fly-home')) this.complete(st.id);
         hud.toast(toJapan ? '일본 도착! 사쿠라 공항이에요 🇯🇵' : '우리 동네 도착! 주차장에 차가 있어요', 3000);
         break;
@@ -237,6 +271,59 @@ export class Day {
           hud.toast('부장님: “아주 잘했어요!” 쾅! 결재 완료 ✅', 2800);
           this.complete('boss');
         } else hud.toast(['부장님: “오늘도 열심히!”', '부장님: “커피 한 잔 했어요?”', '부장님: “회의 때 봐요”'][Math.floor(Math.random() * 3)], 2000);
+        break;
+      case 'class':
+        if (!now) { hud.toast(st && ['schoolLunch', 'rest1'].includes(st.id) ? '수업 끝났어요!' : '아직 수업 시간이 아니에요'); break; }
+        await this.meeting(it, {
+          title: '1학년 수업', who: '선생님',
+          qs: [
+            { q: '“3 + 2 는 얼마일까요?”', o: ['4', '5', '6'], a: 1 },
+            { q: '“사과는 무슨 색일까요?”', o: ['파란색', '빨간색', '보라색'], a: 1 },
+            { q: '“‘나무’ 글자는 몇 글자예요?”', o: ['두 글자', '세 글자', '한 글자'], a: 0 },
+          ],
+          done: () => { hud.toast('수업 끝! 참 잘했어요 💯', 2400); this.complete('class'); },
+        });
+        break;
+      case 'schoolLunch':
+        eat(s, 45); this.g.sfx('eat'); hud.toast('급식 최고! 카레라이스 냠냠 (배고픔 +45)', 2400);
+        if (now) this.complete('schoolLunch');
+        break;
+      case 'english':
+        if (!now) { hud.toast('영어는 피아노 끝나고 1시간 쉰 다음이에요'); break; }
+        await this.meeting(it, {
+          title: '헬로 영어', who: 'Teacher',
+          qs: [
+            { q: '“사과는 영어로?”', o: ['apple', 'banana', 'cat'], a: 0 },
+            { q: '“고양이는 영어로?”', o: ['dog', 'cat', 'sun'], a: 1 },
+            { q: '“안녕하세요는 영어로?”', o: ['bye', 'thank you', 'hello'], a: 2 },
+          ],
+          done: () => { hud.toast('Great job! 영어 끝! 오늘 학원 끝 🎉', 2600); this.complete('english'); },
+        });
+        break;
+      case 'taekwondo':
+        if (!now) { hud.toast(st && st.id === 'rest1' ? '조금 쉬고 가요!' : '지금은 태권도 시간이 아니에요'); break; }
+        if (await this.timingGame()) { hud.toast('기합! 태권도 끝 🥋 이제 바로 피아노!', 2600); this.complete('taekwondo'); }
+        break;
+      case 'piano':
+        if (!now) { hud.toast(st && ['wake', 'sink', 'breakfast'].includes(st.id) ? '피아노는 학원 시간에!' : '피아노는 태권도 다음이에요'); break; }
+        this.sit(it);
+        if (await this.pianoGame()) { hud.toast('짝짝짝! 학교종 완주 🎹', 2600); this.stand(); this.complete('piano'); } else this.stand();
+        break;
+      case 'mom':
+        if (st && st.id === 'license') {
+          await this.fadeAction('🚗 엄마 차 타고 면허시험장으로…', null, 1500);
+          const lic = this.g.places.interactables.find((i) => i.key === 'license:license');
+          if (lic) this.g.player.place(lic.wpos.x, Math.max(0.15, lic.wpos.y - 1.4), lic.wpos.z + 1.6, this.g.places.sites.license.worldYaw);
+          hud.toast('엄마: “시험 잘 봐! 창구에서 신청해”', 2600);
+        } else hud.toast(['엄마: “숙제는 했니?”', '엄마: “오늘 학교 재밌었어?”', '엄마: “사랑해~”'][Math.floor(Math.random() * 3)], 2200);
+        break;
+      case 'dad':
+        hud.toast(['아빠: “태권도 몇 단이야?”', '아빠: “피아노 한 곡 쳐 줄래?”', '아빠: “주말에 놀이터 가자!”'][Math.floor(Math.random() * 3)], 2200);
+        break;
+      case 'license':
+        if (s.license) { hud.toast('운전면허증 있어요! 🪪 이미 합격했어요', 2200); break; }
+        if (!this.g.driveTest) { hud.toast('시험장이 준비 중이에요'); break; }
+        await this.g.driveTest.start(it);
         break;
       case 'pray':
         this.g.sfx('cheers');
@@ -313,6 +400,9 @@ export class Day {
     s.food = Math.max(25, s.food - 15);
     s.hp = Math.min(100, s.hp + 30);
     s.broken = [];
+    s.plan = null;
+    if (s.mode === 'kid' && s.hurt && (s.day - 1) % 7 === 5) { s.hurt = false; this._healed = true; }
+    this.g.player.limp = !!s.hurt;
     if (where === 'home') this.setOutfit('pajama');
     this.g.onNewDay?.();
     this.wakeUp();
@@ -321,7 +411,7 @@ export class Day {
     f.classList.remove('on');
     this.busy = false;
     this.g.sfx('alarm');
-    this.g.hud.toast(this.kind === 'trip' ? '주말이다! 오늘은 일본 여행 ✈️' : this.kind === 'trip2' ? '료칸에서 맞는 아침! 🇯🇵' : this.kind === 'dinner' ? '따르릉! 오늘은 회식 날이에요' : this.kind === 'visit' ? '따르릉! 오늘은 별빛테크로 출장!' : '따르릉! 일어날 시간이에요', 3000);
+    this.g.hud.toast(this.kind === 'trip' ? '주말이다! 오늘은 일본 여행 ✈️' : this.kind === 'trip2' ? '료칸에서 맞는 아침! 🇯🇵' : this.kind === 'rest' ? '주말이다! 오늘은 쉬는 날 (비행기표는 아직 모으는 중)' : this.kind === 'dinner' ? '따르릉! 오늘은 회식 날이에요' : this.kind === 'visit' ? '따르릉! 오늘은 별빛테크로 출장!' : '따르릉! 일어날 시간이에요', 3000);
     this.g.save();
   }
 
@@ -558,6 +648,84 @@ export class Day {
       this.g.life?.cheers?.('restaurant');
       this.complete('dinner');
     }
+  }
+
+  // ------------------------------------------------------------------ kid story
+  async hurtEvent() {
+    if (this._hurting) return;
+    this._hurting = true;
+    this.busy = true;
+    this.g.sfx('hit');
+    await this.fadeAction('앗! 체육 시간에 넘어져서 다리를 다쳤어요 🤕', 'wrong', 1800);
+    this.s.hurt = true;
+    this.g.player.limp = true;
+    this.g.hud.toast('다리가 아파서 천천히만 걸을 수 있어요… (내일부터는 면허를 따서 차로 다녀요)', 4000);
+    this._hurting = false;
+    this.complete('hurt');
+  }
+
+  overlay(html) {
+    let el = document.getElementById('mini');
+    if (!el) { el = document.createElement('div'); el.id = 'mini'; document.body.appendChild(el); }
+    el.innerHTML = html;
+    el.classList.remove('hidden');
+    document.exitPointerLock?.();
+    this.g.input.enabled = false;
+    return el;
+  }
+  closeOverlay() {
+    document.getElementById('mini')?.classList.add('hidden');
+    this.g.input.enabled = true;
+    this.g.input.lock();
+  }
+
+  /** 태권도: press when the moving foot is in the green zone, 5 good kicks. */
+  timingGame() {
+    return new Promise((resolve) => {
+      this.busy = true;
+      const el = this.overlay(`<div class="mcard"><h2>🥋 반짝 태권도</h2><p class="small">발이 초록 칸에 왔을 때 스페이스(또는 화면 누르기)! 5번 성공하면 끝</p><div class="tk"><div class="zone"></div><div class="foot">🦶</div></div><div class="big" id="tk-n">0 / 5</div><button class="alt close" id="tk-x">그만하기</button></div>`);
+      const foot = el.querySelector('.foot'), zone = el.querySelector('.zone');
+      let t = 0, ok = 0, raf = 0, last = performance.now();
+      const zoneAt = () => { const z = 0.25 + Math.random() * 0.5; zone.style.left = `${z * 100 - 9}%`; return z; };
+      let z = zoneAt();
+      const loop = (now) => { t += (now - last) / 1000; last = now; const x = (Math.sin(t * 2.4) + 1) / 2; foot.style.left = `${x * 100}%`; raf = requestAnimationFrame(loop); foot.dataset.x = x; };
+      raf = requestAnimationFrame(loop);
+      const kick = () => {
+        const x = Number(foot.dataset.x);
+        if (Math.abs(x - z) < 0.09) { ok++; this.g.sfx('hit'); this.g.hud.toast(['얍!', '이얍!', '기합!'][ok % 3], 600); z = zoneAt(); }
+        else this.g.sfx('wrong');
+        el.querySelector('#tk-n').textContent = `${ok} / 5`;
+        if (ok >= 5) finish(true);
+      };
+      const key = (e) => { if (e.code === 'Space') { e.preventDefault(); kick(); } };
+      const finish = this._miniFinish = (v) => { this._miniFinish = null; cancelAnimationFrame(raf); removeEventListener('keydown', key); this.closeOverlay(); this.busy = false; resolve(v); };
+      addEventListener('keydown', key);
+      el.querySelector('.tk').onclick = kick;
+      el.querySelector('#tk-x').onclick = () => finish(false);
+    });
+  }
+
+  /** 피아노: play the first line of 학교종 with A S D F G H J (도 레 미 파 솔 라 시) or by clicking. */
+  pianoGame() {
+    return new Promise((resolve) => {
+      this.busy = true;
+      const keys = Object.entries(NOTES).map(([n, [, k]]) => `<button class="pk" data-n="${n}">${n}<small>${k}</small></button>`).join('');
+      const el = this.overlay(`<div class="mcard"><h2>🎹 도레미 피아노 · 학교종</h2><div class="song" id="pg-song"></div><div class="pkeys">${keys}</div><button class="alt close" id="pg-x">그만하기</button></div>`);
+      let i = 0;
+      const draw = () => { el.querySelector('#pg-song').innerHTML = SONG.map((n, k) => `<span class="${k < i ? 'done' : k === i ? 'now' : ''}">${n}</span>`).join(' '); };
+      draw();
+      const play = (n) => {
+        note(NOTES[n][0]);
+        const b = el.querySelector(`.pk[data-n="${n}"]`); b.classList.add('on'); setTimeout(() => b.classList.remove('on'), 150);
+        if (n === SONG[i]) { i++; draw(); if (i >= SONG.length) setTimeout(() => finish(true), 600); }
+        else this.g.hud.toast(`다음은 ${SONG[i]}!`, 700);
+      };
+      const key = (e) => { const hit = Object.entries(NOTES).find(([, [, k]]) => `Key${k}` === e.code); if (hit) { e.preventDefault(); play(hit[0]); } };
+      const finish = this._miniFinish = (v) => { this._miniFinish = null; removeEventListener('keydown', key); this.closeOverlay(); this.busy = false; resolve(v); };
+      addEventListener('keydown', key);
+      el.querySelectorAll('.pk').forEach((b) => { b.onclick = () => play(b.dataset.n); });
+      el.querySelector('#pg-x').onclick = () => finish(false);
+    });
   }
 
   // ------------------------------------------------------------------ photo (P)

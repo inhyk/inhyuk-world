@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { LAYOUT } from './world.js';
 import { rng } from './noise.js';
 
-const ROLE_OUTFIT = { coworker: 'office', receptionist: 'office', clerk: 'office', client: 'suit', chef: 'chef', guest: 'casual', boss: 'suit', guard: 'office', staff: 'office' };
+const ROLE_OUTFIT = { coworker: 'office', receptionist: 'office', clerk: 'office', client: 'suit', chef: 'chef', guest: 'casual', boss: 'suit', guard: 'office', staff: 'office', kid: 'casual', teacher: 'office' };
 const HAIRS = ['short', 'spiky', 'bob', 'long', 'bun'];
 const HAIR_COLORS = [0x2a211c, 0x3b2a20, 0x1c1a1a, 0x5a3a24, 0x2e2420];
 const SKINS = [0xf1c9a5, 0xe8b894, 0xf6d5b8, 0xd9a47e];
@@ -53,6 +53,7 @@ export class Life {
       ch.group.rotation.y = sp.wyaw;
       this.engine.scene.add(ch.group);
       if (sp.role === 'boss') ch.group.add(nameTag('김 부장님'));
+      if (sp.role === 'kid') ch.group.scale.setScalar(0.72);
       this.people.push({ ch, mode: sp.pose === 'type' ? 'type' : sp.pose === 'sit' ? 'sit' : 'idle', base: sp.pose, site: sp.site, wave: 0, t: this.R() * 10 });
     }
     // sidewalk walkers
