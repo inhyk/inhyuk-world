@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKind, weekday, stepsFor, newState, tickBody, eat, fallDamage, snapCell, formatClock, workTask, checkWork, meatState, serialize, deserialize } from './core.mjs';
+import { planDay, TICKET, WAGE, dayKind, weekday, stepsFor, newState, tickBody, eat, fallDamage, snapCell, formatClock, workTask, checkWork, meatState, serialize, deserialize } from './core.mjs';
 
 test('a week has work, a company dinner, a business trip and a weekend trip', () => {
   assert.equal(weekday(1), '월요일');
@@ -80,4 +80,51 @@ test('save round trip keeps inventory and placed blocks', () => {
   assert.equal(back.inventory.stone, 3);
   assert.equal(back.placed.length, 1);
   assert.equal(deserialize('nope'), null);
+});
+
+test('the plane ticket costs 1,000,000원: weekends are trips only once it is saved', () => {
+  const s = newState();
+  s.day = 6;
+  assert.equal(planDay(s).kind, 'rest');
+  s.money = TICKET;
+  assert.equal(planDay(s).kind, 'trip');
+  s.day = 7; s.wakeAt = 'home';
+  assert.equal(planDay(s).kind, 'rest');
+  s.wakeAt = 'ryokan';
+  assert.equal(planDay(s).kind, 'trip2');
+  // a week of work (5 days) is not quite enough, the second week is
+  assert.ok(30000 + 5 * WAGE < TICKET && 30000 + 7 * WAGE >= TICKET);
+});
+
+test('no driving licence yet: the first day starts with the licence test before driving', () => {
+  const s = newState();
+  const plan = planDay(s);
+  assert.equal(plan.needLicense, true);
+  const ids = stepsFor(plan.kind, plan).map((x) => x.id);
+  assert.ok(ids.indexOf('license') > ids.indexOf('wardrobe') && ids.indexOf('license') < ids.indexOf('drive-work'));
+  s.license = true;
+  assert.ok(!stepsFor(planDay(s).kind, planDay(s)).some((x) => x.id === 'license'));
+  assert.equal(planDay(newState(), { hasLicenseCenter: false }).needLicense, false);
+});
+
+test('child story: school, 태권도 → 피아노 → 1시간 쉬기 → 영어, hurt on day 2, licence and car from day 3', () => {
+  const s = newState();
+  s.mode = 'kid';
+  let plan = planDay(s);
+  assert.equal(plan.kind, 'school');
+  const ids = stepsFor(plan.kind, plan).map((x) => x.id);
+  const order = ['class', 'schoolLunch', 'rest1', 'taekwondo', 'piano', 'rest2', 'english', 'gohome'].map((id) => ids.indexOf(id));
+  assert.ok(order.every((v, i) => v >= 0 && (i === 0 || v > order[i - 1])), ids.join(','));
+  assert.ok(!ids.includes('license'));
+  s.day = 2;
+  plan = planDay(s);
+  assert.equal(plan.hurtToday, true);
+  assert.ok(stepsFor(plan.kind, plan).some((x) => x.id === 'hurt'));
+  s.hurt = true; s.day = 3;
+  plan = planDay(s);
+  assert.equal(plan.needLicense, true);
+  const d3 = stepsFor(plan.kind, plan).map((x) => x.id);
+  assert.ok(d3.indexOf('license') < d3.indexOf('drive-school'));
+  s.day = 6;
+  assert.equal(planDay(s).kind, 'kidRest');
 });

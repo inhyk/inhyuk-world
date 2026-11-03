@@ -17,7 +17,10 @@ await page.evaluate(() => localStorage.clear());
 await page.reload();
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
 assert.equal(await page.evaluate(() => window.__error ?? null), null, 'boot error');
-await page.click('#play');
+// a new game asks for the story: 직장인
+await Promise.all([page.waitForEvent('load'), page.click('#m-office')]);
+await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
+assert.equal(await page.evaluate(() => window.__game.state.mode), 'office');
 await page.waitForTimeout(800);
 const shot = (name) => page.screenshot({ path: `${out}/${name}.png` });
 const G = (fn, arg) => page.evaluate(fn, arg);
@@ -47,9 +50,28 @@ await act('home:sink'); assert.equal(await step(), 'breakfast');
 const food0 = await G(() => window.__game.state.food);
 await act('home:breakfast'); assert.equal(await step(), 'wardrobe');
 assert.ok(await G(() => window.__game.state.food) > food0, 'breakfast fills the stomach');
-await act('home:wardrobe'); assert.equal(await step(), 'drive-work');
+await act('home:wardrobe');
 assert.equal(await G(() => window.__game.state.outfit), 'suit');
 await shot('02-dressed');
+
+// no licence yet: the car stays locked until the test is passed
+if (await step() === 'license') {
+  assert.equal(await G(() => window.__game.state.license), false);
+  await G(() => { const g = window.__game; g.day.use(g.places.interactables.find((i) => i.key === 'license:license')); });
+  await page.waitForFunction(() => window.__game.driveTest.active, null, { timeout: 20000 });
+  await page.waitForTimeout(800);
+  await shot('02b-license-test');
+  // drive the course: put the car on each ring in turn, then stop in the finish box
+  const n = await G(() => window.__game.driveTest.active.cps.length);
+  for (let i = 0; i <= n; i++) {
+    await G(() => { const g = window.__game; const p = g.driveTest.target(); g.vehicle.speed = 0; g.vehicle.park(p.x, p.z, g.vehicle.yaw); });
+    await page.waitForTimeout(250);
+  }
+  await page.waitForFunction(() => !window.__game.driveTest.active, null, { timeout: 20000 });
+  await page.waitForTimeout(1400);
+  assert.equal(await G(() => window.__game.state.license), true, 'passed the licence test');
+}
+assert.equal(await step(), 'drive-work');
 
 // drive to work
 await G(() => { const g = window.__game; g.vehicle.driving = true; });
@@ -125,7 +147,7 @@ await G(() => { const g = window.__game; const r = [...g.build.placed.values()][
 assert.equal(await G(() => window.__game.state.inventory.stone), n0);
 
 // weekend trip to Japan
-await G(() => { const g = window.__game; g.state.day = 6; g.state.step = 0; g.state.hour = 7; g.state.wakeAt = 'home'; g.day.wakeUp(); });
+await G(() => { const g = window.__game; g.state.day = 6; g.state.step = 0; g.state.hour = 7; g.state.wakeAt = 'home'; g.state.plan = null; g.state.money = 1200000; g.day.wakeUp(); });
 await page.keyboard.down('KeyW'); await page.waitForTimeout(500); await page.keyboard.up('KeyW');
 await page.waitForTimeout(300);
 assert.equal(await step(), 'wardrobe');
@@ -135,6 +157,7 @@ await page.waitForTimeout(600);
 assert.equal(await step(), 'fly-japan');
 await G(() => { const g = window.__game; g.day.use(g.places.interactables.find((i) => i.key === 'airport:board')); });
 await page.waitForTimeout(9000);
+assert.equal(await G(() => window.__game.state.money), 200000, 'the ticket cost 1,000,000원');
 await shot('07-flight');
 await page.waitForFunction(() => !window.__game.day.busy && !window.__game.flight.active, null, { timeout: 60000 });
 assert.ok(await G(() => window.__game.player.pos.x) > 1500, 'landed in Japan');

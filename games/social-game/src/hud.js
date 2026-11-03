@@ -20,8 +20,19 @@ export class Hud {
     this.hpBar.classList.toggle('low', hp < 25);
     this.foodBar.classList.toggle('low', food < 20);
   }
-  quest(text, steps = []) {
+  quest(text, steps = [], goal = null) {
     if (this._q !== text) { this.questText.textContent = text; this._q = text; }
+    const gk = goal ? `${goal.label}|${goal.now}|${goal.max}` : '';
+    if (this._g !== gk) {
+      this._g = gk;
+      let el = document.getElementById('quest-goal');
+      if (!el) { el = document.createElement('div'); el.id = 'quest-goal'; this.questText.after(el); }
+      el.classList.toggle('hidden', !goal);
+      if (goal) {
+        const p = Math.max(0, Math.min(1, goal.now / goal.max));
+        el.innerHTML = `<div class="gl">${goal.label} <b>${goal.now.toLocaleString('ko-KR')}</b> / ${goal.max.toLocaleString('ko-KR')}원</div><div class="gb"><i style="width:${(p * 100).toFixed(1)}%"></i></div>`;
+      }
+    }
     const key = JSON.stringify(steps);
     if (this._steps === key) return;
     this._steps = key;

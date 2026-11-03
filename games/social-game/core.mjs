@@ -13,8 +13,77 @@ export function dayKind(n) {
 }
 export const weekday = (n) => DAY_NAMES[(n - 1) % 7];
 
+/** Plane ticket price (인혁: "비행기표는 1000000원으로 해줘") and the daily wage. */
+export const TICKET = 1000000;
+
+/**
+ * The plan for a day, decided once in the morning so the steps never shift during the day.
+ * Office story: weekends are a Japan trip only when the ticket money is saved; otherwise a rest day.
+ */
+export function planDay(s, { hasLicenseCenter = true } = {}) {
+  if (s.mode === 'kid') {
+    const w = (s.day - 1) % 7;
+    const kind = w >= 5 ? 'kidRest' : 'school';
+    // 어린이 이야기: day 2 the child gets hurt at school; from day 3 a licence and the car to school
+    return { day: s.day, kind, needLicense: hasLicenseCenter && !!s.hurt && !s.license, hurtToday: s.day === 2 && !s.hurt, drive: !!s.license };
+  }
+  let kind = dayKind(s.day);
+  if (kind === 'trip' && !(s.ticket || (s.money ?? 0) >= TICKET)) kind = 'rest';
+  if (kind === 'trip2' && s.wakeAt !== 'ryokan') kind = 'rest';
+  const needLicense = hasLicenseCenter && !s.license && kind !== 'trip2';
+  return { day: s.day, kind, needLicense };
+}
+
 /** Quest steps for a day. Each step: {id, label, target (site/interactable), text (quest card line)}. */
-export function stepsFor(kind) {
+/** Child weekdays: school, then (his order) rest, 태권도, right away 피아노, rest an hour, 영어, home. */
+function kidSteps(kind, { needLicense = false, hurtToday = false, drive = false } = {}) {
+  const morning = [
+    { id: 'wake', label: '일어나기', text: '엄마: “일어나야지~ 학교 가자!”', target: 'home:bed', auto: true },
+    { id: 'sink', label: '세수하기', text: '욕실에서 세수하세요', target: 'home:sink' },
+    { id: 'breakfast', label: '아침 먹기', text: '엄마가 차려 준 아침을 먹어요', target: 'home:breakfast' },
+    { id: 'wardrobe', label: '옷 입고 가방 메기', text: '옷장에서 옷을 입고 책가방을 메요', target: 'home:wardrobe' },
+  ];
+  const evening = [
+    { id: 'gohome', label: '집에 가기', text: '집으로 가요 (101동 8층)', target: 'home:door' },
+    { id: 'dinner', label: '엄마 아빠랑 저녁', text: '엄마 아빠랑 저녁을 먹어요', target: 'home:breakfast' },
+    { id: 'shower', label: '씻기', text: '욕실에서 씻어요', target: 'home:shower' },
+    { id: 'sleep', label: '잠자기', text: '침대에서 자요. 잘 자!', target: 'home:bed' },
+  ];
+  if (kind === 'kidRest') {
+    return [
+      { id: 'wake', label: '일어나기', text: '주말이다! 학교 안 가는 날', target: 'home:bed', auto: true },
+      { id: 'breakfast', label: '아침 먹기', text: '엄마가 차려 준 아침을 먹어요', target: 'home:breakfast' },
+      ...(needLicense ? [{ id: 'license', label: '운전면허 따기', text: '면허시험장에서 운전면허 시험을 봐요', target: 'license:license' }] : []),
+      { id: 'play', label: '놀이터에서 놀기', text: '학교 운동장에서 신나게 놀아요', target: 'school:door' },
+      { id: 'snack', label: '편의점 간식', text: '편의점에서 간식을 사 먹어요', target: 'store:shop' },
+      ...evening.slice(1),
+    ];
+  }
+  const toSchool = needLicense
+    ? [
+      { id: 'license', label: '운전면허 따기', text: '다리를 다쳐서 걷기 힘들어요… 면허시험장에서 운전면허를 따요! (엄마가 데려다 줘요: E)', target: 'license:license' },
+      { id: 'drive-school', label: '차 타고 학교 가기', text: '면허 땄다! 차 타고 학교에 가요', target: 'school:door' },
+    ]
+    : [{ id: 'go-school', label: drive ? '차 타고 학교 가기' : '학교 가기', text: drive ? '차 타고 학교에 가요 (남쪽 학교길)' : '걸어서 학교에 가요 (남쪽 학교길)', target: 'school:door' }];
+  const school = [
+    { id: 'class', label: '수업 듣기', text: '1학년 1반 내 자리에 앉아서 수업을 들어요', target: 'school:class' },
+    ...(hurtToday ? [{ id: 'hurt', label: '체육 시간', text: '체육 시간! 운동장으로 나가요', target: 'school:door' }] : []),
+    { id: 'schoolLunch', label: '급식 먹기', text: '급식실에서 밥을 먹어요', target: 'school:schoolLunch' },
+  ];
+  const academy = [
+    { id: 'rest1', label: '쉬기', text: '학교 끝! 조금 쉬어요 (간식 먹거나 놀기)', target: 'academy:door', wait: 25 },
+    { id: 'taekwondo', label: '태권도', text: '학원 빌딩 2층 반짝 태권도에 가요', target: 'academy:taekwondo' },
+    { id: 'piano', label: '피아노', text: '바로 1층 도레미 피아노에 가요', target: 'academy:piano' },
+    { id: 'rest2', label: '1시간 쉬기', text: '1시간 쉬어요', target: 'academy:door', wait: 30 },
+    { id: 'english', label: '영어', text: '2층 헬로 영어에서 영어 공부해요', target: 'academy:english' },
+  ];
+  return [...morning, ...toSchool, ...school, ...academy, ...evening];
+}
+
+export function stepsFor(kind, opts = {}) {
+  if (kind === 'school' || kind === 'kidRest') return kidSteps(kind, opts);
+  const { needLicense = false } = opts;
+  const license = needLicense ? [{ id: 'license', label: '운전면허 따기', text: '운전면허가 없어요! 면허시험장(남쪽 학교길)에서 시험을 봐요', target: 'license:license' }] : [];
   const morning = [
     { id: 'wake', label: '일어나기', text: '일어나세요! 오늘도 좋은 아침', target: 'home:bed', auto: true },
     { id: 'sink', label: '세수하기', text: '욕실에서 세수하세요', target: 'home:sink' },
@@ -26,12 +95,24 @@ export function stepsFor(kind) {
     { id: 'shower', label: '씻기', text: '욕실에서 씻어요', target: 'home:shower' },
     { id: 'sleep', label: '잠자기', text: '침대에서 자요. 내일 또 만나요!', target: 'home:bed' },
   ];
+  if (kind === 'rest') {
+    return [
+      { id: 'wake', label: '일어나기', text: '주말이다! 오늘은 쉬는 날', target: 'home:bed', auto: true },
+      { id: 'sink', label: '세수하기', text: '욕실에서 세수하세요', target: 'home:sink' },
+      { id: 'breakfast', label: '아침 먹기', text: '식탁에서 아침을 먹어요', target: 'home:breakfast' },
+      ...license,
+      { id: 'snack', label: '편의점 간식', text: '편의점에서 간식을 사 먹어요. 비행기표는 1,000,000원을 모으면 살 수 있어요', target: 'store:shop' },
+      { id: 'shower', label: '씻기', text: '욕실에서 씻어요', target: 'home:shower' },
+      { id: 'sleep', label: '잠자기', text: '침대에서 자요', target: 'home:bed' },
+    ];
+  }
   if (kind === 'trip') {
     return [
       { id: 'wake', label: '일어나기', text: '주말이다! 오늘은 일본으로 여행 가는 날 ✈️', target: 'home:bed', auto: true },
       { id: 'wardrobe', label: '여행 옷 입기', text: '옷장에서 여행 옷을 입어요', target: 'home:wardrobe' },
+      ...license,
       { id: 'drive-airport', label: '차 타고 공항 가기', text: '차 타고 세온 국제공항으로 가세요 (동쪽 끝)', target: 'airport:door' },
-      { id: 'fly-japan', label: '비행기 타고 일본 가기', text: '탑승구에서 비행기를 타요', target: 'airport:board' },
+      { id: 'fly-japan', label: '비행기표 사고 일본 가기', text: '탑승구에서 비행기표(1,000,000원)를 사고 비행기를 타요', target: 'airport:board' },
       { id: 'photo-jp', label: '신사에서 사진 찍기', text: '빨간 도리이 앞에서 사진을 찍어요 (P)', target: 'shrine:photo' },
       { id: 'ramen', label: '라멘 먹기', text: '라멘 가게에서 라멘을 먹어요', target: 'ramen:ramen' },
       { id: 'souvenir', label: '기념품 사기', text: '기념품 가게에서 선물을 사요', target: 'souvenir:souvenir' },
@@ -70,18 +151,19 @@ export function stepsFor(kind) {
   const dinner = kind === 'dinner'
     ? [{ id: 'dinner', label: '회식하기', text: '오늘은 회식! 고깃집으로 가세요', target: 'restaurant:grill' }]
     : [];
-  return [...morning, ...work, ...dinner, ...evening];
+  return [...morning, ...license, ...work, ...dinner, ...evening];
 }
 
 /** Clock time each step sets when it is finished (time skips), or null to let time flow. */
 export const STEP_TIME = {
   wake: 7.0, 'drive-work': 9.0, badge: 9.0, coffee: 9.3, work: 11.0, teamMeeting: 12.0, lunch: 13.0, work2: 16.6, print: 17.0, boss: 17.6, 'badge-out': 18.0, meeting: 15.0, dinner: 21.0,
-  shower: 22.0, 'drive-airport': 10.0, 'photo-jp': 15.0, ramen: 18.5, souvenir: 19.5, onsen: 10.0, 'drive-home': 17.0, 'fly-japan': 13.0, 'fly-home': 15.0,
+  'go-school': 8.8, 'drive-school': 8.8, class: 10.5, hurt: 11.5, schoolLunch: 13.0, rest1: 14.0, taekwondo: 15.0, piano: 15.8, rest2: 16.8, english: 17.8, dinner: 19.5, play: 14.0,
+  shower: 22.0, license: 8.6, snack: 15.0, 'drive-airport': 10.0, 'photo-jp': 15.0, ramen: 18.5, souvenir: 19.5, onsen: 10.0, 'drive-home': 17.0, 'fly-japan': 13.0, 'fly-home': 15.0,
 };
 
 export function newState() {
   return {
-    day: 1, hour: 6.9, money: 30000, hp: 100, food: 70,
+    day: 1, hour: 6.9, money: 30000, hp: 100, food: 70, license: false, ticket: false, mode: 'office', plan: null,
     step: 0, done: [], outfit: 'pajama', counts: {},
     inventory: { stone: 12, log: 8, brick: 12, glass: 6, turf: 8, plank: 8, pot: 3, lamp: 2, flower: 4 },
     placed: [], // [{id, x, y, z, rot}]
@@ -103,7 +185,7 @@ export function hurt(s, amount) { s.hp = Math.max(0, s.hp - amount); return s.hp
 /** Fall damage in hp for a fall of h metres (Minecraft-like: free up to 3.5 m). */
 export const fallDamage = (h) => (h <= 3.5 ? 0 : Math.round((h - 3.5) * 9));
 
-export const WAGE = 50000;
+export const WAGE = 150000;
 export const SNACK_PRICE = 2000;
 
 /** Snap a point to the 1 m block grid: cell centre x/z and bottom y. */
