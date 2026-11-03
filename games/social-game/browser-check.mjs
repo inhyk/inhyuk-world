@@ -95,13 +95,23 @@ assert.equal(await step(), 'wake');
 await page.waitForTimeout(1500);
 await shot('06-day2');
 
+// apartment: lobby elevator up to 8층 우리 집
+const aptLift = await G(() => window.__game.lifts.lifts.findIndex((l) => l.landings.some((L) => L.name.includes('우리 집'))));
+if (aptLift >= 0) {
+  await G((i) => { const g = window.__game; const L = g.lifts.lifts[i].landings[0]; g.player.place(L.pos.x, L.pos.y + 0.02, L.pos.z, 0); g.lifts.lifts[i].landings[0].want = 1; }, aptLift);
+  await G((i) => { const g = window.__game; const l = g.lifts.lifts[i]; const L = l.landings[0]; const f = L.f; g.player.place(L.pos.x + f.x * 1.0, L.pos.y + 0.02, L.pos.z + f.z * 1.0, L.yaw + Math.PI); }, aptLift);
+  await G((i) => { const g = window.__game; g.lifts.ride(g.lifts.lifts[i], 1); }, aptLift);
+  await page.waitForFunction(() => !window.__game.lifts.busy, null, { timeout: 20000 });
+  assert.ok(await G(() => window.__game.player.pos.y) > 20, 'rode up to the 8th floor');
+  await page.waitForTimeout(800);
+  await shot('06a-apartment-8f');
+}
+
 // office elevator: lobby → roof
-await G(() => { const g = window.__game; const L = g.lifts.lifts[0].landings[0]; g.player.place(L.pos.x, L.pos.y + 0.02, L.pos.z + 2, 0); });
-await page.waitForTimeout(300);
-await G(() => { const g = window.__game; g.lifts.call(g.lifts.lifts[0], 0); });
-await page.waitForTimeout(1200);
-await G(() => { const g = window.__game; const L = g.lifts.lifts[0].landings[0]; g.player.place(L.pos.x, L.pos.y + 0.02, L.pos.z - 1, Math.PI); });
-await G(() => { const g = window.__game; g.lifts.ride(g.lifts.lifts[0], 1); });
+const officeLift = await G(() => window.__game.lifts.lifts.findIndex((l) => l.landings.some((L) => L.name.includes('옥상'))));
+assert.ok(officeLift >= 0, 'office elevator exists');
+await G((i) => { const g = window.__game; g.lifts.lifts[i].landings[0].want = 1; const L = g.lifts.lifts[i].landings[0]; g.player.place(L.pos.x + L.f.x, L.pos.y + 0.02, L.pos.z + L.f.z, L.yaw + Math.PI); }, officeLift);
+await G((i) => { const g = window.__game; g.lifts.ride(g.lifts.lifts[i], 1); }, officeLift);
 await page.waitForFunction(() => !window.__game.lifts.busy, null, { timeout: 20000 });
 assert.ok(await G(() => window.__game.player.pos.y) > 20, 'rode up to the roof');
 await page.waitForTimeout(600);

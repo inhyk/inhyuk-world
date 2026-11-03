@@ -72,8 +72,12 @@ async function boot() {
     k++;
     pct(30 + (k / SITES.length) * 40, def.key);
     await frame();
-    if (!mod?.[def.fn]) continue;
-    try { places.add(def, await mod[def.fn](def.args)); } catch (e) { console.warn('site failed', def.key, e); }
+    let ok = false;
+    if (mod?.[def.fn]) { try { places.add(def, await mod[def.fn](def.args)); ok = true; } catch (e) { console.warn('site failed', def.key, e); } }
+    if (!ok && def.fallback) {
+      const fb = await optional(siteMods, `./src/sites/${def.fallback.mod}.js`);
+      try { if (fb?.[def.fallback.fn]) places.add({ ...def, pos: def.fallback.pos, label: '우리 집' }, await fb[def.fallback.fn]()); } catch (e) { console.warn('fallback failed', def.key, e); }
+    }
   }
   // town dressing (needs site footprints)
   let deco = { breakables: [], scatters: [] };

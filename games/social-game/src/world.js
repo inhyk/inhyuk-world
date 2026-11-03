@@ -21,7 +21,14 @@ const JX = LAYOUT.jx;
 
 /** Buildings: module under src/sites, builder, world position (feet level), yaw, map label. */
 export const SITES = [
-  { key: 'home', mod: 'home', fn: 'buildHome', pos: [-150, 0, -28], yaw: 0, label: '우리 집', color: '#f2a65a' },
+  // 우리 집 = 세온 아파트 101동 802호 (인혁: "집을 아파트로 바꿔줘"); the old house is the fallback
+  { key: 'home', mod: 'apartment', fn: 'buildApartment', args: { main: true, dong: '101동', seed: 1 }, pos: [-150, 0, -33], yaw: 0, label: '우리 아파트', color: '#f2a65a', fallback: { mod: 'home', fn: 'buildHome', pos: [-150, 0, -28] } },
+  // more homes (인혁: "집을 더 만들어줘")
+  { key: 'apt102', mod: 'apartment', fn: 'buildApartment', args: { main: false, dong: '102동', seed: 2 }, pos: [-185, 0, -36], yaw: 0, label: '102동', color: '#e8c08a' },
+  { key: 'apt103', mod: 'apartment', fn: 'buildApartment', args: { main: false, dong: '103동', seed: 3 }, pos: [-218, 0, -36], yaw: 0, label: '103동', color: '#e8c08a' },
+  { key: 'apt104', mod: 'apartment', fn: 'buildApartment', args: { main: false, dong: '104동', seed: 4 }, pos: [-150, 0, -62], yaw: 0, label: '104동', color: '#e8c08a' },
+  { key: 'apt105', mod: 'apartment', fn: 'buildApartment', args: { main: false, dong: '105동', seed: 5 }, pos: [-200, 0, -64], yaw: 0, label: '105동', color: '#e8c08a' },
+  ...[-232, -214, -196, -178, -160, -142, -124].map((x, i) => ({ key: `house${i}`, mod: 'apartment', fn: 'buildHouse', args: { variant: i % 4 }, pos: [x, 0, 22.5], yaw: Math.PI, label: '', color: '#d8b48a', small: true })),
   { key: 'store', mod: 'store', fn: 'buildStore', pos: [-110, 0, -17.5], yaw: 0, label: '편의점', color: '#5ac8f2' },
   { key: 'office', mod: 'office', fn: 'buildOffice', pos: [40, 0, -31], yaw: 0, label: '세온 컴퍼니', color: '#7a9cff' },
   { key: 'restaurant', mod: 'restaurant', fn: 'buildRestaurant', pos: [112, 0, -19], yaw: 0, label: '고깃집', color: '#ff7a5a' },
@@ -38,7 +45,7 @@ export const SITES = [
 
 /** Car parking spots: [x, z, yaw] (yaw 0 faces -Z). */
 export const PARKING = {
-  home: [-138.5, -16.5, Math.PI],
+  home: [-140.7, -17.5, Math.PI],
   office: [70, -22, 0],
   restaurant: [126, -16, 0],
   other: [226, 18, Math.PI],

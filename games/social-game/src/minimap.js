@@ -52,7 +52,7 @@ export class Minimap {
       g.fillStyle = s.color; g.strokeStyle = '#2a2420'; g.lineWidth = 2;
       g.beginPath(); g.roundRect(x - w / 2, z - d / 2, w, d, 4); g.fill(); g.stroke();
       g.fillStyle = '#fff'; g.strokeStyle = '#000a'; g.lineWidth = 3;
-      g.strokeText(s.label, x, z - d / 2 - 4); g.fillText(s.label, x, z - d / 2 - 4);
+      if (s.label) { g.strokeText(s.label, x, z - d / 2 - 4); g.fillText(s.label, x, z - d / 2 - 4); }
     }
     if (car) {
       const [x, z] = P(car.x, car.z);
