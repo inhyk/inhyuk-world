@@ -8,13 +8,15 @@ import { LAYOUT, SITES, groundAt } from './world.js';
 import { rng } from './noise.js';
 
 const LOTS = [
+  { x0: -168, x1: -132, z0: -24.5, z1: -11.2, label: 'home' },
   { x0: 58, x1: 90, z0: -46, z1: -11.2, label: 'office' },
   { x0: 120, x1: 136, z0: -27, z1: -11.2, label: 'restaurant' },
   { x0: 216, x1: 242, z0: 11.2, z1: 36, label: 'other' },
   { x0: -284, x1: -262, z0: -32, z1: -11.2, label: 'beach' },
 ];
-const DRIVE = { x0: -141.2, x1: -135.8, z0: -23, z1: -11.2 };
-const PATH = { x0: -151.4, x1: -148.6, z0: -22.4, z1: -11.2 };
+// the apartment parking lot replaced the old driveway and front path (kept empty so code stays simple)
+const DRIVE = { x0: 0, x1: 0, z0: 0, z1: 0 };
+const PATH = { x0: 0, x1: 0, z0: 0, z1: 0 };
 const PLAZA = { x0: 24, x1: 56, z0: -20.5, z1: -11.2 };
 const CROSSWALKS = [-80, 20, 160];
 
@@ -70,8 +72,8 @@ export function dressTown({ scene, props, build, colliders, lights, quality }) {
     }
   }
   // driveway and front path at home
-  put(flat, rbox(DRIVE.x1 - DRIVE.x0, 0.1, DRIVE.z1 - DRIVE.z0, 0.03), mat('concrete'), (DRIVE.x0 + DRIVE.x1) / 2, 0.03, (DRIVE.z0 + DRIVE.z1) / 2);
-  put(flat, rbox(PATH.x1 - PATH.x0, 0.08, PATH.z1 - PATH.z0, 0.03), mat('pavers2'), (PATH.x0 + PATH.x1) / 2, 0.02, (PATH.z0 + PATH.z1) / 2);
+  // apartment complex walk from the lot to the 101동 entrance
+  put(flat, rbox(4, 0.08, 1.6, 0.03), mat('pavers2'), -150, 0.02, -25.2);
   // office plaza
   put(flat, rbox(PLAZA.x1 - PLAZA.x0, 0.12, PLAZA.z1 - PLAZA.z0, 0.03), mat('pavers2'), (PLAZA.x0 + PLAZA.x1) / 2, 0.05, (PLAZA.z0 + PLAZA.z1) / 2);
   // crosswalks
@@ -153,8 +155,10 @@ export function dressTown({ scene, props, build, colliders, lights, quality }) {
     else if (k < 0.86) plant(R() < 0.6 ? 'rock' : 'rock2', x, z);
   });
   // hedges and flowers along the home front
-  for (let x = -156; x < -143; x += 1.4) if (x < PATH.x0 - 0.6 || x > PATH.x1 + 0.6) plant(x < -150 ? 'bush' : 'bush2', x, -12.6, R() * 6.28, 0.7);
-  for (let i = 0; i < 6; i++) plant(i % 2 ? 'flower' : 'flower2', -156 + i * 2.2, -19.5, R() * 6.28, 0.8);
+  // hedge and flower beds around the apartment lot
+  for (let x = -167; x < -133; x += 1.5) if (Math.abs(x + 150) > 3) plant(x < -150 ? 'bush' : 'bush2', x, -25.6, R() * 6.28, 0.7);
+  for (let z = -23.5; z < -12.5; z += 1.6) { plant('bush', -169, z, R() * 6.28, 0.75); plant('bush2', -131, z, R() * 6.28, 0.75); }
+  for (let i = 0; i < 8; i++) plant(i % 2 ? 'flower' : 'flower2', -170 + (i % 4) * 0.9, -27 - Math.floor(i / 4) * 1.1, R() * 6.28, 0.8);
   // forest ring on the hills
   tries(500, () => {
     const a = R() * Math.PI * 2, rr = 1;
@@ -223,10 +227,7 @@ export function dressTown({ scene, props, build, colliders, lights, quality }) {
     for (const [x, s] of [[-128, -1], [-30, 1], [95, -1], [180, 1], [8, -1]]) one(S.bench(), x, s * (LAYOUT.roadHalf + LAYOUT.walk - 0.6), s < 0 ? 0 : Math.PI, 0.6);
     for (const [x, s] of [[-140, 1], [-20, -1], [60, 1], [150, -1], [240, -1]]) one(S.hydrant(), x, s * (LAYOUT.roadHalf + 0.9), 0, 0.2);
     for (const [x, s] of [[-100, -1], [-40, 1], [30, 1], [130, -1], [210, 1]]) one(S.trashCan(), x, s * (LAYOUT.roadHalf + LAYOUT.walk - 0.5), 0, 0.3);
-    one(S.mailbox(), -144.5, -11.9, 0, 0.25);
-    for (let x = -157; x < -143; x += 2) if (x + 2 < PATH.x0 || x > PATH.x1) one(S.fence(2), x + 1, -11.6, 0, 0);
-    colliders.add({ min: [-157, 0, -11.75], max: [PATH.x0, 1.1, -11.45], tag: 'fence' });
-    colliders.add({ min: [PATH.x1, 0, -11.75], max: [DRIVE.x0, 1.1, -11.45], tag: 'fence' });
+    one(S.signpost('세온 아파트'), -167, -12.2, 0, 0.1);
     for (const [x, z] of [[26, -12], [54, -12], [-112, -12.2], [-106, -12.2]]) one(S.planter(), x, z, 0, 0.5);
     for (let i = 0; i < 4; i++) one(S.bollard(), 58 + i * 1.2 - 2, -11.6, 0, 0.12);
     one(S.signpost('← 바다'), -262, 11.4, Math.PI, 0.1);
