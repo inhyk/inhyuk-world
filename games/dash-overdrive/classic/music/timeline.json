@@ -1673,6 +1673,109 @@
           "type": "end"
         }
       ]
+    },
+    {
+      "index": 20,
+      "name": "DASH AND RUN",
+      "bpm": 155.79,
+      "durationSeconds": 108,
+      "beatSeconds": 0.385134,
+      "totalBeats": 280.422,
+      "difficulty": "harder",
+      "style": "running electro: offbeat bass, square-saw lead, two pairs of drops",
+      "key": "D minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.45
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.65
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.9
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 176,
+          "endBeat": 192,
+          "energy": 0.85
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 192,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "drop 4",
+          "startBeat": 224,
+          "endBeat": 256,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 256,
+          "endBeat": 280.422,
+          "energy": 0.4
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 191.5,
+          "type": "stop"
+        },
+        {
+          "beat": 192,
+          "type": "drop"
+        },
+        {
+          "beat": 224,
+          "type": "drop"
+        },
+        {
+          "beat": 272,
+          "type": "end"
+        }
+      ]
     }
   ]
 }

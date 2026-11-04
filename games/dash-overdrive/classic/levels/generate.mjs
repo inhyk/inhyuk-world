@@ -1,4 +1,4 @@
-// Builds the 20 built-in levels of Dash Overdrive Classic into res/leveldata/.
+// Builds the 21 built-in levels of Dash Overdrive Classic into res/leveldata/.
 // Levels 19 and 20 follow a plan per song section with the ball, UFO and wave
 // modes, speed gates and pink and blue orbs and pads (the designer's plan item 2).
 //
@@ -88,6 +88,24 @@ export const LEVELS = [
       {type: 'ball', speed: 0}, // breakdown 2
       {type: 'cube', speed: 1}, // build 3
       {type: 'wave', speed: 3}, // drop 3: very fast
+      {type: 'cube', speed: 1}, // outro
+    ]},
+  // Level 21, DASH AND RUN (the designer named it): open from the start, Harder
+  // tuning (tune 9, like Lava Lift). It runs through the modes one after
+  // another, with a short cube run between them, and speeds up in the drops.
+  // modes: [mode, columns] parts played in order inside one song section.
+  {name: 'DASH AND RUN', bpm: 155.79, seconds: 108, tune: 9, seed: 2105,
+    colors: [[[255, 112, 36], [196, 56, 8]], [[36, 214, 255], [0, 128, 204]], [[176, 64, 255], [98, 26, 190]]],
+    plan: [
+      {type: 'cube', speed: 1}, // intro: run
+      {modes: [['ship', 60]], speed: 1}, // verse
+      {modes: [['ball', 48]], speed: 2}, // build
+      {modes: [['wave', 60], ['ufo', 56]], speed: 2}, // drop
+      {modes: [['ship', 64], ['ball', 48]], speed: 2}, // drop 2
+      {type: 'blue', speed: 0}, // break: blue pad up, blue orb down
+      {modes: [['ufo', 44]], speed: 1}, // build 2
+      {modes: [['wave', 64], ['ship', 60]], speed: 2}, // drop 3
+      {modes: [['ball', 56], ['wave', 64]], speed: 3}, // drop 4: very fast
       {type: 'cube', speed: 1}, // outro
     ]},
 ];
@@ -293,8 +311,10 @@ export class LevelBuilder {
   constructor(index) {
     this.index = index;
     this.spec = LEVELS[index];
-    this.tune = tuning(index);
-    this.random = mulberry32(1000 + index * 7919);
+    // how hard the pieces are: the level number, or the tuning a level asks for
+    this.d = this.spec.tune ?? index;
+    this.tune = tuning(this.d);
+    this.random = mulberry32(this.spec.seed ?? 1000 + index * 7919);
     this.cells = new Map(); // "c,r" -> object on the tile grid
     this.extra = []; // pads, orbs, portals, triggers, decorations
     this.taps = [];
@@ -316,6 +336,11 @@ export class LevelBuilder {
     this.platformBlock = BLACK_BLOCK_LEVELS.has(index) ? 202 : styles[index % styles.length];
     this.wallBlock = BLACK_BLOCK_LEVELS.has(index) ? 202 : styles[(index * 5 + 3) % styles.length];
     this.slabBlock = BLACK_BLOCK_LEVELS.has(index) ? 203 : 40;
+  }
+
+  // Pieces up to this difficulty; levels with a plan also get the pink pad and pink ring pieces.
+  allowed(piece) {
+    return piece.from <= this.d || (this.spec.plan !== undefined && piece.from === 18);
   }
 
   pick(list) {
@@ -527,7 +552,7 @@ export class LevelBuilder {
         break;
       }
       case 'small': {
-        const n = this.range(1, Math.min(4, 2 + Math.floor(this.index / 3)));
+        const n = this.range(1, Math.min(4, 2 + Math.floor(this.d / 3)));
         for (let i = 0; i < n; i++) smallHazard(start + i, 0);
         lastObstacle = start + n - 1;
         end = start + n + 4;
@@ -557,7 +582,7 @@ export class LevelBuilder {
       case 'pillarSpike': {
         if (upside) return null;
         // a lone block to jump over (or onto and off again)
-        const height = name === 'pillar' && this.index >= 2 && s + 2 <= this.tune.maxSurface && this.random() < 0.3 ? 2 : 1;
+        const height = name === 'pillar' && this.d >= 2 && s + 2 <= this.tune.maxSurface && this.random() < 0.3 ? 2 : 1;
         if (height === 2) return null;
         cells.push([start, s, make.block(start, s, this.platformBlock)]);
         if (name === 'pillarSpike') hazard(start + 1, 0);
@@ -586,7 +611,7 @@ export class LevelBuilder {
       }
       case 'gap': {
         if (upside || s === 0) return null;
-        const width = this.range(2, this.index >= 3 ? 4 : 3);
+        const width = this.range(2, this.d >= 3 ? 4 : 3);
         this.ground(cells, from, start, false);
         for (let c = start; c < start + width; c++) cells.push([c, 0, make.spike(c, 0)]);
         end = start + width + 4;
@@ -658,7 +683,7 @@ export class LevelBuilder {
         break;
       }
       case 'orbPit': {
-        const width = this.range(4, this.index >= 5 ? 6 : 5);
+        const width = this.range(4, this.d >= 5 ? 6 : 5);
         if (upside || s === 0) {
           for (let c = start; c < start + width; c++) hazard(c, 0);
           this.ground(cells, from, start + width + 4, upside);
@@ -728,8 +753,8 @@ export class LevelBuilder {
   addCubePiece(limit, upside = false) {
     const [low, high] = this.tune.runway;
     const names = upside
-      ? UPSIDE_PIECES.filter(name => PIECES.find(p => p.name === name).from <= this.index)
-      : PIECES.filter(p => p.from <= this.index).flatMap(p => Array(p.weight).fill(p.name));
+      ? UPSIDE_PIECES.filter(name => this.allowed(PIECES.find(p => p.name === name)))
+      : PIECES.filter(p => this.allowed(p)).flatMap(p => Array(p.weight).fill(p.name));
     for (let attempt = 0; attempt < 40; attempt++) {
       const name = this.pick(names);
       let start = this.column + this.range(low, high);
@@ -834,7 +859,7 @@ export class LevelBuilder {
     if (!this.tryUpside(entry)) return false;
     const upsideStart = start;
     // keep the upside-down part short and busy; the rest of the section runs normally
-    const upsideEnd = Math.min(endColumn, this.column + 34 + 3 * Math.min(this.index, 6));
+    const upsideEnd = Math.min(endColumn, this.column + 34 + 3 * Math.min(this.d, 6));
     this.cubeSection(upsideEnd - 8, true);
     // exit: blue portal, the cube drops to the floor
     const exitStart = this.column + 2;
@@ -1203,16 +1228,17 @@ export class LevelBuilder {
         colorIndex = section.colors;
         this.colorChange(this.column, this.spec.colors[colorIndex % this.spec.colors.length]);
       }
-      if (section.type === 'ship') {
+      const parts = section.modes
         // long drops fly for a while, then run again
-        const shipEnd = Math.min(endColumn, this.column + 64 + 2 * this.index);
-        this.addShipSection(shipEnd);
-        this.cubeSection(endColumn);
-      } else if (section.type === 'ufo' || section.type === 'wave') {
-        this.addShipSection(Math.min(endColumn, this.column + MODE_COLUMNS[section.type]), section.type);
-        this.cubeSection(endColumn);
-      } else if (section.type === 'ball') {
-        this.ballSection(Math.min(endColumn, this.column + MODE_COLUMNS.ball));
+        || (section.type === 'ship' ? [['ship', 64 + 2 * this.d]] : MODE_COLUMNS[section.type] ? [[section.type, MODE_COLUMNS[section.type]]] : null);
+      if (parts) {
+        // each mode part ends back on the floor as a cube, so the next one can start
+        for (const [mode, columns] of parts) {
+          const partEnd = Math.min(endColumn, this.column + columns);
+          if (partEnd - this.column < 16) break;
+          const done = mode === 'ball' ? this.ballSection(partEnd) : this.addShipSection(partEnd, mode);
+          if (!done && this.spec.plan) console.warn(`level ${this.index + 1}: ${mode} part at ${this.column} did not fit`);
+        }
         this.cubeSection(endColumn);
       } else if (section.type === 'blue') {
         if (!this.blueSection(endColumn)) this.cubeSection(endColumn);
@@ -1294,8 +1320,8 @@ function sectionsFor(index, timeline) {
   }
   if (spec.plan) {
     return raw.map((section, i) => {
-      const {type, speed} = spec.plan[i] || {type: 'cube'};
-      return {type, speed, endBeat: Math.min(section.endBeat, totalBeats), colors: type === 'cube' ? 0 : (i % 2) + 1};
+      const {type = 'relay', speed, modes} = spec.plan[i] || {type: 'cube'};
+      return {type, speed, modes, endBeat: Math.min(section.endBeat, totalBeats), colors: type === 'cube' ? 0 : (i % 2) + 1};
     });
   }
   const sections = [];

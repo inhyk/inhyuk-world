@@ -9,7 +9,7 @@
   const ROWS = 11;
   const VIEW_ROWS = 12; // rows plus a strip of floor
   const STORAGE_KEY = 'dash-classic:editor';
-  const CUSTOM_LEVEL = 20;
+  const CUSTOM_LEVEL = 21;
   const CODE_PREFIX = 'DOC1.';
   const TOOLS = [
     {id: 1, name: '블록'},
@@ -40,7 +40,7 @@
   ];
   const SONGS = ['Neon Start', 'Pixel Hop', 'Blue Ladder', 'Desert Wind', 'Iron Gate', 'Night Rail', 'Sky Rocket',
     'Crystal Cave', 'Thunder Road', 'Lava Lift', 'Star Factory', 'Frost Bite', 'Laser Maze', 'Black Hole', 'Overdrive',
-    'Golden Key', 'Secret Core', 'Last Dash', 'Volt Rush', 'Endless Dash'];
+    'Golden Key', 'Secret Core', 'Last Dash', 'Volt Rush', 'Endless Dash', 'DASH AND RUN'];
   const PALETTES = [
     {name: '파랑', bg: [40, 125, 255], ground: [0, 86, 230]},
     {name: '초록', bg: [40, 200, 120], ground: [0, 140, 90]},

@@ -27,8 +27,8 @@ function levelSeconds(level) {
   return seconds + (level.furthestX - x) / (20.772 * 60 * SPEED_MULTIPLIERS[speed]);
 }
 
-test('twenty built levels use only objects the engine knows', () => {
-  assert.equal(LEVELS.length, 20);
+test('twenty-one built levels use only objects the engine knows', () => {
+  assert.equal(LEVELS.length, 21);
   for (let index = 0; index < LEVELS.length; index++) {
     const text = readFileSync(new URL(`leveldata/${index}.level`, res), 'utf8');
     const ids = text.split(';').slice(1).filter(Boolean).map(row => Number(row.split(',')[1]));

@@ -10,7 +10,7 @@
 //   node games/dash-overdrive/classic/music/music.mjs --check        verify the existing files only
 //
 // Outputs (paths relative to the repo root):
-//   public/play/dash-overdrive/classic/music/0.ogg … 14.ogg      level songs (file index = level - 1)
+//   public/play/dash-overdrive/classic/music/0.ogg … 20.ogg      level songs (file index = level - 1)
 //   games/dash-overdrive/classic/res/sfx/menuLoop.ogg, practice.ogg   seamless loops
 //   games/dash-overdrive/classic/res/sfx/deathSound.ogg, levelComplete.ogg, playSound.ogg, coin.ogg
 //   games/dash-overdrive/classic/music/timeline.json             song sections in beats (beat 0 = 0 s)
@@ -1784,6 +1784,48 @@ SONGS[19] = {
       [[12, 150], [13, 125], [14, 105], [15, 88]].forEach(([s, f]) => drum(ctx.mx, ctx.t(sec.bar0 + b - 1, s), { ...S.kit.m, f, v: 0.9 * TRIM.drums * ctx.g('drums') }));
     }
     impact(ctx.mx, ctx.t(sec.bar0), { g: 0.3, f0: 75, f1: 28 });
+  },
+};
+
+// ------------------------------------------------------------------ level 21 (file 20)
+// DASH AND RUN: written for this game (own melody, chords and sounds), two pairs of drops
+// that follow the level's mode parts.
+SONGS[20] = {
+  index: 20, name: 'DASH AND RUN', bpm: 155.79, dur: 108, difficulty: 'harder', style: 'running electro: offbeat bass, square-saw lead, two pairs of drops', keyName: 'D minor',
+  key: 'D', mode: 'minor', seed: 120, hookTonic: 62, q: 2, maxBytes: 1400000, mix: { lead: 1.3, fx: 0.7 },
+  form: [['intro', 8, 0.45], ['verse', 8, 0.65], ['build', 4, 0.8], ['drop', 8, 0.9], ['drop', 8, 0.95], ['break', 8, 0.5], ['build', 4, 0.85], ['drop', 8, 0.95], ['drop', 8, 1], ['outro', 0, 0.4]],
+  prog: ['Dm Bb C A', 'Gm Bb C C'],
+  hooks: ["5:2 1':2 5:2 3':4 2':2 1':2 5:2 | 6:2 1':2 6:2 4':4 3':2 2':2 1':2 | 7:2 2':2 7:2 5':4 4':2 3':2 2':2 | #7:3 2':3 5':2 4':4 3':2 #7:2",
+    "1':2 1':2 4':4 6':4 4':2 5':2 | 3':2 3':2 1':4 6:4 1':2 3':2 | 2':3 4':3 5':2 4':4 2':2 7:2 | 3':4 2':4 1':4 7:4"],
+  kick: { f0: 240, f1: 55, dec: 0.17, drive: 2.8, click: 0.5 },
+  kit: { c: { ...KIT.c, g: 0.46, rev: 0.2 } },
+  drums: {
+    intro: { k: 'x...x...x...x...', h: '..g...g...g...g.' },
+    verse: { k: 'x...x...x...x...', c: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+    build: { k: 'x...x...x...x...', h: 'xgxgxgxgxgxgxgxg' },
+    drop: { k: 'x...x...x...x...', c: '....X.......X...', H: '..x...x...x...x.', h: 'gxgxgxgxgxgxgxgx' },
+    break: { h: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'x...x...x...x...', c: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw', uni: 3, spr: 18 }, { w: 'sin', oct: -1, g: 0.7 }], a: 0.003, d: 0.12, s: 0.6, r: 0.04, drive: 2, flt: { t: 'lp', f: 520, q: 1.4, env: 2.6, fd: 0.09 }, gain: 0.21, gate: 0.8 },
+  bassPat: { drop: 'RRO.RRO.RRO.RRO.', verse: '..R-..R-..R-..R-', build: 'R.R.R.R.R.R.R.R.', outro: '..R-..R-..R-..R-' },
+  padPatch: SUPERSAW({ a: 0.3, d: 0.6, s: 0.8, r: 0.7, gain: 0.045, flt: { t: 'lp', f: 3600, q: 0.6 } }),
+  stab: { patch: SUPERSAW({ a: 0.002, d: 0.15, s: 0.25, r: 0.08, gain: 0.05 }), pat: 'x..x..x...x..x..', gate: 0.6, lo: 57, hi: 79 },
+  arp: { patch: { ...PT.pluck, gain: 0.1 }, pat: '0213', rate: 4, lo: 62, hi: 86 },
+  lead: { osc: [{ w: 'sq', pw: 0.35, g: 0.8 }, { w: 'saw', uni: 3, spr: 14, g: 0.6 }], a: 0.004, d: 0.22, s: 0.65, r: 0.15, vib: { r: 6, d: 0.12, dl: 0.2 },
+    flt: { t: 'lp', f: 3000, q: 0.9, env: 1.5, fd: 0.18, kt: 0.5 }, gain: 0.1, rev: 0.28, dly: 0.25, mono: true, glide: 0.03, legato: true },
+  softLead: { ...PT.bell, gain: 0.12 }, teaseLead: { ...PT.pluck, gain: 0.1 },
+  layers: { verse: { arp: 1 }, build: { lead: 'tease' }, drop: { stab: 0 } },
+  sc: { depth: 0.5, rel: 0.5 }, rt: 2.3, revWet: 0.45, dlyBeats: 0.75, dlyFb: 0.35, riserG: 0.09, impactG: 0.32,
+  extra(ctx, sec, L, bars) {
+    if (sec.type !== 'drop') return;
+    // the second drop of each pair rides harder; the last pair adds stabs and the arp
+    if (sec.n % 2 === 0) drumsSec(ctx, sec, { r: 'x.x.x.x.x.x.x.x.' }, bars);
+    if (sec.n >= 3) {
+      padSec(ctx, sec, ctx.S.stab.patch, { bars, ...ctx.S.stab, stem: 'stab' });
+      arpSec(ctx, sec, ctx.S.arp.patch, ctx.S.arp, { bars });
+    }
+    if (sec.n === 4) for (let b = 4; b < bars; b += 4) hit(ctx, 'x', ctx.t(sec.bar0 + b), 0.8);
   },
 };
 

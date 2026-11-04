@@ -40,12 +40,12 @@ private:
     constexpr static std::array<std::string_view, Config::SLOT_COUNT> m_LevelStrings = {
         "Neon Start", "Pixel Hop", "Blue Ladder", "Desert Wind", "Iron Gate", "Night Rail", "Sky Rocket",
         "Crystal Cave", "Thunder Road", "Lava Lift", "Star Factory", "Frost Bite", "Laser Maze",
-        "Black Hole", "Overdrive", "Golden Key", "Secret Core", "Last Dash", "Volt Rush", "Endless Dash", "My Level"
+        "Black Hole", "Overdrive", "Golden Key", "Secret Core", "Last Dash", "Volt Rush", "Endless Dash", "DASH AND RUN", "My Level"
     };
     constexpr static std::array<std::string_view, Config::SLOT_COUNT> m_Difficulties = {
         "Easy", "Easy", "Normal", "Normal", "Hard", "Hard", "Hard",
         "Harder", "Harder", "Harder", "Insane", "Insane", "Insane",
-        "Demon", "Demon", "Secret", "Secret", "Secret", "Secret", "Secret", "Map Maker"
+        "Demon", "Demon", "Secret", "Secret", "Secret", "Secret", "Secret", "Harder", "Map Maker"
     };
     Button m_LeftLevelArrow;
     Button m_RightLevelArrow;
