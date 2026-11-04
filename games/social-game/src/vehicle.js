@@ -1,5 +1,6 @@
 // Drivable car: arcade physics on the terrain, collisions with tall boxes, chase / driver cameras.
 import * as THREE from 'three';
+import { bodyFree } from './collide.js';
 
 const tmp = [];
 
@@ -22,8 +23,9 @@ export class Vehicle {
     this.camLook = new THREE.Vector3();
     this.lights = false;
     this.half = { w: (model.size?.w ?? 1.9) / 2, l: (model.size?.l ?? 4.4) / 2 };
-    this.box = { min: [0, 0, 0], max: [0, 0, 0], tag: 'car' };
-    colliders.add(this.box);
+    // three boxes along the body (front, middle, back) so the collider follows the car's shape at any angle
+    this.boxes = [0, 1, 2].map(() => colliders.add({ min: [0, 0, 0], max: [0, 0, 0], tag: 'car' }));
+    this.box = this.boxes[1];
     this.others = []; // other cars {pos, radius}
     engine.scene.add(model.group);
   }
@@ -42,7 +44,7 @@ export class Vehicle {
   support(x, z) {
     let h = this.groundAt(x, z);
     const list = this.col.query(x - 0.6, z - 0.6, x + 0.6, z + 0.6, tmp);
-    for (const b of list) if (b !== this.box && b.max[1] <= h + 0.35 && b.max[1] > h) h = b.max[1];
+    for (const b of list) if (b.tag !== 'car' && b.max[1] <= h + 0.35 && b.max[1] > h) h = b.max[1];
     return h;
   }
 
@@ -105,7 +107,7 @@ export class Vehicle {
       for (const cc of this.circles()) {
         const list = this.col.query(cc.x - cc.r, cc.z - cc.r, cc.x + cc.r, cc.z + cc.r, tmp);
         for (const b of list) {
-          if (b === this.box || b.tag === 'curb' || b.max[1] < this.y + 0.45 || b.min[1] > this.y + 1.6) continue;
+          if (b.tag === 'car' || b.tag === 'curb' || b.max[1] < this.y + 0.45 || b.min[1] > this.y + 1.6) continue;
           const px = THREE.MathUtils.clamp(cc.x, b.min[0], b.max[0]), pz = THREE.MathUtils.clamp(cc.z, b.min[2], b.max[2]);
           let dx = cc.x - px, dz = cc.z - pz;
           const d = Math.hypot(dx, dz);
@@ -143,11 +145,13 @@ export class Vehicle {
     for (const mt of this.m.brakeMats ?? []) mt.emissiveIntensity = braking ? 3.2 : this.lights ? 1.4 : 0.35;
     for (const mt of this.m.headMats ?? []) mt.emissiveIntensity = this.lights ? 3.2 : 0.25;
     // collider box around the parked/driven car (so the player can't walk through it)
-    const r = Math.max(this.half.w, this.half.l) * 0.75;
-    this.box.min[0] = this.pos.x - r * 0.9; this.box.max[0] = this.pos.x + r * 0.9;
-    this.box.min[2] = this.pos.z - r * 0.9; this.box.max[2] = this.pos.z + r * 0.9;
-    this.box.min[1] = this.y; this.box.max[1] = this.y + 1.4;
-    this.col.remove(this.box); this.col.add(this.box);
+    const cs = this.circles();
+    this.boxes.forEach((b, i) => {
+      const c = cs[i], r = c.r * 0.92;
+      b.min[0] = c.x - r; b.max[0] = c.x + r; b.min[2] = c.z - r; b.max[2] = c.z + r;
+      b.min[1] = this.y; b.max[1] = this.y + 1.4;
+      this.col.remove(b); this.col.add(b);
+    });
   }
 
   /** Camera: 'third' chase or 'first' driver seat. */
@@ -184,6 +188,13 @@ export class Vehicle {
   /** Where the driver gets out (left side). */
   exitPoint() {
     const s = Math.sin(this.yaw), c = Math.cos(this.yaw);
-    return new THREE.Vector3(this.pos.x - c * (this.half.w + 0.7), this.y, this.pos.z + s * (this.half.w + 0.7));
+    const side = (d, along = 0) => new THREE.Vector3(this.pos.x - c * d - s * along, this.y, this.pos.z + s * d - c * along);
+    // driver's side first, then the other side, then behind and in front; the first free spot wins
+    const tries = [side(this.half.w + 0.8), side(this.half.w + 1.3), side(-(this.half.w + 0.8)), side(-(this.half.w + 1.3)), side(0, this.half.l + 1.0), side(0, -(this.half.l + 1.0)), side(this.half.w + 2.2)];
+    for (const p of tries) {
+      const y = Math.max(p.y, this.groundAt(p.x, p.z));
+      if (bodyFree(this.col, p.x, y + 0.05, p.z)) { p.y = y; return p; }
+    }
+    return tries[0];
   }
 }
