@@ -3,6 +3,7 @@
 #include "Player.h"
 #include "Text.h"
 #include <SDL_image.h>
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 
@@ -34,7 +35,10 @@ void SkinSelect::init(Game *game) {
     const int left = m_Game->getWidth() / 2 - gridWidth / 2;
     const int top = 600 - gridHeight / 2;
     for (int i = 0; i < Config::SKIN_COUNT; i++) {
-        const int x = left + (i % COLUMNS) * (SLOT_SIZE + SLOT_GAP);
+        // a short last row sits in the middle
+        const int inRow = std::min(COLUMNS, Config::SKIN_COUNT - (i / COLUMNS) * COLUMNS);
+        const int rowLeft = left + (COLUMNS - inRow) * (SLOT_SIZE + SLOT_GAP) / 2;
+        const int x = rowLeft + (i % COLUMNS) * (SLOT_SIZE + SLOT_GAP);
         const int y = top + (i / COLUMNS) * (SLOT_SIZE + SLOT_GAP);
         m_SlotButtons[i].init(m_Game, m_SlotTexture, x, y, SLOT_SIZE, SLOT_SIZE);
     }

@@ -843,7 +843,7 @@ function lockSmall() {
   return svg(64, 76, defs, `<g transform="scale(.4)">${body}</g>`);
 }
 
-// ================================================================ skins 12-23 (second set) and the locked-slot cover
+// ================================================================ skins 12-24 (second set) and the locked-slot cover
 
 // cube with a non-square silhouette: the 11 px navy outline is drawn inside the shape
 function skinShape({ shape, colors, defs = '', pattern = '', face = '' }) {
@@ -1088,6 +1088,24 @@ const SKINS_2 = [
         `<path d="M40 54 L40 30 L63 42 L92.5 20 L122 42 L145 30 L145 54 Z" fill="url(#crown)" stroke="${NAVY}" stroke-width="5.5" stroke-linejoin="round"/>` +
         `<circle cx="40" cy="27" r="5" fill="${PINK}" stroke="${NAVY}" stroke-width="2.5"/><circle cx="92.5" cy="16" r="6" fill="${ACID}" stroke="${NAVY}" stroke-width="2.6"/><circle cx="145" cy="27" r="5" fill="#45d4ff" stroke="${NAVY}" stroke-width="2.5"/>` +
         `<circle cx="66" cy="47" r="3.5" fill="#45d4ff"/><circle cx="92.5" cy="45" r="4" fill="${PINK}"/><circle cx="119" cy="47" r="3.5" fill="${ACID}"/>`,
+    }),
+  // 24: runner with a sweatband and speed lines, the reward for level 21 (DASH AND RUN)
+  () =>
+    cube({
+      colors: ['#ffd9b0', '#ff7b30', '#d43e14'],
+      defs: lin('sweat', 0, 40, 0, 62, [[0, '#a8f7ff'], [0.5, '#30d0f0'], [1, '#148ec0']]),
+      pattern:
+        `<rect x="10" y="40" width="165" height="22" fill="url(#sweat)"/><path d="M10 40 H175 M10 62 H175" stroke="${NAVY}" stroke-width="3.5"/>` +
+        `<path d="M10 51 H175" stroke="${WHITE}" stroke-opacity=".7" stroke-width="3" stroke-dasharray="10 8"/>` +
+        [[124, 46], [138, 34], [152, 24]].map(([y, w]) => `<rect x="12" y="${y}" width="${w}" height="7" rx="3.5" fill="${WHITE}" fill-opacity=".5"/>`).join(''),
+      face:
+        eyesRound(72, 122, 92, 12, 14) +
+        `<path d="M56 74 L84 81 M138 74 L110 81" stroke="${NAVY}" stroke-width="5.5" stroke-linecap="round"/>` +
+        `<path d="M72 117 H124 Q122 144 98 144 Q74 144 72 117 Z" fill="${NAVY}" stroke="${NAVY}" stroke-width="4" stroke-linejoin="round"/>` +
+        `<path d="M78 120 H118 V127 Q98 131 78 127 Z" fill="${WHITE}"/>` +
+        `<path d="M85 139 Q98 131 111 139 Q105 144 98 144 Q91 144 85 139 Z" fill="#ff6f9c"/>` +
+        `<path d="M27 46 Q14 39 3 43 L5 52 Q16 49 26 54 Z M27 56 Q15 62 5 72 L11 77 Q20 66 29 61 Z" fill="url(#sweat)" stroke="${NAVY}" stroke-width="3" stroke-linejoin="round"/>` +
+        `<rect x="22" y="43" width="16" height="16" rx="5" fill="url(#sweat)" stroke="${NAVY}" stroke-width="3"/>`,
     }),
 ];
 

@@ -19,7 +19,7 @@ public:
 
 private:
     static SkinSelect m_SkinSelect;
-    static constexpr int COLUMNS = 8;
+    static constexpr int COLUMNS = 9;
     static constexpr int SLOT_SIZE = 150;
     static constexpr int SLOT_GAP = 30;
     SDL_Texture *m_SlotTexture;

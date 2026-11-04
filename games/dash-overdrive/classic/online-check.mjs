@@ -40,6 +40,11 @@ await a.waitForTimeout(3000);
 const ghostsA = await a.evaluate(() => window.classicOnline.status().ghosts);
 const ghostsB = await b.evaluate(() => window.classicOnline.status().ghosts);
 const raceA = await a.isVisible('#race');
+// level 21, DASH AND RUN, is open to everyone, so it can be raced too
+await a.click('#online-open');
+await a.selectOption('#online-level', '20');
+await a.click('#online-go');
+for (const page of [a, b]) await page.waitForFunction(() => JSON.parse(window.render_classic_status()).state === 2 && JSON.parse(window.render_classic_status()).level === 21, null, {timeout: 20000});
 await b.click('#online-open');
 await b.click('#online-leave');
 await a.waitForFunction(() => document.querySelectorAll('#online-players li').length === 1 || window.classicOnline.status().peers === 0, null, {timeout: 20000});
@@ -62,8 +67,8 @@ await c.waitForFunction(() => document.querySelectorAll('#online-players li').le
 await c.evaluate(() => { Module._classic_set_creator(1); Module._classic_set_hitboxes(0); });
 await c.selectOption('#online-level', 'custom');
 await c.click('#online-go');
-for (const page of [c, d]) await page.waitForFunction(() => JSON.parse(window.render_classic_status()).state === 2 && JSON.parse(window.render_classic_status()).level === 21, null, {timeout: 20000});
-const sameMap = await d.evaluate(() => new TextDecoder().decode(FS.readFile('/res/leveldata/20.level')));
+for (const page of [c, d]) await page.waitForFunction(() => JSON.parse(window.render_classic_status()).state === 2 && JSON.parse(window.render_classic_status()).level === 22, null, {timeout: 20000});
+const sameMap = await d.evaluate(() => new TextDecoder().decode(FS.readFile('/res/leveldata/21.level')));
 assert.match(sameMap, /1,8,2,765,3,15/, 'the friend got the host map');
 // the friend runs into the first spike and then watches the host
 await d.waitForFunction(() => !document.getElementById('watch').hidden, null, {timeout: 20000});
@@ -76,5 +81,5 @@ assert.equal(ghostsB, 1, 'friend sees the host');
 assert.equal(raceA, true, 'race board shows');
 assert.equal(ghostsAfter, 0, 'the friend disappears after leaving');
 assert.deepEqual(errors, []);
-console.log(`online race passed (rooms ${code}, ${code2}): ghosts, race board, own map, watching`);
+console.log(`online race passed (rooms ${code}, ${code2}): ghosts, race board, level 21, own map, watching`);
 await browser.close();

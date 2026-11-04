@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Inter_Tight } from "next/font/google";
+import localFont from "next/font/local";
 import { Analytics } from "@vercel/analytics/next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -8,17 +8,20 @@ import { siteConfig } from "@/lib/site";
 import { globalJsonLd } from "@/lib/structured-data";
 import "./globals.css";
 
-const interTight = Inter_Tight({
+// Inter and Inter Tight (SIL Open Font License 1.1, see src/app/fonts/OFL-*.txt)
+// live in the repo, so a build never has to download them from Google Fonts.
+// Production builds failed on that download (2026-11-04).
+const interTight = localFont({
+  src: "./fonts/inter-tight-latin-wght-normal.woff2",
   variable: "--font-inter-tight",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  weight: "100 900",
   display: "swap",
 });
 
-const inter = Inter({
+const inter = localFont({
+  src: "./fonts/inter-latin-wght-normal.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: "100 900",
   display: "swap",
 });
 

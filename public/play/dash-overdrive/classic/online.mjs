@@ -18,6 +18,9 @@ import {GAME, server, offSite, OFF_SITE_MESSAGE} from './net.mjs';
 const MAX_PLAYERS = 4;
 const SEND_MS = 66;
 const RACE_LEVELS = 15; // secret levels stay single player: not everyone has them open
+// level 21, DASH AND RUN, is open to everyone, so it can be raced too
+const OPEN_LEVELS = [[20, 'DASH AND RUN']];
+const SKIN_MAX = 24; // engine Config::SKIN_COUNT - 1
 const CUSTOM_LEVEL = 21; // the map maker's slot in the engine
 const MAP_PART = 1500; // numbers per map message, well under the 16 KB limit
 const PIXELS_PER_MS = 20.772 * 60 / 1000;
@@ -46,7 +49,12 @@ let mapParts = []; // a map arriving from the host
 const players = new Map(); // peer id -> {slot, skin, pos, at, shown, done}
 
 LEVEL_NAMES.forEach((name, index) => levelSelect.add(new Option(`${index + 1}. ${name}`, String(index))));
+OPEN_LEVELS.forEach(([index, name]) => levelSelect.add(new Option(`${index + 1}. ${name}`, String(index))));
 levelSelect.add(new Option('🛠️ 내가 만든 맵', 'custom'));
+
+function raceable(level) {
+  return (level >= 0 && level < RACE_LEVELS) || OPEN_LEVELS.some(([index]) => index === level);
+}
 
 const engineReady = () => Boolean(window.Module?._classic_state) && window.render_classic_status && JSON.parse(window.render_classic_status()).ready;
 const playing = () => engineReady() && Module._classic_state() === 2;
@@ -140,7 +148,7 @@ const hooks = {
     const player = addPlayer(from);
     const number = (value, fallback = 0) => (Number.isFinite(value) ? value : fallback);
     if (data.t === 'hi') {
-      player.skin = Math.max(0, Math.min(23, number(data.s) | 0));
+      player.skin = Math.max(0, Math.min(SKIN_MAX, number(data.s) | 0));
     } else if (data.t === 'map' && from === room.hostId) {
       const part = number(data.i, -1) | 0;
       const total = number(data.n, 0) | 0;
@@ -148,10 +156,10 @@ const hooks = {
       if (part >= 0 && part < total && total <= 40 && Array.isArray(data.c)) mapParts[part] = {cells: data.c, song: number(data.s), colors: number(data.k)};
     } else if (data.t === 'start' && from === room.hostId) {
       const level = number(data.l, -1) | 0;
-      if (level >= 0 && level < RACE_LEVELS) startRace(level);
+      if (raceable(level)) startRace(level);
       else if (level === CUSTOM_LEVEL && loadReceivedMap()) startRace(CUSTOM_LEVEL);
     } else if (data.t === 'pos') {
-      player.skin = Math.max(0, Math.min(23, number(data.s) | 0));
+      player.skin = Math.max(0, Math.min(SKIN_MAX, number(data.s) | 0));
       player.pos = {
         level: number(data.l, -1) | 0, x: number(data.x), y: number(data.y), rotation: number(data.r),
         mode: Math.max(0, Math.min(MODE_COUNT - 1, number(data.m) | 0)), speed: Math.max(0, Math.min(SPEEDS.length - 1, number(data.v, 1) | 0)),
@@ -339,7 +347,8 @@ function show() {
   panel.hidden = false;
   render();
   if (!room) setStatus('');
-  levelSelect.value = String(Math.min(RACE_LEVELS - 1, Math.max(0, (window.render_classic_status ? JSON.parse(window.render_classic_status()).level : 1) - 1)));
+  const current = (window.render_classic_status ? JSON.parse(window.render_classic_status()).level : 1) - 1;
+  levelSelect.value = String(raceable(current) ? current : Math.min(RACE_LEVELS - 1, Math.max(0, current)));
 }
 
 function close() {
