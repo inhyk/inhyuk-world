@@ -19,9 +19,9 @@
   "levels": "games/dash-overdrive/classic/levels/generate.mjs",
   "check": "games/dash-overdrive/classic/levels/verify.mjs"
  },
- "packageBytes": 3696846,
- "packageSha256": "c6ec9a58d4b02fc879ab07d01e4097794cc2fdaf0e3fc59e3f488246a0585b18",
- "wasmSha256": "f58beba581db794f2f9ba589161ed33a65b6f2a0d2b6db801f904468e5ae44e6",
+ "packageBytes": 3746939,
+ "packageSha256": "83711af0be698cdd585b034aa97eeb23cc52e5af122471373efffc33d8982434",
+ "wasmSha256": "1904249dbd07e5fc1503b35e99e00aaaacd0c02b93e7994895f952b98d4cc93e",
  "levels": [
   {
    "level": 1,
@@ -182,6 +182,14 @@
    "songSeconds": 120,
    "objects": 3063,
    "sha256": "0462a38c0f470b1b9632a13c198b0a4a98a35f1a828b691f77eafa27efc02413"
+  },
+  {
+   "level": 21,
+   "name": "DASH AND RUN",
+   "bpm": 155.79,
+   "songSeconds": 108,
+   "objects": 2679,
+   "sha256": "959a27fbf2a15ad2534069065f9433ebc72eb40a39b8fa390f0bb5fe4280f80e"
   }
  ]
 }

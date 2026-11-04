@@ -18,7 +18,7 @@ import {GAME, server, offSite, OFF_SITE_MESSAGE} from './net.mjs';
 const MAX_PLAYERS = 4;
 const SEND_MS = 66;
 const RACE_LEVELS = 15; // secret levels stay single player: not everyone has them open
-const CUSTOM_LEVEL = 20; // the map maker's slot in the engine
+const CUSTOM_LEVEL = 21; // the map maker's slot in the engine
 const MAP_PART = 1500; // numbers per map message, well under the 16 KB limit
 const PIXELS_PER_MS = 20.772 * 60 / 1000;
 // speed gates: slow, normal, fast, very fast (engine SPEED_MULTIPLIERS)

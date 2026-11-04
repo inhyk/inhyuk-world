@@ -2,9 +2,10 @@
 
 namespace Config {
 
-constexpr int LEVEL_COUNT = 20;
-// Levels 16-20 are secret: they open with coins.
+constexpr int LEVEL_COUNT = 21;
+// Levels 16-20 are secret: they open with coins. Level 21 (DASH AND RUN) is open.
 constexpr int SECRET_FIRST = 15;
+constexpr int SECRET_COUNT = 5;
 constexpr int SECRET_COINS[5] = { 10, 20, 30, 40, 50 };
 // The map maker writes its level into this extra slot after the built-in ones.
 constexpr int CUSTOM_LEVEL = LEVEL_COUNT;
