@@ -78,9 +78,12 @@ export class Colliders {
 export function moveBody(col, p, r, h, dx, dy, dz, groundAt, step = 0.42) {
   const res = { onGround: false, hitX: false, hitZ: false, ceiling: false };
   const tmp = [];
+  // boxes the body is already inside (e.g. a car that parked on top of it) never trap it: they are ignored
+  const stuckIn = new Set();
+  for (const b of col.query(p.x - r, p.z - r, p.x + r, p.z + r, tmp)) if (b.max[1] > p.y + 0.05 && b.min[1] < p.y + h - 0.05) stuckIn.add(b);
   const overl = (x, y, z) => {
     const list = col.query(x - r, z - r, x + r, z + r, tmp);
-    for (const b of list) if (b.max[1] > y + 0.001 && b.min[1] < y + h) return b;
+    for (const b of list) if (!stuckIn.has(b) && b.max[1] > y + 0.001 && b.min[1] < y + h) return b;
     return null;
   };
   // horizontal, axis by axis, with step-up
@@ -119,4 +122,10 @@ export function moveBody(col, p, r, h, dx, dy, dz, groundAt, step = 0.42) {
   }
   p.y = ny;
   return res;
+}
+
+/** Is a body of radius r and height h free of boxes at feet position (x, y, z)? */
+export function bodyFree(col, x, y, z, r = 0.3, h = 1.75) {
+  for (const b of col.query(x - r, z - r, x + r, z + r)) if (b.max[1] > y + 0.05 && b.min[1] < y + h) return false;
+  return true;
 }

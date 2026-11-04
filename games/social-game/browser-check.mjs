@@ -73,6 +73,20 @@ if (await step() === 'license') {
 }
 assert.equal(await step(), 'drive-work');
 
+// get in and out of the car with E like a player, then walk (인혁: "차에서 내리면 못 움직여")
+for (const yaw of [0, 0.8, 2.3]) {
+  await G((y) => { const g = window.__game; g.vehicle.park(-150, 60, y); g.player.place(-148.2, 0.2, 60, 0); }, yaw);
+  await page.waitForTimeout(250);
+  await page.keyboard.press('KeyE'); await page.waitForTimeout(400);
+  assert.equal(await G(() => window.__game.vehicle.driving), true, 'got in');
+  await page.keyboard.press('KeyE'); await page.waitForTimeout(400);
+  assert.equal(await G(() => window.__game.vehicle.driving), false, 'got out');
+  const a = await G(() => window.__game.player.pos.toArray());
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(600); await page.keyboard.up('KeyW');
+  const b = await G(() => window.__game.player.pos.toArray());
+  assert.ok(Math.hypot(b[0] - a[0], b[2] - a[2]) > 1, `can walk after getting out (yaw ${yaw})`);
+}
+
 // drive to work
 await G(() => { const g = window.__game; g.vehicle.driving = true; });
 await page.keyboard.down('KeyW'); await page.waitForTimeout(1200); await page.keyboard.up('KeyW');
