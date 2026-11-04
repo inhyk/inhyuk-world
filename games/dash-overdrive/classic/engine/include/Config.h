@@ -10,7 +10,7 @@ constexpr int SECRET_COINS[5] = { 10, 20, 30, 40, 50 };
 // The map maker writes its level into this extra slot after the built-in ones.
 constexpr int CUSTOM_LEVEL = LEVEL_COUNT;
 constexpr int SLOT_COUNT = LEVEL_COUNT + 1;
-constexpr int SKIN_COUNT = 24;
+constexpr int SKIN_COUNT = 25;
 // The first skins are free; finishing level N unlocks skin FREE_SKINS + N - 1.
 constexpr int FREE_SKINS = 4;
 constexpr int TILE_SIZE = 120;

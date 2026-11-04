@@ -90,7 +90,7 @@ try {
     assert.match(text, /^kS29,1_\d+_2_\d+_3_\d+,kS30,/);
     assert.equal(text.split(';').filter(row => row.startsWith('1,1,')).length, 2);
     await page.click('#editor-test');
-    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 21);
+    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 22);
     await page.evaluate(() => Module._classic_go_title());
     await page.waitForFunction(() => JSON.parse(window.render_classic_status()).editor);
     // no height limit: place a block high up
@@ -154,7 +154,7 @@ try {
     assert.deepEqual(await page.evaluate(() => window.classicEditor.map().cells.map(([c, r, id]) => `${c},${r},${id}`).sort()), newMap, 'share code keeps the new objects');
     // play it (creator mode so nothing stops the run) and watch the speed, mode and gravity change
     await page.click('#editor-test');
-    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 21);
+    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 22);
     await page.evaluate(() => { Module._classic_set_creator(1); Module._classic_set_hitboxes(0); });
     const seen = await page.evaluate(() => new Promise(resolve => {
       const result = {modes: new Set(), speeds: new Set(), gravities: new Set()};
