@@ -19,9 +19,9 @@
   "levels": "games/dash-overdrive/classic/levels/generate.mjs",
   "check": "games/dash-overdrive/classic/levels/verify.mjs"
  },
- "packageBytes": 3760609,
- "packageSha256": "11ae80ca56d28aee723de083572346f2c8994d85ced518bdf2c228eb5aaa6351",
- "wasmSha256": "30f539c002a5cf87a4eaed2f8efcaf483274626b00b47cff914c67f40220d29c",
+ "packageBytes": 7205204,
+ "packageSha256": "862aeb4aaf17c61e632ef536ac1dc2af9461b796ad026625eb4a7ca9b68e115a",
+ "wasmSha256": "bdd3d27fddd60ab2148f798cdc6ee0112a1d168c9ef7da44eda5978d936064f8",
  "levels": [
   {
    "level": 1,
@@ -190,6 +190,638 @@
    "songSeconds": 108,
    "objects": 2679,
    "sha256": "959a27fbf2a15ad2534069065f9433ebc72eb40a39b8fa390f0bb5fe4280f80e"
+  },
+  {
+   "level": 22,
+   "name": "Lunar Tower",
+   "bpm": 124.632,
+   "songSeconds": 64,
+   "objects": 1223,
+   "sha256": "07e153e4ce86d89bd3bb62235ca66e29e8bff4d2eee51ed9227a2cb4eaef4609"
+  },
+  {
+   "level": 23,
+   "name": "Shadow Run",
+   "bpm": 138.48,
+   "songSeconds": 68,
+   "objects": 1230,
+   "sha256": "8407a6d0b9af79ba6ea8b5f774c9f58563ea00b1cda385204eb99699bbcc0e18"
+  },
+  {
+   "level": 24,
+   "name": "Turbo River",
+   "bpm": 124.632,
+   "songSeconds": 72,
+   "objects": 1165,
+   "sha256": "e25dbb41493245b71b22bf09483755f51915483fcb6e1e6a053dad897704ef74"
+  },
+  {
+   "level": 25,
+   "name": "Neon Road",
+   "bpm": 138.48,
+   "songSeconds": 74,
+   "objects": 995,
+   "sha256": "ea420f655f3a9611dd550663600321196090cc7be36d1c9a384b9a5d7dfcb4cc"
+  },
+  {
+   "level": 26,
+   "name": "Thunder Tunnel",
+   "bpm": 124.632,
+   "songSeconds": 64,
+   "objects": 1069,
+   "sha256": "8f89faa0c94d3a8e90fe709362f933b8efabc29e747adb70256f96d9b1445449"
+  },
+  {
+   "level": 27,
+   "name": "Emerald Station",
+   "bpm": 138.48,
+   "songSeconds": 68,
+   "objects": 1202,
+   "sha256": "cf194b11215db62cd6b7513712e6677d715705a8eb79b64466edc9d2fb3f99bb"
+  },
+  {
+   "level": 28,
+   "name": "Ruby Island",
+   "bpm": 124.632,
+   "songSeconds": 72,
+   "objects": 1554,
+   "sha256": "a151b408f845714419a53798d266055666aa907c87f2dbfcc62358c38d8bef65"
+  },
+  {
+   "level": 29,
+   "name": "Crystal Galaxy",
+   "bpm": 138.48,
+   "songSeconds": 74,
+   "objects": 1302,
+   "sha256": "42730b834f8cf4440f61b401440fa88fc1eb1280eb05b977412dd2f50d989762"
+  },
+  {
+   "level": 30,
+   "name": "Frozen Forest",
+   "bpm": 124.632,
+   "songSeconds": 64,
+   "objects": 1254,
+   "sha256": "fe9e88b8e47d967dd681765421ae3b67686ef0a007bb7787bc237eec7207040c"
+  },
+  {
+   "level": 31,
+   "name": "Midnight Garden",
+   "bpm": 138.48,
+   "songSeconds": 68,
+   "objects": 1060,
+   "sha256": "31a24f925138c53df9ee676b20170e179b617acbf14abf16b54433445febbfbc"
+  },
+  {
+   "level": 32,
+   "name": "Coral Ladder",
+   "bpm": 155.79,
+   "songSeconds": 78,
+   "objects": 1581,
+   "sha256": "eba25aed3430ce1ce606fe548806766436dd7724e3bb20a4e32638cc032a2e8e"
+  },
+  {
+   "level": 33,
+   "name": "Sunny Castle",
+   "bpm": 124.632,
+   "songSeconds": 80,
+   "objects": 1657,
+   "sha256": "4757bbf817c69c433cc853b0789dca4790add02510d84280e8e681c178e4e693"
+  },
+  {
+   "level": 34,
+   "name": "Midnight Island",
+   "bpm": 155.79,
+   "songSeconds": 82,
+   "objects": 1774,
+   "sha256": "740e0eecb0a7ba03b61bdf58f606821baf24232fb6f0ee46be49675b358e572e"
+  },
+  {
+   "level": 35,
+   "name": "Pixel Tunnel",
+   "bpm": 138.48,
+   "songSeconds": 84,
+   "objects": 1720,
+   "sha256": "8747c431775429ecca04c5afd497fc10f9913554f4927d2754411fc9817b1837"
+  },
+  {
+   "level": 36,
+   "name": "Velvet Tower",
+   "bpm": 155.79,
+   "songSeconds": 78,
+   "objects": 1724,
+   "sha256": "cc11aae2d432fba252b1c786123f3db0e827cd80d9519c14d7a72c69a607fd80"
+  },
+  {
+   "level": 37,
+   "name": "Lunar Forest",
+   "bpm": 124.632,
+   "songSeconds": 80,
+   "objects": 1700,
+   "sha256": "39615f65f1775f1eabc09bd824a4f358ebec7ea63ae1d275814d833b8894040e"
+  },
+  {
+   "level": 38,
+   "name": "Cloud Galaxy",
+   "bpm": 155.79,
+   "songSeconds": 82,
+   "objects": 1538,
+   "sha256": "3ceb9c6a103ac1eda16dae78089a11a0fad944bd27a8fffd75d120c9a92b3b53"
+  },
+  {
+   "level": 39,
+   "name": "Frozen Meadow",
+   "bpm": 138.48,
+   "songSeconds": 84,
+   "objects": 1832,
+   "sha256": "7ebd15d934c523ff9e8bd1966079f2889e572fd583d07c08161fcf187155103b"
+  },
+  {
+   "level": 40,
+   "name": "Solar Summit",
+   "bpm": 155.79,
+   "songSeconds": 78,
+   "objects": 1593,
+   "sha256": "768c8e749fd0956cade92418975e72882d0e2977f08cfb1e00b12a9e7ac12755"
+  },
+  {
+   "level": 41,
+   "name": "Turbo Run",
+   "bpm": 124.632,
+   "songSeconds": 80,
+   "objects": 1698,
+   "sha256": "a8f0ba069930f8635d78d0801c26256d7575018a2b82d30edcf46335ecca06cc"
+  },
+  {
+   "level": 42,
+   "name": "Ruby Forest",
+   "bpm": 155.79,
+   "songSeconds": 82,
+   "objects": 1660,
+   "sha256": "f11acfff45670c6b9447d9a26b43afca0c17251972721f7a63b502a709dea3cf"
+  },
+  {
+   "level": 43,
+   "name": "Frozen Station",
+   "bpm": 138.48,
+   "songSeconds": 84,
+   "objects": 1834,
+   "sha256": "15040b1886df74c21b4ffa28245cfedd2055daada1d8083656a87cfa847a7ecd"
+  },
+  {
+   "level": 44,
+   "name": "Shadow Tower",
+   "bpm": 155.79,
+   "songSeconds": 78,
+   "objects": 1379,
+   "sha256": "88c86df017fc6e0955eea73236339a477a1c82c18f13eaa411dcd5480f59dba8"
+  },
+  {
+   "level": 45,
+   "name": "Crystal Ladder",
+   "bpm": 124.632,
+   "songSeconds": 80,
+   "objects": 1591,
+   "sha256": "0a6e11d387cd96b872d9e4009e5746a6aeb2cf7a80ab07be7cd203847a7da07f"
+  },
+  {
+   "level": 46,
+   "name": "Sunny Galaxy",
+   "bpm": 155.79,
+   "songSeconds": 82,
+   "objects": 1746,
+   "sha256": "87573e2b6371c050af1a3e80245718b3cda1964adf1c59d2b9d66333ef486164"
+  },
+  {
+   "level": 47,
+   "name": "Emerald Island",
+   "bpm": 178.05,
+   "songSeconds": 86,
+   "objects": 2022,
+   "sha256": "36b2c4e834441b89ee5ab013f61a95fbd46064a46026ccb7ab6d04d86772081c"
+  },
+  {
+   "level": 48,
+   "name": "Thunder Valley",
+   "bpm": 155.79,
+   "songSeconds": 88,
+   "objects": 1962,
+   "sha256": "d10c4dd8e24850b6b206947d5e7ebba551379cc5ffae545efdfce7fe3e6f268c"
+  },
+  {
+   "level": 49,
+   "name": "Lunar Canyon",
+   "bpm": 138.48,
+   "songSeconds": 90,
+   "objects": 1913,
+   "sha256": "ae9e644c5610b9be4b661240a30bf6fbe4c5471ec52a73e6f471150e126a4021"
+  },
+  {
+   "level": 50,
+   "name": "Solar River",
+   "bpm": 155.79,
+   "songSeconds": 108,
+   "objects": 2546,
+   "sha256": "4f8a61390b2c8b86e2577e464670bc9ae7bc8266b2476767295320c2f3fa12c2"
+  },
+  {
+   "level": 51,
+   "name": "Velvet Harbor",
+   "bpm": 178.05,
+   "songSeconds": 86,
+   "objects": 2136,
+   "sha256": "c7637ddfb027a9f375370de922e89a1eb69e0098bdca1a913aea2fdf82f73122"
+  },
+  {
+   "level": 52,
+   "name": "Shadow Express",
+   "bpm": 155.79,
+   "songSeconds": 88,
+   "objects": 2477,
+   "sha256": "78eba7b8a52bef7879c5bf756b77d7bbb569870a9b20cb71b1b380c49644f76d"
+  },
+  {
+   "level": 53,
+   "name": "Turbo Galaxy",
+   "bpm": 138.48,
+   "songSeconds": 90,
+   "objects": 2118,
+   "sha256": "2bd10659066c69fe0209cce04760f368873e3f2d43470460ed75d8be04a044e0"
+  },
+  {
+   "level": 54,
+   "name": "Neon Comet",
+   "bpm": 155.79,
+   "songSeconds": 108,
+   "objects": 2485,
+   "sha256": "a8a9815e528c04d09698f14dab9818bc47904391f1698abbcce4f5e8a0e4e070"
+  },
+  {
+   "level": 55,
+   "name": "Cloud Bridge",
+   "bpm": 178.05,
+   "songSeconds": 86,
+   "objects": 2343,
+   "sha256": "f9f973f4a0a8bdaa9962fc99a9ace39c5dc159b1007211df8e15fb231164f3fd"
+  },
+  {
+   "level": 56,
+   "name": "Midnight Meadow",
+   "bpm": 155.79,
+   "songSeconds": 88,
+   "objects": 2538,
+   "sha256": "638be26259ccef61ace47293555c009a7b36ceb9933f9abdbd9e7d8845b933b3"
+  },
+  {
+   "level": 57,
+   "name": "Thunder Castle",
+   "bpm": 138.48,
+   "songSeconds": 90,
+   "objects": 2169,
+   "sha256": "303837f771ff408a391c2d7c1289acca2a67c0b1f0566cd2cbb1746d2a131dfa"
+  },
+  {
+   "level": 58,
+   "name": "Crystal Station",
+   "bpm": 155.79,
+   "songSeconds": 108,
+   "objects": 2587,
+   "sha256": "fd1b4010ef41e0c239841b098e1a575a67b6f9a5ebf3d8cf7b6e4c93532e492b"
+  },
+  {
+   "level": 59,
+   "name": "Cosmic Tunnel",
+   "bpm": 178.05,
+   "songSeconds": 86,
+   "objects": 2315,
+   "sha256": "8297d02cd6a39d8b5df52a3564c8e3de68a4241e3612aa1e9270157aa3e6e3b7"
+  },
+  {
+   "level": 60,
+   "name": "Pixel Island",
+   "bpm": 155.79,
+   "songSeconds": 88,
+   "objects": 2426,
+   "sha256": "24a4e9787e2bb597000d13d3ccff443c00050b6c3a147cb49e7140e9fc874900"
+  },
+  {
+   "level": 61,
+   "name": "Sapphire Tower",
+   "bpm": 138.48,
+   "songSeconds": 90,
+   "objects": 1936,
+   "sha256": "b4051e4c1084858640d93baa7e4dc91ee19a3683aeba7dd91b6dc71f283761c8"
+  },
+  {
+   "level": 62,
+   "name": "Lunar Station",
+   "bpm": 178.05,
+   "songSeconds": 92,
+   "objects": 2609,
+   "sha256": "5228a5023edfa2e8c07f7e2ffefd443028b9bad4181db5a9fbd493633197658f"
+  },
+  {
+   "level": 63,
+   "name": "Sapphire Run",
+   "bpm": 155.79,
+   "songSeconds": 94,
+   "objects": 2691,
+   "sha256": "52c12630ce82bb6817b97dd4017de9c5ea71cf5d88991b13336e8578c2110168"
+  },
+  {
+   "level": 64,
+   "name": "Cosmic Island",
+   "bpm": 138.48,
+   "songSeconds": 96,
+   "objects": 2423,
+   "sha256": "94c6959a8bdf39ab6c3b3238a1226707eb7fab484d3e853a4dd71ee878aa699c"
+  },
+  {
+   "level": 65,
+   "name": "Coral Forest",
+   "bpm": 138.48,
+   "songSeconds": 102,
+   "objects": 2772,
+   "sha256": "b735852fc04a0297c7ec36476607f7e1ff2ee46458d5139ca6c33cb4af257d40"
+  },
+  {
+   "level": 66,
+   "name": "Turbo Tower",
+   "bpm": 178.05,
+   "songSeconds": 92,
+   "objects": 2436,
+   "sha256": "f58ee12ca191b00838adbe4a9589c33bd25cee263561d83e8552ba0dd3760d83"
+  },
+  {
+   "level": 67,
+   "name": "Velvet Canyon",
+   "bpm": 155.79,
+   "songSeconds": 94,
+   "objects": 2488,
+   "sha256": "701c0c2ac931f37153170590cdab294272666d6a98998eef18c29a9135582905"
+  },
+  {
+   "level": 68,
+   "name": "Sunny Bridge",
+   "bpm": 138.48,
+   "songSeconds": 96,
+   "objects": 2461,
+   "sha256": "790fa7e9064784311850fe29047a504c91959353cf3c0b5518ae79333d685cf4"
+  },
+  {
+   "level": 69,
+   "name": "Thunder Meadow",
+   "bpm": 138.48,
+   "songSeconds": 102,
+   "objects": 2675,
+   "sha256": "097ef393bdeb9de111dd2effc5bd230537bc997727f5851fc112e6b5ce495f2a"
+  },
+  {
+   "level": 70,
+   "name": "Crystal Valley",
+   "bpm": 178.05,
+   "songSeconds": 92,
+   "objects": 2601,
+   "sha256": "1ceb18bd6d965d5c7abe9dbe29603fd0acade4f285a260f2d13bedd25ac86662"
+  },
+  {
+   "level": 71,
+   "name": "Rocket Comet",
+   "bpm": 155.79,
+   "songSeconds": 94,
+   "objects": 2561,
+   "sha256": "b75dc56d61a88727971bc490441ed6690b32ce3ba54629f07adec70dd19528f3"
+  },
+  {
+   "level": 72,
+   "name": "Candy Valley",
+   "bpm": 138.48,
+   "songSeconds": 96,
+   "objects": 2725,
+   "sha256": "8d03fbe4abe474a95316ca50fcd5d64c0b5d691d1152f1fe08f8e7af5b3f971c"
+  },
+  {
+   "level": 73,
+   "name": "Midnight Summit",
+   "bpm": 138.48,
+   "songSeconds": 102,
+   "objects": 2697,
+   "sha256": "db89bfa217718804f088be944ddc94ea99da20523de414c367df4368f2a3dd68"
+  },
+  {
+   "level": 74,
+   "name": "Turbo Meadow",
+   "bpm": 178.05,
+   "songSeconds": 92,
+   "objects": 2265,
+   "sha256": "6202cdfe2a3b7b23599e4650d1d95a16b37c5d59e04261b88725fb5e38d0354c"
+  },
+  {
+   "level": 75,
+   "name": "Rocket River",
+   "bpm": 155.79,
+   "songSeconds": 94,
+   "objects": 2052,
+   "sha256": "806aa2e0e683c3514867fa839c9c36815a0281844b4d6ac9dcc51a5fd50cce4b"
+  },
+  {
+   "level": 76,
+   "name": "Coral Garden",
+   "bpm": 138.48,
+   "songSeconds": 96,
+   "objects": 2639,
+   "sha256": "7fe2fbe5235a6e4837e17bff6b438911c51e384948246967998312900e316856"
+  },
+  {
+   "level": 77,
+   "name": "Solar Forest",
+   "bpm": 138.48,
+   "songSeconds": 102,
+   "objects": 2913,
+   "sha256": "95560ed30722501b039ba851eaebaf49164a195801e3173055357219f0460a2c"
+  },
+  {
+   "level": 78,
+   "name": "Pixel Ladder",
+   "bpm": 178.05,
+   "songSeconds": 92,
+   "objects": 2400,
+   "sha256": "0e387252a219cdb1f1a856227e42e1584739172478388ab180e133fa408c296a"
+  },
+  {
+   "level": 79,
+   "name": "Cloud Harbor",
+   "bpm": 155.79,
+   "songSeconds": 94,
+   "objects": 2199,
+   "sha256": "6a933904d2abc5d4a430d7b159575f75818547b2c5569a94e031454f8eeb831c"
+  },
+  {
+   "level": 80,
+   "name": "Cosmic Station",
+   "bpm": 178.05,
+   "songSeconds": 100,
+   "objects": 3185,
+   "sha256": "73cf52aadce33e1879229eceedeb8d1a5410d4a50563b6a4947ad7f8cee93619"
+  },
+  {
+   "level": 81,
+   "name": "Neon Galaxy",
+   "bpm": 178.05,
+   "songSeconds": 106,
+   "objects": 3245,
+   "sha256": "33c07ee6d7c564478e8cb864337c9f2d5758b6fec287c78c9ac20af76f5713c6"
+  },
+  {
+   "level": 82,
+   "name": "Sapphire Bridge",
+   "bpm": 178.05,
+   "songSeconds": 110,
+   "objects": 3072,
+   "sha256": "64b8e2488783a1c0d2b41cc26ed077a86603db4bcb93e65be2e65a7874b07914"
+  },
+  {
+   "level": 83,
+   "name": "Ruby Castle",
+   "bpm": 155.79,
+   "songSeconds": 112,
+   "objects": 3512,
+   "sha256": "bb73d96487367359e1ac853a69ad0185a5e1d2ba7c6121a51c2d1bddd37e7777"
+  },
+  {
+   "level": 84,
+   "name": "Rocket Tunnel",
+   "bpm": 178.05,
+   "songSeconds": 120,
+   "objects": 3684,
+   "sha256": "e04239bf6411e1bc3d84742db57875acc5867f5f7d7a458f9d6e28d94b8201a9"
+  },
+  {
+   "level": 85,
+   "name": "Cosmic Forest",
+   "bpm": 178.05,
+   "songSeconds": 100,
+   "objects": 3057,
+   "sha256": "dff8b55e4412e9c799b2a6152ce408aef673d946abe6d058d698ddc16de7fc35"
+  },
+  {
+   "level": 86,
+   "name": "Candy Meadow",
+   "bpm": 178.05,
+   "songSeconds": 106,
+   "objects": 3496,
+   "sha256": "995391bf049fc79938029aea1bd05133a95e89bb6e6eb522624cd194ba101094"
+  },
+  {
+   "level": 87,
+   "name": "Neon Island",
+   "bpm": 178.05,
+   "songSeconds": 110,
+   "objects": 3689,
+   "sha256": "4d92af270a1fa3176fb974ef11d78d1e15a3462eaf3551ac7b5bf76958525bd4"
+  },
+  {
+   "level": 88,
+   "name": "Velvet Road",
+   "bpm": 155.79,
+   "songSeconds": 112,
+   "objects": 2904,
+   "sha256": "b6508463d1575e0c6e95701786eb0bd5792448e4e5464157240d7518ca482402"
+  },
+  {
+   "level": 89,
+   "name": "Coral Harbor",
+   "bpm": 178.05,
+   "songSeconds": 120,
+   "objects": 3640,
+   "sha256": "406e37b42c8793d8028505f00c883197ffccb95e553d6dcd4a834ff7b74cedbe"
+  },
+  {
+   "level": 90,
+   "name": "Frozen River",
+   "bpm": 178.05,
+   "songSeconds": 100,
+   "objects": 2963,
+   "sha256": "2f5db523611b0f61446777cf81090466bd47591787d608ab9936d23a02c6de2a"
+  },
+  {
+   "level": 91,
+   "name": "Turbo Express",
+   "bpm": 178.05,
+   "songSeconds": 106,
+   "objects": 3658,
+   "sha256": "50d7b14a4accbf45d68804541b7f982739441278603ddae9f1bfd4ec657a7782"
+  },
+  {
+   "level": 92,
+   "name": "Cosmic Harbor",
+   "bpm": 178.05,
+   "songSeconds": 110,
+   "objects": 3601,
+   "sha256": "d529a6f89749950044d28018f2c4806e5fa31e8e7960fe630353863dfed4f7b9"
+  },
+  {
+   "level": 93,
+   "name": "Midnight Ladder",
+   "bpm": 155.79,
+   "songSeconds": 112,
+   "objects": 3604,
+   "sha256": "1d5974494ec23261a2b107ab5fd5414e7aba9bfee025b5cf974d41d5fc6101d0"
+  },
+  {
+   "level": 94,
+   "name": "Sapphire Summit",
+   "bpm": 178.05,
+   "songSeconds": 120,
+   "objects": 3699,
+   "sha256": "cab62ed79f99ffff02e961b9a603471e691ac1fe03ddbbd365866ca0daf002af"
+  },
+  {
+   "level": 95,
+   "name": "Shadow Galaxy",
+   "bpm": 178.05,
+   "songSeconds": 100,
+   "objects": 3199,
+   "sha256": "193ad1e38e3d6c392104a26a028d66a42af4850e8745f0f1952c09d6fd725096"
+  },
+  {
+   "level": 96,
+   "name": "Turbo Road",
+   "bpm": 178.05,
+   "songSeconds": 106,
+   "objects": 3170,
+   "sha256": "d373f62e9e582be5cc93a31685a455be27d2752036696f6b424a112f3f2c5744"
+  },
+  {
+   "level": 97,
+   "name": "Emerald Valley",
+   "bpm": 178.05,
+   "songSeconds": 110,
+   "objects": 3112,
+   "sha256": "fc1567325e3d9cfb631aecf60560e4df75903cbf0b6cbc2c1a2d12ef7b707a02"
+  },
+  {
+   "level": 98,
+   "name": "Neon Express",
+   "bpm": 155.79,
+   "songSeconds": 112,
+   "objects": 3046,
+   "sha256": "65d9d04fab42839edee1d366f79e36793c4119224857b1e31850ec14d0a66e98"
+  },
+  {
+   "level": 99,
+   "name": "Thunder Canyon",
+   "bpm": 178.05,
+   "songSeconds": 120,
+   "objects": 4211,
+   "sha256": "0c8b3948f2be442c1e69bd9475f59f2588312a65f3cd9122af257b4660e548d4"
+  },
+  {
+   "level": 100,
+   "name": "Pixel Forest",
+   "bpm": 178.05,
+   "songSeconds": 100,
+   "objects": 3358,
+   "sha256": "21b41642b14840c3aab5de7c9a1d3caf93bafa5e7c68074d8b31de9bb1b9044a"
   }
  ]
 }

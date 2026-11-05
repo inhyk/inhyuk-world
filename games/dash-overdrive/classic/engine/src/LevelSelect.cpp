@@ -1,4 +1,5 @@
 #include "LevelSelect.h"
+#include "LevelList.h"
 #include "PlayingState.h"
 #include "Game.h"
 #include "Text.h"
@@ -93,9 +94,9 @@ void LevelSelect::init(Game *game) {
         true
     );
     for (int i = 0; i < Config::SLOT_COUNT; i++) {
-        m_BestLevelPercentages[i] = Storage::getInt(Storage::BEST + storageSlot(i), 0);
-        m_BestPracticePercentages[i] = Storage::getInt(Storage::BEST_PRACTICE + storageSlot(i), 0);
-        m_Coins[i] = Storage::getInt(Storage::COINS + storageSlot(i), 0);
+        m_BestLevelPercentages[i] = Storage::getInt(storageKey(Storage::BEST, i), 0);
+        m_BestPracticePercentages[i] = Storage::getInt(storageKey(Storage::BEST_PRACTICE, i), 0);
+        m_Coins[i] = Storage::getInt(storageKey(Storage::COINS, i), 0);
     }
     updateLevelNameTexture();
     updateBestPercentTexture();
@@ -239,7 +240,7 @@ int LevelSelect::getBestPercentage() const {
 
 void LevelSelect::setBestPercentage(int value) {
     m_BestLevelPercentages[m_LevelSelected] = value;
-    Storage::setInt(Storage::BEST + storageSlot(m_LevelSelected), value);
+    Storage::setInt(storageKey(Storage::BEST, m_LevelSelected), value);
     updateBestPercentTexture();
 }
 
@@ -249,7 +250,7 @@ int LevelSelect::getSavedCoins() const {
 
 void LevelSelect::saveCoins(int coins) {
     m_Coins[m_LevelSelected] |= coins;
-    Storage::setInt(Storage::COINS + storageSlot(m_LevelSelected), m_Coins[m_LevelSelected]);
+    Storage::setInt(storageKey(Storage::COINS, m_LevelSelected), m_Coins[m_LevelSelected]);
     updateCoinTextures();
 }
 
@@ -271,8 +272,10 @@ int LevelSelect::coinsNeeded(int level) const {
     return needed > 0 ? needed : 0;
 }
 
-int LevelSelect::storageSlot(int level) {
-    return level == Config::CUSTOM_LEVEL ? 99 : level;
+int LevelSelect::storageKey(int base, int level) {
+    if (level == Config::CUSTOM_LEVEL) return base + 99;
+    if (level < Config::LEVEL_SKINS) return base + level;
+    return base * 10 + level;
 }
 
 void LevelSelect::updateCoinTextures() {
@@ -288,16 +291,16 @@ int LevelSelect::getBestPracticePercentage() const {
 
 void LevelSelect::setBestPracticePercentage(int value) {
     m_BestPracticePercentages[m_LevelSelected] = value;
-    Storage::setInt(Storage::BEST_PRACTICE + storageSlot(m_LevelSelected), value);
+    Storage::setInt(storageKey(Storage::BEST_PRACTICE, m_LevelSelected), value);
     updateBestPracticePercentTexture();
 }
 
 void LevelSelect::updateLevelNameTexture() {
     SDL_DestroyTexture(m_LevelNameTexture);
-    m_LevelNameTexture = Text::createTexture(m_Renderer, std::string(m_LevelStrings[m_LevelSelected]));
+    m_LevelNameTexture = Text::createTexture(m_Renderer, std::string(LevelList::NAMES[m_LevelSelected]));
     SDL_DestroyTexture(m_DifficultyTexture);
     const std::string number = m_LevelSelected < Config::LEVEL_COUNT ? "Level " + std::to_string(m_LevelSelected + 1) + "  -  " : "";
-    m_DifficultyTexture = Text::createTexture(m_Renderer, number + std::string(m_Difficulties[m_LevelSelected]));
+    m_DifficultyTexture = Text::createTexture(m_Renderer, number + std::string(LevelList::DIFFICULTIES[m_LevelSelected]));
     updateCoinTextures();
 }
 

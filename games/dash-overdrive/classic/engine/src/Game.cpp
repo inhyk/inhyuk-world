@@ -98,6 +98,7 @@ int Game::init() {
         SDL_FreeSurface(surface);
     }
     m_SelectedSkin = std::clamp(Storage::getInt(Storage::SKIN, 0), 0, Config::SKIN_COUNT - 1);
+    refreshBoughtSkins();
 
     m_Background.init(this, 0, 0, 255);
     m_Background.setMoving(true);
@@ -257,7 +258,13 @@ void Game::popToRoot() {
 }
 
 bool Game::isSkinUnlocked(int skin) const {
-    return m_CreatorMode || skin < Config::FREE_SKINS || LevelSelect::get().isCleared(skin - Config::FREE_SKINS);
+    if (m_CreatorMode || skin < Config::FREE_SKINS) return true;
+    if (skin < Config::SHOP_FIRST) return LevelSelect::get().isCleared(skin - Config::FREE_SKINS);
+    return ((m_BoughtSkins >> (skin - Config::SHOP_FIRST)) & 1) != 0;
+}
+
+void Game::refreshBoughtSkins() {
+    m_BoughtSkins = Storage::getInt(Storage::BOUGHT_SKINS, 0);
 }
 
 void Game::setSelectedSkin(int skin) {

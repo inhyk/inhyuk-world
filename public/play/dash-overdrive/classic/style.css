@@ -219,3 +219,43 @@ header button{padding:6px 8px;word-break:keep-all}
 .social-invite{bottom:44px}
 }
 /* ===== 계정, 친구, 친구 채팅 끝 ===== */
+
+/* plan 3: 나의 레벨, diamonds and the skin shop */
+.my-level{display:flex;flex-direction:column;align-items:center;line-height:1.05;padding:4px 10px!important;border-color:#ffd23d80!important;background:#ffd23d14!important}
+.my-level small{font-size:8px;color:var(--muted);letter-spacing:0}
+.my-level b{font-size:13px;color:#ffd23d}
+.my-diamonds{font-size:9px;color:#9fe9ff}
+.my-level-box{margin-top:16px;border:2px solid #ffd23d;border-radius:12px;padding:12px 14px;background:#ffd23d10;max-width:320px}
+.my-level-box small{display:block;font-size:12px;color:var(--muted)}
+.my-level-box b{display:block;font-size:30px;color:#ffd23d;line-height:1.1}
+.my-level-box .xp{height:8px;border-radius:4px;background:#ffffff1c;margin:8px 0 4px;overflow:hidden}
+.my-level-box .xp i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffd23d,#ff9a3d);border-radius:4px}
+.my-level-box p{margin:2px 0!important;font-size:12px!important;line-height:1.5!important}
+.my-level-box .diamond-line{color:#9fe9ff!important;font-weight:700}
+.my-level-box .xp-help{font-size:11px!important;color:var(--muted)}
+.my-level-box button{margin-top:8px;border:1px solid #9fe9ff80;background:#9fe9ff1a;color:var(--ink);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700}
+.choice-group{grid-column:1/-1;margin:10px 0 0;font-size:12px;letter-spacing:1px;color:var(--acid)}
+.choice-group:first-child{margin-top:0}
+.shop{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:#05081ccc;padding:16px}
+.shop[hidden]{display:none}
+.shop-card{width:min(640px,100%);max-height:100%;overflow:auto;background:var(--navy);border:2px solid #9fe9ff;border-radius:14px;padding:16px}
+.shop-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.shop-head h2{margin:0;font-size:20px}
+.shop-head button{border:1px solid #ffffff40;background:#ffffff10;color:var(--ink);border-radius:8px;padding:6px 12px}
+.shop-diamonds{color:#9fe9ff;font-weight:700;margin:8px 0}
+.shop-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.shop-item{display:flex;flex-direction:column;align-items:center;gap:6px;border:1px solid #ffffff24;border-radius:10px;padding:10px;background:#ffffff08}
+.shop-item img{width:72px;height:72px}
+.shop-item strong{font-size:14px}
+.shop-item button{width:100%;border:1px solid #ffffff40;background:#ffffff10;color:var(--ink);border-radius:8px;padding:7px 6px;font-size:12px;word-break:keep-all}
+.shop-item button.buy{background:#9fe9ff;color:#0b1030;font-weight:800;border-color:#9fe9ff}
+.shop-item button:disabled{opacity:.6}
+.shop-help{color:var(--muted);font-size:12px;margin:10px 0 0}
+@media(max-width:760px){.my-level{padding:3px 6px!important}.my-level b{font-size:11px}.my-diamonds{display:none}.shop-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-height:560px) and (min-width:600px){.my-level-box{display:none}}
+/* with 100 levels the card list is long: the intro and my level stay in view on
+   the left, and the start button stays at the bottom while the cards scroll */
+@media(min-width:901px){.intro{align-self:start;position:sticky;top:0}}
+.launch-controls{position:sticky;bottom:0;z-index:3;background:linear-gradient(0deg,#0b1030 70%,#0b1030e6);margin:0 -2%;padding-left:2%;padding-right:2%}
+@media(min-width:901px){.intro{max-height:100%;overflow:auto}.my-level-box{margin:0 0 14px}}
+@media(max-width:600px){header strong#now-playing{display:none}}

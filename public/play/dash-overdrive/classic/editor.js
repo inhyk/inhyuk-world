@@ -9,7 +9,7 @@
   const ROWS = 11;
   const VIEW_ROWS = 12; // rows plus a strip of floor
   const STORAGE_KEY = 'dash-classic:editor';
-  const CUSTOM_LEVEL = 21;
+  const CUSTOM_LEVEL = window.CLASSIC_LEVEL_LIST.length; // the map maker slot after levels 1-100
   const CODE_PREFIX = 'DOC1.';
   const TOOLS = [
     {id: 1, name: '블록'},

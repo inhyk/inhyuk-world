@@ -1,4 +1,5 @@
 #include "PlayingState.h"
+#include "LevelList.h"
 #include "Game.h"
 #include "Player.h"
 #include "LevelManager.h"
@@ -149,7 +150,7 @@ void PlayingState::destroy() {
 
 void PlayingState::enter() {
     m_Level = LevelSelect::get().getLevelSelected();
-    m_SongIndex = m_Level < Config::LEVEL_COUNT ? m_Level : m_CustomSong;
+    m_SongIndex = m_Level < Config::LEVEL_COUNT ? LevelList::SONGS[m_Level] : m_CustomSong;
 #ifdef __EMSCRIPTEN__
     // The page downloads the song into the virtual file system while the level starts.
     EM_ASM({ if (Module.classicPrepareSong) Module.classicPrepareSong($0); }, m_SongIndex);
@@ -398,7 +399,7 @@ void PlayingState::updateEndLevel(float deltaTime) {
             LevelSelect::get().setBestPercentage(100);
             // coins only count when the level is finished without practice
             LevelSelect::get().saveCoins(m_Player.getCoins());
-            m_UnlockedSkin = firstClear && m_Level < Config::LEVEL_COUNT && Config::FREE_SKINS + m_Level < Config::SKIN_COUNT;
+            m_UnlockedSkin = firstClear && m_Level < Config::LEVEL_SKINS;
         }
     }
 }

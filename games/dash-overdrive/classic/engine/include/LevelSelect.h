@@ -37,16 +37,6 @@ public:
 private:
     static LevelSelect m_LevelSelect;
     int m_LevelSelected = 0;
-    constexpr static std::array<std::string_view, Config::SLOT_COUNT> m_LevelStrings = {
-        "Neon Start", "Pixel Hop", "Blue Ladder", "Desert Wind", "Iron Gate", "Night Rail", "Sky Rocket",
-        "Crystal Cave", "Thunder Road", "Lava Lift", "Star Factory", "Frost Bite", "Laser Maze",
-        "Black Hole", "Overdrive", "Golden Key", "Secret Core", "Last Dash", "Volt Rush", "Endless Dash", "DASH AND RUN", "My Level"
-    };
-    constexpr static std::array<std::string_view, Config::SLOT_COUNT> m_Difficulties = {
-        "Easy", "Easy", "Normal", "Normal", "Hard", "Hard", "Hard",
-        "Harder", "Harder", "Harder", "Insane", "Insane", "Insane",
-        "Demon", "Demon", "Secret", "Secret", "Secret", "Secret", "Secret", "Harder", "Map Maker"
-    };
     Button m_LeftLevelArrow;
     Button m_RightLevelArrow;
     Button m_TitleScreenArrow;
@@ -78,7 +68,9 @@ private:
     void updateLevelNameTexture();
     void updateCoinTextures();
     // Storage slot of a level; the map maker level keeps its own slot.
-    static int storageSlot(int level);
+    // localStorage key for a level's record: levels 1-21 and the map maker keep
+    // their old keys (base + level, base + 99); levels 22-100 use base * 10 + level.
+    static int storageKey(int base, int level);
     void moveSelection(int step);
     void updateBestPercentTexture();
     void updateBestPracticePercentTexture();

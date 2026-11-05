@@ -1,4 +1,4 @@
-// Builds the 21 built-in levels of Dash Overdrive Classic into res/leveldata/.
+// Builds the 100 built-in levels of Dash Overdrive Classic into res/leveldata/.
 // Levels 19 and 20 follow a plan per song section with the ball, UFO and wave
 // modes, speed gates and pink and blue orbs and pads (the designer's plan item 2).
 //
@@ -109,6 +109,115 @@ export const LEVELS = [
       {type: 'cube', speed: 1}, // outro
     ]},
 ];
+// ---------------------------------------------------------------------------
+// Levels 22-100 (the designer's plan 3: "새로운 레벨을 만들어줘. 레벨 정도는
+// 100레벨 정도로 해줘", "이 레벨은 코인으로 여는 게 아니야"). They are open from
+// the start. Each runs on one of the 21 songs and follows a plan made from that
+// song's sections, so the modes change where the music changes. Names, colours
+// and maps are made here; nothing is taken from another game.
+export const LEVEL_TOTAL = 100;
+export const EXTRA_FIRST = LEVELS.length; // index of level 22
+const SONG_LIST = existsSync(TIMELINE) ? JSON.parse(readFileSync(TIMELINE, 'utf8')).songs : [];
+const SEEDS = new URL('./extra-seeds.json', import.meta.url);
+const EXTRA_SEEDS = existsSync(SEEDS) ? JSON.parse(readFileSync(SEEDS, 'utf8')) : {};
+// tiers by level number: tuning numbers spread over the tier, songs that fit it,
+// and the speed gate of the drops (1 normal, 2 fast, 3 very fast)
+export const EXTRA_TIERS = [
+  {last: 31, tunes: [0, 1, 2, 3], songs: [0, 1, 2, 3], drop: 1},
+  {last: 46, tunes: [4, 5, 6], songs: [4, 5, 6, 7], drop: 1},
+  {last: 61, tunes: [7, 8, 9], songs: [8, 9, 10, 20], drop: 2},
+  {last: 79, tunes: [10, 11, 12], songs: [11, 12, 13, 15], drop: 2},
+  {last: LEVEL_TOTAL, tunes: [13, 14, 15, 16, 17, 18, 19], songs: [14, 16, 17, 18, 19], drop: 3},
+];
+const NAME_FIRST = ['Neon', 'Pixel', 'Crystal', 'Thunder', 'Solar', 'Lunar', 'Frozen', 'Cosmic', 'Turbo', 'Velvet',
+  'Emerald', 'Ruby', 'Sapphire', 'Midnight', 'Sunny', 'Cloud', 'Candy', 'Shadow', 'Rocket', 'Coral'];
+const NAME_SECOND = ['Run', 'Road', 'Valley', 'Tower', 'Bridge', 'Canyon', 'Garden', 'Harbor', 'Comet', 'River',
+  'Castle', 'Forest', 'Station', 'Island', 'Ladder', 'Tunnel', 'Meadow', 'Express', 'Galaxy', 'Summit'];
+const MODE_TURN = ['ship', 'wave', 'ball', 'ufo'];
+
+// difficulty label from the tuning number, the same steps as levels 1-15
+export function difficultyOf(tune) {
+  return tune <= 1 ? 'easy' : tune <= 3 ? 'normal' : tune <= 6 ? 'hard' : tune <= 9 ? 'harder' : tune <= 12 ? 'insane' : 'demon';
+}
+
+function hsl(h, sat, light) {
+  const k = n => (n + h / 30) % 12;
+  const a = sat * Math.min(light, 1 - light);
+  const f = n => light - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return [f(0), f(8), f(4)].map(v => Math.round(v * 255));
+}
+
+function extraNames(count, taken) {
+  const random = mulberry32(2026);
+  const all = NAME_FIRST.flatMap(first => NAME_SECOND.map(second => `${first} ${second}`));
+  for (let i = all.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [all[i], all[j]] = [all[j], all[i]];
+  }
+  const names = [];
+  const used = new Set();
+  for (const name of all) {
+    const [first, second] = name.split(' ');
+    if (taken.has(name) || used.has(first + '*') || used.has('*' + second)) continue;
+    names.push(name);
+    // no first or last word twice in a row of ten levels
+    used.add(first + '*');
+    used.add('*' + second);
+    if (names.length % 10 === 0) used.clear();
+    if (names.length === count) break;
+  }
+  return names;
+}
+
+function extraPlan(song, number, tier) {
+  let turn = number;
+  const next = () => MODE_TURN[turn++ % MODE_TURN.length];
+  const fast = tier.drop;
+  const plan = song.sections.map(section => {
+    const beats = section.endBeat - section.startBeat;
+    if (/^(intro|outro)/.test(section.name)) return {type: 'cube', speed: 1};
+    if (/^break/.test(section.name)) return {type: fast >= 2 || number % 2 ? 'blue' : 'cube', speed: fast >= 2 ? 0 : 1};
+    if (/^verse/.test(section.name)) return {modes: [[next(), 48]], speed: 1};
+    if (/^build/.test(section.name)) return {modes: [[next(), 44]], speed: Math.min(fast, 2)};
+    if (/^drop/.test(section.name)) return {modes: beats >= 48 ? [[next(), 60], [next(), 56]] : [[next(), 56]], speed: fast};
+    return {type: 'cube', speed: 1};
+  });
+  // every level has a wave part (levels 1-21 do too)
+  if (!plan.some(step => step.modes?.some(([mode]) => mode === 'wave'))) {
+    const drop = plan.find(step => step.modes && step.modes.length > 1) || plan.find(step => step.modes);
+    drop.modes[0][0] = 'wave';
+  }
+  return plan;
+}
+
+function extraLevels() {
+  const count = LEVEL_TOTAL - EXTRA_FIRST;
+  const names = extraNames(count, new Set(LEVELS.map(level => level.name)));
+  const out = [];
+  let tierStart = EXTRA_FIRST + 1;
+  for (const [tierIndex, tier] of EXTRA_TIERS.entries()) {
+    const size = tier.last - tierStart + 1;
+    for (let number = tierStart; number <= tier.last; number++) {
+      const position = number - tierStart;
+      const tune = tier.tunes[Math.floor(position * tier.tunes.length / size)];
+      const songIndex = tier.songs[position % tier.songs.length];
+      const song = SONG_LIST.find(entry => entry.index === songIndex);
+      if (!song) continue;
+      const hue = (number * 47) % 360;
+      out.push({
+        name: names[number - EXTRA_FIRST - 1], song: songIndex, bpm: song.bpm, seconds: song.durationSeconds, tune,
+        difficulty: difficultyOf(tune), tier: tierIndex,
+        seed: EXTRA_SEEDS[number] ?? 7000 + number * 31,
+        colors: [[hsl(hue, 0.78, 0.56), hsl(hue, 0.8, 0.36)], [hsl(hue + 150, 0.75, 0.55), hsl(hue + 150, 0.8, 0.35)], [hsl(hue + 260, 0.7, 0.56), hsl(hue + 260, 0.8, 0.36)]],
+        plan: extraPlan(song, number, tier),
+      });
+    }
+    tierStart = tier.last + 1;
+  }
+  return out;
+}
+LEVELS.push(...extraLevels());
+
 // levels built with the black blocks (the designer's sketch: like the black blocks of a fifth level)
 const BLACK_BLOCK_LEVELS = new Set([4, 13, 18, 19]);
 
@@ -1304,7 +1413,7 @@ function longestRun(results) {
 // Section plan from the song timeline: drops fly, breakdowns go upside down.
 function sectionsFor(index, timeline) {
   const spec = LEVELS[index];
-  const song = timeline?.find(entry => entry.index === index);
+  const song = timeline?.find(entry => entry.index === (spec.song ?? index));
   const totalBeats = Math.floor((spec.seconds - 4.5) * spec.bpm / 60);
   let raw = song?.sections?.length ? song.sections : null;
   if (!raw) {
@@ -1344,15 +1453,15 @@ function sectionsFor(index, timeline) {
 
 if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) main();
 
-function main() {
-const timeline = existsSync(TIMELINE) ? JSON.parse(readFileSync(TIMELINE, 'utf8')) : null;
-const songs = Array.isArray(timeline) ? timeline : timeline?.songs || timeline?.levels || null;
-const wanted = process.argv.slice(2).map(Number).filter(Boolean);
-const report = existsSync(REPORT) ? JSON.parse(readFileSync(REPORT, 'utf8')) : {};
-mkdirSync(OUT, {recursive: true});
-for (let index = 0; index < LEVELS.length; index++) {
-  if (wanted.length && !wanted.includes(index + 1)) continue;
-  const started = Date.now();
+export function loadSongs() {
+  const timeline = existsSync(TIMELINE) ? JSON.parse(readFileSync(TIMELINE, 'utf8')) : null;
+  return Array.isArray(timeline) ? timeline : timeline?.songs || timeline?.levels || null;
+}
+export const REPORT_FILE = REPORT;
+export const LEVEL_DIR = OUT;
+
+// Builds one level; returns its text and its report entry (throws when a piece cannot be placed).
+export function buildLevel(index, songs = loadSongs()) {
   const builder = new LevelBuilder(index);
   try {
     builder.build(sectionsFor(index, songs));
@@ -1361,9 +1470,8 @@ for (let index = 0; index < LEVELS.length; index++) {
     throw error;
   }
   const text = builder.text();
-  writeFileSync(new URL(`${index}.level`, OUT), text);
   const parsed = parseLevel(text);
-  report[index + 1] = {
+  const entry = {
     name: builder.spec.name,
     objects: parsed.objects.length,
     endX: parsed.furthestX,
@@ -1380,6 +1488,20 @@ for (let index = 0; index < LEVELS.length; index++) {
     ...(builder.marks.length > 1 ? {speeds: builder.marks.slice(1).map(mark => mark.speed)} : {}),
     inputs: Object.fromEntries(builder.tracks.map(track => [track.name, runLength(track.inputs)])),
   };
+  return {builder, text, entry, parsed};
+}
+
+function main() {
+const songs = loadSongs();
+const wanted = process.argv.slice(2).map(Number).filter(Boolean);
+const report = existsSync(REPORT) ? JSON.parse(readFileSync(REPORT, 'utf8')) : {};
+mkdirSync(OUT, {recursive: true});
+for (let index = 0; index < LEVELS.length; index++) {
+  if (wanted.length && !wanted.includes(index + 1)) continue;
+  const started = Date.now();
+  const {builder, text, entry, parsed} = buildLevel(index, songs);
+  writeFileSync(new URL(`${index}.level`, OUT), text);
+  report[index + 1] = entry;
   if (process.env.DEBUG_PIECES) console.log(builder.pieces.map(p => `${p.name}@${p.column}${p.margin !== undefined ? '/' + p.margin : ''}`).join(' '));
   console.log(`level ${index + 1} ${builder.spec.name}: ${parsed.objects.length} objects, ${builder.pieces.length} pieces, ${report[index + 1].ships} ship, ${report[index + 1].upside} upside, narrowest window ${report[index + 1].narrowestWindow} frames, ${((Date.now() - started) / 1000).toFixed(1)} s`);
 }

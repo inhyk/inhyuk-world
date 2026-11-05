@@ -4,6 +4,7 @@ import {readFileSync, existsSync, readdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {parseLevel, OBJECTS, SPEED_MULTIPLIERS} from './levels/physics.mjs';
 import {LEVELS} from './levels/generate.mjs';
+import {header, script, LIST} from './levels/level-list.mjs';
 
 const root = new URL('../../../public/play/dash-overdrive/classic/', import.meta.url);
 const res = new URL('./res/', import.meta.url);
@@ -27,8 +28,8 @@ function levelSeconds(level) {
   return seconds + (level.furthestX - x) / (20.772 * 60 * SPEED_MULTIPLIERS[speed]);
 }
 
-test('twenty-one built levels use only objects the engine knows', () => {
-  assert.equal(LEVELS.length, 21);
+test('a hundred built levels use only objects the engine knows', () => {
+  assert.equal(LEVELS.length, 100);
   for (let index = 0; index < LEVELS.length; index++) {
     const text = readFileSync(new URL(`leveldata/${index}.level`, res), 'utf8');
     const ids = text.split(';').slice(1).filter(Boolean).map(row => Number(row.split(',')[1]));
@@ -92,9 +93,17 @@ test('the page uses an exact copy of the shared room client', () => {
 
 test('every level song is present and the page has no outside player', () => {
   for (let index = 0; index < LEVELS.length; index++) {
-    const song = read(`music/${index}.ogg`);
+    const song = read(`music/${LIST[index].song}.ogg`);
     assert.equal(song.subarray(0, 4).toString(), 'OggS', `song ${index + 1}`);
   }
   const page = read('index.html').toString() + read('launcher.js').toString();
   assert.doesNotMatch(page, /youtube|iframe_api/i);
+});
+
+test('the engine and the page use the generated level list', () => {
+  assert.equal(readFileSync(new URL('./engine/include/LevelList.h', import.meta.url), 'utf8'), header());
+  assert.equal(read('level-list.js').toString(), script());
+  // levels 22-100 are open (plan 3): only 16-20 are secret
+  assert.deepEqual(LIST.map((level, index) => level.difficulty === 'secret' ? index + 1 : 0).filter(Boolean), [16, 17, 18, 19, 20]);
+  assert.match(read('index.html').toString(), /level-list\.js\?v=/);
 });

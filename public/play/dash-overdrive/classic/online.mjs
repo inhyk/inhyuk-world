@@ -17,19 +17,17 @@ import {GAME, server, offSite, OFF_SITE_MESSAGE} from './net.mjs';
 
 const MAX_PLAYERS = 4;
 const SEND_MS = 66;
-const RACE_LEVELS = 15; // secret levels stay single player: not everyone has them open
-// level 21, DASH AND RUN, is open to everyone, so it can be raced too
-const OPEN_LEVELS = [[20, 'DASH AND RUN']];
-const SKIN_MAX = 24; // engine Config::SKIN_COUNT - 1
-const CUSTOM_LEVEL = 21; // the map maker's slot in the engine
+// [name, difficulty, song] for levels 1-100 (level-list.js). Secret levels stay
+// single player: not everyone has them open. Every other level can be raced.
+const LEVELS = window.CLASSIC_LEVEL_LIST || [];
+const SKIN_MAX = 30; // engine Config::SKIN_COUNT - 1
+const CUSTOM_LEVEL = LEVELS.length; // the map maker's slot in the engine
 const MAP_PART = 1500; // numbers per map message, well under the 16 KB limit
 const PIXELS_PER_MS = 20.772 * 60 / 1000;
 // speed gates: slow, normal, fast, very fast (engine SPEED_MULTIPLIERS)
 const SPEEDS = [0.8, 1, 1.25, 1.5];
 const MODE_COUNT = 5;
 const COLORS = ['#bfff59', '#59d8ff', '#ff7ad9', '#ffd23d'];
-const LEVEL_NAMES = ['Neon Start', 'Pixel Hop', 'Blue Ladder', 'Desert Wind', 'Iron Gate', 'Night Rail', 'Sky Rocket',
-  'Crystal Cave', 'Thunder Road', 'Lava Lift', 'Star Factory', 'Frost Bite', 'Laser Maze', 'Black Hole', 'Overdrive'];
 
 const $ = id => document.getElementById(id);
 const panel = $('online');
@@ -48,12 +46,13 @@ let waitForRespawn = false; // after "다시 달리기", until the cube is back
 let mapParts = []; // a map arriving from the host
 const players = new Map(); // peer id -> {slot, skin, pos, at, shown, done}
 
-LEVEL_NAMES.forEach((name, index) => levelSelect.add(new Option(`${index + 1}. ${name}`, String(index))));
-OPEN_LEVELS.forEach(([index, name]) => levelSelect.add(new Option(`${index + 1}. ${name}`, String(index))));
+LEVELS.forEach(([name], index) => {
+  if (raceable(index)) levelSelect.add(new Option(`${index + 1}. ${name}`, String(index)));
+});
 levelSelect.add(new Option('🛠️ 내가 만든 맵', 'custom'));
 
 function raceable(level) {
-  return (level >= 0 && level < RACE_LEVELS) || OPEN_LEVELS.some(([index]) => index === level);
+  return level >= 0 && level < LEVELS.length && LEVELS[level][1] !== 'secret';
 }
 
 const engineReady = () => Boolean(window.Module?._classic_state) && window.render_classic_status && JSON.parse(window.render_classic_status()).ready;
@@ -348,7 +347,7 @@ function show() {
   render();
   if (!room) setStatus('');
   const current = (window.render_classic_status ? JSON.parse(window.render_classic_status()).level : 1) - 1;
-  levelSelect.value = String(raceable(current) ? current : Math.min(RACE_LEVELS - 1, Math.max(0, current)));
+  levelSelect.value = String(raceable(current) ? current : 0);
 }
 
 function close() {

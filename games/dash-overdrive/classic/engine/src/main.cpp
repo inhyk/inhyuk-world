@@ -91,6 +91,17 @@ CLASSIC_EXPORT int classic_player_skin() {
     return game.getSelectedSkin();
 }
 
+// The page's skin shop: re-read the bought skins, then wear one (1 when it is open).
+CLASSIC_EXPORT void classic_refresh_skins() {
+    game.refreshBoughtSkins();
+}
+
+CLASSIC_EXPORT int classic_select_skin(int skin) {
+    if (skin < 0 || skin >= Config::SKIN_COUNT || !game.isSkinUnlocked(skin)) return 0;
+    game.setSelectedSkin(skin);
+    return 1;
+}
+
 // mode: 0 cube, 1 ship, 2 ball, 3 UFO, 4 wave
 CLASSIC_EXPORT void classic_set_ghost(int slot, int visible, float x, float y, float rotation, int mode, int gravity, int skin) {
     PlayingState::get().setGhost(slot, visible != 0, x, y, rotation, mode, gravity, skin);

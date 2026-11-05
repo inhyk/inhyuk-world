@@ -5,5 +5,5 @@ export const metadata: Metadata = {
 };
 // The newest version (CLASSIC) opens first; HARD EDITION stays at /play/dash-overdrive/index.html.
 export default function DashOverdrivePage() {
-  return <iframe title="DASH / OVERDRIVE · CLASSIC" src="/play/dash-overdrive/classic/index.html?v=classic-original-9" allow="autoplay; fullscreen" className="fixed inset-0 z-[100] h-dvh w-screen border-0 bg-[#0b1030]" />;
+  return <iframe title="DASH / OVERDRIVE · CLASSIC" src="/play/dash-overdrive/classic/index.html?v=classic-original-10" allow="autoplay; fullscreen" className="fixed inset-0 z-[100] h-dvh w-screen border-0 bg-[#0b1030]" />;
 }

@@ -20,9 +20,13 @@ void SkinSelect::init(Game *game) {
     }
     m_HeadingTexture = Text::createTexture(m_Renderer, "SKINS");
     m_LockTexture = IMG_LoadTexture(m_Renderer, "res/gfx/skinLock.png");
-    m_HintTexture = Text::createTexture(m_Renderer, "Finish a level to get a new skin");
+    m_HintTexture = Text::createTexture(m_Renderer, "Finish levels 1-21, or buy skins with diamonds");
+    m_DiamondTexture = IMG_LoadTexture(m_Renderer, "res/gfx/diamond.png");
     for (int i = 0; i < Config::SKIN_COUNT; i++) {
-        m_LevelTextures[i] = i < Config::FREE_SKINS ? nullptr : Text::createTexture(m_Renderer, "Lv " + std::to_string(i - Config::FREE_SKINS + 1));
+        // a locked slot says which level opens it, or what it costs in the shop
+        if (i < Config::FREE_SKINS) m_LevelTextures[i] = nullptr;
+        else if (i < Config::SHOP_FIRST) m_LevelTextures[i] = Text::createTexture(m_Renderer, "Lv " + std::to_string(i - Config::FREE_SKINS + 1));
+        else m_LevelTextures[i] = Text::createTexture(m_Renderer, std::to_string(Config::SHOP_PRICE));
     }
     int backWidth = 0;
     int backHeight = 0;
@@ -51,6 +55,7 @@ void SkinSelect::destroy() {
     SDL_DestroyTexture(m_HeadingTexture);
     SDL_DestroyTexture(m_LockTexture);
     SDL_DestroyTexture(m_HintTexture);
+    SDL_DestroyTexture(m_DiamondTexture);
     for (SDL_Texture *texture : m_LevelTextures) {
         SDL_DestroyTexture(texture);
     }
@@ -104,7 +109,7 @@ void SkinSelect::render() const {
             SDL_RenderCopy(m_Renderer, m_SelectedTexture, NULL, &glow);
         }
         slot.render();
-        const float size = i == selected ? 112.0f + std::sin(m_Time * 0.1f) * 5.0f : 106.0f;
+        const float size = (i == selected ? 112.0f + std::sin(m_Time * 0.1f) * 5.0f : 106.0f) * SLOT_SIZE / 150.0f;
         const SDL_FRect skin = {
             slot.getX() + (SLOT_SIZE - size) / 2.0f,
             slot.getY() + (SLOT_SIZE - size) / 2.0f,
@@ -116,7 +121,14 @@ void SkinSelect::render() const {
             // locked: dark cover with a padlock and the level that opens it
             const SDL_Rect cover = { slot.getX(), slot.getY(), SLOT_SIZE, SLOT_SIZE };
             SDL_RenderCopy(m_Renderer, m_LockTexture, NULL, &cover);
-            Text::renderTexture(m_Renderer, m_LevelTextures[i], slot.getX() + SLOT_SIZE / 2, slot.getY() + SLOT_SIZE - 44, true, false, 0.32f);
+            if (i >= Config::SHOP_FIRST) {
+                // shop skin: a diamond and its price
+                const SDL_Rect diamond = { slot.getX() + SLOT_SIZE / 2 - 40, slot.getY() + SLOT_SIZE - 44, 34, 34 };
+                SDL_RenderCopy(m_Renderer, m_DiamondTexture, NULL, &diamond);
+                Text::renderTexture(m_Renderer, m_LevelTextures[i], slot.getX() + SLOT_SIZE / 2 + 18, slot.getY() + SLOT_SIZE - 44, true, false, 0.32f);
+            } else {
+                Text::renderTexture(m_Renderer, m_LevelTextures[i], slot.getX() + SLOT_SIZE / 2, slot.getY() + SLOT_SIZE - 40, true, false, 0.3f);
+            }
         }
     }
 }
