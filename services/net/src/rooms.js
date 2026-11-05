@@ -37,6 +37,16 @@ export async function createRoom(env, game, { maxPlayers = DEFAULT_PLAYERS, memb
 export const WORLD_RE = /^[a-z0-9-]{1,16}$/;
 export const worldStub = (env, game, world) => env.WORLDS.get(env.WORLDS.idFromName(`${game}:${world}`));
 
+// 열려 있는 세계 목록: wrangler.jsonc 의 vars.WORLD_NAMES ("게임:세계,게임:세계"). 여기 없는 세계는 404 'no-world'.
+// 아무나 세계 이름을 지어 저장소가 남는 Durable Object 를 끝없이 만들지 못하게 한다.
+// "게임:*" 은 그 게임의 모든 세계를 연다 (시험용. 관리 페이지 목록과 정지할 때 칸 지우기에서는 빠진다).
+const worldEntries = env => String(env.WORLD_NAMES ?? '').split(',').map(s => s.trim()).filter(Boolean);
+export const worldOpen = (env, game, world) => worldEntries(env).some(e => e === `${game}:${world}` || e === `${game}:*`);
+export const listedWorlds = env => worldEntries(env)
+  .map(e => e.split(':'))
+  .filter(([game, world, ...rest]) => !rest.length && GAME_RE.test(game ?? '') && WORLD_RE.test(world ?? ''))
+  .map(([game, world]) => ({ game, world }));
+
 // ---- Room 과 World 가 같이 쓰는 연결 도우미 ----
 
 // 한 연결이 1초에 보낼 수 있는 메시지: 평소 30개, 몰아서 60개까지. 채팅은 따로 1초에 1줄, 몰아서 5줄까지.

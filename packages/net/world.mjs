@@ -1,7 +1,7 @@
 // 모두가 같이 쓰는 세계 (@inhyuk/net 의 World). 서버는 services/net 의 World (README "같이 쓰는 세계").
 // 누가 놓은 블록처럼, 모두가 나가도 남아야 하는 것을 칸(cell)으로 저장한다. 로그인한 사람만 들어온다.
 //
-//   const world = new World(hooks, { game: 'social-game', world: 'town' });
+//   const world = new World(hooks, { game: 'social-game', world: 'town-1' });  // 서버 WORLD_NAMES 에 있는 세계만
 //   await world.open(await account.ticket());   // 칸을 다 받으면 끝난다 (world.cells 에 들어 있다)
 //   world.set('3|0|5', { b: 'stone' });          // 칸 놓기. 처음 놓은 사람만 바꾸거나 지울 수 있다
 //   world.set('tree|7', 'stump', { ttl: 600 });  // 600초 뒤 저절로 사라지는 칸
@@ -18,8 +18,10 @@
 //   leave(id)                다른 사람이 나감
 //   pose(id, d)              다른 사람의 위치
 //   message(data, from)      다른 사람이 보낸 메시지 (채팅은 data.chat)
-//   error(code, k)           taken(남의 칸) | not-owner | missing | limit(내 칸 400개) | world-full | bad | rate | chat-rate | too-big
-//                            | full | replaced | suspended | not-deployed(서버가 아직 World 를 모름) | login-required
+//   error(code, k)           taken(남의 칸) | not-owner | missing | limit(내 칸 400개, 사라지는 칸 100개) | world-full | bad
+//                            | rate(메시지 1초 30개, 칸 놓기와 지우기 1초 4번) | limit-day(오늘 이 세계에서 칸 바꾸기 2,000번) | chat-rate | too-big
+//                            | full | replaced | suspended | not-deployed(서버가 아직 World 를 모름) | no-world(서버에 없는 세계)
+//                            | join-rate(1분에 20번 넘게 들어옴) | login-required
 //
 // 서로 차단한 사이에는 위치와 메시지가 오지 않는다 (칸은 같이 본다).
 import { DEFAULT_SERVER, httpBase, wsBase, defaultConnect, PING } from './index.mjs';
@@ -39,6 +41,8 @@ export const WORLD_MESSAGES = {
   suspended: '이 계정은 정지됐어.',
   'login-required': '로그인해야 들어갈 수 있어.',
   'not-deployed': '같이 노는 세계는 아직 준비 중이야.',
+  'no-world': '이 세계는 아직 없어.',
+  'join-rate': '너무 자주 들어왔어. 1분 뒤에 다시 해 줘.',
 };
 
 function worldError(code, message) {
@@ -114,7 +118,12 @@ export class World {
   async whyFailed() {
     try {
       const response = await (this.options.fetch ?? globalThis.fetch)(`${httpBase(this.server)}/worlds/${this.options.game}/${this.options.world}`);
-      if (response.status === 404) return worldError('not-deployed');
+      if (response.status === 404) {
+        // 새 서버는 열려 있지 않은 세계에 {"error":"no-world"} 를 준다. 예전 서버는 글자 'not found'.
+        let body = null;
+        try { body = await response.json(); } catch { /* JSON 이 아님 */ }
+        return worldError(body?.error === 'no-world' ? 'no-world' : 'not-deployed');
+      }
     } catch { /* 인터넷 문제 */ }
     return worldError('network');
   }
@@ -162,7 +171,10 @@ export class World {
         this.hooks.message?.(msg.data, msg.from);
         return;
       case 'error':
-        if (this.settle && ['full', 'suspended', 'login-required'].includes(msg.code)) {
+        // welcome 전에 오는 rate 는 "너무 자주 들어옴" (서버가 들어가기를 거절하고 닫는다). 들어온 뒤의 rate 는 메시지 횟수.
+        if (this.settle && msg.code === 'rate' && !this.id) {
+          this.settle.reject(worldError('join-rate'));
+        } else if (this.settle && ['full', 'suspended', 'login-required'].includes(msg.code)) {
           this.settle.reject(worldError(msg.code, msg.code === 'full' ? WORLD_MESSAGES.full(msg.max) : undefined));
         } else if (msg.code === 'replaced' || msg.code === 'suspended') {
           this.hooks.error?.(msg.code);

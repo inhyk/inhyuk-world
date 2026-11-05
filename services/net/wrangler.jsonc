@@ -30,7 +30,9 @@
   ],
   "vars": {
     // 여기에 적힌 주소의 게임만 서버를 쓸 수 있다. http://localhost, http://127.0.0.1 은 언제나 허용.
-    "ALLOWED_ORIGINS": "https://seonn.dev,https://www.seonn.dev,capacitor://localhost,https://localhost"
+    "ALLOWED_ORIGINS": "https://seonn.dev,https://www.seonn.dev,capacitor://localhost,https://localhost",
+    // 같이 쓰는 세계(World) 목록 "<게임>:<세계>". 여기 없는 세계는 404 'no-world'. 게임이 세계를 더하려면 여기에 적고 다시 배포한다.
+    "WORLD_NAMES": "social-game:town-1,social-game:town-2,social-game:town-3,social-game:town-4"
     // 관리 페이지(/admin) 비밀번호는 여기 적지 않고 Worker secret 으로 둔다: npx wrangler secret put ADMIN_PASSWORD
     // 없거나 12글자보다 짧으면 관리 페이지는 닫혀 있다(403).
   }

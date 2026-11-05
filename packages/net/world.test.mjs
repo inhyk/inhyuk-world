@@ -12,7 +12,7 @@ class FakeSocket {
   drop() { this.readyState = 3; for (const fn of this.listeners.close ?? []) fn({ code: 1006 }); }
 }
 
-function setup({ probeStatus = 426, connect } = {}) {
+function setup({ probeStatus = 426, probeBody, connect } = {}) {
   const log = { status: [], welcome: 0, ready: 0, cell: [], join: [], leave: [], pose: [], message: [], error: [], sockets: [], fetch: [] };
   const hooks = {
     status: (s, m) => log.status.push([s, m]),
@@ -27,7 +27,10 @@ function setup({ probeStatus = 426, connect } = {}) {
   };
   const world = new World(hooks, {
     game: 'social-game', world: 'town', server: 'ws://local.test',
-    fetch: async url => { log.fetch.push(url); return { status: probeStatus, ok: false }; },
+    fetch: async url => {
+      log.fetch.push(url);
+      return { status: probeStatus, ok: false, json: async () => { if (probeBody === undefined) throw SyntaxError('not json'); return probeBody; } };
+    },
     connect: connect ?? (url => { const s = new FakeSocket(url); log.sockets.push(s); return s; }),
   });
   return { world, log };
@@ -152,6 +155,27 @@ test('an old server without /worlds says not-deployed', async () => {
   assert.deepEqual(log.fetch, ['http://local.test/worlds/social-game/town']);
   assert.deepEqual(log.status.at(-1), ['error', WORLD_MESSAGES['not-deployed']]);
   assert.deepEqual(log.error, [['not-deployed']]);
+});
+
+test('a world the server does not list says no-world', async () => {
+  const { world, log } = setup({ probeStatus: 404, probeBody: { error: 'no-world' }, connect: async () => { throw Error('no websocket (404)'); } });
+  await assert.rejects(world.open('t'), error => error.code === 'no-world' && error.message === WORLD_MESSAGES['no-world']);
+  assert.deepEqual(log.error, [['no-world']]);
+});
+
+test('rate before welcome means joining too often (join-rate); rate after welcome is only a warning', async () => {
+  const { world, log } = setup();
+  const opening = world.open('t');
+  await tick();
+  log.sockets[0].serve({ t: 'error', code: 'rate' });
+  await assert.rejects(opening, error => error.code === 'join-rate' && error.message === WORLD_MESSAGES['join-rate']);
+  assert.deepEqual(log.error, [['join-rate']]);
+  const ok = await opened();
+  ok.socket.serve({ t: 'error', code: 'rate', k: 'a' });
+  ok.socket.serve({ t: 'error', code: 'limit-day', k: 'b' });
+  assert.deepEqual(ok.log.error, [['rate', 'a'], ['limit-day', 'b']]);
+  assert.equal(ok.world.status, 'connected');
+  ok.world.close();
 });
 
 test('a browser socket that closes before welcome is checked the same way', async () => {

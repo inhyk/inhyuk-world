@@ -3,7 +3,8 @@ import { describe, it, expect } from 'vitest';
 import { SELF, env, runInDurableObject, runDurableObjectAlarm } from 'cloudflare:test';
 import { api, signup, connect, ticketFor, ORIGIN, sleep } from './helpers.js';
 import { maskText } from '../src/filter.js';
-import { CELLS_PER_USER, CELLS_PER_WORLD, WORLD_MAX } from '../src/world.js';
+import { CELLS_PER_USER, CELLS_PER_WORLD, WORLD_MAX, TTL_CELLS_PER_USER, WRITE_BURST, WRITES_PER_DAY } from '../src/world.js';
+import { SWEEP_MS } from '../src/rooms.js';
 import { World as Client } from '../../../packages/net/world.mjs';
 
 const game = 'world-test';
@@ -346,6 +347,265 @@ describe('world: filtering, chat, relays', () => {
     expect(await cBad.until(m => m.t === 'error')).toEqual({ t: 'error', code: 'suspended' });
     expect(await cBad.until(m => m.t === '__closed')).toEqual({ t: '__closed', code: 4403 });
     expect(await cFriend.next()).toEqual({ t: 'leave', id: 'p1' });
+  });
+});
+
+// 들어올 때의 차단 찾기(D1)를 100ms 늦춰서, 같이 들어오는 두 사람이 확실히 겹치게 한다
+const slowBlocks = world => runInDurableObject(stub(world), instance => {
+  const db = instance.env.DB;
+  const slow = { prepare: sql => {
+    const st = db.prepare(sql);
+    if (!sql.includes('FROM blocks')) return st;
+    return { bind: (...args) => ({ all: async () => { await sleep(100); return st.bind(...args).all(); } }) };
+  } };
+  instance.env = Object.assign(Object.create(instance.env), { DB: slow });
+});
+
+describe('world: limits against abuse', () => {
+  it('only listed worlds exist (404 no-world before upgrade or ticket)', async () => {
+    const a = await signup();
+    for (const path of ['/worlds/other-game/town-1', `/worlds/other-game/town-1?ticket=${await ticketFor(a)}`, '/worlds/social-game/town-9']) {
+      const res = await SELF.fetch(`https://net.test${path}`, { headers: { Origin: ORIGIN, Upgrade: 'websocket' } });
+      expect(res.status, path).toBe(404);
+      expect(await res.json()).toEqual({ error: 'no-world' });
+    }
+    const plain = await SELF.fetch('https://net.test/worlds/other-game/town-1', { headers: { Origin: ORIGIN } });
+    expect(plain.status).toBe(404); // 클라이언트의 whyFailed 가 표 없이 묻는 것
+    expect((await SELF.fetch('https://net.test/worlds/social-game/town-1', { headers: { Origin: ORIGIN } })).status).toBe(426);
+    const c = await connect(`/worlds/social-game/town-2?ticket=${await ticketFor(a)}`);
+    expect((await c.next()).t).toBe('welcome');
+    c.close();
+    const report = await api('/reports', { method: 'POST', token: a.token, body: { target: a.id, context: { kind: 'world', game: 'other-game', world: 'town-1' } } });
+    expect(report.status).toBe(400);
+  });
+
+  it('one account can join a world 20 times a minute', async () => {
+    const world = newWorld();
+    const a = await signup();
+    for (let i = 0; i < 20; i++) (await join(a, world)).close();
+    const c = await connect(`/worlds/${game}/${world}?ticket=${await ticketFor(a)}`);
+    expect(await c.next()).toEqual({ t: 'error', code: 'rate' });
+    expect(await c.next()).toEqual({ t: '__closed', code: 4429 });
+  });
+
+  it('keeps the cells in memory so a second join does not read SQLite again', async () => {
+    const world = newWorld();
+    const a = await signup(), b = await signup();
+    const ca = await join(a, world);
+    ca.send({ t: 'set', k: 'one', v: 1 });
+    await ca.next();
+    // SQLite 에만 몰래 넣은 칸은 메모리 사본에 없으니 다음 사람에게 가지 않는다 (= 다시 읽지 않았다)
+    await runInDurableObject(stub(world), instance => {
+      expect(instance.snapshot.size).toBe(1);
+      instance.sql.exec("INSERT INTO cells (k, v, owner, nick, updated, exp) VALUES ('sneaky', '1', 1, 'x', 0, NULL)");
+    });
+    const cb = await join(b, world);
+    expect(cb.cells.map(c => c.k)).toEqual(['one']);
+    // 지우기와 ttl 이 지난 칸도 메모리 사본에 들어간다
+    ca.send({ t: 'set', k: 'two', v: 2, ttl: 60 }); await ca.next(); await cb.next();
+    ca.send({ t: 'del', k: 'one' }); await ca.next(); await cb.next();
+    await runInDurableObject(stub(world), instance => {
+      expect([...instance.snapshot.keys()]).toEqual(['two']);
+      instance.sql.exec("UPDATE cells SET exp = ? WHERE k = 'two'", Date.now() - 1);
+    });
+    const late = await join(await signup(), world);
+    expect(late.cells).toEqual([]);
+    await runInDurableObject(stub(world), instance => { expect(instance.snapshot.size).toBe(0); });
+  });
+
+  it('caps live ttl cells per account at 100 (renewing does not get around it)', async () => {
+    const world = newWorld();
+    const a = await signup(), b = await signup();
+    await runInDurableObject(stub(world), instance => {
+      for (let i = 0; i < TTL_CELLS_PER_USER - 1; i++) expect(instance.store(a.id, a.nickname, `t${i}`, 1, 3600).row).toBeTruthy();
+    });
+    const ca = await join(a, world);
+    ca.send({ t: 'set', k: 'last', v: 1, ttl: 3600 });
+    expect((await ca.next()).k).toBe('last');
+    ca.send({ t: 'set', k: 'over', v: 1, ttl: 3600 });
+    expect(await ca.next()).toEqual({ t: 'error', code: 'limit', k: 'over' });
+    ca.send({ t: 'set', k: 'last', v: 2, ttl: 3600 }); // 내 ttl 칸을 다시 놓는 것은 된다
+    expect((await ca.next()).v).toBe(2);
+    ca.send({ t: 'set', k: 'last', v: 3 }); // ttl 칸을 남는 칸으로 바꾸면 ttl 칸 자리가 하나 빈다
+    expect((await ca.next()).exp).toBeUndefined();
+    ca.send({ t: 'set', k: 'over', v: 1, ttl: 3600 });
+    expect((await ca.next()).k).toBe('over');
+    ca.send({ t: 'set', k: 'over2', v: 1, ttl: 3600 });
+    expect(await ca.next()).toEqual({ t: 'error', code: 'limit', k: 'over2' });
+    // 시간이 지난 ttl 칸은 세지 않는다 (한도에 닿으면 먼저 치운다)
+    await runInDurableObject(stub(world), instance => { instance.sql.exec("UPDATE cells SET exp = ? WHERE k IN ('t0', 't1')", Date.now() - 1); });
+    ca.send({ t: 'set', k: 'over2', v: 1, ttl: 3600 });
+    expect((await ca.next()).k).toBe('over2');
+    await runInDurableObject(stub(world), instance => {
+      expect(instance.count(`t${a.id}`)).toBe(TTL_CELLS_PER_USER - 1); // t1 은 치웠고 아직 한 자리 남음
+      expect(instance.count(`u${a.id}`)).toBe(1);
+      expect(instance.count('total')).toBe(TTL_CELLS_PER_USER);
+      instance.sql.exec('UPDATE cells SET exp = ? WHERE exp IS NOT NULL', Date.now() - 1);
+    });
+    await runDurableObjectAlarm(stub(world));
+    await runInDurableObject(stub(world), instance => {
+      expect(instance.count(`t${a.id}`)).toBe(0); // 알람이 치우면서 주인의 ttl 칸 수도 줄인다
+      expect(instance.count('total')).toBe(1);
+    });
+    expect(b).toBeTruthy();
+  });
+
+  it('cell writes have their own rate (4/s, burst 20), skip unchanged values and stop at 2,000 a day', async () => {
+    const world = newWorld();
+    const a = await signup(), b = await signup();
+    const ca = await join(a, world);
+    const cb = await join(b, world); await ca.next();
+    for (let i = 0; i < WRITE_BURST + 5; i++) ca.send({ t: 'set', k: `r${i}`, v: i });
+    const got = [];
+    for (let i = 0; i < WRITE_BURST + 5; i++) got.push(await ca.next());
+    const errors = got.filter(m => m.t === 'error');
+    expect(errors.length).toBeGreaterThanOrEqual(4);
+    expect(errors[0]).toMatchObject({ code: 'rate' });
+    expect(errors[0].k).toMatch(/^r\d+$/);
+    expect(got.filter(m => m.t === 'cell').length).toBeLessThanOrEqual(WRITE_BURST + 1);
+    while (await cb.quiet(100)) { /* 받은 칸 비우기 */ }
+    await sleep(1500);
+
+    // 값이 그대로면 쓰지 않고, 보낸 사람에게만 돌려준다
+    const before = await runInDurableObject(stub(world), instance => instance.sql.exec("SELECT updated FROM cells WHERE k = 'r0'").one().updated);
+    await sleep(5);
+    ca.send({ t: 'set', k: 'r0', v: 0 });
+    expect(await ca.next()).toMatchObject({ t: 'cell', k: 'r0', v: 0 });
+    expect(await cb.quiet()).toBeNull();
+    await runInDurableObject(stub(world), instance => {
+      expect(instance.sql.exec("SELECT updated FROM cells WHERE k = 'r0'").one().updated).toBe(before);
+      expect(instance.count(`u${a.id}`)).toBe(got.filter(m => m.t === 'cell').length); // 바꾸기는 칸 수를 건드리지 않는다
+    });
+    ca.send({ t: 'set', k: 'r0', v: 'changed' });
+    expect((await cb.next()).v).toBe('changed');
+    await ca.next();
+
+    // 하루 한도: 오늘 1,999번 바꾼 것으로 해 둔다
+    await runInDurableObject(stub(world), instance => {
+      instance.flushDay(a.id);
+      const day = instance.dayOf(a.id);
+      instance.add(day.key, WRITES_PER_DAY - 1 - day.base);
+      day.base = WRITES_PER_DAY - 1;
+    });
+    ca.send({ t: 'set', k: 'r0', v: 'last' });
+    expect((await ca.next()).v).toBe('last');
+    ca.send({ t: 'del', k: 'r0' });
+    expect(await ca.next()).toEqual({ t: 'error', code: 'limit-day', k: 'r0' });
+    // 나가면 모아 둔 횟수를 적는다
+    ca.close();
+    await cb.until(m => m.t === 'leave');
+    await runInDurableObject(stub(world), instance => {
+      const key = `d${new Date().toISOString().slice(0, 10).replace(/-/g, '')}:${a.id}`;
+      expect(instance.count(key)).toBe(WRITES_PER_DAY);
+      instance.add(`d20000101:${a.id}`, 5);
+      instance.prunedDay = '';
+      instance.pruneDays();
+      expect(instance.count(`d20000101:${a.id}`)).toBe(0); // 지난날 횟수는 지운다
+      expect(instance.count(key)).toBe(WRITES_PER_DAY);
+    });
+  });
+
+  it('rejects phone numbers split across strings in cells and poses, and masks them in messages', async () => {
+    const world = newWorld();
+    const a = await signup(), b = await signup();
+    const ca = await join(a, world);
+    const cb = await join(b, world); await ca.next();
+    const split = [['010', '1234', '5678'], { '010': '1234', x: '5678' }];
+    for (const v of split) {
+      ca.send({ t: 'set', k: 'sign', v });
+      expect(await ca.next(), JSON.stringify(v)).toEqual({ t: 'error', code: 'bad', k: 'sign' });
+      ca.send({ t: 'pose', d: v });
+      expect(await ca.next(), JSON.stringify(v)).toEqual({ t: 'error', code: 'bad' });
+    }
+    ca.send({ t: 'set', k: 'sign', v: ['naver', '.com'] });
+    expect(await ca.next()).toEqual({ t: 'error', code: 'bad', k: 'sign' });
+    expect(await cb.quiet()).toBeNull();
+    ca.send({ t: 'send', data: split[0] });
+    expect(await cb.next()).toEqual({ t: 'msg', from: 'p1', data: ['***', '****', '****'] });
+    ca.send({ t: 'send', data: split[1] });
+    expect(await cb.next()).toEqual({ t: 'msg', from: 'p1', data: { '***': '****', x: '****' } });
+    // 보통 게임 데이터는 그대로
+    ca.send({ t: 'set', k: 'ok', v: { b: 'stone', c: 'red', n: ['12', '5', '30'] } });
+    expect((await cb.next()).v).toEqual({ b: 'stone', c: 'red', n: ['12', '5', '30'] });
+    ca.send({ t: 'pose', d: { anim: 'run', id: 'p12', x: 1 } });
+    await ca.next();
+    expect(await cb.next()).toEqual({ t: 'pose', id: 'p1', d: { anim: 'run', id: 'p12', x: 1 } });
+  });
+
+  it('a message that fails filtering does not use the chat budget or reach the chat log', async () => {
+    const world = newWorld();
+    const a = await signup(), b = await signup();
+    const ca = await join(a, world);
+    const cb = await join(b, world); await ca.next();
+    let deep = 1;
+    for (let i = 0; i < 10; i++) deep = [deep];
+    for (let i = 0; i < 8; i++) ca.send({ t: 'send', data: { chat: `secret ${i}`, deep } });
+    for (let i = 0; i < 8; i++) expect(await ca.next()).toEqual({ t: 'error', code: 'bad' });
+    expect(await cb.quiet()).toBeNull();
+    expect((await stub(world).chatLog()).lines).toEqual([]);
+    ca.send({ t: 'send', data: { chat: 'hi' } }); // 채팅 횟수(몰아서 5줄)는 그대로
+    expect(await cb.next()).toEqual({ t: 'msg', from: 'p1', data: { chat: 'hi' } });
+  });
+
+  it('rejoining does not push the sweep alarm back, and a far alarm is pulled in', async () => {
+    const world = newWorld();
+    const a = await signup(), b = await signup();
+    await join(a, world);
+    const first = await runInDurableObject(stub(world), (_i, state) => state.storage.getAlarm());
+    expect(first).toBeLessThanOrEqual(Date.now() + SWEEP_MS);
+    await sleep(30);
+    await join(a, world); // 다시 들어오기 (바꿔 끼기)
+    expect(await runInDurableObject(stub(world), (_i, state) => state.storage.getAlarm())).toBe(first);
+    // 모두 나간 뒤의 채팅 지우기 알람(10분 뒤)처럼 먼 알람은 사람이 들어오면 당긴다
+    await runInDurableObject(stub(world), (_i, state) => state.storage.setAlarm(Date.now() + 10 * 60 * 1000));
+    await join(b, world);
+    expect(await runInDurableObject(stub(world), (_i, state) => state.storage.getAlarm())).toBeLessThanOrEqual(Date.now() + SWEEP_MS);
+  });
+
+  it('two people who blocked each other joining at the same time still do not see each other', async () => {
+    const world = newWorld();
+    const a = await signup(), b = await signup(), c = await signup();
+    await api(`/blocks/${b.id}`, { method: 'POST', token: a.token });
+    const cc = await join(c, world);
+    await slowBlocks(world);
+    const [ca, cb] = await Promise.all([join(a, world), join(b, world)]);
+    await cc.next(); await cc.next(); // join 두 번
+    ca.send({ t: 'pose', d: 'a' });
+    expect(await cc.next()).toEqual({ t: 'pose', id: ca.welcome.id, d: 'a' });
+    cb.send({ t: 'pose', d: 'b' });
+    expect(await cc.next()).toEqual({ t: 'pose', id: cb.welcome.id, d: 'b' });
+    const seen = [];
+    for (const m of [await ca.quiet(), await ca.quiet(), await cb.quiet(), await cb.quiet()]) if (m?.t === 'pose') seen.push(m);
+    expect(seen).toEqual([]);
+  });
+
+  it('two people joining the 12th seat at the same time: only one gets in', async () => {
+    const crowd = newWorld();
+    const users = await Promise.all(Array.from({ length: WORLD_MAX + 1 }, () => signup()));
+    for (const u of users.slice(0, WORLD_MAX - 1)) await join(u, crowd);
+    await slowBlocks(crowd);
+    const tickets = [await ticketFor(users[WORLD_MAX - 1]), await ticketFor(users[WORLD_MAX])];
+    const both = await Promise.all(tickets.map(t => connect(`/worlds/${game}/${crowd}?ticket=${t}`)));
+    const firsts = await Promise.all(both.map(x => x.next()));
+    expect(firsts.map(m => m.t).sort()).toEqual(['error', 'welcome']);
+    expect(firsts.find(m => m.t === 'error')).toEqual({ t: 'error', code: 'full', max: WORLD_MAX });
+  });
+
+  it('blocking or unblocking while both are in the world takes effect right away', async () => {
+    const world = newWorld();
+    const a = await signup(), b = await signup(), c = await signup();
+    const ca = await join(a, world);
+    const cb = await join(b, world); await ca.next();
+    const cc = await join(c, world); await ca.next(); await cb.next();
+    expect((await api(`/blocks/${b.id}`, { method: 'POST', token: a.token })).status).toBe(200);
+    cb.send({ t: 'pose', d: 1 });
+    expect(await cc.next()).toEqual({ t: 'pose', id: 'p2', d: 1 });
+    expect(await ca.quiet()).toBeNull();
+    ca.send({ t: 'send', to: 'p2', data: 'hi' });
+    expect(await cb.quiet()).toBeNull();
+    expect((await api(`/blocks/${b.id}`, { method: 'DELETE', token: a.token })).status).toBe(200);
+    cb.send({ t: 'pose', d: 2 });
+    expect(await ca.next()).toEqual({ t: 'pose', id: 'p2', d: 2 });
   });
 });
 

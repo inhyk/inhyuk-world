@@ -17,7 +17,7 @@ seonn.dev 게임 허브입니다. 게임은 `games/<이름>/`, 아이폰과 안�
 | 모르는 사람과 바로 붙기 (게임 찾기) | `social.findMatch(game)` | 예 |
 | 친구 목록에서 초대하기 | `social.invite(friendId, game)` | 예 |
 | 다른 기기에서 이어 하기 (클라우드 저장) | `account.loadSave(game)`, `account.putSave(game, data, baseRevision)` | 예 |
-| 모두 나가도 놓은 블록이 남는 같이 쓰는 세계 (12명까지) | `packages/net/world.mjs` 의 `new World(hooks, { game, world })` → `world.open(await account.ticket())` (`services/net/README.md` "같이 쓰는 세계") | 예 |
+| 모두 나가도 놓은 블록이 남는 같이 쓰는 세계 (12명까지) | `packages/net/world.mjs` 의 `new World(hooks, { game, world })` → `world.open(await account.ticket())` (`services/net/README.md` "같이 쓰는 세계"). 세계는 `services/net/wrangler.jsonc` 의 `WORLD_NAMES` 에 적고 서버를 다시 배포해야 생깁니다 | 예 |
 
 - `game` 이름은 영어 소문자, 숫자, `-` 로 짓습니다(예 `free-drive`). 게임마다 하나씩 정해 두고 바꾸지 않습니다.
 - 계정은 닉네임+비밀번호이고 모든 게임이 같은 계정을 씁니다. 이메일은 받지 않고, 비밀번호를 잊으면 되찾을 수 없습니다.

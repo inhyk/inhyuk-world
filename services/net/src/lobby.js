@@ -113,6 +113,17 @@ export class Lobby extends DurableObject {
     await this.ctx.storage.put(key, list.slice(-TRACK_MAX));
   }
 
+  // a 와 b 사이의 차단이 바뀌었다: a 가 오늘 들어간 같이 쓰는 세계들에 알린다 (그 세계가 D1 에서 다시 확인한다).
+  // b 가 a 와 같은 세계에 있다면 그 세계는 a 의 목록에도 있다.
+  async blocksChanged(a, b) {
+    const tracked = (await this.ctx.storage.get(`track:${a}`)) ?? [];
+    for (const { kind, name } of tracked) {
+      if (kind !== 'world') continue;
+      const [game, world] = name.split(':');
+      try { await worldStub(this.env, game, world).blocksChanged(a, b); } catch (error) { console.error('block update failed', name, error?.message); }
+    }
+  }
+
   async pruneTracks() {
     const now = Date.now();
     for (const [key, list] of await this.ctx.storage.list({ prefix: 'track:' })) {

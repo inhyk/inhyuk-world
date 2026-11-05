@@ -2,7 +2,7 @@
 import { json, fail, readJson, now, userId } from './http.js';
 import { requireUser, limit, publicUser, cleanNickname } from './auth.js';
 import { filterText, DM_MAX } from './filter.js';
-import { GAME_RE, CODE_RE, WORLD_RE, roomStub, worldStub } from './rooms.js';
+import { GAME_RE, CODE_RE, WORLD_RE, roomStub, worldStub, worldOpen } from './rooms.js';
 
 const DM_PER_MINUTE = 20;
 const PAGE = 50;
@@ -203,13 +203,20 @@ export async function block(request, env, params) {
   if (!(await findUser(env, id))) fail(404, 'not-found');
   await env.DB.prepare('INSERT OR IGNORE INTO blocks (blocker_id, blocked_id, created) VALUES (?, ?, ?)').bind(me.id, id, now()).run();
   await unfriend(env, me.id, id);
+  await blocksChanged(env, me.id, id);
   return json({ ok: true });
+}
+
+// 차단하거나 풀었다: 차단한 사람이 지금 들어가 있는 같이 쓰는 세계에도 바로 알린다 (로비가 들어간 세계를 적어 둔다).
+async function blocksChanged(env, a, b) {
+  try { await lobby(env).blocksChanged(a, b); } catch (error) { console.error('block update failed', error?.message); }
 }
 
 export async function unblock(request, env, params) {
   const me = await requireUser(request, env);
   const id = userId(params.id);
   await env.DB.prepare('DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?').bind(me.id, id).run();
+  await blocksChanged(env, me.id, id);
   return json({ ok: true });
 }
 
@@ -344,7 +351,7 @@ export async function report(request, env) {
       : { error: 'not-in-room' };
   } else if (kind === 'world') {
     const game = String(body.context.game ?? ''), world = String(body.context.world ?? '');
-    if (!GAME_RE.test(game) || !WORLD_RE.test(world)) fail(400, 'bad-world');
+    if (!GAME_RE.test(game) || !WORLD_RE.test(world) || !worldOpen(env, game, world)) fail(400, 'bad-world');
     Object.assign(context, { game, world });
     const log = await worldStub(env, game, world).chatLog();
     // 신고한 사람이 그 세계에 있었을 때만 세계 기록을 가져온다.

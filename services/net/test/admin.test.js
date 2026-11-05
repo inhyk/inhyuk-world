@@ -1,6 +1,6 @@
 // 관리 페이지: 관리자 비밀번호 로그인, 신고 보기, 정지
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SELF, env } from 'cloudflare:test';
+import { SELF, env, runInDurableObject } from 'cloudflare:test';
 import worker from '../src/index.js';
 import { api, signup, befriend, live, connect, ticketFor, randomIp } from './helpers.js';
 import { createRoom } from '../src/rooms.js';
@@ -229,5 +229,81 @@ describe('suspension reaches every connection', () => {
     expect((await connect(`/rooms/${g}/${code}?ticket=${spare}`)).res.status).toBe(401);
     expect((await api('/auth/ticket', { method: 'POST', token: bad.token })).status).toBe(401);
     await admin(`/api/users/${bad.id}/unsuspend`, { token, method: 'POST', body: {} });
+  });
+});
+
+describe('cleaning up shared worlds', () => {
+  // vitest.config.js 의 WORLD_NAMES 에 적힌 세계 (관리 목록과 정지할 때 칸 지우기는 '게임:*' 이 아닌 것만 본다)
+  const town = world => env.WORLDS.get(env.WORLDS.idFromName(`social-game:${world}`));
+  const place = (world, user, keys, ttl = null) => runInDurableObject(town(world), instance => {
+    for (const k of keys) expect(instance.store(user.id, user.nickname, k, 1, ttl).row).toBeTruthy();
+  });
+  const counts = (world, user) => runInDurableObject(town(world), instance => ({
+    total: instance.count('total'), lasting: instance.count(`u${user.id}`), ttl: instance.count(`t${user.id}`),
+    mine: instance.sql.exec('SELECT COUNT(*) n FROM cells WHERE owner = ?', user.id).one().n,
+    rows: instance.sql.exec('SELECT COUNT(*) n FROM cells').one().n,
+  }));
+
+  it('lists worlds and top builders, removes one user\'s cells (telling people in the world) and clears a world', async () => {
+    const token = await adminLogin();
+    const griefer = await signup(), builder = await signup(), watcher = await signup();
+    await place('town-1', griefer, ['g1', 'g2', 'g3']);
+    await place('town-1', griefer, ['g4'], 600);
+    await place('town-1', builder, ['house']);
+    const seen = await connect(`/worlds/social-game/town-1?ticket=${await ticketFor(watcher)}`);
+    await seen.until(m => m.t === 'cells' && m.done);
+
+    const worlds = await (await admin('/api/worlds', { token })).json();
+    expect(worlds.worlds.map(w => `${w.game}:${w.world}`)).toEqual(['social-game:town-1', 'social-game:town-2']);
+    expect(worlds.worlds[0]).toMatchObject({ peers: 1 });
+    expect(worlds.worlds[0].cells).toBeGreaterThanOrEqual(5);
+    const owners = await (await admin('/api/worlds/social-game/town-1/owners', { token })).json();
+    expect(owners.owners).toContainEqual({ id: griefer.id, nickname: griefer.nickname, lasting: 3, ttl: 1 });
+
+    const before = await counts('town-1', griefer);
+    const res = await admin(`/api/worlds/social-game/town-1/users/${griefer.id}/purge`, { token, method: 'POST', body: {} });
+    expect(await res.json()).toEqual({ ok: true, removed: 4 });
+    const gone = [];
+    for (let i = 0; i < 4; i++) gone.push(await seen.next());
+    expect(gone.map(m => m.k).sort()).toEqual(['g1', 'g2', 'g3', 'g4']);
+    expect(gone.every(m => m.t === 'cell' && m.v === null)).toBe(true);
+    const after = await counts('town-1', griefer);
+    expect(after).toMatchObject({ lasting: 0, ttl: 0, mine: 0, total: before.total - 4 });
+    expect(after.total).toBe(after.rows); // 칸 수 기록이 실제와 맞다
+    // 지운 사람은 다시 400개까지 놓을 수 있다 (칸 수가 0 부터)
+    await place('town-1', griefer, ['again']);
+    expect((await counts('town-1', griefer)).lasting).toBe(1);
+
+    await place('town-2', builder, ['a', 'b']);
+    const cleared = await (await admin('/api/worlds/social-game/town-2/clear', { token, method: 'POST', body: {} })).json();
+    expect(cleared.ok).toBe(true);
+    expect(cleared.removed).toBeGreaterThanOrEqual(2);
+    expect(await counts('town-2', builder)).toMatchObject({ total: 0, rows: 0, lasting: 0 });
+
+    expect((await admin('/api/worlds/other-game/town-1/clear', { token, method: 'POST', body: {} })).status).toBe(404);
+    expect((await admin('/api/worlds/social-game/town-1/clear', { method: 'POST', body: {} })).status).toBe(401);
+    const audit = await env.DB.prepare("SELECT action, target_id, detail FROM admin_actions WHERE action IN ('purge-world-cells', 'clear-world') ORDER BY id DESC LIMIT 2").all();
+    expect(audit.results).toEqual([
+      { action: 'clear-world', target_id: null, detail: `social-game:town-2 칸 ${cleared.removed}개` },
+      { action: 'purge-world-cells', target_id: griefer.id, detail: 'social-game:town-1 칸 4개' },
+    ]);
+    seen.close();
+  });
+
+  it('suspending with purgeCells removes the account\'s cells in every listed world; without it they stay', async () => {
+    const token = await adminLogin();
+    const bad = await signup(), kept = await signup();
+    await place('town-1', bad, ['x1', 'x2']);
+    await place('town-2', bad, ['y1'], 600);
+    await place('town-1', kept, ['k1']);
+    const res = await admin(`/api/users/${bad.id}/suspend`, { token, method: 'POST', body: { reason: '장난 건물', purgeCells: true } });
+    expect(await res.json()).toEqual({ ok: true, removed: 3 });
+    expect(await counts('town-1', bad)).toMatchObject({ mine: 0, lasting: 0 });
+    expect(await counts('town-2', bad)).toMatchObject({ mine: 0, ttl: 0 });
+    // 칸을 지우라고 하지 않은 정지는 칸을 남긴다
+    expect(await (await admin(`/api/users/${kept.id}/suspend`, { token, method: 'POST', body: { reason: '욕설' } })).json()).toEqual({ ok: true });
+    expect((await counts('town-1', kept)).mine).toBe(1);
+    await admin(`/api/users/${bad.id}/unsuspend`, { token, method: 'POST', body: {} });
+    await admin(`/api/users/${kept.id}/unsuspend`, { token, method: 'POST', body: {} });
   });
 });

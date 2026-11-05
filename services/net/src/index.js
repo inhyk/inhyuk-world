@@ -13,7 +13,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { allowedOrigin, cors, json, HttpError, internalRequest, readJson, clientIp } from './http.js';
 import {
-  CODE_RE, GAME_RE, WORLD_RE, DEFAULT_PLAYERS, clampPlayers, createRoom, roomStub, worldStub, PING, PONG,
+  CODE_RE, GAME_RE, WORLD_RE, DEFAULT_PLAYERS, clampPlayers, createRoom, roomStub, worldStub, worldOpen, PING, PONG,
   SWEEP_MS, STALE_MS, CHAT_KEEP_MS, safeSend, closeSocket, tooBig, lastHeard, allowMessage, allowChatLine, recentLinesOf, pushLine,
 } from './rooms.js';
 import { filterText, maskSplitPhone, cleanData } from './filter.js';
@@ -34,6 +34,8 @@ export { World } from './world.js';
 const RESERVE_MS = 2 * 60 * 1000;
 // 연결마다 1초 횟수(30개, 몰아서 60개), 채팅(1초에 1줄, 몰아서 5줄), 15초마다 살펴 30초 조용하면 내보내기는
 // rooms.js 에 있고 World(world.js)와 같이 쓴다.
+// 같이 쓰는 세계에 들어가기: 한 사람이 1분에 20번까지
+const WORLD_JOINS_PER_MINUTE = 20;
 // 방 만들기: IP 하나에서 1분에 60번까지
 const ROOMS_PER_MINUTE = 60;
 // 한 방을 같이 보는 사람은 10명까지
@@ -176,10 +178,22 @@ async function worlds(request, env, parts, url, headers) {
   const [, game, world] = parts;
   if (!GAME_RE.test(game)) return json({ error: 'bad-game' }, 400, headers);
   if (!WORLD_RE.test(world)) return json({ error: 'bad-world' }, 400, headers);
+  // 열려 있는 세계가 아니면 404 (클라이언트는 표 없이 HTTP 로 물어봐서 'no-world' 를 안다)
+  if (!worldOpen(env, game, world)) return json({ error: 'no-world' }, 404, headers);
   if (!isWebSocket(request)) return json({ error: 'websocket-only' }, 426, headers);
   if (!url.searchParams.has('ticket')) return json({ error: 'login-required' }, 401, headers);
   const user = await auth.useTicket(env, url.searchParams.get('ticket'));
   if (!user) return json({ error: 'bad-ticket' }, 401, headers);
+  // 들어가기는 한 사람이 1분에 20번까지 (들어올 때마다 칸을 모두 보내므로). 브라우저는 HTTP 상태를 못 보므로
+  // 연결을 받은 뒤 {"t":"error","code":"rate"} 를 보내고 닫는다 (welcome 전에 오는 rate 는 들어가기 거절).
+  try { await auth.limit(env, `world-join:${user.id}`, 60 * 1000, WORLD_JOINS_PER_MINUTE); } catch (error) {
+    if (!(error instanceof HttpError)) throw error;
+    const [client, server] = Object.values(new WebSocketPair());
+    server.accept();
+    server.send(JSON.stringify({ t: 'error', code: 'rate' }));
+    server.close(4429, 'rate');
+    return new Response(null, { status: 101, webSocket: client });
+  }
   return worldStub(env, game, world).fetch(internalRequest(request, {
     'X-Net-User': user.id, 'X-Net-Nick': encodeURIComponent(user.nickname), 'X-Net-World': `${game}:${world}`,
   }));
