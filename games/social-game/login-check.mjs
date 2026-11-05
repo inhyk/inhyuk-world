@@ -24,9 +24,12 @@ async function computer(name) {
 const ready = (page) => page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
 const G = (page, f, a) => page.evaluate(f, a);
 
-// computer A: sign up, make progress, it uploads
+// computer A: pick a story (a new game asks first; the page reloads and starts), sign up, make progress, it uploads
 const A = await computer('A');
-await A.page.click('#btn-login-start');
+await Promise.all([A.page.waitForEvent('load', { timeout: 60000 }), A.page.click('#m-office')]);
+await ready(A.page);
+await A.page.waitForFunction(() => document.getElementById('start').classList.contains('hidden'), null, { timeout: 20000 });
+await A.page.click('#btn-login');
 await A.page.fill('#nick', nick);
 await A.page.fill('#pw', 'abcd1234');
 await A.page.screenshot({ path: `${out}/01-login.png` });
@@ -34,7 +37,6 @@ await A.page.click('#do-signup');
 await A.page.waitForFunction(() => !document.getElementById('login-in').classList.contains('hidden'), null, { timeout: 20000 });
 await A.page.screenshot({ path: `${out}/02-loggedin.png` });
 await A.page.click('#login-close');
-await A.page.click('#play');
 await G(A.page, () => { const g = window.__game; g.state.day = 3; g.state.money = 123000; g.state.step = 4; g.build.placeBlock('stone', -146.5, 0, -8.5, 0); g.day.complete(g.day.step.id); });
 await A.page.waitForFunction(() => document.getElementById('cloud-status').textContent.includes('서버에 저장됨'), null, { timeout: 20000 });
 const stepA = await G(A.page, () => window.__game.state.step);

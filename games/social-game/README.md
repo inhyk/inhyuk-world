@@ -42,6 +42,20 @@
 - E 사용(문, 차, 침대, 세면대...), V 시점, M 큰 지도, P 사진, H 도움말
 - 차: W S 가속과 브레이크, A D 핸들, Space 급브레이크, F 경적, E 내리기
 
+## 같이 사는 동네 (멀티플레이, 2026-11-05)
+
+인혁이가 고른 방식: 모두 나가도 동네가 그대로 남는다. 공용 서버의 같이 쓰는 세계(`packages/net/world.mjs` 의 `World`, game `social-game`)를 쓴다.
+
+- 들어가기: 시작 화면 "🏘️ 친구랑 같이 하기" 또는 게임 안 "🏘️ 같이 하기" → 동네 1~4 (`town-1` ~ `town-4`, 한 동네 12명까지). 로그인해야 하고, 안 했으면 로그인 창이 열린다. 새 게임이면 이야기를 먼저 고르고 들어간다.
+- 같이 쓰는 것: 놓은 블럭, 부순 나무, 덤불, 꽃, 바위, 조개(10분 뒤 다시 자람), 다른 사람의 모습과 이름표, 채팅.
+- 나만 쓰는 것(예전처럼 클라우드 저장): 이야기, 시계, 퀘스트, 가방(블럭 개수), 돈. 동네에 블럭을 놓으면 내 가방에서 빠지고, 내 블럭을 부수면 돌아온다.
+- 혼자 할 때 놓은 블럭은 동네에 있는 동안 화면에서만 빠지고 저장에는 그대로 남는다(`online.mjs` 의 `SoloBlocks`). 나가거나 연결이 끊기면 그대로 돌아온다.
+- 다른 사람이 놓은 블럭은 부술 수 없다("○○ 님의 블럭이에요"). 블럭은 한 사람이 한 동네에 400개까지.
+- 비밀 지키기: 우리 집(101동 건물 안 전체: 로비, 엘리베이터, 8층, 802호), 바다 펜션, 료칸 안에 있으면 다른 사람에게 내 위치를 보내지 않는다(숨김 신호만 감). 비행기 안도 숨긴다.
+- 채팅: `T` 또는 `Enter`. 서버가 욕, 전화번호, 링크를 가리고, 이름은 서버가 준 닉네임만 쓴다. 말마다, 사람 목록의 사람마다 🚫 차단과 🚨 신고 버튼이 있다(`Esc` 로 마우스를 풀고 누른다). 진짜 이름, 나이, 학교, 전화번호는 묻지도 말하지도 않는다.
+- 연결이 끊기면 혼자 하기로 돌아오고 "🔄 다시 들어가기" 버튼이 나온다. 서버가 아직 같이 쓰는 세계를 모르면(배포 전) "같이 사는 동네는 아직 준비 중이에요" 라고 하고 혼자 계속한다.
+- 칸 이름: 블럭 `b|x|y|z`(값 `{i: 블럭, r: 돌림}`), 부순 것 `p|<종류>.<번호>`(ttl 600초). 나무 번호는 모든 컴퓨터에서 같다(`deco.js` 가 정해진 씨앗으로 심는다).
+
 ## 파일
 
 - `main.js` 시작, 매 프레임 흐름
@@ -50,7 +64,8 @@
 - `src/tex.js`, `src/mat.js`, `src/geom.js` 코드로 만든 텍스처, 재질, 모양
 - `src/sites/*.js` 건물(집, 편의점, 회사, 별빛테크, 고깃집, 바다 펜션, 공항, 일본의 신사와 라멘 가게와 기념품 가게와 료칸), `src/site.js` 건물 약속
 - `src/flight.js` 비행기 타고 날아가는 장면, `src/drivetest.js` 면허 시험, `src/nav.js` 내비게이션, `src/elevator.js` 엘리베이터, `src/cloud.js` 로그인과 서버 저장
-- `kid-check.mjs` 어린이 이야기 자동 검사, `login-check.mjs` 로그인 검사(로컬 net 서버)
+- `src/town.js` 같이 사는 동네(연결, 다른 사람, 채팅, 차단, 신고), `online.mjs` 그 규칙(칸 이름, 위치, 숨김, 혼자 블럭 지키기), `online.test.mjs`
+- `kid-check.mjs` 어린이 이야기 자동 검사, `login-check.mjs` 로그인 검사(로컬 net 서버), `online-check.mjs` 같이 사는 동네 검사(로컬 net 서버, 두 컴퓨터)
 - `src/props/*.js` 자동차, 사람, 나무와 꽃, 가로등과 벤치, 블럭
 - `src/world.js` 땅, 도로, 바다와 건물 자리, `src/deco.js` 나무와 거리 소품 배치
 - `src/player.js`, `src/vehicle.js`, `src/build.js`, `src/quests.js`, `src/life.js` 걷기, 운전, 블럭, 하루와 미니게임, 동네 사람과 차
@@ -62,6 +77,12 @@
 npm run test:social-game
 npm run social-game:dev            # 다른 터미널
 node games/social-game/browser-check.mjs http://127.0.0.1:5173/ /tmp/social-shots
+node games/social-game/kid-check.mjs http://127.0.0.1:5173/ /tmp/social-kid
+# 로그인과 같이 사는 동네는 로컬 net 서버가 있어야 한다 (저장소 AGENTS.md "시험해 보기" 1번). 계정을 2~3개 만든다.
+node games/social-game/login-check.mjs http://127.0.0.1:5173/ /tmp/social-login
+node games/social-game/online-check.mjs http://127.0.0.1:5173/ /tmp/social-online
 ```
+
+playwright 가 `tools/node_modules` 에 없으면 `PLAYWRIGHT_MJS=<playwright 의 index.mjs 경로>` 를 붙인다.
 
 그림, 모델, 소리는 모두 코드로 새로 만들었다. 저장은 브라우저(localStorage)에만 한다.

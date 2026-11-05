@@ -204,3 +204,90 @@ export function maskSplitPhone(previous, current) {
 export function hasProfanity(text) {
   return profanityRanges(String(text ?? '').normalize('NFC').replace(INVISIBLE, '')).length > 0;
 }
+
+// 게임 데이터 안의 모든 글자열(칸 이름 포함)을 거른다. 깊이 8보다 깊으면 던진다 (→ 'bad').
+// 랜덤 매칭, 초대로 만든 방(관계자 방)과 같이 쓰는 세계(World)가 쓴다.
+// check(text) 를 주면 글자열마다 먼저 불러 본다 (세계 칸의 글자 수 검사처럼, 던지면 'bad').
+export const DATA_DEPTH = 8;
+export function cleanData(value, check, depth = 0) {
+  if (typeof value === 'string') { check?.(value); return maskText(value); }
+  if (!value || typeof value !== 'object') return value;
+  if (depth >= DATA_DEPTH) throw Error('too deep');
+  if (Array.isArray(value)) return value.map(v => cleanData(v, check, depth + 1));
+  const out = Object.create(null);
+  for (const [key, v] of Object.entries(value)) { check?.(key); out[maskText(key)] = cleanData(v, check, depth + 1); }
+  return out;
+}
+
+// ---- 여러 글자열에 나눠 넣은 연락처 (같이 쓰는 세계의 칸, 위치, 메시지) ----
+// cleanData 는 글자열을 하나씩 거르므로 v:["010","1234","5678"] 이나 {"010":"1234","x":"5678"} 처럼
+// 나눠 넣은 전화번호는 그대로 지나간다. 그래서 안의 글자열(이름표 포함)을 띄어쓰기로 이어 붙여 한 번 더 본다.
+// - 모든 글자열을 이어 붙인 것: 링크(주소, 이메일)와 전화번호
+// - 숫자가 든 글자열만 이어 붙인 것: 전화번호 ("010 1234 x 5678" 처럼 사이에 다른 글자열이 끼어도 찾게)
+// 전화번호는 대전 채팅의 나눠 보낸 번호 찾기(maskSplitPhone)와 같이 숫자 9개 이상만 본다.
+const SPLIT_PHONE_MIN = 9;
+const DIGITISH = /[0-9０-９공영일이삼사오육륙칠팔구]/;
+
+function linkRanges(text) {
+  const copy = detectionCopy(text);
+  const spaced = collapseSpaced(copy);
+  const list = [];
+  for (const [kind, re] of PATTERNS) {
+    if (kind !== 'link') continue;
+    for (const m of copy.text.matchAll(re)) list.push(back(copy.map, m.index, m.index + m[0].length));
+    for (const m of spaced.text.matchAll(re)) list.push(back(spaced.map, m.index, m.index + m[0].length));
+  }
+  return list;
+}
+
+function splitPhoneRanges(text) {
+  const copy = detectionCopy(text);
+  return phoneRanges(phoneCopy(copy.text), SPLIT_PHONE_MIN).map(([a, b]) => back(copy.map, a, b));
+}
+
+// 글자열들 parts 를 이어 붙여 찾은 자리를 글자열마다 나눠 준다. 결과[i] = parts[i] 안의 [시작, 끝] 목록.
+function splitHits(parts) {
+  const hits = parts.map(() => []);
+  const scan = (idx, find) => {
+    if (idx.length < 2) return;
+    let text = '';
+    const starts = [];
+    for (const i of idx) { if (starts.length) text += ' '; starts.push(text.length); text += parts[i]; }
+    for (const [a, b] of find(text)) {
+      idx.forEach((i, j) => {
+        const s = starts[j], lo = Math.max(a, s), hi = Math.min(b, s + parts[i].length);
+        if (lo < hi) hits[i].push([lo - s, hi - s]);
+      });
+    }
+  };
+  const all = parts.map((_, i) => i);
+  scan(all, text => [...linkRanges(text), ...splitPhoneRanges(text)]);
+  scan(all.filter(i => DIGITISH.test(parts[i])), splitPhoneRanges);
+  return hits;
+}
+
+// value 안의 글자열을 정해진 순서(이름표, 그 값 순)로 fn 에 넘기고, fn 이 돌려준 것으로 바꾼 사본을 만든다.
+function mapStrings(value, fn) {
+  if (typeof value === 'string') return fn(value);
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(v => mapStrings(v, fn));
+  const out = Object.create(null);
+  for (const [key, v] of Object.entries(value)) { const k = fn(key); out[k] = mapStrings(v, fn); }
+  return out;
+}
+
+const stringsOf = value => { const parts = []; mapStrings(value, s => { parts.push(s); return s; }); return parts; };
+
+// 여러 글자열에 나눠 넣은 전화번호나 링크가 있으면 true (칸 값과 위치는 이때 'bad' 로 거절한다)
+export function hasSplitContact(value) {
+  return splitHits(stringsOf(value)).some(list => list.length > 0);
+}
+
+// 여러 글자열에 나눠 넣은 전화번호나 링크를 글자열마다 그 부분만 '*' 로 가린다 (메시지 data 용)
+export function maskSplitContact(value) {
+  const parts = stringsOf(value);
+  const hits = splitHits(parts);
+  if (!hits.some(list => list.length)) return value;
+  let i = 0;
+  return mapStrings(value, s => { const ranges = hits[i++]; return ranges.length ? mask(s, ranges) : s; });
+}

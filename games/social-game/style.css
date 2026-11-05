@@ -163,3 +163,30 @@ canvas#game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: b
 #start button.mode small { font-size: 13px; color: #6a6258; line-height: 1.35; }
 #start button.mode.small { flex: 0 1 140px; }
 #start button.link { margin-top: 10px; font-size: 14px; padding: 6px 14px; border-radius: 10px; background: transparent; color: #8a8070; box-shadow: none; text-decoration: underline; }
+/* 같이 사는 동네 (shared town) */
+#start button.town-start { display: block; margin: 12px auto 0; font-size: 20px; padding: 9px 26px; background: linear-gradient(180deg, #6fcf7f, #3d9a52); box-shadow: 0 5px 0 #2a7038; }
+.town-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mcard .town-row button { font-size: 20px; }
+.mcard .town-row button.on { background: linear-gradient(180deg, #6fcf7f, #3d9a52); box-shadow: 0 4px 0 #2a7038; }
+button.mini { font-family: inherit; font-size: 13px; padding: 2px 7px; margin-left: 4px; border-radius: 9px; border: 1px solid var(--edge); background: rgba(255, 250, 240, .16); color: var(--ui); cursor: pointer; }
+button.mini:hover { background: rgba(255, 250, 240, .32); }
+#town-panel { position: absolute; left: 18px; top: 92px; min-width: 170px; max-width: 260px; padding: 8px 12px; border-radius: 16px; background: var(--panel); border: 1px solid var(--edge); backdrop-filter: blur(6px); font-size: 15px; pointer-events: auto; text-shadow: 0 1px 2px #0008; }
+#town-panel .th { display: flex; align-items: center; gap: 8px; }
+#town-panel .th b { font-weight: normal; color: #b8f0a8; font-size: 17px; }
+#town-panel .th button { margin-left: auto; }
+#town-people { margin: 6px 0 0; padding: 0; list-style: none; max-height: 220px; overflow: auto; }
+#town-people li { display: flex; align-items: center; gap: 2px; padding: 2px 0; }
+#town-people li span { margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#town-people li::before { content: '●'; color: #5ad86a; margin-right: 6px; font-size: 11px; }
+#town-chat { position: absolute; left: 18px; bottom: 70px; width: min(440px, calc(100vw - 260px)); pointer-events: auto; display: flex; flex-direction: column; gap: 4px; }
+#chat-log .line { padding: 4px 10px; border-radius: 12px; background: var(--panel); font-size: 16px; line-height: 1.35; text-shadow: 0 1px 2px #0008; word-break: break-all; }
+#chat-log .line b { font-weight: normal; color: #ffe9a8; margin-right: 8px; }
+#chat-log .line.me b { color: #b8f0a8; }
+#chat-input { font-family: inherit; font-size: 17px; padding: 8px 12px; border-radius: 12px; border: 2px solid #3a6fd8; background: rgba(255, 250, 240, .96); color: var(--ink); user-select: text; -webkit-user-select: text; }
+#chat-input:focus { outline: none; }
+#chat-hint { font-size: 13px; color: rgba(255, 250, 240, .8); text-shadow: 0 1px 2px #000a; }
+#chat-hint kbd { padding: 0 5px; border-radius: 5px; background: #ffe39a; color: #2b2620; font-family: inherit; }
+#town-lost { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 16px; background: rgba(255, 250, 240, .95); color: var(--ink); font-size: 16px; pointer-events: auto; box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+#town-lost button { font-family: inherit; font-size: 15px; padding: 5px 12px; border-radius: 11px; border: 0; background: #3a6fd8; color: #fff; cursor: pointer; }
+#town-lost button.alt { background: #eef2fa; color: #2b2620; }
+@media (max-width: 760px) { #town-panel { top: 150px; } #town-chat { width: calc(100vw - 36px); bottom: 120px; } }

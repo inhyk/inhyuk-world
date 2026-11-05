@@ -8,7 +8,7 @@ export class Minimap {
     this.big = false;
   }
   toggle() { this.big = !this.big; this.c.classList.toggle('big', this.big); this.c.width = this.c.height = this.big ? 520 : 220; }
-  draw(player, yaw, car, target) {
+  draw(player, yaw, car, target, others = []) {
     const g = this.g, W = this.c.width, H = this.c.height;
     const scale = this.big ? 0.75 : 1.25; // px per metre
     const cx = this.big ? (player.x > 1500 ? LAYOUT.jx - 20 : -20) : player.x, cz = this.big ? 0 : player.z;
@@ -63,6 +63,13 @@ export class Minimap {
     if (car) {
       const [x, z] = P(car.x, car.z);
       g.fillStyle = '#4f8fd8'; g.strokeStyle = '#fff'; g.lineWidth = 2;
+      g.beginPath(); g.arc(x, z, 5, 0, Math.PI * 2); g.fill(); g.stroke();
+    }
+    // other players in the shared town
+    for (const o of others) {
+      const [x, z] = P(o.x, o.z);
+      if (x < -6 || z < -6 || x > W + 6 || z > H + 6) continue;
+      g.fillStyle = '#5ad86a'; g.strokeStyle = '#fff'; g.lineWidth = 2;
       g.beginPath(); g.arc(x, z, 5, 0, Math.PI * 2); g.fill(); g.stroke();
     }
     if (target) {

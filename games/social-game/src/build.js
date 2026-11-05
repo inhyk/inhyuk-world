@@ -63,6 +63,11 @@ export class Build {
     engine.scene.add(this.chips);
     this.onBreakProp = null;  // (entry) => void   world props (trees, shells...)
     this.onChange = null;     // () => void        save
+    // shared town (src/town.js): null in solo play
+    this.canBreak = null;     // (entry) => null | Korean reason it can't be broken
+    this.onPlaced = null;     // (rec) => void      a block the player just placed
+    this.onBlockBroken = null; // (rec) => void     a block the player just broke
+    this.snapY = false;       // round y to the cell key (2 decimals) so every computer agrees
   }
 
   proto(id) {
@@ -82,6 +87,7 @@ export class Build {
   placeBlock(id, x, y, z, rot = 0, save = true) {
     const def = this.byId[id];
     if (!def) return null;
+    if (this.snapY) y = Math.round(y * 100) / 100;
     const obj = this.proto(id).clone();
     obj.position.set(x, y, z);
     obj.rotation.y = rot * Math.PI / 2;
@@ -96,13 +102,13 @@ export class Build {
     return rec;
   }
 
-  removeBlock(rec) {
+  removeBlock(rec, save = true) {
     this.root.remove(rec.obj);
     this.pick.remove(rec.box);
     if (rec.col) this.col.remove(rec.col);
     this.placed.delete(this.key(rec.x, rec.y, rec.z));
     if (rec.id === 'lamp') this.onLamp?.(rec, false);
-    this.onChange?.();
+    if (save) this.onChange?.();
   }
 
   /** Serializable list for the save. */
@@ -229,8 +235,13 @@ export class Build {
       this.outline.position.set((e.min[0] + e.max[0]) / 2, (e.min[1] + e.max[1]) / 2, (e.min[2] + e.max[2]) / 2);
       this.outline.scale.set(e.max[0] - e.min[0] + 0.02, e.max[1] - e.min[1] + 0.02, e.max[2] - e.min[2] + 0.02);
     } else this.outline.visible = false;
-    // breaking
-    if (input.mouse.left && e && (e.kind === 'block' || e.kind === 'prop')) {
+    // breaking (in the shared town some things belong to someone else)
+    const no = input.mouse.left && e && (e.kind === 'block' || e.kind === 'prop') ? this.canBreak?.(e) : null;
+    if (no) {
+      this._noT = (this._noT ?? 0) - dt;
+      if (input.mouse.leftPressed || this._noFor !== e || this._noT <= 0) { this._noFor = e; this._noT = 1.5; this.hud.toast(no, 1600); }
+    } else this._noFor = null;
+    if (input.mouse.left && e && (e.kind === 'block' || e.kind === 'prop') && !no) {
       if (this.breaking !== e) { this.breaking = e; this.progress = 0; }
       const hard = e.kind === 'block' ? (this.byId[e.rec.id].hardness ?? 1) : (e.hardness ?? 1);
       this.progress += dt / hard;
@@ -248,6 +259,7 @@ export class Build {
           this.removeBlock(e.rec);
           inv[id] = (inv[id] ?? 0) + 1;
           this.hud.toast(`${this.byId[id].name} +1`, 1200);
+          this.onBlockBroken?.(e.rec);
         } else {
           this.burst(pos, e.color ?? 0x7a6a50, 22);
           e.scatter?.setVisible(e.index, false);
@@ -281,8 +293,9 @@ export class Build {
       if ((inv[id] ?? 0) <= 0) this.hud.toast(`${this.byId[id].name}이(가) 없어요. 부숴서 모아요!`, 1500);
       else if (why && why !== 'no') this.hud.toast(why, 1000);
       else if (cell) {
-        this.placeBlock(id, cell.x, cell.y, cell.z, this.rot);
+        const rec = this.placeBlock(id, cell.x, cell.y, cell.z, this.rot);
         inv[id]--;
+        if (rec) this.onPlaced?.(rec);
         this.swing = 1;
         this.sfx?.('place');
         this.renderHotbar();

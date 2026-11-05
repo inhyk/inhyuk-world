@@ -12,8 +12,11 @@
 // 접속 상태와 초대는 lobby.js, 랜덤 매칭은 match.js, 관리 페이지는 admin.js.
 import { DurableObject } from 'cloudflare:workers';
 import { allowedOrigin, cors, json, HttpError, internalRequest, readJson, clientIp } from './http.js';
-import { CODE_RE, GAME_RE, DEFAULT_PLAYERS, clampPlayers, createRoom, roomStub, MAX_MESSAGE_BYTES, PING, PONG, CHAT_LINES } from './rooms.js';
-import { filterText, maskText, maskSplitPhone } from './filter.js';
+import {
+  CODE_RE, GAME_RE, WORLD_RE, DEFAULT_PLAYERS, clampPlayers, createRoom, roomStub, worldStub, worldOpen, PING, PONG,
+  SWEEP_MS, STALE_MS, CHAT_KEEP_MS, safeSend, closeSocket, tooBig, lastHeard, allowMessage, allowChatLine, recentLinesOf, pushLine,
+} from './rooms.js';
+import { filterText, maskSplitPhone, cleanData } from './filter.js';
 import * as auth from './auth.js';
 import * as social from './social.js';
 import * as saves from './saves.js';
@@ -25,24 +28,14 @@ import { handleAdmin } from './admin.js';
 // 상수는 rooms.js 에서 가져다 쓴다.
 export { Lobby } from './lobby.js';
 export { Matchmaker } from './match.js';
+export { World } from './world.js';
 
 // 방을 만들고 아무도 안 들어오면 2분 뒤 지운다.
 const RESERVE_MS = 2 * 60 * 1000;
-// 15초마다 살펴서 30초 동안 아무 소식 없는 사람은 내보낸다.
-const SWEEP_MS = 15 * 1000;
-const STALE_MS = 30 * 1000;
-// 한 연결이 1초에 보낼 수 있는 메시지: 평소 30개, 몰아서 60개까지.
-const RATE_PER_SECOND = 30;
-const RATE_BURST = 60;
-// 채팅은 따로 1초에 1줄, 몰아서 5줄까지.
-const CHAT_PER_SECOND = 1;
-const CHAT_BURST = 5;
-// 모두 나간 뒤에도 신고할 수 있게 채팅 기록은 10분 더 둔다.
-const CHAT_KEEP_MS = 10 * 60 * 1000;
-// 나눠 보낸 전화번호를 찾을 때 볼 같은 사람의 앞줄: 30초 안의 2줄 (이번 줄까지 3줄)
-const SPLIT_LINES = 2, SPLIT_MS = 30 * 1000;
-// 관계자 방에서 data 를 거를 때 들어갈 깊이
-const DATA_DEPTH = 8;
+// 연결마다 1초 횟수(30개, 몰아서 60개), 채팅(1초에 1줄, 몰아서 5줄), 15초마다 살펴 30초 조용하면 내보내기는
+// rooms.js 에 있고 World(world.js)와 같이 쓴다.
+// 같이 쓰는 세계에 들어가기: 한 사람이 1분에 20번까지
+const WORLD_JOINS_PER_MINUTE = 20;
 // 방 만들기: IP 하나에서 1분에 60번까지
 const ROOMS_PER_MINUTE = 60;
 // 한 방을 같이 보는 사람은 10명까지
@@ -113,7 +106,7 @@ export default {
     // 관리 페이지는 관리자 비밀번호로 들어가고, 같은 주소에서만 부른다 (CORS 없음).
     if (parts[0] === 'admin') return handleAdmin(request, env, parts.slice(1));
 
-    const special = { rooms: parts.length >= 2 && parts.length <= 3, live: parts.length === 1, match: parts.length === 2 };
+    const special = { rooms: parts.length >= 2 && parts.length <= 3, live: parts.length === 1, match: parts.length === 2, worlds: parts.length === 3 };
     const isSpecial = Object.hasOwn(special, parts[0] ?? '');
     const api = isSpecial ? null : route(request.method, parts);
     if (isSpecial ? !special[parts[0]] : !api) return new Response('not found', { status: 404 });
@@ -124,6 +117,7 @@ export default {
     try {
       if (parts[0] === 'rooms') return await rooms(request, env, parts, url, headers);
       if (parts[0] === 'live' || parts[0] === 'match') return await sockets(request, env, parts, url, headers);
+      if (parts[0] === 'worlds') return await worlds(request, env, parts, url, headers);
       if (api.method) return json({ error: 'method' }, 405, headers);
       const response = await api.handler(request, env, api.params, url);
       for (const [k, v] of Object.entries(headers)) response.headers.set(k, v);
@@ -177,6 +171,32 @@ async function sockets(request, env, parts, url, headers) {
   const forwarded = internalRequest(request, { 'X-Net-User': user.id, 'X-Net-Nick': encodeURIComponent(user.nickname), 'X-Net-Game': parts[1] });
   const stub = parts[0] === 'live' ? social.lobby(env) : env.MATCH.get(env.MATCH.idFromName(parts[1]));
   return stub.fetch(forwarded);
+}
+
+// GET /worlds/:game/:world?ticket=  (WebSocket) 모두가 같이 쓰는 세계. 로그인한 사람만 (world.js)
+async function worlds(request, env, parts, url, headers) {
+  const [, game, world] = parts;
+  if (!GAME_RE.test(game)) return json({ error: 'bad-game' }, 400, headers);
+  if (!WORLD_RE.test(world)) return json({ error: 'bad-world' }, 400, headers);
+  // 열려 있는 세계가 아니면 404 (클라이언트는 표 없이 HTTP 로 물어봐서 'no-world' 를 안다)
+  if (!worldOpen(env, game, world)) return json({ error: 'no-world' }, 404, headers);
+  if (!isWebSocket(request)) return json({ error: 'websocket-only' }, 426, headers);
+  if (!url.searchParams.has('ticket')) return json({ error: 'login-required' }, 401, headers);
+  const user = await auth.useTicket(env, url.searchParams.get('ticket'));
+  if (!user) return json({ error: 'bad-ticket' }, 401, headers);
+  // 들어가기는 한 사람이 1분에 20번까지 (들어올 때마다 칸을 모두 보내므로). 브라우저는 HTTP 상태를 못 보므로
+  // 연결을 받은 뒤 {"t":"error","code":"rate"} 를 보내고 닫는다 (welcome 전에 오는 rate 는 들어가기 거절).
+  try { await auth.limit(env, `world-join:${user.id}`, 60 * 1000, WORLD_JOINS_PER_MINUTE); } catch (error) {
+    if (!(error instanceof HttpError)) throw error;
+    const [client, server] = Object.values(new WebSocketPair());
+    server.accept();
+    server.send(JSON.stringify({ t: 'error', code: 'rate' }));
+    server.close(4429, 'rate');
+    return new Response(null, { status: 101, webSocket: client });
+  }
+  return worldStub(env, game, world).fetch(internalRequest(request, {
+    'X-Net-User': user.id, 'X-Net-Nick': encodeURIComponent(user.nickname), 'X-Net-World': `${game}:${world}`,
+  }));
 }
 
 export class Room extends DurableObject {
@@ -339,9 +359,7 @@ export class Room extends DurableObject {
     if (!me || me.gone) return; // 바뀌어 나간 예전 연결이 보내는 것은 버린다
     this.lastHeard(ws, true);
     if (typeof message !== 'string') return this.warn(ws, 'bad');
-    if (message.length > MAX_MESSAGE_BYTES || (message.length * 3 > MAX_MESSAGE_BYTES && new TextEncoder().encode(message).length > MAX_MESSAGE_BYTES)) {
-      return this.warn(ws, 'too-big');
-    }
+    if (tooBig(message)) return this.warn(ws, 'too-big');
     if (!this.allow(ws)) return;
     let msg;
     try { msg = JSON.parse(message); } catch { return this.warn(ws, 'bad'); }
@@ -548,16 +566,12 @@ export class Room extends DurableObject {
   // 채팅 줄을 마지막 CHAT_LINES 줄까지 기억한다 (거른 글만).
   async remember(line) {
     const chat = (await this.ctx.storage.get('chat')) ?? { lines: [], users: [] };
-    chat.lines.push(line);
-    if (chat.lines.length > CHAT_LINES) chat.lines.splice(0, chat.lines.length - CHAT_LINES);
-    await this.ctx.storage.put('chat', chat);
+    await this.ctx.storage.put('chat', pushLine(chat, line));
   }
 
   // 같은 사람(번호 from)이 30초 안에 보낸 마지막 줄들 (나눠 보낸 전화번호 찾기용)
   async recentLines(from) {
-    const chat = await this.ctx.storage.get('chat');
-    const since = Date.now() - SPLIT_MS;
-    return (chat?.lines ?? []).filter(l => l.from === from && l.at >= since).slice(-SPLIT_LINES).map(l => l.text);
+    return recentLinesOf(await this.ctx.storage.get('chat'), from);
   }
 
   // 정지된 사람의 연결을 끊는다 (로비가 부른다).
@@ -577,56 +591,20 @@ export class Room extends DurableObject {
     return { lines: chat?.lines ?? [], users: chat?.users ?? [] };
   }
 
-  allowChat(ws) {
-    const bucket = this.buckets.get(ws);
-    const now = Date.now();
-    bucket.chat ??= { tokens: CHAT_BURST, at: now };
-    bucket.chat.tokens = Math.min(CHAT_BURST, bucket.chat.tokens + ((now - bucket.chat.at) / 1000) * CHAT_PER_SECOND);
-    bucket.chat.at = now;
-    if (bucket.chat.tokens >= 1) { bucket.chat.tokens -= 1; return true; }
-    this.warn(ws, 'chat-rate');
-    return false;
-  }
+  allowChat(ws) { return allowChatLine(this.buckets, ws, (w, code) => this.warn(w, code)); }
 
-  // 마지막으로 소식을 들은 때. 잠들었다 깨면 메모리 기록은 사라지므로 자동 핑 시각도 같이 본다.
-  lastHeard(ws, touch = false) {
-    let bucket = this.buckets.get(ws);
-    if (!bucket) { bucket = { tokens: RATE_BURST, at: Date.now(), heard: 0 }; this.buckets.set(ws, bucket); }
-    if (touch) bucket.heard = Date.now();
-    const auto = this.ctx.getWebSocketAutoResponseTimestamp(ws)?.getTime() ?? 0;
-    const joined = ws.deserializeAttachment()?.joined ?? 0;
-    return Math.max(bucket.heard, auto, joined);
-  }
+  // 마지막으로 소식을 들은 때 (rooms.js)
+  lastHeard(ws, touch = false) { return lastHeard(this.ctx, this.buckets, ws, touch); }
 
-  allow(ws) {
-    const bucket = this.buckets.get(ws);
-    const now = Date.now();
-    bucket.tokens = Math.min(RATE_BURST, bucket.tokens + ((now - bucket.at) / 1000) * RATE_PER_SECOND);
-    bucket.at = now;
-    if (bucket.tokens >= 1) { bucket.tokens -= 1; return true; }
-    if (!bucket.warned || now - bucket.warned > 1000) { bucket.warned = now; this.warn(ws, 'rate'); }
-    return false;
-  }
+  allow(ws) { return allowMessage(this.buckets, ws, (w, code) => this.warn(w, code)); }
 
   warn(ws, code) { safeSend(ws, JSON.stringify({ t: 'error', code })); }
 
-  close(ws, code, reason) { try { ws.close(code, reason); } catch { /* 이미 닫힘 */ } }
+  close(ws, code, reason) { closeSocket(ws, code, reason); }
 }
-
-function safeSend(ws, text) { try { ws.send(text); } catch { /* 닫히는 중 */ } }
 
 // Worker 가 붙여 준 닉네임 (관전하는 사람만)
 function nickOf(request) {
   try { return decodeURIComponent(request.headers.get('X-Net-Nick') ?? '').slice(0, 20); } catch { return ''; }
 }
 
-// data 안의 모든 글자열(이름표 포함)을 거른다. 너무 깊으면 던진다(→ 'bad').
-function cleanData(value, depth = 0) {
-  if (typeof value === 'string') return maskText(value);
-  if (!value || typeof value !== 'object') return value;
-  if (depth >= DATA_DEPTH) throw Error('too deep');
-  if (Array.isArray(value)) return value.map(v => cleanData(v, depth + 1));
-  const out = Object.create(null);
-  for (const [key, v] of Object.entries(value)) out[maskText(key)] = cleanData(v, depth + 1);
-  return out;
-}

@@ -4,6 +4,7 @@
 import { json, now, userId, clientIp, readText, HttpError } from './http.js';
 import { hitStatements, sameText } from './auth.js';
 import { lobby } from './social.js';
+import { GAME_RE, WORLD_RE, worldOpen, listedWorlds, worldStub } from './rooms.js';
 
 export const PASSWORD_MIN = 12;
 const SESSION_MS = 12 * 60 * 60 * 1000;
@@ -160,6 +161,7 @@ export async function handleAdmin(request, env, parts) {
     let body = {};
     try { body = await request.json(); } catch { /* 이유 없음 */ }
     const reason = String(body?.reason ?? '').slice(0, 200);
+    let removed;
     if (m[2] === 'suspend') {
       await db.batch([
         db.prepare('UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ?').bind(now(), reason, id),
@@ -169,16 +171,62 @@ export async function handleAdmin(request, env, parts) {
         db.prepare('INSERT INTO admin_actions (actor, ip, action, target_id, detail, created) VALUES (?, ?, ?, ?, ?, ?)').bind(ACTOR, ip, 'suspend', id, reason, now()),
       ]);
       await lobby(env).kick(id, 'suspended'); // 접속 중이면 바로 끊는다
+      // purgeCells: true 면 같이 쓰는 세계(WORLD_NAMES 에 적힌 것 모두)에 놓은 칸도 지운다.
+      // 채팅 때문에 정지한 아이가 지은 집까지 늘 지우지는 않도록, 관리자가 고를 때만 한다.
+      if (body?.purgeCells === true) {
+        removed = 0;
+        for (const { game, world } of listedWorlds(env)) removed += (await purgeWorldUser(env, ip, game, world, id)).removed;
+      }
     } else {
       await db.batch([
         db.prepare('UPDATE users SET suspended_at = NULL, suspended_reason = NULL WHERE id = ?').bind(id),
         db.prepare('INSERT INTO admin_actions (actor, ip, action, target_id, detail, created) VALUES (?, ?, ?, ?, ?, ?)').bind(ACTOR, ip, 'unsuspend', id, reason, now()),
       ]);
     }
-    return respond({ ok: true });
+    return respond(removed === undefined ? { ok: true } : { ok: true, removed });
+  }
+
+  // ---- 같이 쓰는 세계: 칸 보기와 치우기 ----
+  if (request.method === 'GET' && path === 'worlds') {
+    const worlds = [];
+    for (const { game, world } of listedWorlds(env)) worlds.push({ game, world, ...(await worldStub(env, game, world).stats()) });
+    return respond({ worlds });
+  }
+
+  m = /^worlds\/([^/]+)\/([^/]+)\/(owners|clear|users\/(\d+)\/purge)$/.exec(path);
+  if (m) {
+    const [, game, world, what, uid] = m;
+    if (!GAME_RE.test(game) || !WORLD_RE.test(world) || !worldOpen(env, game, world)) return respond({ error: 'no-world' }, 404);
+    const stub = worldStub(env, game, world);
+    if (request.method === 'GET' && what === 'owners') {
+      const owners = await stub.owners();
+      const names = new Map();
+      if (owners.length) {
+        const { results } = await db.prepare(`SELECT id, nickname FROM users WHERE id IN (${owners.map(() => '?').join(', ')})`).bind(...owners.map(o => o.id)).all();
+        for (const r of results) names.set(r.id, r.nickname);
+      }
+      return respond({ owners: owners.map(o => ({ ...o, nickname: names.get(o.id) ?? '' })) });
+    }
+    if (request.method === 'POST' && what === 'clear') {
+      const { removed: n } = await stub.clearCells();
+      await db.prepare('INSERT INTO admin_actions (actor, ip, action, target_id, detail, created) VALUES (?, ?, ?, ?, ?, ?)')
+        .bind(ACTOR, ip, 'clear-world', null, `${game}:${world} 칸 ${n}개`, now()).run();
+      return respond({ ok: true, removed: n });
+    }
+    if (request.method === 'POST' && uid) return respond({ ok: true, ...(await purgeWorldUser(env, ip, game, world, userId(uid))) });
   }
 
   return respond({ error: 'not-found' }, 404);
+}
+
+// 한 사람이 한 세계에 놓은 칸을 모두 지우고 관리 동작으로 남긴다 (지운 것이 있을 때만).
+async function purgeWorldUser(env, ip, game, world, uid) {
+  const { removed } = await worldStub(env, game, world).purgeUser(uid);
+  if (removed) {
+    await env.DB.prepare('INSERT INTO admin_actions (actor, ip, action, target_id, detail, created) VALUES (?, ?, ?, ?, ?, ?)')
+      .bind(ACTOR, ip, 'purge-world-cells', uid, `${game}:${world} 칸 ${removed}개`, now()).run();
+  }
+  return { removed };
 }
 
 const LOGIN_ERRORS = {
@@ -230,6 +278,10 @@ const PAGE = `<!doctype html>
 <form method="post" action="/admin/logout"><button>나가기</button></form>
 <h2>신고 <select id="status"><option value="open">처리 전</option><option value="actioned">정지함</option><option value="dismissed">무시함</option></select></h2>
 <div id="reports">불러오는 중…</div>
+<h2>같이 쓰는 세계</h2>
+<p class="meta">장난으로 지은 것을 치울 때 씁니다. 지운 칸은 되돌릴 수 없어요.</p>
+<table id="worlds"></table>
+<div id="owners"></div>
 <h2>사용자 찾기</h2>
 <form id="search"><input id="q" placeholder="닉네임 앞부분"> <button>찾기</button></form>
 <table id="users"></table>
@@ -246,7 +298,46 @@ async function api(path, body) {
 async function suspend(user) {
   const reason = prompt(user.nickname + ' 계정을 정지할까요? 이유:', '채팅 규칙 위반');
   if (reason === null) return;
-  await api('users/' + user.id + '/suspend', { reason }); load();
+  const purgeCells = confirm(user.nickname + ' 님이 같이 쓰는 세계에 놓은 칸도 모두 지울까요? (취소를 누르면 칸은 남겨요)');
+  const res = await api('users/' + user.id + '/suspend', { reason, purgeCells });
+  if (purgeCells) alert('지운 칸: ' + res.removed + '개');
+  load(); loadWorlds();
+}
+async function loadWorlds() {
+  const data = await api('worlds');
+  const table = $('#worlds'); table.textContent = '';
+  if (!data.worlds.length) table.append(el('tr', '열린 세계가 없어요.'));
+  for (const w of data.worlds) {
+    const name = w.game + '/' + w.world;
+    const tr = el('tr');
+    tr.append(el('td', name), el('td', '칸 ' + w.cells), el('td', '지금 ' + w.peers + '명'));
+    const td = el('td');
+    const b1 = el('button', '많이 놓은 사람'); b1.onclick = () => showOwners(w);
+    const b2 = el('button', '모두 지우기', 'danger');
+    b2.onclick = async () => {
+      if (prompt(name + ' 의 칸 ' + w.cells + '개를 모두 지워요. 지우려면 세계 이름(' + w.world + ')을 써 주세요.') !== w.world) return;
+      const res = await api('worlds/' + w.game + '/' + w.world + '/clear', {}); alert('지운 칸: ' + res.removed + '개'); loadWorlds();
+    };
+    td.append(b1, b2); tr.append(td); table.append(tr);
+  }
+}
+async function showOwners(w) {
+  const data = await api('worlds/' + w.game + '/' + w.world + '/owners');
+  const root = $('#owners'); root.textContent = '';
+  const card = el('div', undefined, 'card');
+  card.append(el('div', w.game + '/' + w.world + ' 에 칸을 많이 놓은 사람', 'meta'));
+  if (!data.owners.length) card.append(el('div', '(없음)'));
+  for (const o of data.owners) {
+    const row = el('div', o.nickname + '(' + o.id + ')  남는 칸 ' + o.lasting + ', 사라지는 칸 ' + o.ttl + '  ');
+    const b = el('button', '이 사람 칸 지우기', 'danger');
+    b.onclick = async () => {
+      if (!confirm(o.nickname + ' 님이 ' + w.game + '/' + w.world + ' 에 놓은 칸을 모두 지울까요?')) return;
+      const res = await api('worlds/' + w.game + '/' + w.world + '/users/' + o.id + '/purge', {}); alert('지운 칸: ' + res.removed + '개');
+      showOwners(w); loadWorlds();
+    };
+    row.append(b); card.append(row);
+  }
+  root.append(card);
 }
 async function unsuspend(user) {
   if (!confirm(user.nickname + ' 계정 정지를 풀까요?')) return;
@@ -269,7 +360,7 @@ async function load() {
   if (!data.reports.length) root.append(el('p', '신고가 없어요.'));
   for (const r of data.reports) {
     const card = el('div', undefined, 'card');
-    card.append(el('div', '#' + r.id + '  ' + when(r.created) + '  (' + r.context.kind + (r.context.room ? ' ' + r.context.game + '/' + r.context.room : '') + ')', 'meta'));
+    card.append(el('div', '#' + r.id + '  ' + when(r.created) + '  (' + r.context.kind + (r.context.room ? ' ' + r.context.game + '/' + r.context.room : r.context.world ? ' ' + r.context.game + '/' + r.context.world : '') + ')', 'meta'));
     card.append(el('div', r.reporter.nickname + '(' + r.reporter.id + ') 님이 ' + r.target.nickname + '(' + r.target.id + ') 님을 신고' + (r.target.suspended ? ' (정지됨)' : '')));
     if (r.reason) card.append(el('div', '이유: ' + r.reason));
     const ev = r.evidence || {};
@@ -302,5 +393,6 @@ $('#search').onsubmit = async e => {
   }
 };
 load();
+loadWorlds();
 </script>
 </body></html>`;

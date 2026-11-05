@@ -5,7 +5,7 @@ seonn.dev 게임 허브입니다. 게임은 `games/<이름>/`, 아이폰과 안�
 ## 멀티플레이: 공용 서버 하나를 모든 게임이 같이 씁니다
 
 - 서버: `services/net` (Cloudflare Worker, 주소 `https://net.seonn.workers.dev`, WebSocket `wss://net.seonn.workers.dev`). 게임마다 서버를 새로 만들지 않습니다.
-- 게임 쪽 코드: `packages/net/index.mjs`(`Room`, 방)와 `packages/net/social.mjs`(`Account`, `Social`, 계정과 친구와 매칭과 저장). 쓰는 법은 `services/net/README.md` 의 "게임에서 쓰는 법", "계정과 친구", "게임 저장".
+- 게임 쪽 코드: `packages/net/index.mjs`(`Room`, 방), `packages/net/social.mjs`(`Account`, `Social`, 계정과 친구와 매칭과 저장), `packages/net/world.mjs`(`World`, 같이 쓰는 세계). 쓰는 법은 `services/net/README.md` 의 "게임에서 쓰는 법", "계정과 친구", "게임 저장".
 - PeerJS 로 새 온라인 기능을 만들지 않습니다. 예전 게임의 `room.mjs` 를 복사하지 않습니다.
 - 잘 만든 예: 젤리 타워 `games/puyo-puyo/` (`online.mjs` 방과 매칭, `net.mjs` 서버 주소 바꾸기, `cloud.mjs` 클라우드 저장, `social-ui.mjs` 친구 화면).
 
@@ -17,6 +17,7 @@ seonn.dev 게임 허브입니다. 게임은 `games/<이름>/`, 아이폰과 안�
 | 모르는 사람과 바로 붙기 (게임 찾기) | `social.findMatch(game)` | 예 |
 | 친구 목록에서 초대하기 | `social.invite(friendId, game)` | 예 |
 | 다른 기기에서 이어 하기 (클라우드 저장) | `account.loadSave(game)`, `account.putSave(game, data, baseRevision)` | 예 |
+| 모두 나가도 놓은 블록이 남는 같이 쓰는 세계 (12명까지) | `packages/net/world.mjs` 의 `new World(hooks, { game, world })` → `world.open(await account.ticket())` (`services/net/README.md` "같이 쓰는 세계"). 세계는 `services/net/wrangler.jsonc` 의 `WORLD_NAMES` 에 적고 서버를 다시 배포해야 생깁니다 | 예 |
 
 - `game` 이름은 영어 소문자, 숫자, `-` 로 짓습니다(예 `free-drive`). 게임마다 하나씩 정해 두고 바꾸지 않습니다.
 - 계정은 닉네임+비밀번호이고 모든 게임이 같은 계정을 씁니다. 이메일은 받지 않고, 비밀번호를 잊으면 되찾을 수 없습니다.
@@ -62,5 +63,6 @@ npm test
 | Free Drive `free-drive` | 공용 서버 방 코드(`Room`, 2명). 계정, 게임 찾기, 채팅 없음 |
 | 미네랄 밸리 `mineral-valley` | 공용 서버 방 코드(`Room`, 2명). 계정, 게임 찾기, 채팅 없음 |
 | SNOWFLOW `snowflow` | 공용 서버 방 코드(`Room`, 4명까지). 계정, 게임 찾기, 채팅 없음. 플레이어가 쓴 이름(10글자)이 친구끼리 오감 |
+| 사회적 게임 `social-game` | 온라인 계정: 클라우드 저장(이야기, 돈, 가방), 같이 사는 동네(`World`, `town-1`~`town-4`, 12명까지): 놓은 블럭과 부순 나무 공유, 위치(집 안은 숨김), 채팅과 차단, 신고. 서버 배포 전에는 혼자 하기. 시험 `games/social-game/online-check.mjs` |
 
 방 코드로 옮긴 게임에 게임 찾기나 친구 초대를 더하려면 위 표의 `Social` 을 쓰고, 젤리 타워의 `online.mjs` 와 `social-ui.mjs` 를 보고 만듭니다. 결정 근거는 `requirements/matchmaking-chat-friends.md`.

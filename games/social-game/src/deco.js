@@ -6,6 +6,7 @@ import { box, rbox, cyl, put, bake, displace } from './geom.js';
 import { Scatter } from './scatter.js';
 import { LAYOUT, SITES, ROADS2, groundAt } from './world.js';
 import { rng } from './noise.js';
+import { scatterKey } from '../online.mjs';
 
 const LOTS = [
   { x0: -168, x1: -132, z0: -24.5, z1: -11.2, label: 'home' },
@@ -131,7 +132,8 @@ export function dressTown({ scene, props, build, colliders, lights, quality }) {
     const i = sc[kind].add(x, y - 0.03, z, ry, s);
     if (i < 0) return;
     const b = BREAK[kind];
-    const e = { min: [x - b.r * s, y, z - b.r * s], max: [x + b.r * s, y + b.h * s, z + b.r * s], item: b.item, count: b.count, hardness: b.hardness, color: b.color, scatter: sc[kind], index: i, name: b.name };
+    // key: same on every computer (seeded placement), so the shared town can name it
+    const e = { min: [x - b.r * s, y, z - b.r * s], max: [x + b.r * s, y + b.h * s, z + b.r * s], item: b.item, count: b.count, hardness: b.hardness, color: b.color, scatter: sc[kind], index: i, name: b.name, key: scatterKey(kind, i) };
     if (!b.soft) e.col = colliders.add({ min: [x - b.r * 0.6 * s, y, z - b.r * 0.6 * s], max: [x + b.r * 0.6 * s, y + b.h * s, z + b.r * 0.6 * s], tag: 'tree' });
     build?.addProp(e);
     breakables.push(e);

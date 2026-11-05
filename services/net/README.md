@@ -1,11 +1,12 @@
 # net: 모든 게임이 같이 쓰는 멀티플레이 서버
 
-seonn.dev 게임들이 같이 놀 때 쓰는 서버입니다. Cloudflare Worker 하나, Durable Object 세 종류(`Room`, `Lobby`, `Matchmaker`), D1 데이터베이스 `net` 으로 되어 있고, 주소는 `net.seonn.workers.dev` 입니다. 나중에 seonn.dev DNS를 Cloudflare로 옮기면 `net.seonn.dev` 로 바꿀 수 있습니다. 무엇을 왜 만들었는지는 [`requirements/matchmaking-chat-friends.md`](../../requirements/matchmaking-chat-friends.md).
+seonn.dev 게임들이 같이 놀 때 쓰는 서버입니다. Cloudflare Worker 하나, Durable Object 네 종류(`Room`, `Lobby`, `Matchmaker`, `World`), D1 데이터베이스 `net` 으로 되어 있고, 주소는 `net.seonn.workers.dev` 입니다. 나중에 seonn.dev DNS를 Cloudflare로 옮기면 `net.seonn.dev` 로 바꿀 수 있습니다. 무엇을 왜 만들었는지는 [`requirements/matchmaking-chat-friends.md`](../../requirements/matchmaking-chat-friends.md).
 
 - 방 하나 = Durable Object `Room` 하나 (`<게임 이름>:<방 코드>`). 다른 게임끼리는 코드가 같아도 다른 방입니다.
 - 서버는 게임 내용을 모릅니다. 들어온 사람에게 번호(`p1`, `p2`, ...)를 주고, 들어오고 나간 걸 알리고, 게임이 보낸 JSON을 다른 사람에게 그대로 전합니다. 게임 데이터는 저장하지도, 로그로 남기지도 않습니다.
 - 예외는 채팅 글(`data.chat`)입니다. 서버가 욕설, 전화번호, 링크, 메신저 아이디를 가려서 보내고, 신고에 쓰려고 방마다 거른 글 마지막 50줄을 기억합니다(모두 나간 뒤 10분까지).
 - 랜덤 매칭과 친구 초대로 만든 방(관계자 방)에서는 `data` 안의 모든 글자열(칸 이름 포함)을 거릅니다. 아래 "관계자 방에서 거르는 것".
+- 같이 쓰는 세계 하나 = Durable Object `World` 하나 (`<게임 이름>:<세계 이름>`). 방과 달리 모두 나가도 칸(놓은 블록 같은 것)이 남습니다. 아래 "같이 쓰는 세계".
 - 계정(닉네임+비밀번호, 이메일 없음), 친구, 1:1 대화, 차단, 신고, 게임 저장(클라우드 세이브)은 D1 에 저장합니다. 접속 상태와 알림은 `Lobby`(전체에 하나), 랜덤 매칭 줄은 `Matchmaker`(게임마다 하나)가 맡습니다.
 
 게임별로 이 서버를 어떻게 쓰는지는 저장소 루트 `AGENTS.md` 의 "게임별 지금 상태" 표에 있습니다. 젤리 타워의 기기 계정(친구 코드, 방 코드)만 아직 PeerJS 공용 서버를 씁니다.
@@ -129,9 +130,9 @@ const { room, opponent } = await social.acceptInvite(inv.id, roomHooks);        
 | POST | `/invites/:id/accept` | 🔑 | | `{code, game, opponent}` (둘 다 `/live` 로 `room` 알림도 받음). 404, 409 `expired`/`offline` |
 | POST | `/invites/:id/decline` | 🔑 | | `{ok}` |
 | DELETE | `/invites/:id` | 🔑 | | `{ok}` 보낸 사람이 취소 |
-| POST | `/reports` | 🔑 | `{target, context:{kind:'dm'|'room'|'profile', game, room}, reason, messages}` | 201 `{id}`. 1시간에 10번 |
+| POST | `/reports` | 🔑 | `{target, context:{kind:'dm'|'room'|'world'|'profile', game, room, world}, reason, messages}` | 201 `{id}`. 1시간에 10번 |
 
-신고 증거는 서버가 직접 모읍니다. `dm` 은 두 사람 사이 마지막 50개, `room` 은 그 방이 기억하는 거른 채팅 50줄(신고한 사람이 그 방에 있었을 때만). 신고한 사람이 보낸 `messages` 는 글자만 `{text}` 로(마지막 50개, 한 줄 300글자) 따로 저장합니다. `reason` 은 관리자만 보므로 거르지 않고 200글자까지 그대로 저장합니다.
+신고 증거는 서버가 직접 모읍니다. `dm` 은 두 사람 사이 마지막 50개, `room` 은 그 방이 기억하는 거른 채팅 50줄(신고한 사람이 그 방에 있었을 때만), `world` 는 그 세계가 기억하는 거른 채팅 50줄(신고한 사람이 그 세계에 있었을 때만). 신고한 사람이 보낸 `messages` 는 글자만 `{text}` 로(마지막 50개, 한 줄 300글자) 따로 저장합니다. `reason` 은 관리자만 보므로 거르지 않고 200글자까지 그대로 저장합니다.
 
 ### WebSocket
 
@@ -151,6 +152,7 @@ const { room, opponent } = await social.acceptInvite(inv.id, roomHooks);        
 | `/live?ticket=` | 접속 상태와 알림. 25초마다 `{"t":"ping"}` | `hello {user, online:[친구 번호], invites:[...]}`, `online {id}`, `offline {id}`, `friend-request {from}`, `friend-accepted {friend}`, `friend-removed {id}`, `dm {message, from}`, `invite {invite}`, `invite-declined {invite, by}`, `invite-canceled {invite}`, `room {via:'invite', invite, code, game, opponent}`, `match {code, game, opponent}`, `kicked {reason}` (정지, close 4403) |
 | `/match/:game?ticket=` | 랜덤 매칭 줄. 10초마다 핑, `{"t":"cancel"}` 로 빠짐 | `queued`, `matched {code, game, opponent:{id,nickname}}` 뒤 닫힘, `canceled`, `replaced`(다른 기기에서 또 줄 섬), `error {code}` |
 | `/rooms/:game/:code?ticket=` | 방 (위 "주고받는 메시지"). 표는 매칭, 초대 방에서만 필요 | |
+| `/worlds/:game/:world?ticket=` | 같이 쓰는 세계 (아래 "같이 쓰는 세계"). 표가 꼭 필요 | |
 
 랜덤 매칭은 먼저 기다린 사람부터 봅니다. 서로 차단한 사이, 정지된 사람, 30초 넘게 소식 없는 사람은 건너뜁니다. 연결이 끊기면 줄에서 빠집니다.
 
@@ -217,9 +219,70 @@ await account.putSave('jelly-tower', localData, 0, { importId: 'device-1234abcd'
 - 클라이언트: 관전 방(`social.watch`)의 `room.chat(text)`, `room.cheer(peerId, k)`, 받는 쪽은 `watcherMessage(data, user, fromId)` 훅 (`packages/net/index.mjs`).
 - D1 을 고치는 것(마이그레이션)은 없습니다. **서버만 다시 배포하면 됩니다.** 배포 전의 서버는 관전자가 보낸 것을 모두 `watch-only` 로 돌려보내고, 게임은 그때 "게임 서버가 새 버전으로 바뀌면 쓸 수 있어"라고만 안내합니다. 시험은 `test/stats.test.js` 의 "a viewer can chat and cheer".
 
+## 같이 쓰는 세계 (World, 2026-11-05)
+
+블록을 놓는 마을처럼, 누가 놓은 것이 모두 나간 뒤에도 남아야 하는 게임이 씁니다. 세계 하나 = Durable Object `World` 하나(`<게임>:<세계 이름>`)이고, 칸은 그 세계의 SQLite 저장소에 저장합니다(D1 이 아님). 코드는 `src/world.js`, 클라이언트는 `packages/net/world.mjs`, 시험은 `test/world.test.js`.
+
+```js
+import { Account } from '../../packages/net/index.mjs';
+import { World } from '../../packages/net/world.mjs';   // index.mjs 에서는 내보내지 않는다 (아래)
+const world = new World({
+  ready: () => buildTown(world.cells),            // 칸을 모두 받음
+  cell: (k, entry) => entry ? place(k, entry.v) : remove(k),
+  join: (id, user) => addPlayer(id, user.nickname), leave: id => removePlayer(id),
+  pose: (id, d) => movePlayer(id, d), message: (data, from) => showChat(from, data.chat),
+  error: (code, k) => code === 'taken' && toast('다른 사람이 놓은 블록이야'),
+}, { game: 'social-game', world: 'town-1' });   // wrangler.jsonc 의 WORLD_NAMES 에 있는 세계만 (아래)
+await world.open(await account.ticket());          // 로그인한 사람만
+world.set('3|0|5', { b: 'stone' });                 // 칸 놓기
+world.set('tree|7', 'stump', { ttl: 600 });         // 10분 뒤 사라지는 칸
+world.pose({ x, y, z });                            // 위치 (1초에 15번까지만 보냄, 마지막 것이 감)
+world.chat('안녕');
+```
+
+- 로그인한 사람만 들어옵니다(`?ticket=`, 없으면 401 `login-required`, 틀리면 401 `bad-ticket`). 정지된 계정은 표를 받을 수 없고, 정지하면 들어가 있는 세계에서도 바로 끊깁니다(`suspended`, close 4403). 세계 이름은 영어 소문자, 숫자, `-` 16글자까지(아니면 400 `bad-world`).
+- 세계는 `wrangler.jsonc` 의 `vars.WORLD_NAMES`(`"<게임>:<세계>,<게임>:<세계>"`)에 적힌 것만 있습니다. 아무나 세계 이름을 지어 저장소가 남는 Durable Object 를 끝없이 만들지 못하게 하려는 것입니다. 없는 세계는 표를 보기 전에 404 `{"error":"no-world"}` 이고, 클라이언트 `open()` 은 `no-world`("이 세계는 아직 없어.")로 실패합니다. 지금은 `social-game:town-1` ~ `town-4` 입니다. **게임이 세계를 더하려면** `WORLD_NAMES` 에 `"<게임>:<세계>"` 를 쉼표로 더하고 서버를 다시 배포합니다(부모님께 부탁). `"<게임>:*"` 은 그 게임의 모든 세계를 여는데 시험(`vitest.config.js`)에서만 씁니다. 바인딩 이름 `WORLDS` 와 겹치지 않게 이름을 `WORLD_NAMES` 로 했습니다.
+- 들어가기는 한 계정이 1분에 20번까지입니다(들어올 때마다 칸을 모두 보내므로). 넘으면 연결을 받은 뒤 `welcome` 없이 `{"t":"error","code":"rate"}` 를 보내고 close 4429 로 닫습니다. 클라이언트는 welcome 전의 `rate` 를 `join-rate`("너무 자주 들어왔어. 1분 뒤에 다시 해 줘.")로 바꿔 `open()` 을 실패시킵니다.
+- 한 세계에 12명까지(13번째는 `{"t":"error","code":"full","max":12}`, close 4403). 같은 계정이 또 들어오면 예전 연결이 `replaced`(close 4409)로 닫히고 새 연결이 같은 번호를 받습니다. 남은 사람에게는 아무것도 알리지 않습니다(같은 사람이라서).
+- 칸: 이름 `k` 는 1~64글자, 영어, 숫자, `| . _ : -` 만. 값 `v` 는 아무 JSON 이지만 `JSON.stringify(v)` 가 256글자까지이고, 안의 글자열(칸 이름 포함)은 하나에 24글자까지이며 모두 거르개를 거칩니다(칸에 글을 숨겨 보내지 못하게). 여러 글자열에 나눠 넣은 전화번호나 링크(`["010","1234","5678"]`, `{"010":"1234","x":"5678"}`, `["naver",".com"]`)도 `bad` 로 거절합니다(안의 글자열을 띄어쓰기로 이어 붙여 한 번 더 보고, 숫자가 든 글자열만 이어 붙여서도 봅니다. 전화번호는 대전 채팅의 나눠 보낸 번호처럼 숫자 9개 이상). 칸 여러 개에 나눠 넣은 것은 찾지 못합니다.
+- **사람이 쓴 글은 `data.chat`(`world.chat(text)`)에만 넣습니다.** 칸 값, 위치, 다른 메시지 키의 글자열은 게임 데이터로 보고 가리기만 하고, 채팅처럼 횟수 제한, 신고용 기록, 나눠 보낸 번호 찾기(줄을 넘어서)를 하지 않습니다.
+- 칸마다 처음 놓은 사람(주인, 사용자 번호와 그때 닉네임)과 바꾼 때를 저장합니다. 주인만 바꾸거나 지울 수 있고, 남의 칸이면 `taken`, 남의 칸을 지우려 하면 `not-owner`, 없는 칸을 지우면 `missing`. 정지되거나 계정을 지워도 놓은 칸은 남습니다(관리 페이지에서 지울 수 있음).
+- `ttl`(60~3600초 정수)을 주면 그 시간 뒤에 사라지는 칸입니다(부순 나무가 다시 자라기 같은 것). 사라질 때 서버는 알리지 않고, 클라이언트가 `exp`(사라지는 때, ms)를 보고 지웁니다. 지난 칸은 없는 칸으로 치고 서버가 가끔 지웁니다.
+- 한도: 한 사람이 한 세계에 ttl 없는 칸 400개, 아직 안 사라진 ttl 칸 100개(둘 다 `limit`), 한 세계에 칸 20,000개(ttl 칸 포함, `world-full`). 오류에는 `k` 가 같이 옵니다. 관리 페이지에서 한 사람의 칸을 지우면 그 사람의 칸 수도 0 이 됩니다.
+- 칸 놓기와 지우기(`set`, `del`)는 메시지 횟수와 따로 한 사람이 1초에 4번(몰아서 20번)까지이고 넘으면 `rate`(`k` 같이), 한 세계에서 하루(UTC)에 2,000번까지이고 넘으면 `limit-day`(`k` 같이)입니다. 값도 닉네임도 그대로인 ttl 없는 칸을 다시 놓으면 저장하지 않고 보낸 사람에게만 `cell` 을 돌려줍니다(하루 횟수에 세지 않음). ttl 칸을 다시 놓는 것은 사라질 때를 미루는 것이라 저장합니다.
+- 위치(`pose`, 512글자까지)와 메시지(`send`)는 저장하지 않고 전하기만 합니다. 안의 글자열은 모두 거릅니다(관계자 방과 같음). 채팅(`data.chat`)은 대전 채팅과 같은 거르개, 1초에 1줄(`chat-rate`), 신고용 마지막 50줄 기억(모두 나간 뒤 10분까지)입니다.
+- 서로 차단한 사이(어느 쪽이든)에는 위치와 메시지를 전하지 않습니다. 칸은 같이 봅니다. 차단 여부는 들어올 때 확인하고(들어오기는 한 세계에서 한 번에 하나씩 처리해서, 동시에 들어와도 빠지지 않음), 같이 있는 동안 `POST`/`DELETE /blocks/:id` 를 하면 `Lobby` 가 차단한 사람이 오늘 들어간 세계에 알려 바로 적용됩니다.
+- 메시지(`send`)의 `data` 에 여러 글자열로 나눠 넣은 전화번호나 링크는 거절하지 않고 그 부분만 `*` 로 가립니다(`["010","1234","5678"]` → `["***","****","****"]`).
+- 메시지 하나 16KB, 1초에 30개(몰아서 60개), 30초 동안 소식이 없으면 내보내기(4408)는 방과 같습니다.
+- 게임 클라이언트가 처리할 오류 코드: `taken`, `not-owner`, `missing`, `limit`, `limit-day`, `world-full`, `bad`, `rate`, `chat-rate`, `too-big`(들어온 뒤, `error(code, k)` 훅) 와 `full`, `replaced`, `suspended`, `login-required`, `no-world`, `not-deployed`, `join-rate`, `network`, `timeout`(`open()` 실패나 끊김).
+
+| 방향 | 메시지 |
+|---|---|
+| 들어가기 | `GET /worlds/:game/:world?ticket=` (WebSocket) |
+| 서버 → 나 (들어올 때) | `{"t":"welcome","id":"p1","user":{"id","nickname"},"max":12,"peers":[{"id","user"}]}` 뒤 `{"t":"cells","list":[{"k","v","owner":{"id","nickname"},"exp"?}],"done":false}` ... 마지막은 `"done":true` (500개씩, 비어 있어도 하나) |
+| 서버 → 나 | `{"t":"cell","k","v","owner","exp"?}` (지우면 `"v":null`), `{"t":"join","id","user"}`, `{"t":"leave","id"}`, `{"t":"pose","id","d"}`, `{"t":"msg","from","data"}`, `{"t":"error","code","k"?}`, `{"t":"pong"}` |
+| 나 → 서버 | `{"t":"set","k","v","ttl"?}`, `{"t":"del","k"}`, `{"t":"pose","d"}`, `{"t":"send","data"}`, `{"t":"send","to":"p2","data"}`, `{"t":"ping"}`, `{"t":"bye"}` |
+
+- 칸 소식(`cell`)은 보낸 사람에게도 옵니다. 클라이언트는 그걸 받아 `world.cells` 를 고칩니다(미리 바꾸지 않음).
+- 신고: `POST /reports` 의 `context: { kind: 'world', game, world }`. 서버가 그 세계가 기억하는 채팅 50줄을 증거로 붙입니다(신고한 사람이 그 세계에 있었을 때만, 아니면 `not-in-world`). 세계마다 들어왔던 사람 마지막 500명을 기억합니다.
+- 클라이언트 `open()` 은 칸을 모두 받으면 끝나고, 실패하면 `error.code` 가 있는 Error 를 던집니다. 예전 서버(World 를 모르는 서버)는 `/worlds` 에 404 를 주므로 `not-deployed`("같이 노는 세계는 아직 준비 중이야.")가 됩니다. 끊기면 다시 붙지 않으니(방과 같음), 게임이 새 표로 `open()` 을 다시 부릅니다.
+- `World` 는 `packages/net/world.mjs` 에서 가져옵니다. `index.mjs` 는 pixelcraft 가 `index.mjs`, `social.mjs` 두 파일만 `public/play/pixelcraft/net-client/` 에 복사해 쓰므로(`games/pixelcraft/sync-net.mjs`), 거기서 `world.mjs` 를 부르면 pixelcraft 가 깨집니다.
+- D1 을 고치는 것(마이그레이션)은 없습니다. Durable Object 마이그레이션 `v3`(`World`)이 있어서 **서버만 다시 배포하면 됩니다**(`npx wrangler deploy` 가 같이 적용).
+- 장난으로 지은 것 치우기: 아래 "관리 페이지"의 "같이 쓰는 세계".
+
 ## 관리 페이지
 
-`https://net.seonn.workers.dev/admin` 에서 신고(서버가 모은 기록과 신고자가 보낸 기록)를 보고 계정을 정지하거나 풀고, 신고를 무시하고, 닉네임으로 사용자를 찾습니다. 정지하면 그 계정의 로그인과 아직 안 쓴 표가 모두 지워지고, `/live` 연결, 들어가 있는 방, 매칭 줄이 바로 끊기며, 로그인과 매칭, 표로 방 들어가기가 거부됩니다. 방과 매칭 줄을 찾으려고 `Lobby` 가 사람마다 하루 안에 들어간 방과 줄을 20곳까지 적어 둡니다(방, 매칭 줄에 표로 들어올 때 적음). 코드로 만든 공개 방에 표 없이 들어간 연결은 누구인지 모르므로 끊지 못합니다. 관리 동작은 `admin_actions` 표에 남습니다.
+`https://net.seonn.workers.dev/admin` 에서 신고(서버가 모은 기록과 신고자가 보낸 기록)를 보고 계정을 정지하거나 풀고, 신고를 무시하고, 닉네임으로 사용자를 찾습니다. 정지하면 그 계정의 로그인과 아직 안 쓴 표가 모두 지워지고, `/live` 연결, 들어가 있는 방과 세계, 매칭 줄이 바로 끊기며, 로그인과 매칭, 표로 방 들어가기가 거부됩니다. 방, 세계, 매칭 줄을 찾으려고 `Lobby` 가 사람마다 하루 안에 들어간 곳을 20곳까지 적어 둡니다(표로 들어올 때 적음). 코드로 만든 공개 방에 표 없이 들어간 연결은 누구인지 모르므로 끊지 못합니다. 관리 동작은 `admin_actions` 표에 남습니다.
+
+같이 쓰는 세계(World) 치우기: "같이 쓰는 세계" 칸에 `WORLD_NAMES` 의 세계마다 칸 수와 지금 있는 사람 수가 나옵니다. "많이 놓은 사람"은 칸을 많이 놓은 20명(남는 칸, 사라지는 칸 수)을 보여 주고, 거기서 한 사람의 칸을 모두 지울 수 있습니다(`purge-world-cells`). "모두 지우기"는 세계 이름을 써야 그 세계의 칸을 모두 지웁니다(`clear-world`). 지운 칸은 그 세계에 있는 사람에게 칸마다 `{"t":"cell","k","v":null}` 로 알립니다. 계정을 정지할 때 "같이 쓰는 세계에 놓은 칸도 지울까요?"에 확인을 누르면 모든 세계에서 그 사람의 칸도 지웁니다. 채팅 때문에 정지한 아이가 지은 집까지 늘 지우지 않도록 고르게 했습니다. 지운 칸은 되돌릴 수 없습니다. 칸을 지울 때는 그 세계의 칸을 모두 훑어서(칸 20,000개면 읽기 20,000행), 모두 지우기는 지운 칸 수만큼 쓰기 행을 씁니다.
+
+| 방법 | 주소 | 보내는 것 | 결과 |
+|---|---|---|---|
+| GET | `/admin/api/worlds` | | `{worlds:[{game, world, cells, peers}]}` |
+| GET | `/admin/api/worlds/:game/:world/owners` | | `{owners:[{id, nickname, lasting, ttl}]}` |
+| POST | `/admin/api/worlds/:game/:world/users/:id/purge` | `{}` | `{ok, removed}` |
+| POST | `/admin/api/worlds/:game/:world/clear` | `{}` | `{ok, removed}` |
+| POST | `/admin/api/users/:id/suspend` | `{reason, purgeCells?: true}` | `{ok}` (`purgeCells` 면 `{ok, removed}`) |
 
 관리자 비밀번호 하나로 들어갑니다. 비밀번호는 코드나 `wrangler.jsonc` 에 적지 않고 Worker secret `ADMIN_PASSWORD` 로 둡니다(아래 "처음 한 번 배포하기" 5번). 비밀번호가 없거나 12글자보다 짧으면 `/admin` 아래는 모두 403 이고 "관리자 비밀번호가 설정되지 않았어요" 만 보입니다.
 
@@ -267,7 +330,7 @@ npm run check     # 배포 없이 빌드만 확인 (wrangler deploy --dry-run)
    ```bash
    npx wrangler d1 migrations apply net --remote
    ```
-4. 배포합니다. 끝나면 `https://net.<계정 서브도메인>.workers.dev` 주소가 나옵니다. 지금 계정의 서브도메인은 `seonn` 이라서 `https://net.seonn.workers.dev` 입니다. 이번 배포에서 Durable Object 마이그레이션 `v2`(`Lobby`, `Matchmaker`)가 같이 적용됩니다.
+4. 배포합니다. 끝나면 `https://net.<계정 서브도메인>.workers.dev` 주소가 나옵니다. 지금 계정의 서브도메인은 `seonn` 이라서 `https://net.seonn.workers.dev` 입니다. 배포할 때 Durable Object 마이그레이션(`v2` `Lobby`, `Matchmaker`, `v3` `World`) 중 아직 안 된 것이 같이 적용됩니다.
    ```bash
    npx wrangler deploy
    ```
@@ -294,6 +357,8 @@ npm run check     # 배포 없이 빌드만 확인 (wrangler deploy --dry-run)
 - 자동 핑 대답(`setWebSocketAutoResponse`)은 실행 시간 요금이 붙지 않습니다. 요청 건수에 들어가는지는 문서에 없어 확인 필요.
 - Worker CPU 시간: 요청당 10ms. 가입과 로그인의 비밀번호 계산이 여기에 가깝습니다("비밀번호 저장").
 - D1(무료): 하루 읽기 500만 행, 쓰기 10만 행, 5 GB. 1:1 대화 한 개가 쓰기 몇 행입니다. (D1 한도는 2026-10-05 에 문서를 다시 확인하지 못했음, 확인 필요)
-- `Lobby` 는 30초마다, `Matchmaker` 는 줄에 사람이 있는 동안 15초마다 알람이 돕니다.
+- `Lobby` 는 30초마다, `Matchmaker` 와 `World` 는 사람이 있는 동안 15초마다 알람이 돕니다.
+- `World` 는 깨어 있는 동안 칸을 메모리에 들고 있어서, 깨어난 뒤 처음 들어오는 사람 때만 그 세계의 칸을 모두 읽습니다(칸 20,000개면 20,000행). 한 계정이 1분에 20번까지만 들어올 수 있습니다. 칸 수는 따로 적어 두어서 칸을 놓을 때는 몇 행만 읽습니다.
+- SQLite 쓰기 하루 10만 행은 모든 게임과 모든 세계가 같이 씁니다. `World` 에서 쓰는 행: 새 칸 3행(ttl 칸은 색인 때문에 4행), 내 칸 바꾸기 1행, 그대로인 칸 0행, 지우기 3행(ttl 칸 4행), 시간이 지난 ttl 칸 치우기 칸마다 3행쯤, 들어오기 2행(번호와 들어온 사람 기록), 하루 횟수 20번마다 1행. 한 사람이 한 세계에서 하루 2,000번까지라 한 사람이 한 세계에서 쓸 수 있는 것은 많아야 8,000행쯤이고, 세계가 4개면 한 사람이 32,000행쯤(하루 한도의 3분의 1)까지 쓸 수 있습니다. 여러 계정으로 하면 더 쓸 수 있으므로, 한도에 닿으면 `WRITES_PER_DAY`(`src/world.js`)를 낮춥니다. 무료 요금제에서 하루 한도를 넘으면 그날 남은 시간 동안 모든 Durable Object 의 저장이 실패합니다(확인 필요).
 
 게임이 1초에 메시지를 많이 보낼수록(예: 위치를 1초에 20번) 요청 한도에 빨리 닿습니다. 꼭 필요한 것만 보내세요.
