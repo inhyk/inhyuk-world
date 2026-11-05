@@ -21,6 +21,7 @@ import { Cloud } from './src/cloud.js';
 import { Elevators } from './src/elevator.js';
 import { guide, guideText } from './src/nav.js';
 import { DriveTest } from './src/drivetest.js';
+import { Town } from './src/town.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
 
@@ -139,17 +140,19 @@ async function boot() {
   // saved blocks and broken things
   for (const b of state.placed ?? []) build.placeBlock(b.id, b.x, b.y, b.z, b.rot ?? 0, false);
   let cloud = null;
+  let town = null; // 같이 사는 동네: while in a town the solo blocks are kept aside (town.solo)
+  const soloPlaced = () => (town ? town.solo.forSave(build.dump()) : build.dump());
   let replacing = false; // a server save is being loaded: never write the old game over it
   let replacingAll = false; // a new story is starting
   // saveLocal: this computer only (timer, closing the tab). save: also the server, after real progress.
   const saveLocal = () => {
     if (replacing || replacingAll) return;
-    state.placed = build.dump();
+    state.placed = soloPlaced();
     try { localStorage.setItem(SAVE_KEY, serialize(state)); } catch { /* storage full or blocked */ }
   };
   const save = () => { if (replacing) return; saveLocal(); cloud?.queue(); };
   cloud = new Cloud({
-    getState: () => { state.placed = build.dump(); const { v, ...rest } = JSON.parse(serialize(state)); void v; return rest; },
+    getState: () => { state.placed = soloPlaced(); const { v, ...rest } = JSON.parse(serialize(state)); void v; return rest; },
     applyState: (data) => { replacing = true; try { localStorage.setItem(SAVE_KEY, serialize({ ...newState(), ...data })); } catch { /* blocked */ } location.reload(); },
     toast: (t) => hud.toast(t, 2600),
     choose: (localText, serverText) => new Promise((resolve) => {
@@ -168,6 +171,7 @@ async function boot() {
     if (e.item === 'shell') { state.counts.shells = (state.counts.shells ?? 0) + 1; hud.toast(`조개 +1 (${state.counts.shells}개)`, 1200); sfx('pickup'); }
     else { state.inventory[e.item] = (state.inventory[e.item] ?? 0) + e.count; hud.toast(`${e.name} → ${build.byId[e.item]?.name ?? e.item} +${e.count}`, 1300); build.renderHotbar(); }
     e.broken = true;
+    town?.propBroken(e);
   };
 
   const minimap = new Minimap($('minimap'));
@@ -182,6 +186,7 @@ async function boot() {
   day.g.onNewDay = () => {
     // trees, bushes and shells grow back every morning
     for (const e of deco.breakables) if (e.broken) {
+      if (town?.holdsProp(e)) continue; // the shared town still has it broken
       e.broken = false; e.scatter.setVisible(e.index, true); build.addProp(e);
       if (e.col) col.add(e.col);
     }
@@ -212,6 +217,14 @@ async function boot() {
     if (matchMedia('(pointer: coarse)').matches) { $('touch').classList.remove('hidden'); input.locked = true; }
   };
   $('play').addEventListener('click', start);
+  const ensureStarted = () => {
+    if (!$('start').classList.contains('hidden')) {
+      if ($('play').classList.contains('hidden')) return false; // a new game picks its story first
+      start();
+    }
+    return true;
+  };
+  town = new Town({ engine, build, places, player, vehicle, hud, cloud, input, colliders: col, breakables: deco.breakables, props, state, flight, openLogin: () => openLogin(), ensureStarted });
   // story choice (인혁: 직장인 / 어린이, 어린이는 남자 / 여자)
   const begin = (mode, gender) => {
     replacingAll = true;
@@ -232,12 +245,15 @@ async function boot() {
   let auto = false;
   try { auto = sessionStorage.getItem('sg-autoplay') === '1'; sessionStorage.removeItem('sg-autoplay'); } catch { /* none */ }
   if (auto) setTimeout(start, 50);
+  let townNext = 0;
+  try { townNext = Number(sessionStorage.getItem('sg-town') || 0); sessionStorage.removeItem('sg-town'); } catch { /* none */ }
+  if (auto && townNext) setTimeout(() => town.join(townNext), 400);
   engine.canvas.addEventListener('click', () => { if (!day.seat && !$('start').offsetParent) input.lock(); });
   const toggleView = () => { player.toggleView(); hud.setView(player.view); };
   $('btn-view').addEventListener('click', toggleView);
   $('btn-help').addEventListener('click', () => $('help').classList.toggle('hidden'));
   setupTouch(input);
-  setupLogin(cloud, input, hud);
+  setupLogin(cloud, input, hud, town);
   if (cloud.loggedIn) cloud.sync();
 
   // ------------------------------------------------------------------ frame
@@ -359,7 +375,8 @@ async function boot() {
       }
       navEl.classList.remove('hidden');
     } else navEl.classList.add('hidden');
-    minimap.draw(player.pos, driving ? vehicle.yaw : player.yaw, vehicle && !driving ? vehicle.pos : null, day.target());
+    town.update(dt);
+    minimap.draw(player.pos, driving ? vehicle.yaw : player.yaw, vehicle && !driving ? vehicle.pos : null, day.target(), town.dots());
   });
   engine.onUpdate((dt) => {
     if (flight.active) { /* flight.update placed the camera */ }
@@ -370,12 +387,12 @@ async function boot() {
   engine.start();
   addEventListener('beforeunload', saveLocal);
   setInterval(saveLocal, 15000);
-  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest };
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco };
   window.__ready = true;
 }
 
 let openLogin = () => {};
-function setupLogin(cloud, input, hud) {
+function setupLogin(cloud, input, hud, town) {
   const box = $('login'), err = $('login-err');
   const refresh = () => {
     const on = cloud.loggedIn;
@@ -413,7 +430,7 @@ function setupLogin(cloud, input, hud) {
   $('do-signup').addEventListener('click', () => go('signup'));
   for (const id of ['nick', 'pw']) $(id).addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.isComposing) go('login'); });
   $('do-save').addEventListener('click', () => cloud.upload());
-  $('do-logout').addEventListener('click', async () => { await cloud.logout(); hud.toast('로그아웃했어요. 이 컴퓨터에는 계속 저장돼요', 2400); refresh(); });
+  $('do-logout').addEventListener('click', async () => { town?.leave(true); await cloud.logout(); hud.toast('로그아웃했어요. 이 컴퓨터에는 계속 저장돼요', 2400); refresh(); });
   refresh();
 }
 

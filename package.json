@@ -55,7 +55,7 @@
     "test:keycap-tower": "node --test games/keycap-tower/core.test.mjs",
     "social-game:dev": "vite --config games/social-game/vite.config.js --host 127.0.0.1",
     "social-game:build": "vite build --config games/social-game/vite.config.js",
-    "test:social-game": "node --test games/social-game/core.test.mjs",
+    "test:social-game": "node --test \"games/social-game/*.test.mjs\"",
     "test:geometry-dash": "node --test games/geometry-dash/core.test.mjs",
     "test:undertale-echo": "node --test games/undertale-echo/*.test.mjs",
     "test:undertale-echo:browser": "node games/undertale-echo/browser-check.mjs",
