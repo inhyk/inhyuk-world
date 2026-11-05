@@ -35,6 +35,8 @@
     .now p { margin: 0; color: var(--muted); }
     .tag { margin-top: 12px; font-size: 13px; color: var(--muted); }
     .list { display: flex; flex-direction: column; gap: 10px; }
+    aside.list { max-height: calc(100dvh - 90px); overflow-y: auto; padding: 2px 4px 8px; position: sticky; top: 8px; }
+    @media (max-width: 920px) { aside.list { max-height: none; overflow: visible; position: static; } }
     .list h2, .section h2 { font-size: 16px; margin: 0 0 4px; color: var(--muted); font-weight: 700; }
     .card { display: grid; grid-template-columns: 136px 1fr; gap: 12px; align-items: center; width: 100%; text-align: left; font: inherit; color: inherit;
       background: var(--paper); border: 2px solid transparent; border-radius: 16px; padding: 8px; cursor: pointer; box-shadow: var(--shadow); transition: transform .12s, border-color .12s; }
@@ -45,6 +47,7 @@
     .card .m { font-size: 12px; color: var(--muted); }
     .card .playing { display: none; font-size: 12px; font-weight: 800; color: var(--accent); }
     .card[aria-current="true"] .playing { display: inline; }
+    .season { font-size: 13px; font-weight: 800; color: var(--accent); margin: 6px 0 -2px 4px; }
     .section { margin-top: 30px; }
     .chars { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
     .char { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; }
@@ -92,6 +95,10 @@
         <div class="char"><b style="background:var(--hot)">호떡이</b><p>눈송이의 단짝 갈색 햄스터.</p></div>
         <div class="char"><b style="background:var(--baby)">아기들</b><p>옆 동네에서 태어난 꼬마 햄스터들. 콩떡이를 "형아"라고 불러요.</p></div>
         <div class="char"><b style="background:var(--friend)">친구들</b><p>콩 파티와 응원을 좋아하는 햄스터 친구들.</p></div>
+        <div class="char"><b style="background:#aa6e28">들판 삼촌</b><p>유럽 밀밭에 사는 진짜 야생 햄스터. 땅굴에 겨울 식량을 모아 둬요.</p></div>
+        <div class="char"><b style="background:#6e6e82">또롱이</b><p>콩떡이의 사촌. 분홍 쳇바퀴 안이 제일 아늑하대요.</p></div>
+        <div class="char"><b style="background:#3c3c3c">점박이 형제</b><p>점무늬 아기 햄스터들. 탐험을 좋아해요.</p></div>
+        <div class="char"><b style="background:#28a0aa">햄 박사</b><p>햄스터 건강검진을 해 주는 의사 선생님.</p></div>
       </div>
     </section>
 
@@ -99,7 +106,7 @@
       <details>
         <summary>영상 출처와 라이선스</summary>
         <p class="note">화면에 나오는 햄스터는 모두 진짜 햄스터예요. 위키미디어 공용(Wikimedia Commons)에 자유 이용 허락으로 올라온 동영상을 잘라서 썼습니다. 햄스터 말소리와 배경 음악은 직접 합성했어요.</p>
-        <p class="note">콩떡이 햄찌 동영상 1~5화는 <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko" target="_blank" rel="noopener">CC BY-SA 4.0</a> 라이선스로 공개합니다. 각 영상 끝에도 출처가 나와요.</p>
+        <p class="note">콩떡이 햄찌 동영상 1~10화는 <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko" target="_blank" rel="noopener">CC BY-SA 4.0</a> 라이선스로 공개합니다. 각 영상 끝에도 출처가 나와요.</p>
         <ul class="credits" id="credits"></ul>
       </details>
     </section>
@@ -107,20 +114,33 @@
 
   <script>
     const EPISODES = [
-      { n: 1, title: "콩떡이의 간식 대작전", desc: "간식 창고를 찾아 나선 콩떡이! 철창 넘기 작전은 성공할까?", dur: "0:59" },
-      { n: 2, title: "쌩쌩이의 100킬로 대도전", desc: "쌩쌩이가 쳇바퀴로 100킬로에 도전! 그런데 쳇바퀴는…", dur: "1:09" },
-      { n: 3, title: "새 친구 눈송이가 왔다?!", desc: "하얗고 복슬복슬한 잠꾸러기 눈송이와 친구가 될 수 있을까?", dur: "0:58" },
-      { n: 4, title: "아기 햄스터가 태어났다?!", desc: "옆 동네에 아기 햄스터가 열 마리 넘게 태어났다!", dur: "1:00" },
-      { n: 5, title: "햄스터 운동회!", desc: "철창 오르기, 쳇바퀴, 콩 먹기, 오래 자기! 금메달은 누구에게?", dur: "1:07" },
+      { n: 1, season: 1, title: "콩떡이의 간식 대작전", desc: "간식 창고를 찾아 나선 콩떡이! 철창 넘기 작전은 성공할까?", dur: "0:59" },
+      { n: 2, season: 1, title: "쌩쌩이의 100킬로 대도전", desc: "쌩쌩이가 쳇바퀴로 100킬로에 도전! 그런데 쳇바퀴는…", dur: "1:09" },
+      { n: 3, season: 1, title: "새 친구 눈송이가 왔다?!", desc: "하얗고 복슬복슬한 잠꾸러기 눈송이와 친구가 될 수 있을까?", dur: "0:58" },
+      { n: 4, season: 1, title: "아기 햄스터가 태어났다?!", desc: "옆 동네에 아기 햄스터가 열 마리 넘게 태어났다!", dur: "1:00" },
+      { n: 5, season: 1, title: "햄스터 운동회!", desc: "철창 오르기, 쳇바퀴, 콩 먹기, 오래 자기! 금메달은 누구에게?", dur: "1:07" },
+      { n: 6, season: 2, title: "야생 햄스터 삼촌이 왔다?!", desc: "유럽 밀밭에 사는 진짜 야생 햄스터! 콩떡이보다 몇 배나 커요.", dur: "1:04" },
+      { n: 7, season: 2, title: "콩떡이의 영상통화", desc: "새 휴대폰으로 친구들에게 영상통화! 그런데 배터리가 1%…", dur: "1:00" },
+      { n: 8, season: 2, title: "아기 햄스터 유치원", desc: "콩떡이 선생님의 출석 부르기, 낮잠 시간, 간식 시간, 소풍!", dur: "0:59" },
+      { n: 9, season: 2, title: "햄스터 건강검진", desc: "눈, 달리기, 심장, 잠, 먹기 검사! 러닝머신을 밑에서 찍었어요.", dur: "0:59" },
+      { n: 10, season: 2, title: "콩떡이의 생일 파티!", desc: "아무도 생일을 모르는 줄 알았는데… 시즌 2 마지막 이야기!", dur: "1:01" },
     ];
-    const CREDITS = [{"title": "Djungarian hamster in a cage.webm", "artist": "Well-Informed Optimist", "license": "CC BY-SA 4.0"}, {"title": "Hamster on a wheel.webm", "artist": "Greg Heartsfield", "license": "CC BY 2.0"}, {"title": "Dwarf hamsters eating frozen beans - 01.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "Dwarf hamsters eating cucumber - 01.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "Dwarf hamsters running on disc.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "赤ちゃんと母親(ダークパイド)３.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "ノーマルの子供の映像３.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "Dwarf hamsters eating cooked, frozen beans - 03.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "ピュアホワイトの映像.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "イザベラホワイトの映像.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "パイド親子２.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "Dwarf hamsters eating cooked, frozen beans - 04.ogv", "artist": "Anna Frodesiak", "license": "CC0"}];
+    const CREDITS = [{"title": "Djungarian hamster in a cage.webm", "artist": "Well-Informed Optimist", "license": "CC BY-SA 4.0"}, {"title": "Hamster on a wheel.webm", "artist": "Greg Heartsfield", "license": "CC BY 2.0"}, {"title": "Dwarf hamsters eating frozen beans - 01.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "Dwarf hamsters eating cucumber - 01.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "Dwarf hamsters running on disc.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "赤ちゃんと母親(ダークパイド)３.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "ノーマルの子供の映像.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "ノーマルの子供の映像３.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "Dwarf hamsters eating cooked, frozen beans - 03.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "スーパーホワイトの映像.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "ピュアホワイトの映像.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "イザベラホワイトの映像.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "パイド親子２.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "Dwarf hamsters eating cooked, frozen beans - 04.ogv", "artist": "Anna Frodesiak", "license": "CC0"}, {"title": "Korenwolf in graanveld-Stichting Natuurbeelden-171343.webm", "artist": "Enting Films (producer) / Netherlands Institute for Sound and Vision (curator)", "license": "CC BY-SA 3.0 nl"}, {"title": "ノーマルの赤ちゃんの映像.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "パイド親子３.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "ピュアホワイトの親子２.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "スーパーホワイトの子供の映像.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "ダークパイド(ピュアホワイト＋イザベラホワイト)＋イザベラホワイトの子供.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "ホワイトフェイスの映像２.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "赤ちゃんと母親(ダークパイド)４.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "ピュアホワイトとイザベラホワイトの赤ちゃんとイザベラホワイトの母親.ogv", "artist": "Zousaniine", "license": "CC BY-SA 4.0"}, {"title": "Gait-of-healthy-Hamster.ogv", "artist": "Hampton T, Kale A, Amende I, Tang W, McCue S, Bhagavan H, VanDongen C", "license": "CC BY 3.0"}];
 
     const video = document.getElementById("video");
     const cards = document.getElementById("cards");
     let current = 0;
     let started = false;
 
+    let lastSeason = 0;
     EPISODES.forEach((ep, i) => {
+      if (ep.season !== lastSeason) {
+        lastSeason = ep.season;
+        const hd = document.createElement("div");
+        hd.className = "season";
+        hd.textContent = `시즌 ${ep.season}`;
+        cards.appendChild(hd);
+      }
       const b = document.createElement("button");
       b.className = "card";
       b.type = "button";
@@ -150,7 +170,7 @@
       document.getElementById("nowEp").textContent = `${ep.n}화`;
       document.getElementById("nowTitle").textContent = ep.title;
       document.getElementById("nowDesc").textContent = ep.desc;
-      [...cards.children].forEach((c, k) => c.setAttribute("aria-current", k === i ? "true" : "false"));
+      [...cards.querySelectorAll(".card")].forEach((c, k) => c.setAttribute("aria-current", k === i ? "true" : "false"));
       try { history.replaceState(null, "", `#ep${ep.n}`); } catch (e) { /* 미리보기 등에서는 무시 */ }
       if (play) video.play().catch(() => {});
     }
@@ -160,7 +180,7 @@
       if (started && current < EPISODES.length - 1) select(current + 1, true);
     });
 
-    const m = /^#ep(\d)$/.exec(location.hash);
+    const m = /^#ep(\d+)$/.exec(location.hash);
     const start = m ? Math.min(EPISODES.length, Math.max(1, Number(m[1]))) - 1 : 0;
     select(start, false);
   </script>

@@ -19,10 +19,18 @@ CHARS = {
     "snow":    {"name": "눈송이", "f0": 600, "syl": 0.115, "pitch": 1.50, "rate": 150, "color": (150, 120, 255)},
     "hotteok": {"name": "호떡이", "f0": 400, "syl": 0.078, "pitch": 1.25, "rate": 195, "color": (200, 120, 60)},
     "babies":  {"name": "아기들", "f0": 780, "syl": 0.080, "pitch": 1.60, "rate": 175, "color": (255, 110, 170)},
+    "uncle":   {"name": "들판 삼촌", "f0": 300, "syl": 0.105, "pitch": 0.95, "rate": 160, "color": (170, 110, 40)},
+    "ttorong": {"name": "또롱이", "f0": 520, "syl": 0.070, "pitch": 1.30, "rate": 200, "color": (110, 110, 130)},
+    "spots":   {"name": "점박이 형제", "f0": 700, "syl": 0.075, "pitch": 1.55, "rate": 185, "color": (60, 60, 60)},
+    "doctor":  {"name": "햄 박사", "f0": 360, "syl": 0.090, "pitch": 1.05, "rate": 170, "color": (40, 160, 170)},
     "mom":     {"name": "엄마 햄스터", "f0": 330, "syl": 0.095, "pitch": 1.00, "rate": 165, "color": (150, 90, 200)},
 }
 # 영상 안의 검은 띠를 뺀 실제 그림 영역 (x, y, w, h)
-CONTENT = {"c05.webm": (88, 0, 544, 480), "c09.webm": (0, 60, 640, 360), "c12.webm": (0, 60, 640, 360), "c13.webm": (0, 60, 640, 360)}
+CONTENT = {"c21.webm": (186, 0, 268, 480), "c22.webm": (186, 0, 268, 480), "c23.webm": (186, 0, 268, 478), "c24.webm": (186, 0, 268, 480),
+           "c27.webm": (186, 0, 268, 420), "c29.webm": (186, 0, 268, 478), "c31.webm": (184, 14, 272, 466), "c32.webm": (184, 0, 270, 478),
+           "c33.webm": (186, 0, 268, 480), "c25.webm": (0, 60, 640, 360), "c26.webm": (0, 60, 638, 360), "c28.webm": (0, 60, 640, 360),
+           "c30.webm": (0, 60, 640, 360), "c34.webm": (2, 60, 638, 360), "c35.webm": (0, 0, 426, 132),
+           "c08.webm": (186, 44, 268, 436), "c11.webm": (184, 0, 272, 480), "c15.webm": (186, 0, 268, 480), "c05.webm": (88, 0, 544, 480), "c09.webm": (0, 60, 640, 360), "c12.webm": (0, 60, 640, 360), "c13.webm": (0, 60, 640, 360)}
 CREDIT_DB = json.load(open(os.path.join(ROOT, "credits_db.json")))
 
 F_BUBBLE = font(60, 16); F_NAME = font(34, 16); F_LABEL = font(38, 14)
@@ -299,6 +307,54 @@ def draw_medal(base, x, y, lt):
     f = font(max(8, int(64 * s)), 16); w = f.getlength("1")
     d.text((x - w / 2, y - 40 * s), "1", font=f, fill=(150, 90, 0, 255))
 
+
+F_PHONE = font(30, 14); F_PHONE_S = font(24, 6)
+def phone_frame(im, box, name, lt):
+    """세로 영상을 휴대폰 영상통화 화면처럼 보여 준다. (그림, 원본→화면 좌표 변환 함수)를 돌려준다."""
+    bx, by, bw, bh = box
+    src = im.crop((bx, by, bx + bw, by + bh))
+    # 뒤 배경: 같은 영상을 크게 흐리게
+    sc = max(W / bw, H / bh); bg = src.resize((int(bw * sc), int(bh * sc)), Image.BILINEAR)
+    bg = bg.crop(((bg.width - W) // 2, (bg.height - H) // 2, (bg.width - W) // 2 + W, (bg.height - H) // 2 + H)).filter(ImageFilter.GaussianBlur(28))
+    frame = Image.blend(bg, Image.new("RGB", (W, H), (20, 14, 10)), 0.45).convert("RGBA")
+    sh = 720; s = sh / bh; sw = int(bw * s)
+    sx, sy = (W - sw) // 2, 112
+    d = ImageDraw.Draw(frame)
+    d.rounded_rectangle([sx - 26, sy - 96, sx + sw + 26, sy + sh + 96], radius=56, fill=(18, 18, 22, 255), outline=(90, 90, 100, 255), width=5)
+    frame.paste(src.resize((sw, sh), Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=2, percent=50, threshold=2)), (sx, sy))
+    d.rounded_rectangle([sx + sw // 2 - 60, sy - 70, sx + sw // 2 + 60, sy - 52], radius=9, fill=(40, 40, 46, 255))
+    d.ellipse([sx + 10, sy - 42, sx + 26, sy - 26], fill=(80, 220, 120, 255))
+    d.text((sx + 36, sy - 50), name, font=F_PHONE, fill=(255, 255, 255, 255))
+    secs = int(lt) + 3; tm = f"{secs // 60:02d}:{secs % 60:02d}"
+    d.text((sx + sw - F_PHONE_S.getlength(tm) - 6, sy - 46), tm, font=F_PHONE_S, fill=(200, 200, 210, 255))
+    cx = sx + sw // 2; cy = sy + sh + 48
+    d.ellipse([cx - 32, cy - 32, cx + 32, cy + 32], fill=(235, 60, 60, 255))
+    d.rounded_rectangle([cx - 18, cy - 5, cx + 18, cy + 5], radius=5, fill=(255, 255, 255, 255))
+    return frame, (lambda ax, ay: (int(sx + (ax - bx) * s), int(sy + (ay - by) * s)))
+
+
+def monitor_frame(im, box, name, lt):
+    """가로로 긴 영상을 병원 검사 모니터처럼 보여 준다."""
+    bx, by, bw, bh = box
+    src = im.crop((bx, by, bx + bw, by + bh))
+    sc = max(W / bw, H / bh); bg = src.resize((int(bw * sc), int(bh * sc)), Image.BILINEAR)
+    bg = bg.crop(((bg.width - W) // 2, (bg.height - H) // 2, (bg.width - W) // 2 + W, (bg.height - H) // 2 + H)).filter(ImageFilter.GaussianBlur(28))
+    frame = Image.blend(bg, Image.new("RGB", (W, H), (10, 30, 34)), 0.55).convert("RGBA")
+    mw = 1500; s = mw / bw; mh = int(bh * s); mx, my = (W - mw) // 2, 250
+    d = ImageDraw.Draw(frame)
+    d.rounded_rectangle([mx - 30, my - 90, mx + mw + 30, my + mh + 200], radius=34, fill=(24, 34, 38, 255), outline=(120, 200, 200, 255), width=5)
+    d.text((mx, my - 70), name, font=F_PHONE, fill=(160, 240, 230, 255))
+    rec = "● 측정 중"; d.text((mx + mw - F_PHONE.getlength(rec), my - 70), rec, font=F_PHONE, fill=(255, 90, 90, 255) if int(lt * 2) % 2 == 0 else (120, 50, 50, 255))
+    frame.paste(src.resize((mw, mh), Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2)), (mx, my))
+    # 심장 박동 선
+    y0 = my + mh + 110; pts = []
+    for i in range(0, mw, 6):
+        u = (i / mw * 4 + lt * 1.6) % 1.0
+        v = -60 if 0.30 < u < 0.33 else (40 if 0.33 <= u < 0.36 else (-10 if 0.36 <= u < 0.40 else 0))
+        pts.append((mx + i, y0 + v))
+    d.line(pts, fill=(90, 255, 140, 255), width=5)
+    return frame, (lambda ax, ay: (int(mx + (ax - bx) * s), int(my + (ay - by) * s)))
+
 # ── 만들기 ───────────────────────────────────────────────
 def interp(kfs, ts):
     if ts <= kfs[0][0]: return kfs[0][1:]
@@ -400,12 +456,18 @@ def run(ep, out, preview=False, voice="yuna", web=False):
             lt = fi / FPS; ts = sc["t0"] + lt * speed
             if preview and g not in prev_frames: g += 1; continue
             im = Image.frombuffer("RGB", (sw, sh), last, "raw", "RGB", 0, 1)
-            cx, cy, cw = interp(sc["crop"], ts)
-            cw = min(cw, bw0, bh0 * 16 / 9); ch = cw * 9 / 16
-            x0 = min(max(bx0, cx - cw / 2), bx0 + bw0 - cw); y0 = min(max(by0, cy - ch / 2), by0 + bh0 - ch)
-            frame = im.resize((W, H), Image.LANCZOS, box=(x0, y0, x0 + cw, y0 + ch))
-            if cw < 1000: frame = frame.filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2))
-            frame = frame.convert("RGBA")
+            if sc.get("phone") or sc.get("monitor"):
+                fn = phone_frame if sc.get("phone") else monitor_frame
+                frame, to_out = fn(im, (bx0, by0, bw0, bh0), sc.get("phone") or sc.get("monitor"), lt)
+                x0, y0, cw, ch = 0, 0, W, H
+            else:
+                cx, cy, cw = interp(sc["crop"], ts)
+                cw = min(cw, bw0, bh0 * 16 / 9); ch = cw * 9 / 16
+                x0 = min(max(bx0, cx - cw / 2), bx0 + bw0 - cw); y0 = min(max(by0, cy - ch / 2), by0 + bh0 - ch)
+                frame = im.resize((W, H), Image.LANCZOS, box=(x0, y0, x0 + cw, y0 + ch))
+                if cw < 1000: frame = frame.filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2))
+                frame = frame.convert("RGBA")
+                to_out = (lambda ax, ay, x0=x0, y0=y0, cw=cw, ch=ch: (int((ax - x0) / cw * W), int((ay - y0) / ch * H)))
             if sc.get("speedlines"): draw_speedlines(frame, g)
             if sc.get("title"):
                 frame.alpha_composite(Image.new("RGBA", (W, H), (0, 0, 0, 90))); draw_title(frame, lt, ep["title"], ep["subtitle"])
@@ -420,7 +482,7 @@ def run(ep, out, preview=False, voice="yuna", web=False):
                 frame.alpha_composite(bl)
             if "confetti" in sc and lt >= sc["confetti"]: draw_confetti(frame, lt - sc["confetti"])
             if "medal" in sc and lt >= sc["medal"][0]:
-                mx, my = sc["medal"][1]; draw_medal(frame, int((mx - x0) / cw * W), int((my - y0) / ch * H), lt - sc["medal"][0])
+                mx, my = to_out(*sc["medal"][1]); draw_medal(frame, mx, my, lt - sc["medal"][0])
             top_min = 175 if (sc.get("label") or "meter" in sc) else 60
             if "meter" in sc: top_min = 215
             for it in sc["items"]:
@@ -430,11 +492,11 @@ def run(ep, out, preview=False, voice="yuna", web=False):
                 bounce = it["env"][ei] if 0 <= ei < len(it["env"]) else 0
                 if it["mode"] == "caption":
                     if sc.get("title"): continue
-                    draw_caption(frame, it["text"], it["char"], prog, 250 if sc.get("end") else 70)
+                    draw_caption(frame, it["text"], it["char"], prog, (28 * (len(credits) + 1) + 70) if sc.get("end") else 70)
                 else:
-                    if sc.get("follow"): ax_s, ay_s = interp(sc["crop"], ts)[:2]; ay_s -= 40
+                    if sc.get("follow") and not (sc.get("phone") or sc.get("monitor")): ax_s, ay_s = interp(sc["crop"], ts)[:2]; ay_s -= 40
                     else: ax_s, ay_s = sc["anchors"][it["char"]]
-                    draw_bubble(frame, it["text"], it["char"], (int((ax_s - x0) / cw * W), int((ay_s - y0) / ch * H)), prog, bounce, top_min)
+                    draw_bubble(frame, it["text"], it["char"], to_out(ax_s, ay_s), prog, bounce, top_min)
             rgb = frame.convert("RGB")
             if preview: rgb.resize((960, 540)).save(os.path.join(work, f"prev_{g:05d}.jpg"), quality=85)
             else: enc.stdin.write(rgb.tobytes())
