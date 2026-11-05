@@ -325,6 +325,52 @@ export class Day {
         if (!this.g.driveTest) { hud.toast('시험장이 준비 중이에요'); break; }
         await this.g.driveTest.start(it);
         break;
+      // ---- inside the town's buildings (인혁: "모든 건물에 들어 갈 수 있게 해줘")
+      case 'martBuy': this.buy(5000, 30, '장보기 끝! 과자랑 과일이랑 우유 🛒 (배고픔 +30)'); break;
+      case 'chicken': this.buy(8000, 50, '바삭바삭 치킨 최고! 🍗 (배고픔 +50)'); break;
+      case 'pizza': this.buy(7000, 45, '치즈 쭉 늘어나는 피자! 🍕 (배고픔 +45)'); break;
+      case 'bread': this.buy(3000, 20, '갓 구운 소보로빵 냠냠 🥐 (배고픔 +20)'); break;
+      case 'cafe': this.buy(4000, 10, '달콤한 딸기 라떼 ☕ (배고픔 +10)'); break;
+      case 'medicine':
+        if (s.money < 2000) { hud.toast('돈이 모자라요 (2,000원)'); break; }
+        s.money -= 2000; s.hp = Math.min(100, s.hp + 30); this.g.sfx('coin');
+        hud.toast('약을 먹었어요 💊 (체력 +30)', 2200);
+        break;
+      case 'toy':
+        if (s.money < 6000) { hud.toast('돈이 모자라요 (6,000원)'); break; }
+        s.money -= 6000; s.toys = (s.toys ?? 0) + 1; this.g.sfx('coin');
+        hud.toast(['로봇 장난감을 샀다! 🤖', '말랑말랑 곰 인형을 샀다! 🧸', '빨간 자동차 장난감을 샀다! 🚗'][s.toys % 3] + ` (장난감 ${s.toys}개)`, 2600);
+        break;
+      case 'bank':
+        this.g.sfx('click');
+        hud.toast(`은행원: “지금 통장에 ${s.money.toLocaleString('ko-KR')}원 있어요.” 🏦`, 3000);
+        if (s.mode !== 'kid' && !s.ticket) setTimeout(() => hud.toast(`비행기표까지 ${Math.max(0, 1000000 - s.money).toLocaleString('ko-KR')}원 남았어요!`, 2600), 1500);
+        break;
+      case 'mail':
+        this.g.sfx('pickup');
+        hud.toast(['일본 친구에게 편지를 보냈어요 💌', '할머니께 편지를 보냈어요 💌', '산타 할아버지께 편지를 보냈어요 🎅'][Math.floor(Math.random() * 3)], 2600);
+        break;
+      case 'officer':
+        hud.toast(['경찰관: “길을 건널 땐 초록불에!” 🚓', '경찰관: “안전벨트 꼭 매요!”', '경찰관: “잃어버린 물건 있으면 말해 줘요.”'][Math.floor(Math.random() * 3)], 2600);
+        break;
+      case 'locked':
+        this.g.sfx('click');
+        hud.toast('똑똑… 남의 집이에요. 문이 잠겨 있어요 🔒', 2000);
+        break;
+      case 'gallery':
+        this.g.album?.open();
+        break;
+      case 'houseFridge':
+        eat(s, 5); this.g.sfx('water');
+        hud.toast('시원한 물 한 잔! 💧', 1800);
+        break;
+      case 'houseRest':
+      case 'book':
+      case 'firetruck':
+      case 'doctor':
+      case 'movie':
+        await this.visit(it);
+        break;
       case 'pray':
         this.g.sfx('cheers');
         hud.toast('짝짝! 소원을 빌었어요: 내일도 즐거운 하루 🙏', 2600);
@@ -650,6 +696,56 @@ export class Day {
     }
   }
 
+  // ------------------------------------------------------------------ town buildings
+  buy(price, food, text) {
+    const s = this.s;
+    if (s.money < price) { this.g.hud.toast(`돈이 모자라요 (${price.toLocaleString('ko-KR')}원)`); return; }
+    s.money -= price; eat(s, food); this.g.sfx('coin'); this.g.sfx('eat');
+    this.g.hud.toast(`${text} -${price.toLocaleString('ko-KR')}원`, 2600);
+  }
+
+  /** Sit somewhere for a little while: a movie, the fire truck, the doctor, a book, a sofa. */
+  async visit(it) {
+    const s = this.s, hud = this.g.hud;
+    if (it.seatW) this.sit(it);
+    this.busy = true;
+    if (it.id === 'movie') {
+      const scr = $('screen');
+      await wait(900);
+      const title = ['햄찌 대모험', '우주 고양이', '젤리 타워 더 무비'][Math.floor(Math.random() * 3)];
+      scr.innerHTML = `<div class="movie"><div class="mv-title">${title}</div><div class="mv-stage"><span class="a">🐹</span><span class="b">🌻</span><span class="c">✨</span></div></div>`;
+      if (it.screenW) this.placeScreen(it.screenW); else scr.classList.add('hidden');
+      for (let i = 0; i < 6; i++) { await wait(1500); this.g.sfx(i % 2 ? 'pickup' : 'click'); }
+      scr.innerHTML = '<div class="movie"><div class="mv-title">끝 🎬</div></div>';
+      await wait(1200);
+      hud.toast(`“${title}” 재밌었다! 🍿`, 2600);
+    } else if (it.id === 'firetruck') {
+      await wait(700);
+      for (let i = 0; i < 3; i++) { this.g.sfx('horn'); await wait(700); }
+      hud.toast('삐뽀삐뽀! 소방관이 된 기분 🚒', 2600);
+      await wait(1800);
+    } else if (it.id === 'doctor') {
+      await wait(800);
+      hud.toast('의사 선생님: “아~ 해 보세요.” 🩺', 2000);
+      await wait(2000);
+      s.hp = 100;
+      if (s.hurt) { s.hurt = false; this.g.player.limp = false; hud.toast('다리가 다 나았어요! 이제 뛸 수 있어요 🏃', 3000); }
+      else hud.toast('건강해요! 체력이 꽉 찼어요 💪', 2600);
+      await wait(1200);
+    } else if (it.id === 'book') {
+      await wait(800);
+      hud.toast(['“옛날 옛적에 용감한 햄스터가 살았어요…” 📖', '“우주에는 별이 아주 많대요…” 📖', '“공룡은 아주아주 옛날에 살았대요…” 📖'][Math.floor(Math.random() * 3)], 3000);
+      await wait(3200);
+    } else {
+      await wait(800);
+      s.hp = Math.min(100, s.hp + 10);
+      hud.toast('푹신한 소파에서 쉬었다 😌 (체력 +10)', 2400);
+      await wait(1600);
+    }
+    this.busy = false;
+    if (it.seatW) this.stand();
+  }
+
   // ------------------------------------------------------------------ kid story
   async hurtEvent() {
     if (this._hurting) return;
@@ -740,7 +836,9 @@ export class Day {
     d.id = 'photo';
     const atBeach = this.g.player.pos.x < LAYOUT.beachX;
     const jp = this.g.player.pos.x > 1500;
-    d.innerHTML = `<img src="${url}" alt="사진"><div>${jp ? '🇯🇵 일본 여행' : atBeach ? '🌊 바다' : '📷 찰칵'} · ${this.s.day}일차</div>`;
+    const caption = `${jp ? '🇯🇵 일본 여행' : atBeach ? '🌊 바다' : '📷 찰칵'} · ${this.s.day}일차`;
+    d.innerHTML = `<img src="${url}" alt="사진"><div>${caption}</div>`;
+    this.g.album?.add(url, caption);
     document.body.appendChild(d);
     setTimeout(() => d.remove(), 2600);
     if (atBeach && this.step?.id === 'photo') this.complete('photo');

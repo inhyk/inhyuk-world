@@ -428,7 +428,8 @@ function buildTower(S, root, o) {
   for (let k = 1; k < floors; k++) {
     const F = FLR(k);
     wallX(root, M.accentDk, -CW, CW, IZ1, BZ1, F - 0.3, F + 2.7, [{ a: -0.7, b: 0.7, lo: F + 1.0, hi: F + 2.45 }]);
-    facadeWindow(root, M, B, 0, BZ1, 0, 1.4, F + 1.0, F + 2.45, { panes: 2, cell: 'stair', m: B.lit, dep: 0.4 });
+    const open = !main && k === nbK(floors);     // neighbour towers: the real corridor is behind this window
+    facadeWindow(root, M, B, 0, BZ1, 0, 1.4, F + 1.0, F + 2.45, { panes: 2, cell: open ? null : 'stair', m: B.lit, dep: 0.4 });
   }
   // ---- back: full-width strips per floor with both units' windows
   for (let k = 0; k < floors; k++) {
@@ -535,18 +536,7 @@ function buildTower(S, root, o) {
   // lift shaft block behind the lobby (the pocket itself stays empty)
   for (const s of [-1, 1]) box3(S, s > 0 ? SHAFT.x1 : -CW, 0, BZ0, s > 0 ? CW : SHAFT.x0, 3.3, LW0);
   box3(S, SHAFT.x0, 0, BZ0, SHAFT.x1, 3.3, IZ0);
-  if (!main) {
-    // the lobby behind the glass: backdrop box + closed doors
-    const lg = group(root, 0, 0, 3.4, 0);
-    tray(lg, B, 'lobby', B.lit, 2 * CW - 0.1, F0, F0 + 2.7, 0, 1.6);
-    for (const s of [-1, 1]) {
-      put(root, RB(0.92, 2.15, 0.05, 0.01, 1), M.frame, s * 0.47, F0 + 1.08, 3.47);
-      D(root, quad(0.8, 2.02), gw, s * 0.47, F0 + 1.08, 3.5);
-    }
-    box3(S, -CW, 0, IZ1, CW, 3.3, BZ1);
-    // upper floors: one solid box (nobody walks there)
-    box3(S, -BX, 3.3, BZ0, BX, TOP + 0.3, BAL);
-  }
+  if (!main) nbShell(S, root, M, TOP, floors);   // walkable lobby + one upper corridor (shell, lift portals, colliders)
   return { M, B, SA, TOP };
 }
 
@@ -559,6 +549,14 @@ export function buildApartment({ main = true, dong = '101동', floors = 15, seed
   const t0 = performance.now();
   const T = buildTower(S, root, { main, floors, seed, accent, dong });
   if (main) buildInterior(S, root, T);
+  else {
+    const K = nbK(floors);
+    S.extra.elevator = { landings: [
+      { name: '1층 로비', pos: [0, F0, LZ], yaw: 0 },
+      { name: `${K + 1}층`, pos: [0, FLR(K), LZ], yaw: 0 },
+    ] };
+    S.extra.interior = { build: () => nbInterior(T, floors, seed) };
+  }
   const t1 = performance.now();
   bake(root);
   S.extra.buildMs = Math.round(performance.now() - t0);
@@ -1240,6 +1238,267 @@ function buildInterior(S, root, T) {
   ] };
 }
 
+// ------------------------------------------------------------------ neighbour towers (102~109동)
+// main = false: the ground lobby is walkable (auto glass doors, mailboxes, guard desk, lift) and the lift
+// also stops at one upper corridor (5층) whose four unit doors stay locked. Lift portals, floor slabs,
+// shell walls and all shell colliders are in the base site (the game builds the lift car at load); the
+// furniture, finishes, lights and people come from site.extra.interior.build().
+const NBK = 4;                                         // floor index of the corridor (5층)
+const nbK = (floors) => Math.min(NBK, floors - 1);
+const NB_DOORS = [{ s: -1, z: -1.9, n: 1 }, { s: -1, z: 0.75, n: 2 }, { s: 1, z: -1.9, n: 3 }, { s: 1, z: 0.75, n: 4 }];
+const LOCKED = '남의 집이에요 (잠겨 있음)';
+const drawCall = (c) => { c.fillStyle = '#1d2024'; c.fillRect(0, 0, 96, 192); for (const [y, up] of [[60, 1], [132, 0]]) { c.fillStyle = '#ffe9a8'; c.beginPath(); c.arc(48, y, 26, 0, PI * 2); c.fill(); c.fillStyle = '#5a4210'; c.beginPath(); if (up) { c.moveTo(48, y - 12); c.lineTo(60, y + 8); c.lineTo(36, y + 8); } else { c.moveTo(48, y + 12); c.lineTo(60, y - 8); c.lineTo(36, y - 8); } c.fill(); } };
+const drawInd = (n) => (c, w, h) => { c.fillStyle = '#0d0f12'; c.fillRect(0, 0, w, h); txt(c, n, 120, 60, 58, '#ff9a3c', 'center'); c.fillStyle = '#ff9a3c'; c.beginPath(); c.moveTo(40, 18); c.lineTo(56, 40); c.lineTo(24, 40); c.fill(); };
+/** Signs for a neighbour tower's corridor floor `fl` (also the house clock, bath sign and drawings). */
+function nbAtlas(fl) {
+  return cached('aptNbAtlas' + fl, () => {
+    const A = new Atlas(1024, 6);
+    A.add('call', 96, 192, drawCall);
+    A.add('ind1', 192, 72, drawInd('1'));
+    A.add('indN', 192, 72, drawInd(String(fl)));
+    A.add('fN', 256, 256, (c, w, h) => { c.fillStyle = '#f2efe8'; c.fillRect(0, 0, w, h); txt(c, String(fl), 118, 200, 210, '#4f7391', 'center'); txt(c, '층', 214, 214, 54, '#4f7391', 'center'); c.fillStyle = '#f2a65a'; c.fillRect(24, 224, 208, 10); });
+    for (let i = 1; i <= 4; i++) A.add('p' + i, 256, 96, (c, w, h) => { rr(c, 0, 0, w, h, 10, '#2d3238'); txt(c, `${fl}0${i}호`, w / 2, 66, 50, '#f2e6c8', 'center'); });
+    A.add('parcel', 200, 140, (c, w, h) => { c.fillStyle = '#c9a77a'; c.fillRect(0, 0, w, h); c.fillStyle = '#f4f1ea'; c.fillRect(20, 30, 160, 80); txt(c, `${fl}03호 택배`, 100, 70, 26, '#2b2f33', 'center'); c.fillStyle = '#2b2f33'; for (let i = 0; i < 14; i++) c.fillRect(34 + i * 9, 82, i % 3 ? 3 : 5, 20); });
+    A.add('clock', 128, 128, (c) => {
+      c.fillStyle = '#fbfaf5'; c.beginPath(); c.arc(64, 64, 62, 0, PI * 2); c.fill();
+      c.strokeStyle = '#2b2f33'; c.lineCap = 'round';
+      for (let i = 0; i < 12; i++) { const a = i * PI / 6, r0 = i % 3 ? 50 : 43; c.lineWidth = i % 3 ? 3 : 5; c.beginPath(); c.moveTo(64 + Math.sin(a) * r0, 64 - Math.cos(a) * r0); c.lineTo(64 + Math.sin(a) * 57, 64 - Math.cos(a) * 57); c.stroke(); }
+      c.lineWidth = 6; c.beginPath(); c.moveTo(64, 64); c.lineTo(88, 52); c.stroke();
+      c.lineWidth = 4; c.beginPath(); c.moveTo(64, 64); c.lineTo(57, 21); c.stroke();
+      c.fillStyle = '#e8546b'; c.beginPath(); c.arc(64, 64, 5, 0, PI * 2); c.fill();
+    });
+    A.add('bath', 160, 160, (c, w, h) => {
+      rr(c, 4, 4, w - 8, h - 8, 18, '#e9f1f4', '#8fb0c8', 4);
+      txt(c, '욕실', w / 2, 52, 34, '#2b2f33', 'center');
+      rr(c, 30, 92, 100, 32, 12, '#4f7391'); c.fillStyle = '#4f7391'; c.fillRect(42, 120, 8, 16); c.fillRect(110, 120, 8, 16);
+      c.beginPath(); c.arc(62, 82, 11, 0, PI * 2); c.fill();
+      for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(88 + i * 13, 80 - i * 7, 5, 0, PI * 2); c.fill(); }
+    });
+    A.add('kids', 256, 192, (c, w, h) => {
+      c.fillStyle = '#fffdf6'; c.fillRect(0, 0, w, h); c.lineWidth = 7; c.lineCap = 'round';
+      ['#e8546b', '#f2a65a', '#f2c14e', '#5f8a3a', '#4f7391'].forEach((col, i) => { c.strokeStyle = col; c.beginPath(); c.arc(128, 150, 100 - i * 9, PI, 0); c.stroke(); });
+      c.fillStyle = '#7a5c3e'; c.beginPath(); c.arc(70, 150, 22, 0, PI * 2); c.fill();
+      c.beginPath(); c.moveTo(52, 140); c.lineTo(55, 114); c.lineTo(68, 131); c.moveTo(88, 140); c.lineTo(85, 114); c.lineTo(72, 131); c.fill();
+      txt(c, '우리 고양이', 176, 184, 22, '#2b2f33', 'center');
+    });
+    A.add('note', 128, 128, (c, w, h) => { c.fillStyle = '#fff3b0'; c.fillRect(0, 0, w, h); txt(c, '장보기', w / 2, 34, 24, '#c4553e', 'center'); for (const [i, s] of ['우유', '계란', '사과'].entries()) txt(c, '· ' + s, 22, 66 + i * 24, 20, '#2b2f33'); });
+    A.build();
+    A.mat = A.printed(0.6);
+    A.glowM = A.lit(1.15);
+    return A;
+  });
+}
+function nbIM() {
+  return {
+    floorTile: mat('floorTile'), marble: mat('marble'), walnut: mat('walnut'), oak: mat('oak'), plasterW: mat('plasterWarm'),
+    steel: mat('steel'), chrome: mat('chrome'), black: mat('blackPlastic'), whitePl: mat('whitePlastic'), lamp: mat('lampGlow'),
+    rug2: mat('carpet'), dark: paint(0x2b2f33, 0.5, 0.3), door: paint(0x4e5357, 0.38, 0.35, { clearcoat: 0.4 }),
+    door2: paint(0x6b5a4a, 0.42, 0.2, { clearcoat: 0.4 }), fire: paint(0x8a9096, 0.45, 0.5), red: paint(0xc8302a, 0.45, 0.1),
+  };
+}
+/** Base part of a neighbour tower: lobby + corridor shells, both lift portals, entrance doors, colliders. */
+function nbShell(S, root, M, TOP, floors) {
+  const K = nbK(floors), FN = FLR(K), CN = FN + 2.6, C1 = F0 + 2.9;
+  const IMb = { steel: mat('steel'), dark: paint(0x2b2f33, 0.5, 0.3), A: nbAtlas(K + 1) };
+  // ---- ground lobby: floor, side walls, ceiling, lift portal
+  slab(root, M.stone, -CW, F0 - 0.06, LW1, CW, F0 - 0.005, BZ1);
+  box3(S, -CW, 0, LW0, CW, F0, BZ1);
+  for (const s of [-1, 1]) slab(root, M.wall, s > 0 ? CW : -CW - 0.2, F0, LW1, s > 0 ? CW + 0.2 : -CW, C1, IZ1);
+  slab(root, M.white, -CW, C1, LW1, CW, C1 + 0.1, IZ1);
+  liftPortal(S, root, M, IMb, F0, C1, 'ind1');
+  // sliding glass entrance doors (auto) and the fixed glass beside them
+  for (const s of [-1, 1]) {
+    const pv = group(root, s * 0.47, F0, 3.5, 0);
+    pv.userData.dynamic = true;
+    put(pv, RB(0.94, 0.08, 0.05, 0.01, 1), M.frame, 0, 2.16, 0);
+    put(pv, RB(0.94, 0.1, 0.05, 0.01, 1), M.frame, 0, 0.05, 0);
+    for (const t of [-1, 1]) put(pv, RB(0.05, 2.2, 0.05, 0.01, 1), M.frame, t * 0.445, 1.1, 0);
+    D(pv, quad(0.86, 2.02), M.winGlass, 0, 1.11, 0);
+    put(pv, RB(0.025, 0.7, 0.04, 0.01, 1), mat('chrome'), -s * 0.36, 1.05, 0.05);
+    bake(pv);
+    S.doors.push({ pivot: pv, slide: [s * 0.9, 0, 0], collider: { min: [s * 0.47 - 0.47, F0, 3.44], max: [s * 0.47 + 0.47, F0 + 2.2, 3.56] }, auto: true });
+    box3(S, s > 0 ? 0.94 : -CW, F0, 3.42, s > 0 ? CW : -0.94, C1, 3.58);
+  }
+  // ---- upper floors: solid, except the corridor on floor K (x -CW..CW, z LW0..IZ1) and the lift pocket
+  box3(S, -BX, 3.3, BZ0, BX, FN - 0.3, BAL);
+  box3(S, -BX, FN + 2.7, BZ0, BX, TOP + 0.3, BAL);
+  for (const s of [-1, 1]) box3(S, s > 0 ? CW : -BX, FN - 0.3, BZ0, s > 0 ? BX : -CW, FN + 2.7, BAL);
+  box3(S, -CW, FN - 0.3, BZ0, CW, FN + 2.7, IZ0);
+  box3(S, -CW, FN - 0.3, IZ1, CW, FN + 2.7, BAL);
+  slab(root, M.conc, -CW, FN - 0.3, LW0, CW, FN - 0.005, IZ1);
+  box3(S, -CW, FN - 0.3, LW0, CW, FN, IZ1);
+  for (const s of [-1, 1]) slab(root, M.wall, s > 0 ? CW : -CW - 0.2, FN, LW1, s > 0 ? CW + 0.2 : -CW, CN + 0.1, IZ1);
+  slab(root, M.white, -CW, CN, LW1, CW, CN + 0.1, IZ1);
+  liftPortal(S, root, M, IMb, FN, CN + 0.1, 'indN');
+}
+/** Lazy part of a neighbour tower: lobby furniture + the corridor's doors and clutter. */
+function nbInterior(T, floors, seed) {
+  const P = { group: new THREE.Group(), colliders: [], interactables: [], npcSpots: [], lamps: [], indoor: [] };
+  const K = nbK(floors), IM = nbIM(), IA = intAtlas(), NA = nbAtlas(K + 1);
+  nbLobby(P, T.M, IM, IA, NA, seed % 2 ? 1 : -1, seed);
+  nbHall(P, T.M, IM, IA, NA, K, seed);
+  bake(P.group);
+  return P;
+}
+function umbrellaStand(p, x, y, z) {
+  const g = group(p, x, y, z, 0);
+  V(g, CY(0.13, 0.12, 0.45, 18, true), 0x3b4047, 0, 0.225, 0);
+  V(g, CY(0.12, 0.12, 0.012, 18), 0x2b2f33, 0, 0.02, 0);
+  [[0x2f6fb7, 0.04, 0.03], [0xe8546b, -0.05, 0.02], [0x2b2f33, 0.0, -0.05]].forEach(([c, dx, dz], i) => {
+    vrod(g, c, [dx, 0.05, dz], [dx * 2.2, 0.92 - i * 0.07, dz * 2.2], 0.03, 8);
+    vrod(g, 0x6b4529, [dx * 2.2, 0.92 - i * 0.07, dz * 2.2], [dx * 2.6 + 0.04, 1.0 - i * 0.07, dz * 2.6], 0.011, 6);
+  });
+  return g;
+}
+function wallClock2(p, A, x, y, z, ry, r = 0.16) {
+  const g = group(p, x, y, z, ry);
+  V(g, CY(r, r, 0.04, 32), 0x2b2f33, 0, 0, 0.02, PI / 2, 0, 0);
+  D(g, A.quad('clock', r * 1.84, r * 1.84), A.mat, 0, 0, 0.041);
+  return g;
+}
+function nbLobby(P, M, IM, IA, NA, q, seed) {
+  const g = P.group, F = F0, C = F0 + 2.9;
+  const X = (x) => q * x, Y = (ry) => q * ry;
+  const bx = (x0, y0, z0, x1, y1, z1) => box3(P, Math.min(q * x0, q * x1), y0, z0, Math.max(q * x0, q * x1), y1, z1);
+  // floor tiles over the base slab, downlights
+  slab(g, IM.floorTile, -CW, F - 0.004, LW1, CW, F, BZ1);
+  for (const [x, z] of [[-1.2, 2.2], [1.2, 2.2], [-1.2, -0.4], [1.2, -0.4], [-1.2, -2.6], [1.2, -2.6]]) { D(g, CY(0.09, 0.09, 0.012, 16), M.down, x, C - 0.006, z); put(g, torus(0.1, 0.012, 6, 18), IM.steel, x, C - 0.004, z, PI / 2, 0, 0); }
+  P.lamps.push({ pos: [0, C - 0.35, 1.6], color: 0xffe2b8, intensity: 10, range: 8 }, { pos: [0, C - 0.35, -2.2], color: 0xffe2b8, intensity: 10, range: 7 });
+  // marble wainscot + walnut rail, warm plaster above
+  for (const s of [-1, 1]) {
+    const xi = s * CW;
+    slab(g, IM.marble, s > 0 ? xi - 0.02 : xi, F, LW1, s > 0 ? xi : xi + 0.02, F + 1.15, IZ1 - 0.02);
+    slab(g, IM.plasterW, s > 0 ? xi - 0.012 : xi, F + 1.15, LW1, s > 0 ? xi : xi + 0.012, C, IZ1);
+    put(g, RB(0.03, 0.04, IZ1 - LW1 - 0.04, 0.008, 1), IM.walnut, xi - s * 0.025, F + 1.17, (LW1 + IZ1) / 2);
+  }
+  // lift wall clad in oak slats (gap for the call buttons), floor sign
+  for (let x = -CW + 0.06; x < CW - 0.03; x += 0.09) if (Math.abs(x) > 0.82 && Math.abs(x - 0.9) > 0.14) put(g, RB(0.05, C - F - 0.02, 0.03, 0.006, 1), IM.oak, x, (F + C) / 2, LW1 + 0.015);
+  put(g, RB(2 * CW, 0.06, 0.05, 0.01, 1), IM.walnut, 0, C - 0.03, LW1 + 0.025);
+  D(g, IA.quad('f1', 0.42, 0.42), IA.mat, -1.45, F + 1.6, LW1 + 0.035);
+  // mailboxes
+  const mx = X(-CW + 0.18);
+  put(g, RB(0.36, 1.58, 2.24, 0.012, 1), IM.steel, mx, F + 1.36, 1.9);
+  D(g, IA.quad('mail', 2.16, 1.44), IA.mat, mx + q * 0.181, F + 1.36, 1.9, 0, Y(PI / 2), 0);
+  put(g, RB(0.4, 0.08, 2.3, 0.01, 1), IM.dark, mx + q * 0.02, F + 0.53, 1.9);
+  for (const [z, c] of [[1.2, 0xf3efe3], [2.4, 0xd8e6f0]]) V(g, RB(0.012, 0.12, 0.2, 0.003, 1), c, mx + q * 0.19, F + 1.0 + (z > 2 ? 0.58 : 0), z, 0, 0, q * 0.1);
+  bx(-CW, F, 0.75, -CW + 0.4, F + 2.2, 3.05);
+  // bench with a tote bag and a newspaper, stair door
+  const bg = group(g, X(-CW + 0.3), F, -0.7, Y(PI / 2));
+  put(bg, RB(1.5, 0.05, 0.42, 0.012, 2), IM.oak, 0, 0.45, 0);
+  for (const s of [-1, 1]) put(bg, RB(0.05, 0.43, 0.38, 0.01, 1), IM.dark, s * 0.65, 0.215, 0);
+  V(bg, softBox(0.36, 0.3, 0.14, 0.04, 0.02, 0.004, seed), [0xc4553e, 0x5f8a6a, 0xe0b25a][seed % 3], -0.4, 0.62, 0.02, 0, 0.2, 0, vcSoft());
+  V(bg, RB(0.32, 0.012, 0.24, 0.003, 1), 0xe9e6dc, 0.35, 0.48, 0.0, 0, -0.3, 0);
+  bx(-CW, F, -1.5, -CW + 0.55, F + 0.5, 0.1);
+  staticDoor(g, X(-CW), F, -2.75, Y(PI / 2), { w: 0.95, h: 2.1, leaf: IM.fire, frame: IM.dark });
+  D(g, IA.quad('stairs', 0.42, 0.16), IA.mat, X(-CW + 0.04), F + 2.42, -2.75, 0, Y(PI / 2), 0);
+  // security desk, guard, chair, clock above
+  const dg = group(g, X(1.55), F, 1.45, Y(-PI / 2));
+  put(dg, RB(1.7, 1.06, 0.08, 0.015, 2), IM.walnut, 0, 0.53, 0.28);
+  put(dg, RB(1.8, 0.05, 0.36, 0.012, 2), IM.marble, 0, 1.085, 0.22);
+  put(dg, RB(1.7, 0.04, 0.62, 0.01, 1), IM.oak, 0, 0.74, -0.04);
+  for (const s of [-1, 1]) put(dg, RB(0.06, 0.74, 0.6, 0.01, 1), IM.walnut, s * 0.82, 0.37, -0.04);
+  D(dg, IA.quad('guard', 0.8, 0.2), IA.mat, 0, 0.78, 0.322);
+  const mon = group(dg, -0.35, 0.76, -0.18, PI);
+  put(mon, RB(0.5, 0.32, 0.03, 0.008, 1), IM.black, 0, 0.3, 0);
+  D(mon, IA.quad('cctv', 0.46, 0.28), IA.glowM, 0, 0.3, -0.016, 0, PI, 0);
+  put(mon, box(0.04, 0.14, 0.04), IM.black, 0, 0.08, 0.02);
+  V(dg, RB(0.18, 0.06, 0.14, 0.015, 1), 0x2b2f33, 0.3, 0.79, -0.1);
+  V(dg, RB(0.24, 0.02, 0.32, 0.004, 1), 0x1d3557, 0.5, 0.77, 0.0);
+  mug(dg, 0.12, 0.76, 0.0, 0xf2efe8, 0.4);
+  pottedPlant(dg, 0.72, 1.11, 0.22, { kind: 'herb', h: 0.2, potR: 0.05, potH: 0.08, seed: seed + 3, pot: 'terracotta' });
+  bx(1.15, F, 0.6, 1.95, F + 1.1, 2.3);
+  P.npcSpots.push({ pos: [X(2.05), F, 1.45], yaw: Y(PI / 2), pose: 'stand', role: 'guard' });
+  officeChair(g, X(2.05), F, 2.75, Y(PI / 2 + 0.4));
+  wallClock2(g, NA, X(CW - 0.02), F + 2.35, 1.45, Y(-PI / 2));
+  // parcel rack (택배 보관) on the guard's wall
+  const pr = group(g, X(2.18), F, -0.1, Y(-PI / 2));
+  for (const s of [-1, 1]) put(pr, RB(0.03, 1.3, 0.4, 0.006, 1), IM.dark, s * 0.6, 0.65, 0);
+  for (const y of [0.08, 0.52, 0.96, 1.3]) put(pr, RB(1.22, 0.025, 0.4, 0.006, 1), IM.dark, 0, y, 0);
+  const R = rng(seed * 31 + 7);
+  for (const y of [0.08, 0.52, 0.96]) {
+    let cx = -0.55;
+    while (cx < 0.4) { const w = 0.22 + R() * 0.2, h = 0.16 + R() * 0.2; V(pr, RB(w, h, 0.3, 0.008, 1), [0xc9a77a, 0xd8be94, 0xb8955f, 0xe9e4da][(R() * 4) | 0], cx + w / 2, y + 0.0125 + h / 2, 0.02, 0, (R() - 0.5) * 0.15, 0); cx += w + 0.05; }
+  }
+  bx(1.98, F, -0.72, CW, F + 1.32, 0.52);
+  // notice board, plants, umbrella stand, entry mat, ceiling camera
+  put(g, RB(0.04, 1.06, 1.66, 0.01, 1), IM.oak, X(CW - 0.02), F + 1.62, -1.95);
+  D(g, IA.quad('notice', 1.56, 0.97), IA.mat, X(CW - 0.042), F + 1.62, -1.95, 0, Y(-PI / 2), 0);
+  pottedPlant(g, X(1.85), F, -3.15, { kind: 'fig', h: 1.5, seed: 11 + seed, pot: 'charcoal', potR: 0.22, potH: 0.42 });
+  bx(1.6, F, -3.4, 2.1, F + 0.5, -2.9);
+  umbrellaStand(g, X(1.3), F, 3.12);
+  bx(1.15, F, 2.97, 1.45, F + 0.5, 3.27);
+  put(g, RB(2.0, 0.012, 1.1, 0.005, 1), IM.rug2, 0, F + 0.006, 2.7);
+  D(g, IA.quad('welcome', 1.6, 0.4), IA.mat, 0, F + 0.013, 2.7, -PI / 2, 0, 0);
+  V(g, SP(0.07, 14, 10), 0x2b2f33, X(-1.7), C - 0.03, 3.0, 0, 0, 0, vcGloss());
+  // a neighbour waiting for the lift
+  P.npcSpots.push({ pos: [X(-0.85), F, -2.45], yaw: Y(0.25), pose: 'stand', role: 'guest' });
+  P.indoor.push({ min: [-CW, F, IZ0], max: [CW, C, IZ1] });
+}
+function nbHall(P, M, IM, IA, NA, K, seed) {
+  const g = P.group, F = FLR(K), C = F + 2.6, R = rng(seed * 17 + 5);
+  // floor tiles, wall linings (marble dado, walnut rail, warm plaster), window wall with stool
+  slab(g, IM.floorTile, -CW, F - 0.004, LW1, CW, F, IZ1);
+  for (const s of [-1, 1]) {
+    const xi = s * CW;
+    slab(g, IM.marble, s > 0 ? xi - 0.016 : xi, F, LW1, s > 0 ? xi : xi + 0.016, F + 0.9, IZ1 - 0.012);
+    slab(g, IM.plasterW, s > 0 ? xi - 0.012 : xi, F + 0.9, LW1, s > 0 ? xi : xi + 0.012, C, IZ1 - 0.012);
+    put(g, RB(0.03, 0.045, IZ1 - LW1 - 0.03, 0.008, 1), IM.walnut, xi - s * 0.022, F + 0.92, (LW1 + IZ1) / 2);
+  }
+  wallX(g, IM.plasterW, -CW, CW, IZ1 - 0.012, IZ1, F, C, [{ a: -0.7, b: 0.7, lo: F + 1.0, hi: F + 2.45 }]);
+  put(g, RB(1.56, 0.04, 0.2, 0.01, 1), IM.marble, 0, F + 0.98, IZ1 - 0.07);
+  slab(g, IM.walnut, -CW, F, IZ1 - 0.024, CW, F + 0.1, IZ1 - 0.012);
+  // ceiling lights
+  for (const z of [-1.7, 1.5]) { put(g, CY(0.23, 0.23, 0.03, 28), IM.whitePl, 0, C - 0.015, z); noShadow(put(g, CY(0.2, 0.2, 0.012, 28), IM.lamp, 0, C - 0.034, z)); P.lamps.push({ pos: [0, C - 0.4, z], color: 0xfff0d8, intensity: 9, range: 7 }); }
+  // floor sign + evacuation notice on the lift wall
+  D(g, NA.quad('fN', 0.5, 0.5), NA.mat, -1.5, F + 1.55, LW1 + 0.012);
+  put(g, RB(0.66, 0.46, 0.02, 0.006, 1), IM.oak, 1.65, F + 1.5, LW1 + 0.01);
+  D(g, IA.quad('notice', 0.6, 0.4), IA.mat, 1.65, F + 1.5, LW1 + 0.021);
+  // the four unit doors: plate, keypad lock, peephole, doormat; each one is locked
+  const mats = [0x8a6f5a, 0x56606e, 0x7a8a6a, 0x9a6a5a];
+  for (const d of NB_DOORS) {
+    const x = d.s * CW, ry = -d.s * PI / 2;
+    const dg = staticDoor(g, x, F, d.z, ry, { w: 0.95, h: 2.1, leaf: d.n % 2 ? IM.door : IM.door2, frame: IM.dark });
+    D(dg, NA.quad('p' + d.n, 0.22, 0.08), NA.mat, 0, 1.62, 0.04);
+    put(dg, RB(0.07, 0.2, 0.03, 0.01, 1), IM.black, 0.33, 1.25, 0.05);
+    D(dg, IA.quad('lock', 0.05, 0.09), IA.glowM, 0.33, 1.25, 0.066);
+    put(dg, CY(0.012, 0.012, 0.03, 10), IM.chrome, 0, 1.5, 0.04, PI / 2, 0, 0);
+    V(g, RB(0.5, 0.012, 0.8, 0.004, 1), mats[d.n - 1], x - d.s * 0.32, F + 0.006, d.z);
+    P.interactables.push({ id: 'locked', label: LOCKED, pos: [x - d.s * 0.45, F + 1.4, d.z], radius: 1.0 });
+  }
+  // life by the doors: shoes (1), umbrella (2), parcel (3), scooter (4)
+  const shoe = (x, z, ry, col, s2 = 1) => { const sg = group(g, x, F, z, ry); V(sg, RB(0.1 * s2, 0.07 * s2, 0.26 * s2, 0.03, 2), col, 0, 0.045 * s2, 0); V(sg, RB(0.104 * s2, 0.02, 0.27 * s2, 0.008, 1), 0xf2f0ea, 0, 0.01, 0); };
+  shoe(-CW + 0.3, -1.25, 0.2, 0x3b4f73); shoe(-CW + 0.42, -1.2, -0.1, 0x3b4f73); shoe(-CW + 0.35, -2.55, 1.2, 0xd9534f, 0.8);
+  vrod(g, 0xe8546b, [-CW + 0.06, F + 0.02, 1.35], [-CW + 0.04, F + 0.85, 1.42], 0.032, 8);
+  vrod(g, 0x6b4529, [-CW + 0.04, F + 0.85, 1.42], [-CW + 0.09, F + 0.92, 1.42], 0.011, 6);
+  const pc = group(g, CW - 0.45, F, -1.3, -0.3);
+  V(pc, RB(0.46, 0.3, 0.34, 0.012, 1), 0xc9a77a, 0, 0.15, 0);
+  V(pc, box(0.47, 0.04, 0.06), 0xb38b5a, 0, 0.29, 0);
+  D(pc, NA.quad('parcel', 0.2, 0.14), NA.mat, 0, 0.18, 0.172);
+  box3(P, CW - 0.72, F, -1.58, CW - 0.18, F + 0.32, -1.02);
+  const sc = group(g, CW - 0.12, F, 1.6, 0);
+  sc.rotation.z = -0.12;
+  V(sc, RB(0.12, 0.03, 0.62, 0.01, 1), [0x4f7391, 0xe8546b, 0x5f8a6a][seed % 3], 0, 0.09, 0);
+  vrod(sc, 0xd0d0d0, [0, 0.1, -0.3], [0, 0.82, -0.36], 0.014);
+  vrod(sc, 0x222222, [-0.18, 0.82, -0.36], [0.18, 0.82, -0.36], 0.016);
+  for (const zz of [-0.32, 0.3]) V(sc, CY(0.06, 0.06, 0.03, 16), 0xf2c14e, 0, 0.06, zz, 0, 0, PI / 2);
+  box3(P, CW - 0.3, F, 1.25, CW, F + 0.9, 1.95);
+  // stair fire door + exit sign, hydrant cabinet, plants by the window
+  staticDoor(g, -CW, F, 2.6, PI / 2, { w: 0.95, h: 2.1, leaf: IM.fire, frame: IM.dark });
+  put(g, RB(0.05, 0.16, 0.4, 0.008, 1), IM.dark, -CW + 0.03, F + 2.33, 2.6);
+  D(g, IA.quad('exit', 0.36, 0.13), IA.glowM, -CW + 0.056, F + 2.33, 2.6, 0, PI / 2, 0);
+  put(g, RB(0.14, 0.9, 0.7, 0.02, 1), IM.red, CW - 0.07, F + 1.05, 2.5);
+  D(g, IA.quad('hydrant', 0.3, 0.15), IA.mat, CW - 0.141, F + 1.32, 2.5, 0, -PI / 2, 0);
+  put(g, CY(0.05, 0.05, 0.02, 16), IM.lamp, CW - 0.145, F + 0.85, 2.5, 0, 0, PI / 2);
+  box3(P, CW - 0.15, F, 2.15, CW, F + 1.5, 2.85);
+  for (const [x, kind, pot] of [[-1.15, 'bush', 'terracotta'], [1.15, 'snake', 'white']]) {
+    pottedPlant(g, x, F, 3.08, { kind, h: kind === 'snake' ? 0.85 : 0.6, seed: (R() * 99) | 0, pot, potR: 0.16, potH: 0.32 });
+    box3(P, x - 0.2, F, 2.88, x + 0.2, F + 0.5, IZ1);
+  }
+  // a neighbour on the corridor
+  P.npcSpots.push({ pos: [1.25, F, 0.2], yaw: -PI / 2 + 0.4, pose: 'stand', role: 'guest' });
+  P.indoor.push({ min: [-CW, F, IZ0], max: [CW, C + 0.1, IZ1] });
+}
+
 // ------------------------------------------------------------------ neighbourhood houses
 const HOUSES = [
   { roof: 'gable', wall: 'plaster', roofM: 'roof', trim: 0x3b4047, band: 0xb68558, door: 0x34503f, chimney: true },
@@ -1247,6 +1506,8 @@ const HOUSES = [
   { roof: 'flat', wall: 'plasterGray', roofM: null, trim: 0x2d3238, band: 0xa87a50, door: 0x2d3238 },
   { roof: 'shed', wall: 'sidingWhite', roofM: null, trim: 0x4f7391, band: 0x4f7391, door: 0xc4553e },
 ];
+// house shell (local): body x -4.2..4.2, z -4.6..2.0, walls 0.2, ground floor y 0.3; front door x 0.55..1.65
+const HOUSE = { X: 4.2, Z0: -4.6, Z1: 2.0, G: 0.3, T: 0.2, D0: 0.55, D1: 1.65, DH: 2.15 };
 /** Extruded flat shape (points in the wall plane, u along the wall, v up) as a wall piece of thickness t. */
 function shapeWall(pts, t) {
   const s = new THREE.Shape(); s.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) s.lineTo(pts[i][0], pts[i][1]);
@@ -1286,7 +1547,9 @@ export function buildHouse({ variant = 0 } = {}) {
   const front = [[[-3.6, -1.3, 0.95, 2.6], [2.5, 3.6, 1.3, 2.5]], [[-3.4, -1.6, 4.0, 5.6], [0.6, 2.6, 4.0, 5.6]]];
   const back = [[[-3.2, -1.8, 1.3, 2.5], [1.4, 3.0, 1.3, 2.5]], [[-3.2, -1.8, 4.1, 5.4], [1.4, 3.0, 4.1, 5.4]]];
   const side = [[[-2.2, -1.0, 1.3, 2.5]], [[-2.8, -1.4, 4.1, 5.4]]];
-  const door = [0.6, 1.6, G, G + 2.15];
+  const door = [HOUSE.D0, HOUSE.D1, G, G + HOUSE.DH];
+  // ground floor windows look into the real rooms (no backdrop); the bathroom one is frosted
+  const win = (f, o) => { const cell = rooms[(R() * 6) | 0], m = lit(); return { ...o, cell: f ? cell : null, m, dep: 0.45 }; };
   for (let f = 0; f < 2; f++) {
     const y0 = f ? H1 : 0, y1 = f ? TOPW : H1;
     const fh = front[f].map(([a, b, lo, hi]) => ({ a, b, lo, hi }));
@@ -1294,17 +1557,26 @@ export function buildHouse({ variant = 0 } = {}) {
     wallX(root, wallM, -X, X, Z1 - T, Z1, y0, y1, fh);
     wallX(root, wallM, -X, X, Z0, Z0 + T, y0, y1, back[f].map(([a, b, lo, hi]) => ({ a, b, lo, hi })));
     for (const s of [-1, 1]) wallZ(root, wallM, Z0 + T, Z1 - T, s > 0 ? X - T : -X, s > 0 ? X : -X + T, y0, y1, side[f].map(([a, b, lo, hi]) => ({ a, b, lo, hi })));
-    for (const [a, b, lo, hi] of front[f]) facadeWindow(root, M, B, (a + b) / 2, Z1, 0, b - a, lo, hi, { panes: b - a > 1.6 ? 3 : 2, cell: rooms[(R() * 6) | 0], m: lit(), dep: 0.45 });
-    for (const [a, b, lo, hi] of back[f]) facadeWindow(root, M, B, (a + b) / 2, Z0, PI, b - a, lo, hi, { panes: 2, cell: rooms[(R() * 6) | 0], m: lit(), dep: 0.45 });
-    for (const s of [-1, 1]) for (const [a, b, lo, hi] of side[f]) facadeWindow(root, M, B, s * X, (a + b) / 2, s * PI / 2, b - a, lo, hi, { panes: 2, cell: rooms[(R() * 6) | 0], m: lit(), dep: 0.45 });
+    for (const [a, b, lo, hi] of front[f]) facadeWindow(root, M, B, (a + b) / 2, Z1, 0, b - a, lo, hi, win(f, { panes: b - a > 1.6 ? 3 : 2 }));
+    for (const [a, b, lo, hi] of back[f]) facadeWindow(root, M, B, (a + b) / 2, Z0, PI, b - a, lo, hi, win(f, { panes: 2, frosted: !f && a > 0 }));
+    for (const s of [-1, 1]) for (const [a, b, lo, hi] of side[f]) facadeWindow(root, M, B, s * X, (a + b) / 2, s * PI / 2, b - a, lo, hi, win(f, { panes: 2 }));
     // flower boxes under the upper front windows
     if (f) for (const [a, b, lo] of front[f]) { put(root, RB(b - a, 0.2, 0.22, 0.02, 1), band, (a + b) / 2, lo - 0.14, Z1 + 0.12); for (let i = 0; i < 8; i++) V(root, SP(0.05, 6, 4), [0xe8546b, 0xf7c548, 0xf4f1ea, 0xc86bd6][(i + vi) % 4], a + 0.1 + (b - a - 0.2) * i / 7, lo + 0.02, Z1 + 0.12 + (i % 2 ? 0.04 : -0.04)); }
   }
   // inner backdrop for the closed front door's sidelight is not needed: the door is solid
-  slab(root, M.stone, -X - 0.03, 0, Z0 - 0.03, X + 0.03, 0.42, Z1 + 0.03);          // plinth
+  // plinth: a band round the walls (open at the front door so the floor inside stays level)
+  for (const [x0, z0, x1, z1] of [[-X - 0.03, Z1 - T, HOUSE.D0, Z1 + 0.03], [HOUSE.D1, Z1 - T, X + 0.03, Z1 + 0.03], [-X - 0.03, Z0 - 0.03, X + 0.03, Z0 + T],
+    [-X - 0.03, Z0 + T, -X + T, Z1 - T], [X - T, Z0 + T, X + 0.03, Z1 - T]]) slab(root, M.stone, x0, 0, z0, x1, 0.42, z1);
   put(root, RB(2 * X + 0.08, 0.14, Z1 - Z0 + 0.08, 0.02, 1), band, 0, H1 - 0.02, (Z0 + Z1) / 2);   // floor band
   slab(root, trim, -X + T, G - 0.05, Z0 + T, X - T, G, Z1 - T);
-  box3(S, -X, 0, Z0, X, TOPW, Z1);
+  slab(root, M.stone, door[0], G - 0.03, Z1 - T, door[1], G + 0.008, Z1 + 0.02);                // threshold
+  // colliders: floor, ground storey walls (door hole free), solid upper storey
+  const D0 = door[0], D1 = door[1], DT = door[3];
+  box3(S, -X, 0, Z0, X, G, Z1);
+  box3(S, -X, G, Z1 - T, D0, H1, Z1); box3(S, D1, G, Z1 - T, X, H1, Z1); box3(S, D0, DT, Z1 - T, D1, H1, Z1);
+  box3(S, -X, G, Z0, X, H1, Z0 + T);
+  box3(S, -X, G, Z0 + T, -X + T, H1, Z1 - T); box3(S, X - T, G, Z0 + T, X, H1, Z1 - T);
+  box3(S, -X, H1, Z0, X, TOPW, Z1);
   // ---- roof
   const ov = 0.45, zc = (Z0 + Z1) / 2, hd = (Z1 - Z0) / 2;
   if (v.roof === 'gable' || v.roof === 'hip') {
@@ -1363,7 +1635,24 @@ export function buildHouse({ variant = 0 } = {}) {
   put(root, RB(3.0, 0.16, 1.55, 0.02, 2), v.roof === 'hip' ? trim : band, 1.1, 2.92, Z1 + 0.72);
   slab(root, M.oak, -0.35, 2.82, Z1 + 0.02, 2.55, 2.84, Z1 + 1.45);
   for (const px of [-0.15, 2.35]) { put(root, RB(0.12, 2.6, 0.12, 0.015, 1), M.oak, px, G + 1.3, Z1 + 1.3); box3(S, px - 0.08, 0, Z1 + 1.22, px + 0.08, 2.9, Z1 + 1.38); }
-  staticDoor(root, 1.1, G, Z1, 0, { w: 0.95, h: 2.15, leaf: paint(v.door, 0.4, 0.1, { clearcoat: 0.4 }), frame: trim });
+  // front door: frame on the outer face, hinged leaf (E to open) swinging into the hall
+  {
+    const D0 = door[0], D1 = door[1], DH = HOUSE.DH, dw = D1 - D0;
+    put(root, RB(dw + 0.14, 0.07, 0.06, 0.01, 1), trim, (D0 + D1) / 2, G + DH + 0.035, Z1 + 0.02);
+    for (const x of [D0 - 0.035, D1 + 0.035]) put(root, RB(0.07, DH, 0.06, 0.01, 1), trim, x, G + DH / 2, Z1 + 0.02);
+    const piv = group(root, D0 + 0.03, G, Z1 - 0.05, 0);
+    piv.userData.dynamic = true;
+    const lw = dw - 0.05, leafM = paint(v.door, 0.4, 0.1, { clearcoat: 0.4 }), st = mat('steel');
+    put(piv, RB(lw, DH - 0.01, 0.05, 0.006, 1), leafM, lw / 2, (DH - 0.01) / 2, 0);
+    for (const zf of [-1, 1]) {
+      for (const [py, ph] of [[0.55, 0.72], [1.5, 0.9]]) put(piv, RB(lw - 0.3, ph, 0.012, 0.004, 1), leafM, lw / 2, py, zf * 0.027);
+      put(piv, RB(0.05, 0.05, 0.03, 0.012, 1), st, lw - 0.1, 1.0, zf * 0.035);
+      put(piv, RB(0.14, 0.022, 0.022, 0.008, 1), st, lw - 0.15, 1.0, zf * 0.06);
+    }
+    put(piv, CY(0.012, 0.012, 0.06, 10), mat('chrome'), lw / 2, 1.52, 0, PI / 2, 0, 0);
+    bake(piv);
+    S.doors.push({ pivot: piv, openAngle: 1.6, collider: { min: [D0, G, Z1 - T], max: [D1, G + DH, Z1] }, auto: false });
+  }
   const lampM = glow(0xffd29a, 2.6); lampM.name = 'houseLamp'; lampM.userData.glowMax = 2.6;
   put(root, RB(0.14, 0.24, 0.12, 0.02, 1), trim, -0.05 + 0.0, G + 1.95, Z1 + 0.06);
   D(root, RB(0.09, 0.15, 0.04, 0.01, 1), lampM, -0.05, G + 1.95, Z1 + 0.13);
@@ -1421,6 +1710,7 @@ export function buildHouse({ variant = 0 } = {}) {
   bake(root);
   S.extra.variant = vi;
   S.extra.door = { pos: [1.1, G, Z1 + 0.8], yaw: 0 };
+  S.extra.interior = { build: () => houseInterior(vi) };
   if (typeof location !== 'undefined' && location.search.includes('aptstats')) console.warn('HOUSESTATS', vi, JSON.stringify(stats(root)));
   return S;
 }
@@ -1430,3 +1720,283 @@ export function houseRow() {
   for (let i = 0; i < 4; i++) { const s = buildHouse({ variant: i }); s.group.position.x = (i - 1.5) * 13; g.add(s.group); }
   return g;
 }
+
+// ------------------------------------------------------------------ house interiors (lazy)
+// One floor plan for all four variants (colours and accents differ). Inside x -4.0..4.0, z -4.4..1.8,
+// floor y 0.3, ceiling y 2.9. Living room front-left (TV on the west wall, sofa facing it), kitchen +
+// dining front-right, bedroom back-left (door from the hall), laundry hall in the middle, closed bathroom
+// back-right.
+const HOUSE_IN = [
+  { wall: 'plasterWarm', floor: 'oakFloor', sofa: 'fabricGray', rug: 'carpetWarm', front: 0x6f8f72, pillows: [0xd4a043, 0x5f8a6a, 0xf1ece4], duvet: 0x9db4c8, shade: 0x2f4f4f, family: 'sofa' },
+  { wall: 'plasterSage', floor: 'darkFloor', sofa: 'fabricBeige', rug: 'carpet', front: 0xeeeae2, pillows: [0x2f6f73, 0xe0b25a, 0xc4553e], duvet: 0xe3c08f, shade: 0xc4553e, family: null },
+  { wall: 'plaster', floor: 'birch', sofa: 'fabricBlue', rug: 'carpetWarm', front: 0x4f7391, pillows: [0xf2c14e, 0xf1ece4, 0xe8546b], duvet: 0xe8b4b8, shade: 0xe0b25a, family: 'table' },
+  { wall: 'plasterBlue', floor: 'oakFloor', sofa: 'fabricGreen', rug: 'carpet', front: 0xb5654a, pillows: [0xf1ece4, 0xd4a043, 0x3d6aa8], duvet: 0xf2efe8, shade: 0x26272b, family: null },
+];
+const houseTV = () => cached('houseTV', () => { const m = tvScreen(); m.name = 'houseTV'; m.emissiveIntensity = 1.0; return m; });
+/** Window/door casing on a wall face: local x along the wall, local +Z into the room. */
+function casing(p, m, cx, cz, ry, w, lo, hi, door = false) {
+  const k = group(p, cx, 0, cz, ry);
+  for (const s of [-1, 1]) put(k, RB(0.07, hi - lo, 0.025, 0.006, 1), m, s * (w / 2 + 0.035), (lo + hi) / 2, 0.0125);
+  put(k, RB(w + 0.14, 0.07, 0.025, 0.006, 1), m, 0, hi + 0.035, 0.0125);
+  if (!door) put(k, RB(w + 0.16, 0.03, 0.15, 0.006, 1), m, 0, lo - 0.015, 0.045);
+  return k;
+}
+function houseInterior(vi) {
+  const H = HOUSE, X = H.X - H.T, Z0 = H.Z0 + H.T, Z1 = H.Z1 - H.T, G = H.G, C = G + 2.6;
+  const hv = HOUSE_IN[vi], R = rng(vi * 71 + 5);
+  const P = { group: new THREE.Group(), colliders: [], interactables: [], npcSpots: [], lamps: [], indoor: [] };
+  const g = P.group, IA = intAtlas(), NA = nbAtlas(NBK + 1), vg = vcGloss();
+  const W = {
+    wall: mat(hv.wall), floor: hv.floor === 'birch' ? textured('planks', { color: 0xd6bd96, seed: 4 }, 2.4, { normal: 0.6 }) : mat(hv.floor),
+    white: mat('whiteWood'), oak: mat('oak'), walnut: mat('walnut'), linen: mat('linen'), fab: mat(hv.sofa), rug: mat(hv.rug),
+    steel: mat('steel'), chrome: mat('chrome'), ceramic: mat('ceramic'), black: mat('blackPlastic'), whitePl: mat('whitePlastic'),
+    lamp: mat('lampGlow'), marble: mat('marble'), tile: mat('wallTile'), dark: paint(0x2b2f33, 0.5, 0.3), ceil: paint(0xf6f4ef, 0.92),
+    front: paint(hv.front, 0.45),
+  };
+  const bx = (x0, y0, z0, x1, y1, z1) => box3(P, x0, y0, z0, x1, y1, z1);
+  // ================= shell: floor, ceiling, wall linings with the holes, casings, partitions, baseboards
+  slab(g, W.floor, -X, G - 0.01, Z0, X, G + 0.003, Z1);
+  slab(g, W.ceil, -X, C, Z0, X, C + 0.05, Z1);
+  const FW = [[-3.6, -1.3, 0.95, 2.6], [2.5, 3.6, 1.3, 2.5]], BWn = [-3.2, -1.8, 1.3, 2.5], SW = [-2.2, -1.0, 1.3, 2.5];
+  const hole = ([a, b, lo, hi]) => ({ a, b, lo, hi });
+  wallX(g, W.wall, -X, X, Z1 - 0.012, Z1, G, C, [...FW.map(hole), { a: H.D0, b: H.D1, lo: G, hi: G + H.DH }]);
+  wallX(g, W.wall, -X, X, Z0, Z0 + 0.012, G, C, [hole(BWn), hole([1.4, 3.0, 1.3, 2.5])]);
+  for (const s of [-1, 1]) wallZ(g, W.wall, Z0, Z1, s > 0 ? X - 0.012 : -X, s > 0 ? X : -X + 0.012, G, C, [hole(SW)]);
+  for (const [a, b, lo, hi] of FW) casing(g, W.white, (a + b) / 2, Z1 - 0.012, PI, b - a, lo, hi);
+  casing(g, W.white, (BWn[0] + BWn[1]) / 2, Z0 + 0.012, 0, BWn[1] - BWn[0], BWn[2], BWn[3]);
+  for (const s of [-1, 1]) casing(g, W.white, s * (X - 0.012), (SW[0] + SW[1]) / 2, -s * PI / 2, SW[1] - SW[0], SW[2], SW[3]);
+  casing(g, W.white, (H.D0 + H.D1) / 2, Z1 - 0.012, PI, H.D1 - H.D0, G, G + H.DH, true);
+  // partitions: A bedroom|living (z -1.0..-0.88), B bedroom|hall (x -0.6..-0.48, doorway z -2.05..-1.0),
+  // C bath|kitchen (z -2.4..-2.28), D bath|hall (x 1.2..1.32)
+  wallX(g, W.wall, -X, -0.48, -1.0, -0.88, G, C, [], P);
+  wallZ(g, W.wall, Z0, -1.0, -0.6, -0.48, G, C, [{ a: -2.05, b: -1.0, lo: G, hi: G + 2.1 }], P);
+  wallX(g, W.wall, 1.2, X, -2.4, -2.28, G, C, [], P);
+  wallZ(g, W.wall, Z0, -2.28, 1.2, 1.32, G, C, [], P);
+  for (const s of [-1, 1]) casing(g, W.white, s > 0 ? -0.48 : -0.6, -1.525, s * PI / 2, 1.05, G, G + 2.1, true);
+  for (const [x0, z0, x1, z1] of [[-X, Z1 - 0.024, H.D0 - 0.07, Z1 - 0.012], [H.D1 + 0.07, Z1 - 0.024, X, Z1 - 0.012], [-X, Z0 + 0.012, X, Z0 + 0.024], [-X + 0.012, Z0, -X + 0.024, Z1], [X - 0.024, -2.28, X - 0.012, Z1],
+    [-X, -0.88, -0.48, -0.868], [-X, -1.012, -0.6, -1.0], [-0.48, Z0, -0.468, -2.12], [1.188, Z0, 1.2, -2.28], [1.2, -2.28, X, -2.268]]) slab(g, W.white, x0, G, z0, x1, G + 0.08, z1);
+  P.indoor.push({ min: [-X, G, Z0], max: [X, C, Z1] });
+
+  // ================= living room (x -4.0..-0.48, z -0.88..1.8)
+  const tvz = 0.55;
+  cabinetRun(g, -X + 0.21, G, tvz, PI / 2, 1.7, 0.45, 0.42, 3, W.walnut, W.oak, null);
+  bx(-X, G, tvz - 0.86, -X + 0.44, G + 0.47, tvz + 0.86);
+  const tv = group(g, -X + 0.03, G + 1.3, tvz, PI / 2);
+  put(tv, RB(1.3, 0.76, 0.04, 0.008, 2), W.black, 0, 0, 0);
+  D(tv, quad(1.26, 0.72), houseTV(), 0, 0, 0.0205);
+  V(g, RB(0.12, 0.08, 0.9, 0.02, 1), 0x2b2d31, -X + 0.24, G + 0.49, tvz);                         // sound bar
+  V(g, RB(0.28, 0.05, 0.2, 0.01, 1), 0xf0f0ee, -X + 0.2, G + 0.475, tvz + 0.62, 0, 0.2, 0, vg);        // console
+  pottedPlant(g, -X + 0.2, G + 0.45, tvz - 0.65, { kind: 'herb', h: 0.25, potR: 0.07, potH: 0.12, seed: 3 + vi, pot: 'white' });
+  // sofa facing the TV, throw, rug, coffee table + things
+  const sx = -1.25, sz = 0.6;
+  sofa(g, sx, G, sz, -PI / 2, { w: 2.0, fabric: W.fab, legs: W.walnut, pillows: hv.pillows });
+  V(g, softBox(0.62, 0.03, 0.36, 0.012, 0.004, 0.006, vi), [0xe9e2d0, 0x8a6f5a, 0xf1ece4, 0xd9b48a][vi], sx + 0.12, G + 0.66, sz - 0.75, 0, 0.3, 0, vcSoft());
+  bx(sx - 0.47, G, sz - 1.02, sx + 0.47, G + 0.8, sz + 1.02);
+  put(g, RB(2.3, 0.012, 2.2, 0.006, 1), W.rug, -2.45, G + 0.009, sz);
+  const ct = group(g, -2.55, G, sz);
+  put(ct, RB(0.62, 0.045, 1.05, 0.02, 2), W.oak, 0, 0.4, 0);
+  put(ct, RB(0.56, 0.025, 0.95, 0.01, 1), W.oak, 0, 0.12, 0);
+  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) put(ct, RB(0.045, 0.4, 0.045, 0.008, 1), W.walnut, a * 0.26, 0.2, b * 0.46);
+  mug(ct, 0.1, 0.4225, 0.25, [0xc4553e, 0x4f7391, 0xf2c14e, 0x5f8a6a][vi], 1.2);
+  V(ct, RB(0.05, 0.016, 0.17, 0.006, 1), 0x222326, -0.12, 0.43, -0.02, 0, 0.5, 0);
+  V(ct, CY(0.15, 0.1, 0.06, 20), 0xf2efe8, 0.05, 0.45, -0.3, 0, 0, 0, vg);
+  for (let i = 0; i < 5; i++) V(ct, SP(0.04, 10, 8), [0xd9534f, 0xf2c14e, 0xe0752d][i % 3], 0.05 + Math.cos(i * 1.3) * 0.055, 0.5, -0.3 + Math.sin(i * 1.3) * 0.055);
+  for (let i = 0; i < 3; i++) V(ct, RB(0.2, 0.025, 0.27, 0.004, 1), [0x3d6aa8, 0xe7b851, 0xc4553e][i], -0.04, 0.155 + i * 0.026, 0.2, 0, 0.1 * i, 0);
+  bx(-2.86, G, sz - 0.53, -2.24, G + 0.44, sz + 0.53);
+  // bookshelf on the bedroom partition, floor lamp, plants, art, curtains, ceiling light
+  bookshelf(g, -2.6, G, -0.88 + 0.19, 0, { w: 1.4, h: 1.9, seed: 3 + vi, wood: vi % 2 ? W.oak : W.walnut, shelves: 5 });
+  bx(-3.3, G, -0.88, -1.9, G + 1.9, -0.5);
+  for (let i = 0; i < 3; i++) { put(g, RB(0.3, 0.24, 0.025, 0.006, 1), W.walnut, -3.1 + i * 0.5, G + 2.2 + (i % 2) * 0.08, -0.86); D(g, IA.quad('photo' + ((i + vi) % 3), 0.26, 0.2), IA.mat, -3.1 + i * 0.5, G + 2.2 + (i % 2) * 0.08, -0.846); }
+  const fl = group(g, -1.0, G, -0.66);
+  put(fl, CY(0.14, 0.15, 0.03, 24), W.dark, 0, 0.015, 0);
+  rod(fl, W.dark, [0, 0.03, 0], [0, 1.45, 0], 0.012);
+  put(fl, CY(0.16, 0.2, 0.28, 24, true), W.linen, 0, 1.52, 0);
+  noShadow(put(fl, SP(0.05, 10, 8), W.lamp, 0, 1.47, 0));
+  bx(-1.16, G, -0.86, -0.84, G + 1.7, -0.5);
+  pottedPlant(g, -3.66, G, -0.6, { kind: vi % 2 ? 'palm' : 'fig', h: 1.5, seed: 7 + vi, pot: ['white', 'terracotta', 'charcoal', 0xd9cdb8][vi], potR: 0.2, potH: 0.4 });
+  bx(-3.9, G, -0.84, -3.42, G + 0.5, -0.36);
+  pottedPlant(g, -0.62, G, 1.5, { kind: 'snake', h: 0.9, seed: 5 + vi, pot: 'white', potR: 0.15, potH: 0.32 });
+  bx(-0.8, G, 1.32, -0.44, G + 0.5, 1.68);
+  put(g, RB(0.84, 0.64, 0.03, 0.01, 1), W.walnut, -0.4, G + 1.55, Z1 - 0.027);
+  D(g, IA.quad(vi % 2 ? 'art' : 'draw', 0.78, 0.58), IA.mat, -0.4, G + 1.55, Z1 - 0.043, 0, PI, 0);
+  rod(g, W.dark, [-3.95, C - 0.12, Z1 - 0.19], [-0.95, C - 0.12, Z1 - 0.19], 0.012);
+  for (const [x, s2] of [[-3.72, 1], [-1.18, 2]]) curtainPanel(g, W.linen, x, C - 0.14, G + 0.03, Z1 - 0.19, 0.5, s2 + vi);
+  ceilingDisc(g, W, -2.3, C, 0.45, 0.28);
+  P.lamps.push({ pos: [-2.3, C - 0.3, 0.45], color: 0xffe2b8, intensity: 12, range: 7 });
+  P.interactables.push({ id: 'houseRest', label: '소파에서 쉬기', pos: [sx - 0.35, G + 0.9, 0.35], radius: 1.6, seat: { pos: [sx - 0.05, G + 1.12, 0.35], yaw: PI / 2, pitch: -0.05 } });
+  if (hv.family === 'sofa') P.npcSpots.push({ pos: [sx - 0.18, G, sz + 0.55], yaw: PI / 2, pose: 'sit', role: 'guest' });
+
+  // ================= kitchen + dining (x 1.32..4.0, z -2.28..1.8) and the entry
+  const fz = -2.28 + 0.35;
+  const fg = group(g, 1.7, G, fz, 0);
+  put(fg, RB(0.74, 1.85, 0.68, 0.02, 2), W.steel, 0, 0.925, 0);
+  put(fg, box(0.006, 1.8, 0.01), W.dark, 0, 0.93, 0.341);
+  for (const s2 of [-1, 1]) put(fg, RB(0.025, 0.5, 0.04, 0.01, 1), W.chrome, s2 * 0.04, 1.15, 0.36);
+  D(fg, IA.quad('draw', 0.2, 0.2), IA.mat, -0.2, 1.32, 0.342);
+  D(fg, NA.quad('note', 0.12, 0.12), NA.mat, 0.2, 1.42, 0.342);
+  D(fg, IA.quad('photo' + (vi % 3), 0.14, 0.105), IA.mat, 0.22, 0.95, 0.342);
+  for (const [x, y, c] of [[-0.2, 1.44, 0xe8546b], [0.2, 1.49, 0x3d9be9], [0.22, 1.02, 0xf2c14e]]) V(fg, CY(0.016, 0.016, 0.012, 10), c, x, y, 0.348, PI / 2, 0, 0, vg);
+  cabinetRun(g, 1.7, G + 1.88, -2.03, 0, 0.74, C - G - 1.9, 0.5, 2, W.white, W.white, null);
+  bx(1.32, G, -2.28, 2.08, G + 1.86, -1.56);
+  P.interactables.push({ id: 'houseFridge', label: '물 마시기', pos: [1.7, G + 1.3, -1.3], radius: 1.3 });
+  // base run with a marble top: cooktop, sink by the east window; hood, upper cabinets, tiles
+  const kx = (2.1 + X) / 2, kw = X - 2.1;
+  cabinetRun(g, kx, G, -1.98, 0, kw, 0.86, 0.6, 4, W.white, W.front, W.dark, { kick: 0.08, hw: 0.2, hh: 0.016, hy: 0.78 });
+  put(g, RB(kw + 0.02, 0.04, 0.62, 0.008, 2), W.marble, kx, G + 0.88, -1.97);
+  bx(2.08, G, -2.28, X, G + 0.92, -1.66);
+  slab(g, W.tile, 2.1, G + 0.9, -2.28, X - 0.012, G + 1.5, -2.268);
+  put(g, RB(0.6, 0.012, 0.42, 0.006, 1), W.steel, 3.45, G + 0.903, -1.98);
+  put(g, box(0.52, 0.012, 0.34), W.dark, 3.45, G + 0.906, -1.98);
+  rod(g, W.chrome, [3.45, G + 0.9, -2.22], [3.45, G + 1.2, -2.22], 0.016, 12);
+  rod(g, W.chrome, [3.45, G + 1.2, -2.22], [3.45, G + 1.17, -2.04], 0.012, 10);
+  put(g, RB(0.56, 0.012, 0.48, 0.006, 1), W.black, 2.55, G + 0.905, -1.98);
+  for (const [dx, dz] of [[-0.13, -0.1], [0.13, 0.1], [-0.13, 0.12], [0.13, -0.12]]) put(g, torus(0.065, 0.004, 4, 20), W.dark, 2.55 + dx, G + 0.913, -1.98 + dz, PI / 2, 0, 0);
+  const pot = group(g, 2.42, G + 0.915, -1.86, 0);
+  V(pot, CY(0.12, 0.11, 0.15, 20, true), [0xc4553e, 0xd9dcdf, 0x4f7391, 0xf2efe8][vi], 0, 0.075, 0, 0, 0, 0, vg);
+  V(pot, CY(0.115, 0.115, 0.012, 20), 0xd9dcdf, 0, 0.15, 0, 0, 0, 0, vg);
+  put(g, RB(0.62, 0.18, 0.45, 0.02, 2), W.steel, 2.55, G + 1.72, -2.05);
+  put(g, RB(0.28, C - G - 1.81, 0.26, 0.01, 1), W.steel, 2.55, (G + 1.81 + C) / 2, -2.14);
+  noShadow(put(g, box(0.36, 0.004, 0.06), W.lamp, 2.55, G + 1.628, -1.92));
+  cabinetRun(g, 3.45, G + 1.5, -2.11, 0, 1.1, C - G - 1.52, 0.34, 2, W.white, W.front, W.dark, { hw: 0.016, hh: 0.16, hy: 0.12 });
+  const rc = group(g, 3.0, G + 0.9, -2.1, 0.3);
+  V(rc, lathe([[0, 0], [0.13, 0], [0.14, 0.02], [0.14, 0.18], [0.11, 0.22], [0, 0.23]], 24), 0xf3f1ec, 0, 0, 0, 0, 0, 0, vg);
+  V(rc, RB(0.1, 0.03, 0.05, 0.01, 1), 0xc4553e, 0, 0.225, 0.05);
+  const kt = group(g, 2.68, G + 0.915, -2.08, -0.6);
+  V(kt, lathe([[0, 0], [0.08, 0], [0.09, 0.1], [0.07, 0.19], [0.03, 0.21], [0, 0.21]], 20), 0xd9dcdf, 0, 0, 0, 0, 0, 0, vg);
+  V(kt, torus(0.06, 0.01, 6, 14, PI), 0x2b2f33, -0.07, 0.15, 0, 0, 0, PI / 2);
+  const dr = group(g, 3.85, G + 0.9, -1.85, PI / 2);
+  V(dr, RB(0.36, 0.03, 0.26, 0.008, 1), 0xd9dcdf, 0, 0.015, 0);
+  for (let i = 0; i < 3; i++) V(dr, CY(0.09, 0.09, 0.012, 20), [0xf6f3ec, 0x86a0b8, 0xf6f3ec][i], -0.1 + i * 0.07, 0.11, 0, 0, 0, PI / 2 - 0.12, vg);
+  for (const z of [-1.75, -1.45]) pottedPlant(g, X - 0.08, 1.3, z, { kind: 'herb', h: 0.2, potR: 0.05, potH: 0.08, seed: (z * -10) | 0, pot: 'terracotta' });
+  // dining table, four chairs, pendant, flowers, fruit, place mats
+  const tx = 2.8, tz = -0.1;
+  const tg = group(g, tx, G, tz);
+  put(tg, RB(1.3, 0.045, 0.82, 0.012, 2), W.oak, 0, 0.7275, 0);
+  for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) put(tg, RB(0.05, 0.705, 0.05, 0.01, 1), W.oak, a * 0.55, 0.3525, b * 0.31);
+  for (const [x, z] of [[-0.3, 0.2], [0.3, -0.2], [0.3, 0.2]]) V(tg, RB(0.36, 0.004, 0.26, 0.002, 1), [0xb9a88c, 0x9fb4c0, 0xd8b4a0, 0xb7c9a8][vi], x, 0.752, z);
+  V(tg, lathe([[0, 0], [0.04, 0], [0.05, 0.05], [0.03, 0.14], [0.02, 0.18], [0, 0.18]], 16), 0x86a0b8, 0.0, 0.75, 0.0, 0, 0, 0, vg);
+  for (let i = 0; i < 5; i++) { const a = i * 1.26; vrod(tg, 0x5f8a3a, [0, 0.85, 0], [Math.cos(a) * 0.07, 1.02 + (i % 2) * 0.04, Math.sin(a) * 0.05], 0.003, 4); V(tg, SP(0.025, 8, 6), [0xf4f1ea, 0xf7c548, 0xe8546b][i % 3], Math.cos(a) * 0.07, 1.02 + (i % 2) * 0.04, Math.sin(a) * 0.05); }
+  mug(tg, 0.32, 0.75, 0.18, 0xf2efe8, 2.0);
+  bx(tx - 0.65, G, tz - 0.41, tx + 0.65, G + 0.75, tz + 0.41);
+  for (const [cx, side] of [[-0.33, 1], [0.33, 1], [-0.33, -1], [0.33, -1]]) {
+    const ch = group(g, tx + cx, G, tz + side * 0.6, side > 0 ? PI : 0);
+    chairGeo(ch, W.oak, W.fab);
+    const p = ch.position; bx(p.x - 0.22, G, p.z - 0.22, p.x + 0.22, G + 0.5, p.z + 0.22);
+  }
+  pendant(g, tx, G + 1.78, tz, C, { r: 0.22, shade: hv.shade });
+  P.lamps.push({ pos: [tx, G + 1.68, tz], color: 0xffd9a8, intensity: 9, range: 6 });
+  if (hv.family === 'table') P.npcSpots.push({ pos: [tx - 0.33, G, tz + 0.5], yaw: 0, pose: 'sit', role: 'guest' });
+  wallClock2(g, NA, X - 0.012, G + 2.1, -0.1, -PI / 2, 0.15);
+  put(g, RB(0.02, 0.4, 0.32, 0.004, 1), W.white, X - 0.02, G + 1.55, 0.95);
+  D(g, IA.quad('cal', 0.3, 0.38), IA.mat, X - 0.031, G + 1.55, 0.95, 0, -PI / 2, 0);
+  ceilingDisc(g, W, 2.8, C, -1.2, 0.2);
+  P.lamps.push({ pos: [2.8, C - 0.3, -1.4], color: 0xfff0d8, intensity: 8, range: 6 });
+  // entry: shoe cabinet with keys and a plant, shoes, mat, umbrella
+  cabinetRun(g, 2.1, G, Z1 - 0.17, PI, 0.7, 0.95, 0.34, 2, W.white, W.oak, W.dark, { hw: 0.016, hh: 0.14, hy: 0.8 });
+  put(g, RB(0.72, 0.03, 0.36, 0.006, 1), W.walnut, 2.1, G + 0.965, Z1 - 0.17);
+  V(g, lathe([[0, 0], [0.08, 0], [0.1, 0.03], [0.095, 0.035], [0.06, 0.008], [0, 0.008]], 20), 0xf3f1ec, 1.95, G + 0.98, Z1 - 0.18, 0, 0, 0, vg);
+  V(g, RB(0.05, 0.01, 0.02, 0.003, 1), 0xd8b25a, 1.95, G + 0.995, Z1 - 0.18);
+  pottedPlant(g, 2.3, G + 0.98, Z1 - 0.17, { kind: 'bush', h: 0.3, potR: 0.07, potH: 0.12, seed: 9 + vi, pot: 'terracotta' });
+  bx(1.75, G, Z1 - 0.36, 2.45, G + 0.97, Z1);
+  const shoe = (x, z, ry, col, s2 = 1) => { const sg = group(g, x, G, z, ry); V(sg, RB(0.1 * s2, 0.07 * s2, 0.26 * s2, 0.03, 2), col, 0, 0.045 * s2, 0); V(sg, RB(0.104 * s2, 0.02, 0.27 * s2, 0.008, 1), 0xf2f0ea, 0, 0.01, 0); };
+  shoe(1.85, 1.2, 0.1, 0x3b4f73); shoe(1.98, 1.22, -0.1, 0x3b4f73); shoe(2.2, 1.18, 0.3, 0xd9534f, 0.8); shoe(2.32, 1.2, 0.2, 0xd9534f, 0.8);
+  V(g, RB(1.0, 0.012, 0.55, 0.004, 1), [0x8a6f5a, 0x56606e, 0x7a8a6a, 0x9a6a5a][vi], H.D0 + 0.55, G + 0.009, Z1 - 0.4);
+  umbrellaStand(g, 2.65, G, Z1 - 0.2);
+  bx(2.5, G, Z1 - 0.35, 2.8, G + 0.5, Z1);
+
+  // ================= hall (x -0.48..1.2, z -4.4..-0.88): laundry corner, bathroom door, family photos
+  const wm = group(g, 0.62, G, Z0 + 0.32, 0);
+  V(wm, RB(0.6, 0.85, 0.6, 0.03, 2), 0xf4f4f2, 0, 0.425, 0, 0, 0, 0, vg);
+  V(wm, torus(0.2, 0.03, 8, 28), 0xd6d8da, 0, 0.42, 0.3, 0, 0, 0, vg);
+  noShadow(put(wm, CY(0.18, 0.18, 0.01, 28), mat('glass'), 0, 0.42, 0.302, PI / 2, 0, 0));
+  V(wm, CY(0.17, 0.17, 0.01, 28), 0x3a4a5a, 0, 0.42, 0.296, PI / 2, 0, 0);
+  V(wm, RB(0.56, 0.1, 0.02, 0.006, 1), 0xdcdcda, 0, 0.78, 0.3);
+  V(wm, CY(0.03, 0.03, 0.02, 14), 0x8a9096, 0.18, 0.78, 0.31, PI / 2, 0, 0);
+  bx(0.3, G, Z0, 0.94, G + 0.86, Z0 + 0.64);
+  const lb = group(g, -0.05, G, Z0 + 0.35, 0.3);
+  V(lb, lathe([[0, 0], [0.18, 0], [0.21, 0.36], [0.2, 0.37], [0, 0.02]], 20), 0xd8c4a0, 0, 0, 0, 0, 0, 0, vcSoft());
+  for (let i = 0; i < 4; i++) V(lb, softBox(0.22, 0.06, 0.18, 0.025, 0.02, 0.006, i), [0xf2efe8, 0x8fb0c8, 0xe8b4b8, 0xf2c14e][i], (R() - 0.5) * 0.1, 0.33 + i * 0.03, (R() - 0.5) * 0.1, 0, R() * 3, 0.2, vcSoft());
+  bx(-0.3, G, Z0 + 0.1, 0.2, G + 0.4, Z0 + 0.6);
+  put(g, RB(1.1, 0.03, 0.28, 0.006, 1), W.oak, 0.38, G + 1.55, Z0 + 0.14);
+  for (const [x, c, h] of [[0.05, 0x3d9be9, 0.24], [0.2, 0xf2efe8, 0.2], [0.55, 0x7ac0a8, 0.26], [0.72, 0xe86f8a, 0.18]]) V(g, RB(0.1, h, 0.08, 0.02, 2), c, x, G + 1.565 + h / 2, Z0 + 0.14, 0, 0, 0, vg);
+  staticDoor(g, 1.2, G, -3.3, -PI / 2, { w: 0.8, h: 2.05, leaf: W.white, frame: W.white });
+  D(g, NA.quad('bath', 0.16, 0.16), NA.mat, 1.2 - 0.04, G + 1.55, -3.3, 0, -PI / 2, 0);
+  for (let i = 0; i < 3; i++) { const z = -3.6 + i * 0.5, y = G + 1.5 + (i % 2) * 0.12; put(g, RB(0.025, 0.24, 0.3, 0.006, 1), W.walnut, -0.48 + 0.013, y, z); D(g, IA.quad('photo' + i, 0.26, 0.2), IA.mat, -0.48 + 0.027, y, z, 0, PI / 2, 0); }
+  ceilingDisc(g, W, 0.36, C, -2.6, 0.17);
+  P.lamps.push({ pos: [0.36, C - 0.3, -2.6], color: 0xfff0d8, intensity: 6, range: 5 });
+
+  // ================= bedroom (x -4.0..-0.6, z -4.4..-1.0)
+  const bcx = -2.5, bw = 1.5, bl = 2.05, bcz = Z0 + bl / 2;
+  const bg = group(g, bcx, G, bcz, 0);
+  put(bg, RB(bw + 0.1, 0.24, bl - 0.08, 0.02, 2), W.oak, 0, 0.2, 0.04);
+  put(bg, softBox(bw + 0.12, 0.95, 0.1, 0.05, 0.02, 0.002, 2 + vi), W.fab, 0, 0.6, -bl / 2 + 0.06);
+  put(bg, RB(bw, 0.22, bl - 0.16, 0.06, 3), W.linen, 0, 0.43, 0.06);
+  V(bg, softBox(bw + 0.08, 0.08, 1.4, 0.04, 0.03, 0.007, 5 + vi), hv.duvet, 0, 0.57, 0.3, 0, 0, 0, vcSoft());
+  for (const s2 of [-1, 1]) V(bg, softBox(0.05, 0.26, 1.36, 0.02, 0.0, 0.006, 6 + s2), hv.duvet, s2 * (bw / 2 + 0.05), 0.45, 0.3, 0, 0, 0, vcSoft());
+  put(bg, softBox(0.58, 0.14, 0.38, 0.06, 0.05, 0.005, 1), W.linen, -0.34, 0.64, -0.72).rotation.x = -0.35;
+  put(bg, softBox(0.58, 0.14, 0.38, 0.06, 0.05, 0.005, 2), W.linen, 0.34, 0.64, -0.72).rotation.x = -0.3;
+  const bear = group(bg, 0.42, 0.62, -0.38, -0.4);
+  const fur = [0xc8a27a, 0xe9e2d0, 0x8a6a4e, 0xe8b4b8][vi];
+  V(bear, SP(0.11, 14, 10), fur, 0, 0.1, 0, 0, 0, 0, vcSoft()); V(bear, SP(0.085, 14, 10), fur, 0, 0.26, 0.02, 0, 0, 0, vcSoft());
+  for (const s2 of [-1, 1]) { V(bear, SP(0.035, 10, 8), fur, s2 * 0.06, 0.34, 0.0, 0, 0, 0, vcSoft()); V(bear, SP(0.04, 10, 8), fur, s2 * 0.08, 0.03, 0.07, 0, 0, 0, vcSoft()); }
+  V(bear, SP(0.012, 8, 6), 0x222326, 0, 0.255, 0.1);
+  bx(bcx - bw / 2 - 0.06, G, Z0, bcx + bw / 2 + 0.06, G + 0.66, Z0 + bl);
+  for (const s2 of [-1, 1]) {
+    const nx = bcx + s2 * (bw / 2 + 0.3), ng = group(g, nx, G, Z0 + 0.25, 0);
+    put(ng, RB(0.4, 0.5, 0.4, 0.015, 2), W.oak, 0, 0.29, 0);
+    put(ng, RB(0.36, 0.18, 0.02, 0.006, 1), W.oak, 0, 0.42, 0.2);
+    put(ng, SP(0.013, 8, 6), W.dark, 0, 0.42, 0.215);
+    if (s2 < 0) {
+      const lg = group(ng, 0, 0.54, -0.04);
+      put(lg, lathe([[0, 0], [0.07, 0], [0.075, 0.02], [0.06, 0.12], [0.03, 0.2], [0.012, 0.22], [0, 0.22]], 20), W.ceramic, 0, 0, 0);
+      put(lg, CY(0.1, 0.13, 0.17, 24, true), W.linen, 0, 0.3, 0);
+      noShadow(put(lg, SP(0.04, 10, 8), W.lamp, 0, 0.26, 0));
+    } else { mug(ng, 0.1, 0.54, 0.06, 0xe7b851, 0.5); V(ng, RB(0.16, 0.03, 0.22, 0.004, 1), 0x3d6aa8, -0.06, 0.555, 0.04, 0, 0.2, 0); }
+    bx(nx - 0.2, G, Z0, nx + 0.2, G + 0.55, Z0 + 0.45);
+  }
+  cabinetRun(g, -0.9, G, (Z0 - 2.45) / 2, -PI / 2, -2.45 - Z0, 2.3, 0.6, 3, W.white, W.white, W.oak, { hw: 0.02, hh: 0.5, hy: 1.1 });
+  bx(-1.2, G, Z0, -0.6, G + 2.3, -2.45);
+  // desk under the west window with chair, laptop, books, lamp
+  const dg = group(g, -X + 0.28, G, -1.6, PI / 2);
+  put(dg, RB(1.1, 0.035, 0.55, 0.008, 2), W.oak, 0, 0.74, 0);
+  for (const s2 of [-1, 1]) put(dg, RB(0.035, 0.72, 0.5, 0.006, 1), W.white, s2 * 0.52, 0.36, 0);
+  for (let i = 0; i < 7; i++) V(dg, box(0.03, 0.2 + (i % 3) * 0.03, 0.16), [0x3d6aa8, 0xc4553e, 0xe7b851, 0x86a08a, 0x8a5a7a][i % 5], -0.5 + i * 0.033, 0.857 + (i % 3) * 0.015, -0.16);
+  const lap = group(dg, 0.05, 0.7575, 0.04, 0);
+  V(lap, RB(0.34, 0.015, 0.24, 0.006, 1), 0xb0b4ba, 0, 0.0075, 0, 0, 0, 0, vg);
+  const lid = V(lap, RB(0.34, 0.24, 0.012, 0.006, 1), 0xb0b4ba, 0, 0.12, -0.12, 0, 0, 0, vg); lid.rotation.x = -0.25;
+  const dl = group(dg, 0.4, 0.7575, -0.15);
+  put(dl, CY(0.07, 0.075, 0.02, 20), W.dark, 0, 0.01, 0);
+  rod(dl, W.dark, [0, 0.02, 0], [0.02, 0.36, 0.05], 0.008);
+  rod(dl, W.dark, [0.02, 0.36, 0.05], [-0.08, 0.42, 0.18], 0.008);
+  put(dl, CY(0.03, 0.075, 0.1, 18, true), W.dark, -0.09, 0.4, 0.2, 0.7, 0, 0);
+  noShadow(put(dl, SP(0.025, 8, 6), W.lamp, -0.09, 0.38, 0.2));
+  bx(-X, G, -2.15, -X + 0.56, G + 0.78, -1.05);
+  const dc = group(g, -X + 0.85, G, -1.55, -PI / 2 + 0.25);
+  chairGeo(dc, W.white, W.fab);
+  bx(-X + 0.62, G, -1.78, -X + 1.08, G + 0.5, -1.32);
+  put(g, RB(1.7, 0.012, 1.2, 0.006, 1), W.rug, -2.4, G + 0.009, -1.75);
+  put(g, RB(0.6, 0.46, 0.025, 0.006, 1), W.white, -2.2, G + 1.6, -1.0 - 0.025);
+  D(g, NA.quad('kids', 0.56, 0.42), NA.mat, -2.2, G + 1.6, -1.0 - 0.039, 0, PI, 0);
+  ceilingDisc(g, W, -2.3, C, -2.7, 0.22);
+  P.lamps.push({ pos: [-2.3, C - 0.3, -2.7], color: 0xffe2b8, intensity: 8, range: 6 });
+  bake(g);
+  return P;
+}
+
+/** Viewer helpers: the site plus its lazily built interior (and counts in the console). */
+function withInterior(S) {
+  const t0 = performance.now();
+  const cold = S.extra.interior.build();
+  const t1 = performance.now();
+  const P = S.extra.interior.build();
+  const t2 = performance.now();
+  cold.group.traverse((o) => o.geometry?.dispose?.());
+  S.group.add(P.group);
+  S.colliders.push(...P.colliders);
+  S.interactables.push(...P.interactables);
+  S.extra.interiorStats = { ...stats(P.group), coldMs: Math.round(t1 - t0), warmMs: Math.round(t2 - t1), colliders: P.colliders.length, lamps: P.lamps.length, npc: P.npcSpots.length };
+  console.warn('INTERIOR', S.name, JSON.stringify(S.extra.interiorStats));
+  return S;
+}
+export function neighborWithInterior({ seed = 2 } = {}) { return withInterior(buildApartment({ main: false, dong: `10${seed}동`, seed })); }
+export function houseWithInterior({ variant = 0 } = {}) { return withInterior(buildHouse({ variant })); }

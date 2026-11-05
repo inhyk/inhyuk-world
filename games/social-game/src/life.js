@@ -46,8 +46,15 @@ export class Life {
 
   spawnPeople() {
     if (!this.buildCharacter) return;
-    let seed = 1;
-    for (const sp of this.places.npcSpots) {
+    this.spawnSpots(this.places.npcSpots);
+    this.spawnWalkers();
+  }
+
+  /** People for a list of npc spots (also called later when an interior is built). */
+  spawnSpots(spots) {
+    if (!this.buildCharacter) return;
+    let seed = (this._seed ??= 1);
+    for (const sp of spots) {
       const ch = this.person(seed++, ROLE_OUTFIT[sp.role] ?? (sp.site === 'restaurant' ? 'casual' : 'office'));
       ch.group.position.copy(sp.wpos);
       ch.group.rotation.y = sp.wyaw;
@@ -56,6 +63,10 @@ export class Life {
       if (sp.role === 'kid') ch.group.scale.setScalar(0.72);
       this.people.push({ ch, mode: sp.pose === 'type' ? 'type' : sp.pose === 'sit' ? 'sit' : 'idle', base: sp.pose, site: sp.site, wave: 0, t: this.R() * 10 });
     }
+    this._seed = seed;
+  }
+
+  spawnWalkers() {
     // sidewalk walkers
     for (let i = 0; i < 8; i++) {
       const side = i % 2 ? 1 : -1;

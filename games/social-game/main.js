@@ -21,6 +21,7 @@ import { Cloud } from './src/cloud.js';
 import { Elevators } from './src/elevator.js';
 import { guide, guideText } from './src/nav.js';
 import { DriveTest } from './src/drivetest.js';
+import { Album } from './src/album.js';
 import { Town } from './src/town.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
@@ -180,6 +181,9 @@ async function boot() {
   let lifts = { prompt: () => null, update: () => {}, busy: false };
   try { lifts = new Elevators({ engine, colliders: col, places, player, hud, sfx, input }); } catch (e) { console.warn('elevators failed', e); }
   day.g.flight = flight;
+  const album = new Album({ hud, input, sfx });
+  day.g.album = album;
+  places.onInterior = (site, parts) => { if (parts.frames?.length) album.fillFrames(parts.frames); };
   const driveTest = new DriveTest({ engine, places, vehicle, player, hud, sfx, state, day, cloud });
   day.g.driveTest = driveTest;
   if (!places.sites.license) state.license = true; // no test centre loaded: never lock the car
@@ -252,6 +256,7 @@ async function boot() {
   const toggleView = () => { player.toggleView(); hud.setView(player.view); };
   $('btn-view').addEventListener('click', toggleView);
   $('btn-help').addEventListener('click', () => $('help').classList.toggle('hidden'));
+  $('btn-album').addEventListener('click', () => day.g.album?.open());
   setupTouch(input);
   setupLogin(cloud, input, hud, town);
   if (cloud.loggedIn) cloud.sync();
@@ -272,6 +277,7 @@ async function boot() {
     if (input.hit('KeyH')) $('help').classList.toggle('hidden');
     if (input.hit('KeyM')) minimap.toggle();
     if (input.hit('KeyL')) openLogin();
+    if (input.hit('KeyG') && !day.seat) album.open();
     if (input.hit('KeyP') && !day.seat) day.photo();
     const driving = vehicle?.driving;
     flight.update(dt, input);
@@ -348,7 +354,11 @@ async function boot() {
     if (props.nature?.windUniform) props.nature.windUniform.value = t;
     const wn = world.sea.material.normalMap; if (wn) { wn.offset.set(t * 0.004, t * 0.0025); }
     if (world.foam) { world.foam.position.x = LAYOUT.beachX - 27.2 + Math.sin(t * 0.6) * 0.9; world.foam.material.opacity = 0.35 + 0.25 * Math.sin(t * 0.6 + 1); }
-    if ((deco._t = (deco._t ?? 0) - dt) <= 0) { deco._t = 0.25; for (const sc of deco.scatters) sc.update(engine.camera.position); }
+    if ((deco._t = (deco._t ?? 0) - dt) <= 0) {
+      deco._t = 0.25;
+      for (const sc of deco.scatters) sc.update(engine.camera.position);
+      places.updateInteriors(engine.camera.position, (spots) => { try { life.spawnSpots(spots); } catch (e) { console.warn('people failed', e); } });
+    }
     ambience(sky.daylight, night, Math.max(0, Math.min(1, (LAYOUT.beachX + 40 - player.pos.x) / 60)));
     hud.bars(state.hp, state.food);
     $('hurt').style.opacity = hurtT > 0 ? 1 : 0; hurtT -= dt;
