@@ -30,8 +30,9 @@ for (const key of keys) {
   await G((k) => {
     const g = window.__game; const s = g.places.sites[k];
     const c = Math.cos(s.worldYaw), sn = Math.sin(s.worldYaw), d = s.footprint.d / 2 + 2.5;
-    const door = s.doors[0]?.pivot ? new (g.player.pos.constructor)() : null;
-    if (door) s.doors[0].pivot.getWorldPosition(door);
+    // aim at the middle of the front door (its closed collider), not at the hinge
+    const pd = g.places.doors.filter((x) => x.site === k).sort((a, b) => (b.center.z - s.worldPos[2]) * c - (a.center.z - s.worldPos[2]) * c)[0];
+    const door = pd ? pd.center.clone() : null;
     const lx = door ? (door.x - s.worldPos[0]) * c - (door.z - s.worldPos[2]) * sn : 0; // door's local x
     g.state.hour = 15; g.sky.setHour(15, true);
     g.player.place(s.worldPos[0] + lx * c + d * sn, 0.25, s.worldPos[2] - lx * sn + d * c, s.worldYaw);
@@ -39,7 +40,11 @@ for (const key of keys) {
   }, key);
   await page.waitForFunction((k) => !!window.__game.places.sites[k].interior, key, { timeout: 15000 }).catch(() => {});
   const built = await G((k) => !!window.__game.places.sites[k].interior, key);
-  await page.keyboard.down('KeyW'); await page.waitForTimeout(2600); await page.keyboard.up('KeyW');
+  // walk up to the door, press E (hinged house doors open with E, glass doors open by themselves), walk in
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(1100); await page.keyboard.up('KeyW');
+  await page.waitForTimeout(200);
+  if (await G(() => { const g = window.__game; const d = g.places.doorNear(g.player.pos); return !!d && !d.want; })) { await page.keyboard.press('KeyE'); await page.waitForTimeout(700); }
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(2200); await page.keyboard.up('KeyW');
   await page.waitForTimeout(400);
   const r = await G((k) => {
     const g = window.__game; const s = g.places.sites[k];
