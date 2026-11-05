@@ -81,7 +81,7 @@ export class Flight {
       this.cabin.group.visible = true;
       if (this.cabin.meal) this.cabin.meal.visible = true;
       this.clouds.visible = true;
-      this.active = { t: 0, dur: 18, start, end, yaw: dir > 0 ? -Math.PI / 2 : Math.PI / 2, ate: false };
+      this.active = { t: 0, t0: performance.now(), dur: 18, start, end, yaw: dir > 0 ? -Math.PI / 2 : Math.PI / 2, ate: false };
       this.look.yaw = 0.42; this.look.pitch = -0.3;
       g.sky.fogScale = 0.22; // clear air up high so the land below shows through the window
       this.update(0);
@@ -115,7 +115,8 @@ export class Flight {
   update(dt, input) {
     const a = this.active;
     if (!a) return;
-    a.t += dt;
+    // real clock, so a slow computer gets a choppier flight, not a longer one
+    a.t = Math.max(a.t + dt, (performance.now() - a.t0) / 1000);
     const k = Math.min(1, a.t / a.dur);
     const x = THREE.MathUtils.lerp(a.start.x, a.end.x, ease(k));
     const z = THREE.MathUtils.lerp(a.start.z, a.end.z, ease(k)) + Math.sin(k * Math.PI) * 60;

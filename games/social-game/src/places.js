@@ -22,6 +22,7 @@ export class Places {
     this.interactables = [];
     this.indoor = [];
     this.npcSpots = [];
+    this.lazy = [];
   }
 
   add(def, site) {
@@ -54,7 +55,39 @@ export class Places {
     for (const m of site.nightGlow) this.lights?.addGlow(m);
     for (const n of site.npcSpots) this.npcSpots.push({ ...n, site: def.key, wpos: new THREE.Vector3(...xform(site, n.pos)), wyaw: (n.yaw ?? 0) + def.yaw });
     this.sites[def.key] = site;
+    if (site.extra?.interior?.build) this.lazy.push(site);
     return site;
+  }
+
+  /**
+   * Interiors are built the first time the camera comes within BUILD_R of a building, then shown only
+   * nearby (인혁: "모든 건물에 들어 갈 수 있게 해줘"). onSpots(spots) spawns the people of a new interior.
+   */
+  updateInteriors(cam, onSpots) {
+    const BUILD_R = 45, SHOW_R = 70;
+    let built = 0;
+    for (const site of this.lazy) {
+      const d = Math.hypot(cam.x - site.worldPos[0], cam.z - site.worldPos[2]) - Math.max(site.footprint.w, site.footprint.d) / 2;
+      if (!site.interior && d < BUILD_R && built < 1) {
+        built++;
+        let parts = null;
+        try { parts = site.extra.interior.build(); } catch (e) { console.warn('interior failed', site.key, e); site.extra.interior = null; continue; }
+        site.interior = parts;
+        const key = site.key;
+        if (parts.group) { parts.group.userData.dynamic = true; site.group.add(parts.group); }
+        for (const b of parts.colliders ?? []) this.build?.addStatic(this.col.add({ ...xbox(site, b), tag: key }));
+        for (const it of parts.interactables ?? []) {
+          this.interactables.push({ ...it, site: key, key: `${key}:${it.id}`, wpos: new THREE.Vector3(...xform(site, it.pos)), seatW: it.seat ? { pos: new THREE.Vector3(...xform(site, it.seat.pos)), yaw: it.seat.yaw + site.worldYaw, pitch: it.seat.pitch ?? 0 } : null, screenW: it.screen ? { center: new THREE.Vector3(...xform(site, it.screen.center)), w: it.screen.w, h: it.screen.h, yaw: (it.screen.yaw ?? 0) + site.worldYaw } : null });
+        }
+        for (const v of parts.indoor ?? []) this.indoor.push({ ...xbox(site, v), site: key });
+        for (const l of parts.lamps ?? []) this.lights?.add({ ...l, pos: xform(site, l.pos), when: 'inside', site: key, intensity: l.intensity ?? 6, range: l.range ?? 9 });
+        const spots = (parts.npcSpots ?? []).map((n) => ({ ...n, site: key, wpos: new THREE.Vector3(...xform(site, n.pos)), wyaw: (n.yaw ?? 0) + site.worldYaw }));
+        this.npcSpots.push(...spots);
+        onSpots?.(spots);
+        this.onInterior?.(site, parts);
+      }
+      if (site.interior?.group) site.interior.group.visible = d < SHOW_R;
+    }
   }
 
   /** Site key of the indoor volume containing p, or null. */
