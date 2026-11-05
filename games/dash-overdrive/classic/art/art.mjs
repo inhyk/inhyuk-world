@@ -843,7 +843,7 @@ function lockSmall() {
   return svg(64, 76, defs, `<g transform="scale(.4)">${body}</g>`);
 }
 
-// ================================================================ skins 12-24 (second set) and the locked-slot cover
+// ================================================================ skins 12-30 (second set and the shop) and the locked-slot cover
 
 // cube with a non-square silhouette: the 11 px navy outline is drawn inside the shape
 function skinShape({ shape, colors, defs = '', pattern = '', face = '' }) {
@@ -1107,7 +1107,111 @@ const SKINS_2 = [
         `<path d="M27 46 Q14 39 3 43 L5 52 Q16 49 26 54 Z M27 56 Q15 62 5 72 L11 77 Q20 66 29 61 Z" fill="url(#sweat)" stroke="${NAVY}" stroke-width="3" stroke-linejoin="round"/>` +
         `<rect x="22" y="43" width="16" height="16" rx="5" fill="url(#sweat)" stroke="${NAVY}" stroke-width="3"/>`,
     }),
+  // ---- shop skins 25-30, bought with diamonds on the page
+  // 25: crystal with cut faces and sparkles
+  () =>
+    cube({
+      colors: ['#e8fcff', '#7fe3ff', '#3a8fe8'],
+      pattern:
+        `<path d="M17 17 L92.5 70 L168 17 Z" fill="${WHITE}" fill-opacity=".28"/><path d="M17 168 L92.5 118 L168 168 Z" fill="#1f5fc4" fill-opacity=".28"/>` +
+        `<path d="M17 17 L92.5 70 L92.5 118 L17 168 Z" fill="${WHITE}" fill-opacity=".1"/>` +
+        `<path d="M17 17 L92.5 70 L168 17 M17 168 L92.5 118 L168 168 M92.5 70 V118" fill="none" stroke="${WHITE}" stroke-opacity=".7" stroke-width="3"/>` +
+        [[40, 44, 7], [150, 140, 6], [146, 52, 4.5]].map(([x, y, r]) => `<path d="${starPath(x, y, r * 1.6, r * 0.45, 4, 0)}" fill="${WHITE}"/>`).join(''),
+      face:
+        eyesRound(66, 119, 96, 12, 14) +
+        `<path d="M74 124 Q92.5 140 111 124" fill="none" stroke="${NAVY}" stroke-width="6" stroke-linecap="round"/>` +
+        blush(120, '#ff8fc8', 0.5),
+    }),
+  // 26: panda with round ears
+  () =>
+    cube({
+      colors: ['#ffffff', '#f1f3f8', '#cfd5e2'],
+      frame:
+        [42, 143].map((x) => `<circle cx="${x}" cy="36" r="24" fill="${NAVY}"/><circle cx="${x}" cy="36" r="13" fill="#3b4060"/>`).join('') +
+        tallHead(34),
+      inner: [17, 45, 151, 123],
+      gloss: false,
+      face:
+        headGloss(34) +
+        `<ellipse cx="62" cy="98" rx="20" ry="24" fill="${NAVY}" transform="rotate(-20 62 98)"/><ellipse cx="123" cy="98" rx="20" ry="24" fill="${NAVY}" transform="rotate(20 123 98)"/>` +
+        `<circle cx="64" cy="96" r="7" fill="${WHITE}"/><circle cx="121" cy="96" r="7" fill="${WHITE}"/><circle cx="66" cy="98" r="3.2" fill="${NAVY}"/><circle cx="119" cy="98" r="3.2" fill="${NAVY}"/>` +
+        `<ellipse cx="92.5" cy="124" rx="9" ry="6.5" fill="${NAVY}"/>` +
+        `<path d="M92.5 130 V138 M80 140 Q92.5 150 105 140" fill="none" stroke="${NAVY}" stroke-width="4.5" stroke-linecap="round"/>` +
+        blush(130, '#ff9ab8', 0.55),
+    }),
+  // 27: astronaut helmet with a dark visor
+  () =>
+    cube({
+      colors: ['#ffffff', '#e2e8f4', '#a9b6d0'],
+      defs: lin('visor', 0, 58, 0, 140, [[0, '#2a3a8a'], [0.6, '#121a4a'], [1, '#0a0f30']]),
+      frame:
+        `<path d="M150 40 V20" stroke="${NAVY}" stroke-width="10" stroke-linecap="round"/><circle cx="150" cy="16" r="7.5" fill="${PINK}" stroke="${NAVY}" stroke-width="3.5"/>` +
+        tallHead(30),
+      inner: [17, 41, 151, 127],
+      gloss: false,
+      pattern: [[34, 150], [151, 150]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="6" fill="#ffd23d" stroke="${NAVY}" stroke-width="2.5"/>`).join(''),
+      face:
+        headGloss(30) +
+        `<rect x="32" y="58" width="121" height="82" rx="30" fill="url(#visor)" stroke="${NAVY}" stroke-width="5"/>` +
+        `<path d="M44 74 Q50 64 64 62" fill="none" stroke="${WHITE}" stroke-opacity=".55" stroke-width="5" stroke-linecap="round"/>` +
+        `<ellipse cx="72" cy="100" rx="9" ry="11" fill="#7fe3ff"/><ellipse cx="113" cy="100" rx="9" ry="11" fill="#7fe3ff"/>` +
+        `<path d="M80 122 Q92.5 130 105 122" fill="none" stroke="#7fe3ff" stroke-width="4.5" stroke-linecap="round"/>` +
+        [[118, 70, 2.5], [134, 86, 1.8], [52, 120, 2]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${WHITE}"/>`).join(''),
+    }),
+  // 28: watermelon slice
+  () =>
+    cube({
+      colors: ['#ff9aa8', '#ff4f6a', '#e0254a'],
+      frame: `<rect x="6" y="6" width="173" height="173" rx="31" fill="${NAVY}"/><rect x="17" y="17" width="151" height="151" rx="20" fill="#3fbf5a"/><rect x="27" y="27" width="131" height="131" rx="14" fill="#c9f2a8"/><rect x="33" y="33" width="119" height="119" rx="11" fill="url(#body)"/>`,
+      inner: [33, 33, 119, 119],
+      pattern: [[52, 58], [128, 54], [46, 132], [140, 128], [92, 46]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="4" ry="6.5" fill="${NAVY}" transform="rotate(20 ${x} ${y})"/>`).join(''),
+      face:
+        eyesRound(68, 117, 92, 11, 13) +
+        `<path d="M72 118 H113 Q112 140 92.5 140 Q73 140 72 118 Z" fill="${NAVY}"/><path d="M80 132 Q92.5 124 105 132 Q100 140 92.5 140 Q85 140 80 132 Z" fill="#ffb3c2"/>`,
+    }),
+  // 29: thunder with a lightning bolt
+  () =>
+    cube({
+      colors: ['#fff6b0', '#ffd23d', '#f08a1c'],
+      defs: blur('bolt', 3),
+      pattern:
+        `<path d="M122 17 L96 82 H124 L74 168 L86 104 H60 L84 17 Z" fill="${WHITE}" fill-opacity=".38" filter="url(#bolt)"/>` +
+        `<path d="M122 17 L96 82 H124 L74 168 L86 104 H60 L84 17 Z" fill="none" stroke="${WHITE}" stroke-opacity=".75" stroke-width="3" stroke-linejoin="round"/>`,
+      face:
+        `<path d="M48 82 L78 90 M137 82 L107 90" stroke="${NAVY}" stroke-width="6" stroke-linecap="round"/>` +
+        eyesRound(64, 121, 104, 11, 12) +
+        `<path d="M70 128 L81 136 L92.5 128 L104 136 L115 128" fill="none" stroke="${NAVY}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>`,
+    }),
+  // 30: chocolate chip cookie (round)
+  () => {
+    let edge = '';
+    const bumps = 14;
+    for (let i = 0; i < bumps; i++) {
+      const a = (i / bumps) * Math.PI * 2;
+      const r = i % 2 ? 80 : 86;
+      edge += `${i ? 'L' : 'M'}${n2(92.5 + Math.cos(a) * r)} ${n2(92.5 + Math.sin(a) * r)} `;
+    }
+    return skinShape({
+      shape: edge + 'Z',
+      colors: ['#f5d39a', '#d99a52', '#a8662a'],
+      pattern: [[50, 54, 9], [130, 48, 8], [44, 120, 8], [138, 126, 10], [92, 152, 7], [100, 40, 6]].map(([x, y, r]) => `<path d="M${x - r} ${y} Q${x - r * 0.6} ${y - r} ${x} ${y - r * 0.8} Q${x + r} ${y - r * 0.5} ${x + r * 0.8} ${y + r * 0.4} Q${x} ${y + r} ${x - r} ${y} Z" fill="#5a3418"/>`).join(''),
+      face:
+        eyesRound(68, 117, 92, 11, 13) +
+        `<path d="M74 120 Q92.5 138 111 120" fill="none" stroke="${NAVY}" stroke-width="6" stroke-linecap="round"/>` +
+        blush(116, '#ff8f7a', 0.55),
+    });
+  },
 ];
+
+// small diamond for the shop prices in the skin picker
+function diamond() {
+  const D = lin('dg', 0, 6, 0, 58, [[0, '#e8fcff'], [0.45, '#7fe3ff'], [1, '#2f7ee0']]);
+  const body =
+    `<path d="M14 8 H50 L60 24 L32 58 L4 24 Z" fill="url(#dg)" stroke="${NAVY}" stroke-width="4" stroke-linejoin="round"/>` +
+    `<path d="M4 24 H60 M14 8 L24 24 L32 58 L40 24 L50 8 M24 24 L32 8 L40 24" fill="none" stroke="${NAVY}" stroke-opacity=".55" stroke-width="2.2" stroke-linejoin="round"/>` +
+    `<path d="M16 12 L22 20" stroke="${WHITE}" stroke-width="3" stroke-linecap="round"/>`;
+  return svg(64, 64, D, body);
+}
 
 // dark translucent cover with a small padlock, laid over a locked 180 x 180 skin slot
 function skinLock() {
@@ -1887,6 +1991,7 @@ const SPRITES = [
   ...SKINS.map((make, i) => ({ file: `skins/${i}.png`, w: 185, h: 185, svg: make })),
   ...SKINS_2.map((make, i) => ({ file: `skins/${12 + i}.png`, w: 185, h: 185, svg: make })),
   { file: 'skinLock.png', w: 180, h: 180, svg: skinLock },
+  { file: 'diamond.png', w: 64, h: 64, svg: diamond },
   { file: 'ship.png', w: 149, h: 88, svg: ship },
   { file: 'checkpoint.png', w: 100, h: 100, svg: checkpoint },
   { file: 'background.png', w: 2048, h: 2048, raw: backgroundTexture },

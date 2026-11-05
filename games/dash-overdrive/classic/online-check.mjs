@@ -67,8 +67,8 @@ await c.waitForFunction(() => document.querySelectorAll('#online-players li').le
 await c.evaluate(() => { Module._classic_set_creator(1); Module._classic_set_hitboxes(0); });
 await c.selectOption('#online-level', 'custom');
 await c.click('#online-go');
-for (const page of [c, d]) await page.waitForFunction(() => JSON.parse(window.render_classic_status()).state === 2 && JSON.parse(window.render_classic_status()).level === 22, null, {timeout: 20000});
-const sameMap = await d.evaluate(() => new TextDecoder().decode(FS.readFile('/res/leveldata/21.level')));
+for (const page of [c, d]) await page.waitForFunction(() => JSON.parse(window.render_classic_status()).state === 2 && JSON.parse(window.render_classic_status()).level === 101, null, {timeout: 20000});
+const sameMap = await d.evaluate(() => new TextDecoder().decode(FS.readFile('/res/leveldata/100.level')));
 assert.match(sameMap, /1,8,2,765,3,15/, 'the friend got the host map');
 // the friend runs into the first spike and then watches the host
 await d.waitForFunction(() => !document.getElementById('watch').hidden, null, {timeout: 20000});

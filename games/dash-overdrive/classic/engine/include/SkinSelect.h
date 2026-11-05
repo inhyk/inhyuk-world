@@ -19,15 +19,16 @@ public:
 
 private:
     static SkinSelect m_SkinSelect;
-    static constexpr int COLUMNS = 9;
-    static constexpr int SLOT_SIZE = 150;
-    static constexpr int SLOT_GAP = 30;
+    static constexpr int COLUMNS = 11;
+    static constexpr int SLOT_SIZE = 130;
+    static constexpr int SLOT_GAP = 24;
     SDL_Texture *m_SlotTexture;
     SDL_Texture *m_SelectedTexture;
     SDL_Texture *m_BackTexture;
     SDL_Texture *m_HeadingTexture;
     SDL_Texture *m_LockTexture;
     SDL_Texture *m_HintTexture;
+    SDL_Texture *m_DiamondTexture;
     std::array<SDL_Texture *, Config::SKIN_COUNT> m_LevelTextures;
     Button m_BackButton;
     std::array<Button, Config::SKIN_COUNT> m_SlotButtons;

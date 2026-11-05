@@ -5,6 +5,7 @@
 namespace Storage {
 
 constexpr int SKIN = 1;
+constexpr int BOUGHT_SKINS = 2;    // one bit per shop skin, written by the page
 constexpr int BEST = 100;          // + level
 constexpr int BEST_PRACTICE = 200; // + level
 constexpr int COINS = 300;         // + level, one bit per coin

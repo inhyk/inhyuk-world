@@ -37,6 +37,8 @@ public:
     inline SDL_Color getSkinColor(int skin) const { return m_SkinColors[skin]; }
     inline int getSelectedSkin() const { return m_SelectedSkin; }
     bool isSkinUnlocked(int skin) const;
+    // re-reads the shop skins the page has bought (Storage::BOUGHT_SKINS)
+    void refreshBoughtSkins();
     void setSelectedSkin(int skin);
 
     inline SDL_Renderer *getRenderer() const { return m_Renderer; }
@@ -73,6 +75,7 @@ private:
     std::array<SDL_Texture *, Config::SKIN_COUNT> m_Skins;
     std::array<SDL_Color, Config::SKIN_COUNT> m_SkinColors;
     int m_SelectedSkin = 0;
+    int m_BoughtSkins = 0;
     bool m_CreatorMode = false;
     bool m_ShowHitboxes = true;
     SDL_Texture *m_CreatorTexture = nullptr;

@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1030">
 <title>DASH / OVERDRIVE · CLASSIC</title>
-<link rel="stylesheet" href="style.css?v=classic-original-9">
+<link rel="stylesheet" href="style.css?v=classic-original-10">
 </head>
 <body>
 <header>
   <a href="/play/dash-overdrive/index.html" target="_top">← HARD EDITION</a>
   <strong id="now-playing">DASH / OVERDRIVE <span>CLASSIC</span></strong>
   <div>
+    <button id="my-level" type="button" class="my-level" aria-label="나의 레벨과 다이아몬드, 스킨 상점 열기"><small>나의 레벨</small><b id="my-level-value">1레벨</b><span id="my-diamonds" class="my-diamonds">💎 0</span></button>
     <button id="social-open" type="button" class="social-open" aria-label="로그인"><span aria-hidden="true">👤</span><span id="social-label" class="social-label">로그인</span><i id="social-badge" class="social-badge" hidden></i></button>
     <button id="online-open" type="button">👥 같이 하기</button>
     <button id="select" type="button">단계 선택</button>
@@ -22,9 +23,18 @@
 
 <main id="launcher" hidden>
   <div class="intro">
-    <div class="eyebrow">CLASSIC · 21 LEVELS · 5 SECRET</div>
+    <div class="eyebrow">CLASSIC · 100 LEVELS · 5 SECRET</div>
     <h1>새로 만든 맵.<br><span>끝까지 달려!</span></h1>
-    <p>큐브로 뛰고, 비행선으로 날고, 중력을 뒤집어.<br>1단계부터 15단계까지 점점 어려워져.<br>단계마다 숨은 코인 3개는 끝까지 깨야 모여.<br>코인을 10개, 20개, 30개, 40개, 50개 모으면 비밀 단계가 하나씩 열려.<br>웨이브는 1단계부터 나와. 19, 20단계에서는 공, UFO, 속도 문도 나와.<br>21단계 DASH AND RUN은 처음부터 열려 있어. 모든 모드를 차례로 달려.<br>단계를 하나 깰 때마다 새 스킨도 하나씩 생겨.</p>
+    <div class="my-level-box" aria-label="나의 레벨">
+      <small>나의 레벨</small>
+      <b id="my-level-big">1레벨</b>
+      <div class="xp"><i id="my-xp-bar"></i></div>
+      <p id="my-xp">경험치 0 / 100</p>
+      <p id="my-diamonds-big" class="diamond-line">💎 다이아몬드 0개</p>
+      <p class="xp-help">단계를 처음 깨면 경험치를 받고, 코인 하나마다 10을 더 받아. 경험치 100이면 레벨이 하나 올라. 나의 레벨이 5, 10, 15, 20…이 될 때마다 다이아몬드 10개!</p>
+      <button id="shop-open" type="button">💎 스킨 상점</button>
+    </div>
+    <p>큐브로 뛰고, 비행선으로 날고, 중력을 뒤집어.<br>1단계부터 15단계까지 점점 어려워져.<br>단계마다 숨은 코인 3개는 끝까지 깨야 모여.<br>코인을 10개, 20개, 30개, 40개, 50개 모으면 비밀 단계가 하나씩 열려.<br>웨이브는 1단계부터 나와. 19, 20단계에서는 공, UFO, 속도 문도 나와.<br>21단계 DASH AND RUN은 처음부터 열려 있어. 모든 모드를 차례로 달려.<br>22~100단계는 코인 없이 처음부터 열려 있어.<br>1~21단계를 깰 때마다 새 스킨이 하나씩 생겨.</p>
     <p class="coin-total" id="coin-total">모은 코인 0개</p>
   </div>
   <section class="choices" id="choices" aria-label="단계 선택"></section>
@@ -159,16 +169,25 @@
 </div>
 <div id="race" class="race" hidden aria-label="같이 달리는 친구들"></div>
 <div id="watch" class="watch" hidden><b id="watch-name">관전 중</b><button id="watch-retry" type="button">다시 달리기 ▶</button></div>
+<section id="shop" class="shop" hidden aria-label="스킨 상점">
+  <div class="shop-card">
+    <div class="shop-head"><h2>💎 스킨 상점</h2><button id="shop-close" type="button">닫기</button></div>
+    <p id="shop-diamonds" class="shop-diamonds"></p>
+    <div id="shop-list" class="shop-list"></div>
+    <p class="shop-help">다이아몬드로 스킨을 하나씩 살 수 있어. 하나에 다이아몬드 10개야. 산 스킨은 SKINS 화면에서도 고를 수 있어.</p>
+  </div>
+</section>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <footer>
   <span><kbd>SPACE</kbd> / 클릭 / 터치 : 점프 · 비행선과 웨이브는 꾹 누르기</span>
   <span><kbd>ESC</kbd> 일시정지 · 연습 모드에서 <kbd>Z</kbd> 체크포인트 / <kbd>X</kbd> 삭제</span>
   <span class="rotate">휴대폰은 가로 화면이 좋아 ↻</span>
 </footer>
-<script src="launcher.js?v=classic-original-9"></script>
-<script src="editor.js?v=classic-original-9"></script>
-<script type="module" src="online.mjs?v=classic-original-9"></script>
-<script type="module" src="social-ui.mjs?v=classic-original-9"></script>
-<script src="engine/DashClassic.js?v=classic-original-9"></script>
+<script src="level-list.js?v=classic-original-10"></script>
+<script src="launcher.js?v=classic-original-10"></script>
+<script src="editor.js?v=classic-original-10"></script>
+<script type="module" src="online.mjs?v=classic-original-10"></script>
+<script type="module" src="social-ui.mjs?v=classic-original-10"></script>
+<script src="engine/DashClassic.js?v=classic-original-10"></script>
 </body>
 </html>
