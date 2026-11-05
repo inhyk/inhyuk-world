@@ -2,7 +2,7 @@
 // 누가 접속 중인지 알고, 친구 요청, 1:1 대화, 초대, 매칭 소식을 바로 보내 준다.
 // 사람이 아주 많아지면 사람별로 나누면 되지만, 지금 규모에서는 하나로 충분하다 (README "구조").
 import { DurableObject } from 'cloudflare:workers';
-import { createRoom, roomStub } from './rooms.js';
+import { createRoom, roomStub, worldStub } from './rooms.js';
 
 export const PING = '{"t":"ping"}';
 export const PONG = '{"t":"pong"}';
@@ -103,7 +103,8 @@ export class Lobby extends DurableObject {
 
   push(uid, event) { return this.send(uid, event); }
 
-  // uid 가 방(kind 'room', name '<게임>:<코드>') 이나 매칭 줄(kind 'match', name 게임)에 들어갔다.
+  // uid 가 방(kind 'room', name '<게임>:<코드>'), 같이 쓰는 세계(kind 'world', name '<게임>:<세계>'),
+  // 매칭 줄(kind 'match', name 게임)에 들어갔다.
   async track(uid, kind, name) {
     const key = `track:${uid}`;
     const now = Date.now();
@@ -119,13 +120,14 @@ export class Lobby extends DurableObject {
     }
   }
 
-  // 정지된 계정: /live 연결, 들어가 있는 방, 매칭 줄을 모두 끊는다.
+  // 정지된 계정: /live 연결, 들어가 있는 방과 세계, 매칭 줄을 모두 끊는다.
   async kick(uid, reason = 'suspended') {
     const tracked = (await this.ctx.storage.get(`track:${uid}`)) ?? [];
     await this.ctx.storage.delete(`track:${uid}`);
     for (const { kind, name } of tracked) {
       try {
         if (kind === 'room') { const [game, code] = name.split(':'); await roomStub(this.env, game, code).kickUser(uid); }
+        else if (kind === 'world') { const [game, world] = name.split(':'); await worldStub(this.env, game, world).kickUser(uid); }
         else if (kind === 'match') await this.env.MATCH.get(this.env.MATCH.idFromName(name)).kickUser(uid);
       } catch (error) { console.error('kick failed', kind, name, error?.message); }
     }

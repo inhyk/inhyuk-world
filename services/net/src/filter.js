@@ -204,3 +204,17 @@ export function maskSplitPhone(previous, current) {
 export function hasProfanity(text) {
   return profanityRanges(String(text ?? '').normalize('NFC').replace(INVISIBLE, '')).length > 0;
 }
+
+// 게임 데이터 안의 모든 글자열(칸 이름 포함)을 거른다. 깊이 8보다 깊으면 던진다 (→ 'bad').
+// 랜덤 매칭, 초대로 만든 방(관계자 방)과 같이 쓰는 세계(World)가 쓴다.
+// check(text) 를 주면 글자열마다 먼저 불러 본다 (세계 칸의 글자 수 검사처럼, 던지면 'bad').
+export const DATA_DEPTH = 8;
+export function cleanData(value, check, depth = 0) {
+  if (typeof value === 'string') { check?.(value); return maskText(value); }
+  if (!value || typeof value !== 'object') return value;
+  if (depth >= DATA_DEPTH) throw Error('too deep');
+  if (Array.isArray(value)) return value.map(v => cleanData(v, check, depth + 1));
+  const out = Object.create(null);
+  for (const [key, v] of Object.entries(value)) { check?.(key); out[maskText(key)] = cleanData(v, check, depth + 1); }
+  return out;
+}

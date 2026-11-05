@@ -5,5 +5,5 @@ import * as entry from '../src/index.js';
 it('src/index.js 는 default 와 Durable Object 클래스만 내보낸다', () => {
   const bad = Object.entries(entry).filter(([name, value]) => name !== 'default' && typeof value !== 'function').map(([name]) => name);
   expect(bad).toEqual([]);
-  expect(Object.keys(entry).sort()).toEqual(['Lobby', 'Matchmaker', 'Room', 'default']);
+  expect(Object.keys(entry).sort()).toEqual(['Lobby', 'Matchmaker', 'Room', 'World', 'default']);
 });

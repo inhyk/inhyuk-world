@@ -5,7 +5,7 @@ seonn.dev 게임 허브입니다. 게임은 `games/<이름>/`, 아이폰과 안�
 ## 멀티플레이: 공용 서버 하나를 모든 게임이 같이 씁니다
 
 - 서버: `services/net` (Cloudflare Worker, 주소 `https://net.seonn.workers.dev`, WebSocket `wss://net.seonn.workers.dev`). 게임마다 서버를 새로 만들지 않습니다.
-- 게임 쪽 코드: `packages/net/index.mjs`(`Room`, 방)와 `packages/net/social.mjs`(`Account`, `Social`, 계정과 친구와 매칭과 저장). 쓰는 법은 `services/net/README.md` 의 "게임에서 쓰는 법", "계정과 친구", "게임 저장".
+- 게임 쪽 코드: `packages/net/index.mjs`(`Room`, 방), `packages/net/social.mjs`(`Account`, `Social`, 계정과 친구와 매칭과 저장), `packages/net/world.mjs`(`World`, 같이 쓰는 세계). 쓰는 법은 `services/net/README.md` 의 "게임에서 쓰는 법", "계정과 친구", "게임 저장".
 - PeerJS 로 새 온라인 기능을 만들지 않습니다. 예전 게임의 `room.mjs` 를 복사하지 않습니다.
 - 잘 만든 예: 젤리 타워 `games/puyo-puyo/` (`online.mjs` 방과 매칭, `net.mjs` 서버 주소 바꾸기, `cloud.mjs` 클라우드 저장, `social-ui.mjs` 친구 화면).
 
@@ -17,6 +17,7 @@ seonn.dev 게임 허브입니다. 게임은 `games/<이름>/`, 아이폰과 안�
 | 모르는 사람과 바로 붙기 (게임 찾기) | `social.findMatch(game)` | 예 |
 | 친구 목록에서 초대하기 | `social.invite(friendId, game)` | 예 |
 | 다른 기기에서 이어 하기 (클라우드 저장) | `account.loadSave(game)`, `account.putSave(game, data, baseRevision)` | 예 |
+| 모두 나가도 놓은 블록이 남는 같이 쓰는 세계 (12명까지) | `packages/net/world.mjs` 의 `new World(hooks, { game, world })` → `world.open(await account.ticket())` (`services/net/README.md` "같이 쓰는 세계") | 예 |
 
 - `game` 이름은 영어 소문자, 숫자, `-` 로 짓습니다(예 `free-drive`). 게임마다 하나씩 정해 두고 바꾸지 않습니다.
 - 계정은 닉네임+비밀번호이고 모든 게임이 같은 계정을 씁니다. 이메일은 받지 않고, 비밀번호를 잊으면 되찾을 수 없습니다.

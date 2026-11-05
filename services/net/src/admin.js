@@ -269,7 +269,7 @@ async function load() {
   if (!data.reports.length) root.append(el('p', '신고가 없어요.'));
   for (const r of data.reports) {
     const card = el('div', undefined, 'card');
-    card.append(el('div', '#' + r.id + '  ' + when(r.created) + '  (' + r.context.kind + (r.context.room ? ' ' + r.context.game + '/' + r.context.room : '') + ')', 'meta'));
+    card.append(el('div', '#' + r.id + '  ' + when(r.created) + '  (' + r.context.kind + (r.context.room ? ' ' + r.context.game + '/' + r.context.room : r.context.world ? ' ' + r.context.game + '/' + r.context.world : '') + ')', 'meta'));
     card.append(el('div', r.reporter.nickname + '(' + r.reporter.id + ') 님이 ' + r.target.nickname + '(' + r.target.id + ') 님을 신고' + (r.target.suspended ? ' (정지됨)' : '')));
     if (r.reason) card.append(el('div', '이유: ' + r.reason));
     const ev = r.evidence || {};

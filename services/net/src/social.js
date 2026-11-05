@@ -2,7 +2,7 @@
 import { json, fail, readJson, now, userId } from './http.js';
 import { requireUser, limit, publicUser, cleanNickname } from './auth.js';
 import { filterText, DM_MAX } from './filter.js';
-import { GAME_RE, CODE_RE, roomStub } from './rooms.js';
+import { GAME_RE, CODE_RE, WORLD_RE, roomStub, worldStub } from './rooms.js';
 
 const DM_PER_MINUTE = 20;
 const PAGE = 50;
@@ -35,6 +35,17 @@ export async function blockedEither(env, a, b) {
     'SELECT 1 FROM blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?) LIMIT 1',
   ).bind(a, b, b, a).first();
   return !!row;
+}
+
+// others 중 uid 와 서로(어느 쪽이든) 차단한 사이인 사용자 번호들 (같이 쓰는 세계에 들어올 때 한 번 찾는다)
+export async function blockedAmong(env, uid, others) {
+  const ids = [...new Set(others.filter(id => Number.isSafeInteger(id) && id !== uid))];
+  if (!uid || !ids.length) return new Set();
+  const marks = ids.map(() => '?').join(', ');
+  const { results } = await env.DB.prepare(
+    `SELECT blocker_id, blocked_id FROM blocks WHERE (blocker_id = ? AND blocked_id IN (${marks})) OR (blocked_id = ? AND blocker_id IN (${marks}))`,
+  ).bind(uid, ...ids, uid, ...ids).all();
+  return new Set(results.map(r => (r.blocker_id === uid ? r.blocked_id : r.blocker_id)));
 }
 
 async function areFriends(env, a, b) {
@@ -302,8 +313,9 @@ function clientMessages(value) {
     .map(text => ({ text: [...text].slice(0, REPORT_TEXT_MAX).join('') }));
 }
 
-// POST /reports { target, context: { kind: 'dm'|'room'|'profile', game, room }, reason, messages }
-// 서버가 직접 증거를 모은다: 1:1 대화는 두 사람 사이 마지막 50개, 대전 채팅은 그 방이 기억하는 마지막 50줄.
+// POST /reports { target, context: { kind: 'dm'|'room'|'world'|'profile', game, room, world }, reason, messages }
+// 서버가 직접 증거를 모은다: 1:1 대화는 두 사람 사이 마지막 50개, 대전 채팅은 그 방이 기억하는 마지막 50줄,
+// 같이 쓰는 세계(world)의 채팅은 그 세계가 기억하는 마지막 50줄.
 // 신고한 사람이 보낸 messages 는 따로(client_messages) 저장한다.
 export async function report(request, env) {
   const me = await requireUser(request, env);
@@ -313,7 +325,7 @@ export async function report(request, env) {
   const targetRow = await findUser(env, target);
   if (!targetRow) fail(404, 'not-found');
   await limit(env, `report:${me.id}`, 60 * 60 * 1000, REPORTS_PER_HOUR);
-  const kind = ['dm', 'room', 'profile'].includes(body.context?.kind) ? body.context.kind : 'profile';
+  const kind = ['dm', 'room', 'world', 'profile'].includes(body.context?.kind) ? body.context.kind : 'profile';
   const context = { kind };
   let evidence;
   if (kind === 'dm') {
@@ -330,6 +342,15 @@ export async function report(request, env) {
     evidence = log.users.includes(me.id)
       ? { lines: log.lines, users: log.users, targetWasThere: log.users.includes(target) }
       : { error: 'not-in-room' };
+  } else if (kind === 'world') {
+    const game = String(body.context.game ?? ''), world = String(body.context.world ?? '');
+    if (!GAME_RE.test(game) || !WORLD_RE.test(world)) fail(400, 'bad-world');
+    Object.assign(context, { game, world });
+    const log = await worldStub(env, game, world).chatLog();
+    // 신고한 사람이 그 세계에 있었을 때만 세계 기록을 가져온다.
+    evidence = log.users.includes(me.id)
+      ? { lines: log.lines, users: log.users, targetWasThere: log.users.includes(target) }
+      : { error: 'not-in-world' };
   } else {
     evidence = { nickname: targetRow.nickname };
   }
