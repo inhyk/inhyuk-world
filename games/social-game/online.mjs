@@ -159,11 +159,15 @@ export const TEXT = {
   limit: '동네에 놓을 수 있는 블럭을 다 썼어요 (400개)',
   worldFull: '동네에 블럭이 꽉 찼어요',
   failed: '블럭을 못 놓았어요. 다시 해 봐요',
+  tooFast: '너무 빨라요. 천천히 놓아 봐요',
+  limitDay: '오늘은 이 동네에서 블럭을 많이 바꿨어요. 내일 또 해요',
+  joinRate: '너무 자주 들어왔어요. 1분 뒤에 다시 해 봐요',
+  noWorld: '이 동네는 아직 없어요',
   chatRate: '조금 천천히 말해요',
   hello: (nick) => `${nick} 님이 왔어요`,
   bye: (nick) => `${nick} 님이 나갔어요`,
 };
 /** Short Korean toast for a World error code on a block cell, or null to stay quiet. */
 export function placeErrorText(code) {
-  return { taken: TEXT.taken, limit: TEXT.limit, 'world-full': TEXT.worldFull, rate: TEXT.failed, bad: TEXT.failed, 'too-big': TEXT.failed }[code] ?? null;
+  return { taken: TEXT.taken, limit: TEXT.limit, 'world-full': TEXT.worldFull, rate: TEXT.tooFast, 'limit-day': TEXT.limitDay, bad: TEXT.failed, 'too-big': TEXT.failed }[code] ?? null;
 }

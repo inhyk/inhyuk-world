@@ -122,6 +122,8 @@ export class Town {
       const code = e?.code;
       if (code === 'full') { hud.toast(TEXT.full(name), 3400); this.openPicker(); $('town-pick-msg').textContent = TEXT.full(name); }
       else if (code === 'not-deployed') hud.toast(TEXT.notDeployed, 3400);
+      else if (code === 'join-rate') hud.toast(TEXT.joinRate, 3000);
+      else if (code === 'no-world') hud.toast(TEXT.noWorld, 3000);
       else hud.toast(e?.message && !/^[a-z-]+$/.test(e.message) ? e.message : '동네에 못 들어갔어요. 인터넷을 확인해 봐요', 3000);
     } finally { this.busy = false; }
   }
@@ -275,11 +277,20 @@ export class Town {
 
   serverError(code, k) {
     if (code === 'chat-rate') { this.g.hud.toast(TEXT.chatRate, 1400); return; }
-    if (typeof k !== 'string' || !k.startsWith('b|')) return;
+    if (typeof k !== 'string') return;
+    if (k.startsWith('p|')) {
+      // breaking a tree was refused (rate, limit...): the server never marked it, so let it grow back here too
+      const e = this.propsByKey.get(parsePropKey(k));
+      if (e && !this.world?.cells.has(k)) this.showProp(e);
+      return;
+    }
+    if (!k.startsWith('b|')) return;
     const p = this.pending.get(k);
     if (p) { this.pending.delete(k); this.takeBack(p, placeErrorText(code) ?? TEXT.failed, k); return; }
-    if (code === 'not-owner') {
-      // breaking was refused: show the block again and take the refund back
+    if (code !== 'missing' && this.world?.cells.has(k)) {
+      // breaking was refused (not-owner, rate, limit-day): show the block again and take the refund back
+      const text = placeErrorText(code);
+      if (text) this.g.hud.toast(text, 1800);
       const cell = this.world?.cells.get(k);
       if (cell) {
         this.applyCell(k, cell);
