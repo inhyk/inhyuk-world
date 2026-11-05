@@ -2,12 +2,12 @@
 'use strict';
 // The page around the WebAssembly engine: level picker, song downloads,
 // touch input and the hooks the engine calls (Module.classic*).
-const VERSION = 'classic-original-10';
+const VERSION = 'classic-original-11';
 // [name, difficulty, song] for levels 1-100, written by levels/level-list.mjs
 const CLASSIC_LEVELS = window.CLASSIC_LEVEL_LIST;
 // groups in the level picker
-const GROUPS = [[0, '1~15단계'], [15, '비밀 단계 16~20 · 코인으로 열려'], [20, '21단계'], [21, '새 단계 22~100 · 처음부터 열려 있어']];
-const DIFFICULTY_NAMES = {easy: '쉬움', normal: '보통', hard: '어려움', harder: '더 어려움', insane: '아주 어려움', demon: '데몬', secret: '비밀 단계'};
+const GROUPS = [[0, '1~15단계'], [15, '비밀 단계 16~20 · 코인으로 열려'], [20, '21단계'], [21, '새 단계 22~40 · 데몬 · 처음부터 열려 있어'], [40, '새 단계 41~100 · 익스트림 데몬']];
+const DIFFICULTY_NAMES = {easy: '쉬움', normal: '보통', hard: '어려움', harder: '더 어려움', insane: '아주 어려움', demon: '데몬', extreme: '익스트림 데몬', secret: '비밀 단계'};
 // secret levels 16-20 open at 10 to 50 coins (engine: Config::SECRET_COINS)
 const SECRET_FIRST = 15;
 const SECRET_COINS = [10, 20, 30, 40, 50];
@@ -60,7 +60,7 @@ function coinCount(index) {
 // a first clear gives experience by difficulty, every coin gives 10, and 100
 // experience is one level. My level 5, 10, 15, 20, ... each give 10 diamonds;
 // a shop skin costs 10 diamonds.
-const CLEAR_XP = {easy: 20, normal: 30, hard: 40, harder: 50, insane: 60, demon: 80, secret: 80};
+const CLEAR_XP = {easy: 20, normal: 30, hard: 40, harder: 50, insane: 60, demon: 80, extreme: 100, secret: 80};
 const COIN_XP = 10;
 const XP_PER_LEVEL = 100;
 const DIAMOND_EVERY = 5;

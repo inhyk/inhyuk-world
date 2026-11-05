@@ -31,6 +31,7 @@ h1 span{color:var(--acid)}
 .choice.hard small,.choice.harder small{color:#ffb35c}
 .choice.insane small,.choice.demon small{color:#ff6b9a}
 .choice.secret small{color:#ffd23d}
+.choice.extreme small{color:#ff3d3d;font-weight:800}
 .choice.locked{opacity:.55}
 .choice.locked .number{color:#ffffff22}
 .coin-total{margin-top:14px!important;color:#ffd23d!important;font-weight:700}

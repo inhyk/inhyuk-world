@@ -120,14 +120,15 @@ export const EXTRA_FIRST = LEVELS.length; // index of level 22
 const SONG_LIST = existsSync(TIMELINE) ? JSON.parse(readFileSync(TIMELINE, 'utf8')).songs : [];
 const SEEDS = new URL('./extra-seeds.json', import.meta.url);
 const EXTRA_SEEDS = existsSync(SEEDS) ? JSON.parse(readFileSync(SEEDS, 'utf8')) : {};
-// tiers by level number: tuning numbers spread over the tier, songs that fit it,
-// and the speed gate of the drops (1 normal, 2 fast, 3 very fast)
+// tiers by level number: tuning numbers spread over the tier (17-19 are the
+// secret levels' tuning, 20-22 go past Endless Dash), the songs it uses, and
+// the speed gates (1 normal, 2 fast, 3 very fast) of the drops, builds and the
+// other parts. The designer asked for the new levels to be very hard
+// ("새로운 레벨은 엄청 어렵게"), so even level 22 starts at Demon.
 export const EXTRA_TIERS = [
-  {last: 31, tunes: [0, 1, 2, 3], songs: [0, 1, 2, 3], drop: 1},
-  {last: 46, tunes: [4, 5, 6], songs: [4, 5, 6, 7], drop: 1},
-  {last: 61, tunes: [7, 8, 9], songs: [8, 9, 10, 20], drop: 2},
-  {last: 79, tunes: [10, 11, 12], songs: [11, 12, 13, 15], drop: 2},
-  {last: LEVEL_TOTAL, tunes: [13, 14, 15, 16, 17, 18, 19], songs: [14, 16, 17, 18, 19], drop: 3},
+  {last: 40, tunes: [14, 15, 16], songs: [8, 11, 12, 14, 9], drop: 3, build: 2, other: 1},
+  {last: 70, tunes: [17, 18, 19], songs: [14, 16, 17, 18, 20, 11], drop: 3, build: 3, other: 2},
+  {last: LEVEL_TOTAL, tunes: [20, 21, 22], songs: [16, 17, 19, 14, 18, 20], drop: 3, build: 3, other: 2},
 ];
 const NAME_FIRST = ['Neon', 'Pixel', 'Crystal', 'Thunder', 'Solar', 'Lunar', 'Frozen', 'Cosmic', 'Turbo', 'Velvet',
   'Emerald', 'Ruby', 'Sapphire', 'Midnight', 'Sunny', 'Cloud', 'Candy', 'Shadow', 'Rocket', 'Coral'];
@@ -137,7 +138,7 @@ const MODE_TURN = ['ship', 'wave', 'ball', 'ufo'];
 
 // difficulty label from the tuning number, the same steps as levels 1-15
 export function difficultyOf(tune) {
-  return tune <= 1 ? 'easy' : tune <= 3 ? 'normal' : tune <= 6 ? 'hard' : tune <= 9 ? 'harder' : tune <= 12 ? 'insane' : 'demon';
+  return tune <= 1 ? 'easy' : tune <= 3 ? 'normal' : tune <= 6 ? 'hard' : tune <= 9 ? 'harder' : tune <= 12 ? 'insane' : tune <= 16 ? 'demon' : 'extreme';
 }
 
 function hsl(h, sat, light) {
@@ -172,15 +173,15 @@ function extraNames(count, taken) {
 function extraPlan(song, number, tier) {
   let turn = number;
   const next = () => MODE_TURN[turn++ % MODE_TURN.length];
-  const fast = tier.drop;
   const plan = song.sections.map(section => {
     const beats = section.endBeat - section.startBeat;
-    if (/^(intro|outro)/.test(section.name)) return {type: 'cube', speed: 1};
-    if (/^break/.test(section.name)) return {type: fast >= 2 || number % 2 ? 'blue' : 'cube', speed: fast >= 2 ? 0 : 1};
-    if (/^verse/.test(section.name)) return {modes: [[next(), 48]], speed: 1};
-    if (/^build/.test(section.name)) return {modes: [[next(), 44]], speed: Math.min(fast, 2)};
-    if (/^drop/.test(section.name)) return {modes: beats >= 48 ? [[next(), 60], [next(), 56]] : [[next(), 56]], speed: fast};
-    return {type: 'cube', speed: 1};
+    if (/^outro/.test(section.name)) return {type: 'cube', speed: tier.other};
+    if (/^intro/.test(section.name)) return beats >= 24 ? {modes: [[next(), 44]], speed: tier.other} : {type: 'cube', speed: tier.other};
+    if (/^break/.test(section.name)) return {type: 'blue', speed: tier.other};
+    if (/^verse/.test(section.name)) return {modes: beats >= 32 ? [[next(), 48], [next(), 44]] : [[next(), 48]], speed: tier.build};
+    if (/^build/.test(section.name)) return {modes: beats >= 32 ? [[next(), 48], [next(), 44]] : [[next(), 44]], speed: tier.build};
+    if (/^drop/.test(section.name)) return {modes: beats >= 48 ? [[next(), 60], [next(), 56], [next(), 52]].slice(0, beats >= 64 ? 3 : 2) : [[next(), 56]], speed: tier.drop};
+    return {type: 'cube', speed: tier.other};
   });
   // every level has a wave part (levels 1-21 do too)
   if (!plan.some(step => step.modes?.some(([mode]) => mode === 'wave'))) {
@@ -225,21 +226,21 @@ const BLACK_BLOCK_LEVELS = new Set([4, 13, 18, 19]);
 // 60 fps frames; runway = free tiles between pieces.
 export function tuning(d) {
   return {
-    margin: [3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1][d],
-    runway: [[1, 4], [1, 3], [1, 3], [1, 3], [1, 2], [1, 2], [0, 2], [0, 2], [0, 2], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 0], [0, 0], [0, 0]][d],
-    shipGap: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3][d],
-    shipSpacing: [6, 6, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3][d],
-    shipShift: [2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4][d],
+    margin: [3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1][d],
+    runway: [[1, 4], [1, 3], [1, 3], [1, 3], [1, 2], [1, 2], [0, 2], [0, 2], [0, 2], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 1], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]][d],
+    shipGap: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3][d],
+    shipSpacing: [6, 6, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2][d],
+    shipShift: [2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5][d],
     shipSpikes: d >= 1,
     shipSpikesInNarrowGaps: d >= 12,
     shipFloorSpikes: d >= 4,
     shipCeilingSpikes: d >= 7,
-    shipDelay: [4, 4, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
-    shipAim: [40, 38, 36, 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 12, 11, 10, 10, 9, 8][d],
+    shipDelay: [4, 4, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
+    shipAim: [40, 38, 36, 32, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 12, 11, 10, 10, 9, 8, 7, 7, 6][d],
     halfBeats: d >= 3,
     maxSurface: d < 2 ? 3 : 4,
-    comboMax: [2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8][d],
-    comboGapMax: [3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
+    comboMax: [2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 9, 9][d],
+    comboGapMax: [3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2][d],
   };
 }
 
