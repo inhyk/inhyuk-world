@@ -10,6 +10,7 @@
 //   work        update + render + wait for the GPU (one pixel read back) in a second pass
 //   upd         game update (people, doors, lights, minimap, HUD...) on the CPU
 //   calls       draw calls per frame (sh = of them in the sun's shadow map), tris = triangles
+//   heap        JS heap MB (+ typed arrays such as geometry, when Chrome reports them)
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const pw = await import('../../tools/node_modules/playwright/index.mjs').catch(() => import(process.env.PLAYWRIGHT_MJS ?? 'playwright'));
@@ -45,7 +46,8 @@ await page.addInitScript(() => {
 const cdp = await ctx.newCDPSession(page);
 if (THROTTLE > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: THROTTLE });
 const G = (fn, arg) => page.evaluate(fn, arg);
-const heapMB = async () => { await cdp.send('HeapProfiler.collectGarbage'); const h = await cdp.send('Runtime.getHeapUsage'); return Math.round(h.usedSize / 1e5) / 10; };
+let arraysMB = null; // typed-array memory (geometry, texture pixels) outside the JS heap, when Chrome reports it
+const heapMB = async () => { await cdp.send('HeapProfiler.collectGarbage'); const h = await cdp.send('Runtime.getHeapUsage'); if (h.backingStorageSize != null) arraysMB = Math.round(h.backingStorageSize / 1e5) / 10; return Math.round(h.usedSize / 1e5) / 10; };
 
 // ---------------------------------------------------------------- start-up
 await page.goto(url);
@@ -148,8 +150,8 @@ const SPOTS = [
   { name: 'home', hour: 7.2, at: null },
   { name: 'avenue', hour: 15, at: [20, 0.2, -3, -Math.PI / 2] },
   { name: 'dense', hour: 15, at: [-80, 0.2, 9, 0.35] },
-  { name: 'mart', hour: 15, inside: local('civic-mart', 0, 0.2, 'front-5') },
-  { name: 'cinema', hour: 15, inside: local('civic-cinema', 0, 0.2, 'front-5') },
+  { name: 'mart', hour: 15, inside: local('civic-mart', 0, 0.2, 0) },
+  { name: 'cinema', hour: 15, inside: local('civic-cinema', 0, 0.2, 0) },
   { name: 'school', hour: 15, at: [-120, 0.2, 113, Math.PI / 2] },
   { name: 'japan', hour: 15, at: [2180, 0.2, 4, -Math.PI / 2] },
   { name: 'night', hour: 21, at: [-30, 0.2, -9, -Math.PI / 2] },
@@ -162,10 +164,12 @@ async function goTo(s) {
     g.state.hour = s.hour; g.sky.setHour(s.hour, true);
     if (s.at) g.player.place(s.at[0], s.at[1], s.at[2], s.at[3]);
     else if (s.inside) {
+      // the middle of the building's biggest indoor room (it exists once the interior is built)
       const site = g.places.sites[s.inside.key];
-      const c = Math.cos(site.worldYaw), sn = Math.sin(site.worldYaw);
-      const lz = site.footprint.d / 2 - 5, lx = s.inside.lx;
-      g.player.place(site.worldPos[0] + lx * c + lz * sn, s.inside.y, site.worldPos[2] - lx * sn + lz * c, site.worldYaw);
+      const vol = (v) => (v.max[0] - v.min[0]) * (v.max[2] - v.min[2]);
+      const v = g.places.indoor.filter((x) => x.site === s.inside.key).sort((a, b) => vol(b) - vol(a))[0];
+      if (v) g.player.place((v.min[0] + v.max[0]) / 2, v.min[1] + 0.2, (v.min[2] + v.max[2]) / 2 + Math.cos(site.worldYaw) * 3, site.worldYaw);
+      else g.player.place(site.worldPos[0], s.inside.y, site.worldPos[2], site.worldYaw);
     } else g.day.wakeUp();
     g.player.pitch = -0.04;
     return null;
@@ -221,12 +225,12 @@ for (const s of SPOTS) {
     ms: stat(free.slice(2).map((f) => f.dt)), gpu: med(free.map((f) => f.gpu)), cpu: med(free.map((f) => f.upd + f.rend)),
     work: stat(sync.map((f) => f.upd + f.rend + f.wait)), upd: stat(sync.map((f) => f.upd)), rend: stat(sync.map((f) => f.rend)),
     calls: Math.round(stat(free.map((f) => f.calls)).avg), shadow: Math.round(stat(free.map((f) => f.shadow)).avg), tris: Math.round(stat(free.map((f) => f.tris)).avg / 1000) + 'k',
-    heap: await heapMB(), ...(await scene()),
+    heap: await heapMB(), arrays: arraysMB, ...(await scene()),
     inside: await G(() => window.__game.places.inside(window.__game.player.pos)),
   };
   results[s.name] = r;
   if (SHOTS) await page.screenshot({ path: `${out}/${s.name}.png` });
-  console.log(`${s.name.padEnd(7)} ${String(r.ms.avg).padStart(6)} ms (p95 ${r.ms.p95})  gpu ${r.gpu}  cpu ${r.cpu}  work ${r.work.avg} (p95 ${r.work.p95})  upd ${r.upd.avg}  calls ${r.calls} (sh ${r.shadow})  tris ${r.tris}  progs ${r.programs}  tex ${r.textures}  geo ${r.geometries}  meshes ${r.visible}/${r.meshes}  heap ${r.heap} MB  px ${r.px} ratio ${r.ratio}${r.gtao ? ' gtao' : ''}${r.inside ? ' in ' + r.inside : ''}`);
+  console.log(`${s.name.padEnd(7)} ${String(r.ms.avg).padStart(6)} ms (p95 ${r.ms.p95})  gpu ${r.gpu}  cpu ${r.cpu}  work ${r.work.avg} (p95 ${r.work.p95})  upd ${r.upd.avg}  calls ${r.calls} (sh ${r.shadow})  tris ${r.tris}  progs ${r.programs}  tex ${r.textures}  geo ${r.geometries}  meshes ${r.visible}/${r.meshes}  heap ${r.heap}${r.arrays != null ? '+' + r.arrays : ''} MB  px ${r.px} ratio ${r.ratio}${r.gtao ? ' gtao' : ''}${r.inside ? ' in ' + r.inside : ''}`);
 }
 
 const report = { url, viewport: [W, H, DPR], throttle: THROTTLE, startup: { cold, warm, boot }, results, errors };
