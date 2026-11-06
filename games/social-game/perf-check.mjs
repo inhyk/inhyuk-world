@@ -145,13 +145,13 @@ const scene = () => G(() => {
 
 // ---------------------------------------------------------------- spots
 // yaw 0 looks towards -Z (north), PI/2 towards -X (west)
-const local = (key, lx, y, lz, yawOff = 0) => ({ key, lx, y, lz, yawOff });
+const local = (key, lx, y) => ({ key, lx, y }); // inside a building: the middle of its biggest room
 const SPOTS = [
   { name: 'home', hour: 7.2, at: null },
   { name: 'avenue', hour: 15, at: [20, 0.2, -3, -Math.PI / 2] },
   { name: 'dense', hour: 15, at: [-80, 0.2, 9, 0.35] },
-  { name: 'mart', hour: 15, inside: local('civic-mart', 0, 0.2, 0) },
-  { name: 'cinema', hour: 15, inside: local('civic-cinema', 0, 0.2, 0) },
+  { name: 'mart', hour: 15, inside: local('civic-mart', 0, 0.2) },
+  { name: 'cinema', hour: 15, inside: local('civic-cinema', 0, 0.2) },
   { name: 'school', hour: 15, at: [-120, 0.2, 113, Math.PI / 2] },
   { name: 'japan', hour: 15, at: [2180, 0.2, 4, -Math.PI / 2] },
   { name: 'night', hour: 21, at: [-30, 0.2, -9, -Math.PI / 2] },

@@ -157,6 +157,28 @@ export class Engine {
     requestAnimationFrame(tick);
   }
 
+  /**
+   * Draw everything once into a tiny target with no culling, while the loading screen is up: every
+   * texture and mesh goes to the GPU now instead of in the frame where it first comes into view
+   * (walking out of the flat used to stop the picture for ~0.4 s: ~150 textures, ~1000 meshes).
+   * Hidden things (the far island) wait. Call it after one real frame (the shadow map must exist).
+   */
+  warmUp() {
+    const r = this.renderer, off = [];
+    this.scene.traverse((o) => { if (o.frustumCulled && (o.isMesh || o.isLine || o.isPoints || o.isSprite)) { o.frustumCulled = false; off.push(o); } });
+    const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+    const prev = r.getRenderTarget();
+    try {
+      r.setRenderTarget(rt);
+      r.shadowMap.needsUpdate = false; // keeps the shadow map of the frame drawn just before
+      r.render(this.scene, this.camera);
+    } finally {
+      r.setRenderTarget(prev);
+      rt.dispose();
+      for (const o of off) o.frustumCulled = true;
+    }
+  }
+
   /** Render one frame now (used by tests and the viewer). */
   renderOnce() { this.renderer.shadowMap.needsUpdate = true; this.composer.render(0.016); }
 }

@@ -208,8 +208,9 @@ async function boot() {
   prepareStatic({ engine, places, world });
   await texReady(); // texture pixels are made by workers while the town is built
   try { await lights.compileBoth(engine.renderer, engine.scene, engine.camera, null, engine.composer.readBuffer); } catch (e) { console.warn('precompile', e); }
-  // one frame behind the loading screen: shadow and post-processing shaders are made now, not on the first look
-  try { player.updateCamera(0); engine.renderOnce(); } catch (e) { console.warn('first frame', e); }
+  // behind the loading screen: everything goes to the GPU once, and one real frame makes the shadow and
+  // post-processing shaders, so the first look around (and out of the flat) does not stop
+  try { player.updateCamera(0); engine.renderOnce(); engine.warmUp(); } catch (e) { console.warn('first frame', e); }
   pct(100);
   $('loading').classList.add('hidden');
   $('play').classList.remove('hidden');
