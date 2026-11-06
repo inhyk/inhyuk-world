@@ -392,14 +392,16 @@ export class Jobs {
   hideNpc(on) {
     const L = this.g.life;
     if (!L) return;
-    if (!on) { if (this._docNpc) { this._docNpc.ch.group.visible = true; L.people.push(this._docNpc); this._docNpc = null; } return; }
+    if (!on) { if (this._docNpc) { if (this._docNpc.ch) this._docNpc.ch.group.visible = true; L.people.push(this._docNpc); this._docNpc = null; } return; }
     const hs = this.site('shop-hospital');
     if (this._docNpc || !hs?.interior) return; // the interior (and its people) is built when you come near
     const chair = V3(...xformPt(hs, [-3.05, 0.15, -3.3]));
-    const i = L.people.findIndex((p) => p.site === 'shop-hospital' && p.ch.group.position.distanceTo(chair) < 0.6);
+    // town people are made lazily (life.js): before that they only have their spot
+    const at = (p) => p.ch?.group.position ?? p.spot?.wpos;
+    const i = L.people.findIndex((p) => p.site === 'shop-hospital' && at(p)?.distanceTo(chair) < 0.6);
     if (i < 0) return;
     this._docNpc = L.people.splice(i, 1)[0];
-    this._docNpc.ch.group.visible = false;
+    if (this._docNpc.ch) this._docNpc.ch.group.visible = false;
   }
 
   update(dt) {
