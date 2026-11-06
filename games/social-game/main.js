@@ -23,6 +23,7 @@ import { guide, guideText } from './src/nav.js';
 import { DriveTest } from './src/drivetest.js';
 import { Album } from './src/album.js';
 import { Town } from './src/town.js';
+import { Wildlife } from './src/wildlife.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
 
@@ -195,6 +196,9 @@ async function boot() {
       if (e.col) col.add(e.col);
     }
   };
+  // 반달가슴곰 in the forest (인혁: "숲에 곰이 가끔씩 있게 해줘")
+  let wildlife = null;
+  try { wildlife = new Wildlife({ engine, colliders: col, groundAt, player, vehicle, hud, sfx, state, places, flight, trees: deco.breakables }); } catch (e) { console.warn('wildlife failed', e); }
   let fresh = !localStorage.getItem(SAVE_KEY);
   day.wakeUp();
   day.setOutfit(state.outfit);
@@ -264,6 +268,7 @@ async function boot() {
   // ------------------------------------------------------------------ frame
   let hurtT = 0;
   let navT = 0;
+  if (wildlife) wildlife.onHurt = (n) => { hurt(state, n); hurtT = 0.6; sfx('hit'); };
   player.onLand = (h) => {
     const dmg = fallDamage(h);
     if (dmg > 0) { hurt(state, dmg); hurtT = 0.6; sfx('hit'); hud.toast(`아야! 체력 -${dmg}`, 1000); }
@@ -351,6 +356,7 @@ async function boot() {
     lights.update(dt, engine.camera.position, night, inside);
     places.updateDoors(dt, [player.pos, ...life.walkers.map((w) => w.ch.group.position)], sfx);
     life.update(dt, driving ? null : player.pos, driving ? vehicle.pos : null, night);
+    wildlife?.update(dt);
     if (props.nature?.windUniform) props.nature.windUniform.value = t;
     const wn = world.sea.material.normalMap; if (wn) { wn.offset.set(t * 0.004, t * 0.0025); }
     if (world.foam) { world.foam.position.x = LAYOUT.beachX - 27.2 + Math.sin(t * 0.6) * 0.9; world.foam.material.opacity = 0.35 + 0.25 * Math.sin(t * 0.6 + 1); }
@@ -386,7 +392,7 @@ async function boot() {
       navEl.classList.remove('hidden');
     } else navEl.classList.add('hidden');
     town.update(dt);
-    minimap.draw(player.pos, driving ? vehicle.yaw : player.yaw, vehicle && !driving ? vehicle.pos : null, day.target(), town.dots());
+    minimap.draw(player.pos, driving ? vehicle.yaw : player.yaw, vehicle && !driving ? vehicle.pos : null, day.target(), wildlife ? [...town.dots(), ...wildlife.dots()] : town.dots());
   });
   engine.onUpdate((dt) => {
     if (flight.active) { /* flight.update placed the camera */ }
@@ -397,7 +403,7 @@ async function boot() {
   engine.start();
   addEventListener('beforeunload', saveLocal);
   setInterval(saveLocal, 15000);
-  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco };
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife };
   window.__ready = true;
 }
 
