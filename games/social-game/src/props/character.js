@@ -228,7 +228,8 @@ function bodyLoft(sec, M = 32, dome = 0.5) {
 }
 /** Thin rounded flat piece from a 2D outline, extruded `depth`, bevelled. */
 function plate(shape, depth, bevel = 0.004) {
-  return memo(`plate|${depth}|${bevel}|${JSON.stringify(shape.toJSON().curves)}`, () => plateGeo(shape, depth, bevel));
+  const j = shape.toJSON();
+  return memo(`plate|${depth}|${bevel}|${JSON.stringify([j.curves, j.holes])}`, () => plateGeo(shape, depth, bevel));
 }
 function plateGeo(shape, depth, bevel) {
   const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 2, curveSegments: 8 });

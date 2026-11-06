@@ -11,6 +11,7 @@ const SKINS = [0xf1c9a5, 0xe8b894, 0xf6d5b8, 0xd9a47e];
 const CAR_COLORS = [0xd8d8d4, 0x2b2d31, 0xc23b32, 0x3f6fb5, 0x8a9096, 0xe9e4d8, 0x2f5a46, 0xb8873a];
 const STYLES = ['sedan', 'hatch', 'suv', 'taxi', 'van', 'sedan'];
 const BUILD_D = 88; // people are made when the camera comes this close (they show from 70 m)
+const CAST_D = 25; // people at their places cast sun shadows within this distance
 
 function nameTag(text) {
   const c = document.createElement('canvas');
@@ -139,9 +140,12 @@ export class Life {
         budget--;
         try { this.make(p); } catch (e) { console.warn('person failed', e); p.ch = { group: new THREE.Group() }; }
       }
-      const far = p.ch.group.position.distanceToSquared(cam) > 70 * 70;
+      const d2 = p.ch.group.position.distanceToSquared(cam), far = d2 > 70 * 70;
       if (far === p.ch.group.visible || !p.ch.group.parent !== far) this.show(p.ch.group, !far);
       if (far) continue;
+      // people at their places are mostly indoors, under a roof: their sun shadow only near you
+      const cast = d2 < CAST_D * CAST_D;
+      if (p.cast !== cast) { p.cast = cast; p.ch.group.traverse((o) => { if (o.isMesh) { o.userData.cast ??= o.castShadow; o.castShadow = cast && o.userData.cast; } }); }
       p.t += dt;
       if (p.wave > 0) p.wave -= dt;
       const mode = p.wave > 0 ? 'wave' : p.base === 'type' ? 'type' : p.base === 'sit' ? (Math.sin(p.t * 0.3) > 0.7 ? 'eat' : 'sit') : 'idle';
