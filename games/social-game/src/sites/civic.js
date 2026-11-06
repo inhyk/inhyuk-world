@@ -2,7 +2,8 @@
 // fire station, police station, cinema, supermarket, bank, post office, fried-chicken shop, pizza shop.
 // buildCivic({kind}) → Site (see ../site.js), entrance faces +Z. Exterior only (not walkable inside):
 // colliders wrap the masses, shallow dressed interiors sit behind the glass, signs and windows glow at night.
-// The fire truck and patrol car are static models baked into the site.
+// The fire truck and the patrol car are kept out of the bake: on job days (src/jobs.js) they become the car you
+// drive (site.extra.truck / site.extra.patrol, with the boxes that block them while parked in extra.*Box).
 import * as THREE from 'three';
 import { mat, paint, textured } from '../mat.js';
 import { box, quad, put, group, bake, torus, lathe, extrude, prep, aabb, displace } from '../geom.js';
@@ -250,11 +251,14 @@ function scooter(C, x, z, ry, col, boxCol, boxKey) {
 }
 
 /* ================================================================== 소방서 (fire station) */
-function fireTruck(C, x, z) {
+function fireTruck(C, x, z, pivots = null) {
   const g = group(C.g, x, 0, z), gl = vcGloss(), RED = 0xc4161c, W = 2.45;
   const chrome = mat('chrome');
   V(g, RB(1.0, 0.3, 6.4, 0.02, 1), 0x1f2023, 0, 0.62, -0.2);
-  for (const az of [2.25, -1.75, -2.85]) for (const s of [-1, 1]) wheel(g, s * (W / 2 - 0.22), 0.52, az, 0.52, 0.4);
+  for (const az of [2.25, -1.75, -2.85]) for (const s of [-1, 1]) {
+    if (pivots) pivots.push({ x: s * (W / 2 - 0.22), y: 0.52, z: az, front: az > 0 });
+    else wheel(g, s * (W / 2 - 0.22), 0.52, az, 0.52, 0.4);
+  }
   for (const [az, l] of [[2.25, 1.25], [-2.3, 2.35]]) for (const s of [-1, 1]) V(g, RB(0.5, 0.08, l, 0.03, 2), 0x1b1b1d, s * (W / 2 - 0.2), 1.1, az);
   // cab: hollow shell (lower block, walls around the windows, roof) with seats, dash and wheel inside
   V(g, RB(W, 0.56, 2.2, 0.1, 2), RED, 0, 1.2, 2.4, 0, 0, 0, gl);
@@ -301,7 +305,8 @@ function fireTruck(C, x, z) {
   D(g, C.A.quad('n119', 0.8, 0.3), C.print, 0, 1.8, 3.512);
   // light bar
   V(g, RB(1.9, 0.08, 0.34, 0.02, 1), 0x2b2d31, 0, 3.23, 2.8);
-  for (const s of [-1, 0, 1]) D(g, RB(0.55, 0.16, 0.3, 0.05, 2), s === 0 ? C.cool : redGlow(), s * 0.62, 3.35, 2.8);
+  g.userData.flash = [];
+  for (const s of [-1, 0, 1]) { const o = D(g, RB(0.55, 0.16, 0.3, 0.05, 2), s === 0 ? C.cool : redGlow(), s * 0.62, 3.35, 2.8); if (s) g.userData.flash.push(o.material); }
   // body with roller-shutter lockers and a white stripe
   V(g, RB(W, 2.0, 4.7, 0.08, 2), RED, 0, 2.05, -1.15, 0, 0, 0, gl);
   V(g, RB(W + 0.03, 0.16, 4.7, 0.03, 1), 0xf4f4f2, 0, 1.38, -1.15, 0, 0, 0, gl);
@@ -328,6 +333,25 @@ function fireTruck(C, x, z) {
   }
   V(g, RB(W - 0.2, 0.08, 0.4, 0.02, 1), 0xc9ced3, 0, 0.55, -3.65, 0, 0, 0, gl);
   return g;
+}
+
+/** The fire truck as a vehicle model for Vehicle (src/vehicle.js): forward -Z, rolling wheels, light bar to flash. */
+function drivableTruck(C) {
+  const root = new THREE.Group(), pivots = [];
+  const body = fireTruck({ ...C, g: root }, 0, 0, pivots);
+  body.rotation.y = PI;
+  const flashMats = body.userData.flash;
+  bake(body);
+  body.userData.dynamic = true;
+  const wheels = pivots.map(({ x, y, z, front }) => {
+    const pv = group(root, -x, y, -z);
+    wheel(pv, 0, 0, 0, 0.52, 0.4);
+    bake(pv);
+    pv.userData.dynamic = true;
+    return { pivot: pv, steer: front, radius: 0.52 };
+  });
+  root.userData.dynamic = true;
+  return { group: root, body: null, wheels, steeringWheel: null, driverEye: [-0.55, 2.62, -2.05], size: { w: 2.45, l: 7.3, h: 3.4 }, headMats: [], brakeMats: [], flashMats, style: 'firetruck' };
 }
 
 function buildFire(C) {
@@ -378,8 +402,13 @@ function buildFire(C) {
     for (const s of [-1, 1]) V(g, RB(0.12, 0.01, F - IB - 0.6, 0.005, 1), 0xf2c230, bx + s * 1.55, FF + 0.006, (F + IB) / 2);
     put(g, RB(DW, 0.03, 0.3, 0.01, 1), mat('steel'), bx, FF + 0.005, F - 0.2);
   }
-  const tr = fireTruck(C, ob, -1.4); tr.position.y = FF;
-  site.colliders.push(aabb(ob - 1.27, 0, -5.1, ob + 1.27, 3.4, 2.38));
+  // the engine in the first bay can drive out on 소방관 days (wheels on pivots, facing -Z like the cars)
+  const tr = drivableTruck(C);
+  tr.group.position.set(ob, FF, -1.4); tr.group.rotation.y = PI;
+  g.add(tr.group);
+  site.extra.truck = tr;
+  site.extra.truckBox = aabb(ob - 1.27, 0, -5.1, ob + 1.27, 3.4, 2.38);
+  site.colliders.push(site.extra.truckBox);
   site.lamps.push({ pos: [ob, 4.2, -1.5], color: 0xfff1d6, intensity: 1.4, range: 8 });
   for (let i = 0; i < 4; i++) { const px = X0 + p / 2 + i * (p + DW); site.colliders.push(aabb(px - p / 2, 0, FZ, px + p / 2, G, F)); }
   site.colliders.push(aabb(X0, DH, FZ, X1, G, F), aabb(X0, G, BZ, X1, H + PH, F));
@@ -447,17 +476,22 @@ function patrolCar(C, x, z, ry) {
   };
   stripe.customProgramCacheKey = () => 'civicPoliceStripe';
   stripe.name = 'policeStripe';
-  c.group.traverse((o) => { delete o.userData.dynamic; if (o.isMesh && o.material === paintMat) o.material = stripe; });
+  c.group.traverse((o) => { if (o.isMesh && o.material === paintMat) o.material = stripe; });
+  // kept out of the site's bake: 경찰관 days drive it (src/jobs.js), so it stays one movable model
+  c.group.userData.dynamic = true;
   c.group.position.set(x, 0.06, z);
   c.group.rotation.y = ry;
   C.g.add(c.group);
-  // light bar on the roof
-  const lb = group(C.g, x, 0.06 + c.size.h, z, ry);
+  // light bar on the roof (rides with the car)
+  const lb = group(c.group, 0, c.size.h, 0);
   V(lb, RB(0.34, 0.06, 1.25, 0.02, 1), 0x1b1b1d, 0, 0.03, 0);
-  D(lb, RB(0.3, 0.13, 0.5, 0.05, 2), redGlow(), 0, 0.12, -0.33);
-  D(lb, RB(0.3, 0.13, 0.5, 0.05, 2), blueGlow(), 0, 0.12, 0.33);
+  const red = redGlow(), blue = blueGlow();
+  D(lb, RB(0.3, 0.13, 0.5, 0.05, 2), red, 0, 0.12, -0.33);
+  D(lb, RB(0.3, 0.13, 0.5, 0.05, 2), blue, 0, 0.12, 0.33);
   V(lb, RB(0.31, 0.135, 0.14, 0.03, 1), 0xf4f4f2, 0, 0.12, 0, 0, 0, 0, vcGloss());
+  bake(lb);
   C.site.nightGlow.push(blueGlow());
+  c.flashMats = [red, blue];
   return c;
 }
 
@@ -525,14 +559,17 @@ function buildPolice(C) {
   const flagM = A.printed(0.75); flagM.side = THREE.DoubleSide;
   put(g, A.mapUV(fg, 'flag'), flagM, fx + 0.8, 8.25, fz);
   // patrol car, bollards, planters
-  patrolCar(C, 3.4, 4.55, PI / 2);
+  // parked nose-out towards the road, clear of the canopy post and the planter (경찰관 days drive it out)
+  site.extra.patrol = patrolCar(C, 4.9, 5.0, PI);
+  site.interactables.push({ id: 'patrolCar', label: '순찰차 타기', pos: [4.9, 1.2, 5.0], radius: 2.6 });
   for (const x of [-4.2, -3.0]) { V(g, CY(0.1, 0.1, 0.8, 14), 0x2b2d31, x, 0.46, 5.4, 0, 0, 0, vcGloss()); V(g, CY(0.105, 0.105, 0.08, 14), 0xf2f2f2, x, 0.7, 5.4); }
   for (const x of [-3.5, 3.5]) pottedPlant(g, x, 0.06, F + 0.45, { kind: 'snake', h: 0.9, seed: 7 + x, pot: 'charcoal', potR: 0.24, potH: 0.5 });
   acUnit(C, -4.0, H, -3.5); acUnit(C, 4.5, H, -3.5);
   site.colliders.push(aabb(X0, G, BZ, X1, H + PH, F), aabb(-TW, 2.6, F, TW, TH, F + 0.6));
   for (const s of [-1, 1]) site.colliders.push(aabb(s < 0 ? -TW : 2.3, 0, F, s < 0 ? -2.3 : TW, 2.6, F + 0.6), aabb(s < 0 ? -2.3 : 1.08, 0, F + 0.5, s < 0 ? -1.08 : 2.3, 2.6, F + 0.62));
   solid(site, fx, 2, fz, 0.7, 4, 0.7);
-  solid(site, 3.4, 0.75, 4.55, 4.7, 1.5, 1.9);
+  site.extra.patrolBox = { min: [4.9 - 0.95, 0, 5.0 - 2.35], max: [4.9 + 0.95, 1.5, 5.0 + 2.35] };
+  site.colliders.push(site.extra.patrolBox);
   for (const s of [-1, 1]) solid(site, s * 2.9, 1.5, F + 2.3, 0.2, 3, 0.2);
   site.extra.height = TH + 0.1;
 }
@@ -649,6 +686,10 @@ function buildCinema(C) {
 /* ================================================================== 세온 마트 (supermarket) */
 function cart(C, x, z, ry, wireM) {
   const g = group(C.g, x, 0.06, z, ry), A = C.A, gl = vcGloss(), M = 0xb9bec4;
+  cartParts(g, A, gl, M, wireM);
+  return g;
+}
+function cartParts(g, A, gl, M, wireM) {
   // basket: forward +X, 0.86 long, 0.52 wide
   for (const s of [-1, 1]) D(g, A.quad('wire', 0.86, 0.44), wireM, 0, 0.73, s * 0.26);
   D(g, A.quad('wire', 0.52, 0.44), wireM, 0.43, 0.73, 0, 0, PI / 2, 0);
@@ -745,6 +786,9 @@ function buildMart(C) {
   put(g, RB(1.4, 0.4, 0.06, 0.02, 1), green, cx0 - 0.7, 1.35, cz, 0, PI / 2, 0);
   for (const s of [-1, 1]) D(g, A.quad('cartSign', 1.3, 0.34), C.sign, cx0 - 0.7 + s * 0.035, 1.35, cz, 0, s * PI / 2, 0);
   cart(C, -9.5, 3.4, 0.5, wireM);
+  // four carts left around the lot (hidden): 마트 직원 days put them out to be collected (src/jobs.js)
+  site.extra.strayCarts = [0, 1, 2, 3].map(() => { const sc = cart(C, 0, 0, 0, wireM); bake(sc); sc.userData.dynamic = true; sc.visible = false; return sc; });
+  site.extra.corral = [cx0, cz];
   for (const x of [-12.4, -7.6, 2.0]) pottedPlant(g, x, 0.08, F + 0.45, { kind: 'bush', h: 0.8, seed: 9 + x, pot: 'charcoal', potR: 0.24, potH: 0.5 });
   for (let k = 0; k < 3; k++) acUnit(C, -8 + k * 6, H, -6.5);
   site.colliders.push(aabb(X0, GY, BZ, X1, H + 0.9, F));
@@ -1137,6 +1181,29 @@ function plant(I, x, z, kind = 'fig', h = 1.4, seed = 1, y = FL) {
   foot(I, x, z, 0.5, 0.5, 1.0, 0, 0);
 }
 
+/** Row of n staff lockers (0.45 wide, 1.9 tall) facing +Z after ry, centred at x, z; a cap or hat on top. */
+function lockers(I, x, z, n, ry, hex, { y = FL, hat = null, plate = 0xffffff } = {}) {
+  const p = group(I.g, x, y, z, ry), W = 0.45, L = n * W;
+  for (let i = 0; i < n; i++) {
+    const cx = -L / 2 + W / 2 + i * W;
+    V(p, RB(W - 0.02, 1.9, 0.5, 0.012, 1), hex, cx, 0.95, 0, 0, 0, 0, vcGloss());
+    for (let k = 0; k < 4; k++) V(p, BX(0.24, 0.012, 0.01), 0x2b2d31, cx, 1.62 + k * 0.045, 0.252);
+    for (let k = 0; k < 3; k++) V(p, BX(0.24, 0.012, 0.01), 0x2b2d31, cx, 0.22 + k * 0.045, 0.252);
+    V(p, RB(0.03, 0.16, 0.03, 0.008, 1), 0xc9ced3, cx + W / 2 - 0.08, 1.0, 0.262, 0, 0, 0, vcGloss());
+    V(p, BX(0.16, 0.05, 0.006), plate, cx, 1.38, 0.254);
+  }
+  if (hat === 'cap') {
+    V(p, CY(0.12, 0.1, 0.07, 18), 0x1f3a6a, -W / 2, 1.94, 0.02, 0, 0, 0, vcGloss());
+    V(p, CY(0.13, 0.13, 0.015, 18), 0x1b1b1d, -W / 2, 1.91, 0.06, 0.15, 0, 0);
+    V(p, BX(0.05, 0.04, 0.01), 0xd8b25a, -W / 2, 1.95, 0.12);
+  } else if (hat === 'chef') {
+    V(p, CY(0.1, 0.09, 0.14, 16), 0xf6f5f0, -W / 2, 1.97, 0, 0, 0, 0, vcSoft());
+    V(p, SP(0.12, 14, 10), 0xf6f5f0, -W / 2, 2.08, 0, 0, 0, 0, vcSoft()).scale.set(1, 0.6, 1);
+  }
+  foot(I, x, z, L, 0.5, 1.95, ry, 0);
+  return p;
+}
+
 /* ------------------------------------------------------------------ 소방서 interior */
 function fireInterior(C) {
   const I = IK(C, 501), g = I.g, A = I.A, FF = 0.08, RED = 0xc4161c, TAN = 0xb89a5a;
@@ -1240,14 +1307,17 @@ function fireInterior(C) {
     V(g, BX(0.12, 0.03, 0.04), 0x2b2d31, x + 0.04, FF + 0.64, z);
   }
   // people, lamps, the truck seat
-  npc(I, 1.6, FF, -4.95, PI, 'stand', 'staff');
-  npc(I, -1.65, FF, -2.6, PI / 2, 'stand', 'staff');
+  npc(I, 1.6, FF, -4.95, PI, 'stand', 'firefighter');
+  npc(I, -1.65, FF, -2.6, PI / 2, 'stand', 'firefighter');
   npc(I, 5.9, FF, -5.35, 0, 'sit', 'staff');
-  npc(I, 6.6, FF, 0.4, -PI / 2, 'stand', 'staff');
+  npc(I, 6.6, FF, 0.4, -PI / 2, 'stand', 'firefighter');
   I.lamps.push({ pos: [-3.4, 4.4, -2.5], color: 0xfff1d6, intensity: 1.4, range: 11 }, { pos: [2.0, 4.4, -2.5], color: 0xfff1d6, intensity: 1.4, range: 11 },
     { pos: [6.6, 2.5, -4.4], color: 0xf4f8ff, intensity: 1.0, range: 6 }, { pos: [6.6, 4.4, 0.4], color: 0xfff1d6, intensity: 1.0, range: 8 });
   I.indoor.push(aabb(-5.9, 0, -6.5, 8.5, 4.9, 2.14));
   I.interactables.push({ id: 'firetruck', label: '소방차 타 보기', pos: [-1.75, 1.5, 0.9], radius: 1.4, seat: { pos: [-2.8, 2.6, 0.85], yaw: PI, pitch: -0.06 } });
+  // 소방관 days: put the turnout gear on at the lockers, check the gear on the rack
+  I.interactables.push({ id: 'fireLocker', label: '소방관 사물함 (방화복)', pos: [1.7, 1.45, -5.55], radius: 1.8 });
+  I.interactables.push({ id: 'gearRack', label: '소방 장비 점검하기', pos: [7.55, 1.35, 0.0], radius: 1.7 });
   return done(I);
 }
 
@@ -1319,15 +1389,19 @@ function policeInterior(C) {
   plant(I, -7.0, 1.85, 'fig', 1.5, 3);
   plant(I, 3.1, 1.85, 'snake', 0.9, 8);
   V(g, BX(2.4, 0.012, 1.4), 0x2b2d31, 0, FL + 0.006, 1.4, 0, 0, 0, vcSoft());
+  // staff lockers by the back door (경찰관 days: put the uniform on here)
+  lockers(I, 3.78, -5.27, 2, 0, NAVY, { hat: 'cap' });
   // people
-  npc(I, 0, FL, -2.05, PI, 'stand', 'staff');
-  npc(I, -2.7, FL, -4.45, PI, 'sit', 'staff');
-  npc(I, 5.1, FL, -4.45, PI, 'sit', 'staff');
-  npc(I, -5.6, FL, -4.55, 0, 'stand', 'staff');
+  npc(I, 0, FL, -2.05, PI, 'stand', 'police');
+  npc(I, -2.7, FL, -4.45, PI, 'sit', 'police');
+  npc(I, 5.1, FL, -4.45, PI, 'sit', 'police');
+  npc(I, -5.6, FL, -4.55, 0, 'stand', 'police');
   npc(I, ...ws[1].pos, ws[1].yaw, 'sit', 'guest');
   I.lamps.push({ pos: [0, 3.0, 0.6], color: 0xf4f8ff, intensity: 1.2, range: 9 }, { pos: [-4.5, 3.0, -3.5], color: 0xf4f8ff, intensity: 1.0, range: 8 }, { pos: [4.5, 3.0, -3.5], color: 0xf4f8ff, intensity: 1.0, range: 8 });
   I.indoor.push(aabb(-7.55, 0, -5.55, 7.55, 3.3, 3.02));
   I.interactables.push({ id: 'officer', label: '경찰관이랑 이야기하기', pos: [0, 1.35, -0.35], radius: 1.6 });
+  I.interactables.push({ id: 'policeLocker', label: '경찰관 사물함 (제복)', pos: [3.78, 1.5, -4.95], radius: 1.7 });
+  I.interactables.push({ id: 'policeDesk', label: '내 자리 컴퓨터 (보고서)', pos: [2.5, 1.05, -3.75], radius: 1.4 });
   return done(I);
 }
 
@@ -1491,6 +1565,16 @@ function martInterior(C) {
   for (const x of [-9, 0, 9]) for (const z of [-7, -2.8]) I.lamps.push({ pos: [x, 3.95, z], color: 0xf4f8ff, intensity: 1.0, range: 10 });
   I.indoor.push(aabb(-14.6, 0, -9.55, 14.6, 4.2, 1.48));
   I.interactables.push({ id: 'martBuy', label: '장보기 (5,000원)', pos: [6.45, 1.2, -3.6], radius: 1.4 });
+  // 마트 직원 days: staff lockers on the left wall, a stocking trolley in the 생활용품 aisle, checkout 3
+  lockers(I, -14.3, -0.75, 2, PI / 2, 0x1f8a4c);
+  const tro = group(g, -5.4, FL, -1.85, 0.1);
+  V(tro, BX(0.7, 0.05, 0.5), 0x5a6068, 0, 0.18, 0);
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { V(tro, CY(0.012, 0.012, 1.1, 6), 0x9aa0a6, sx * 0.33, 0.73, sz * 0.23); V(tro, CY(0.045, 0.045, 0.04, 10), 0x1b1b1d, sx * 0.28, 0.05, sz * 0.2, 0, 0, PI / 2); }
+  for (let k = 0; k < 5; k++) V(tro, RB(0.3, 0.24, 0.22, 0.01, 1), [0xc4935a, 0xd2a46a, 0xb88850][k % 3], -0.16 + (k % 2) * 0.32, 0.33 + Math.floor(k / 2) * 0.25, (k % 3 - 1) * 0.04, 0, k * 0.15, 0, vcMat());
+  foot(I, -5.4, -1.85, 0.75, 0.55, 1.2);
+  I.interactables.push({ id: 'martLocker', label: '직원 사물함 (조끼)', pos: [-13.8, 1.35, -0.75], radius: 1.6 });
+  I.interactables.push({ id: 'stock', label: '물건 채우기 카트', pos: [-5.4, 1.2, -1.85], radius: 1.6 });
+  I.interactables.push({ id: 'register', label: '3번 계산대 (계산하기)', pos: [12.6, 1.3, -3.25], radius: 1.5 });
   return done(I);
 }
 
@@ -1644,6 +1728,21 @@ function postInterior(C) {
   I.lamps.push({ pos: [0, 2.9, -0.4], color: 0xfff1d6, intensity: 1.1, range: 8 }, { pos: [0, 2.9, -3.3], color: 0xf4f8ff, intensity: 0.9, range: 7 });
   I.indoor.push(aabb(-5.6, 0, -4.55, 5.6, 3.1, 2.25));
   I.interactables.push({ id: 'mail', label: '편지 보내기', pos: [1.4, 1.3, -1.3], radius: 1.4 });
+  // 우체부 days: staff lockers on the right wall, a pigeonhole sorting case on the left behind the counter
+  lockers(I, 5.33, -2.0, 2, -PI / 2, O);
+  const sr = group(g, -5.38, FL, -3.0, PI / 2);
+  V(sr, BX(1.4, 0.9, 0.36), 0x8a6a4a, 0, 0.45, 0);
+  V(sr, BX(1.44, 0.04, 0.4), 0x6b4529, 0, 0.92, 0.01);
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) {
+    const cx = -0.58 + c * 0.232, cy = 1.08 + r * 0.2;
+    V(sr, BX(0.215, 0.185, 0.34), 0xd8c4a0, cx, cy, -0.02);
+    if ((r * 6 + c) % 3) V(sr, BX(0.15, 0.1, 0.01), [0xffffff, 0xfff3c0, 0xe8d8b0][(r + c) % 3], cx, cy - 0.02, 0.12, -0.15, 0, 0);
+  }
+  V(sr, BX(1.44, 0.82, 0.03), 0x6b4529, 0, 1.36, -0.19);
+  for (let c = 0; c < 3; c++) V(sr, BX(0.3, 0.08, 0.01), [0x3a8ad8, 0xe4552a, 0x3a9a5a][c], -0.46 + c * 0.46, 1.86, 0.16);
+  foot(I, -5.38, -3.0, 1.45, 0.4, 1.8, PI / 2, 0);
+  I.interactables.push({ id: 'postLocker', label: '직원 사물함 (우체부 옷)', pos: [4.85, 1.35, -2.0], radius: 1.6 });
+  I.interactables.push({ id: 'sortRack', label: '편지 나누는 칸', pos: [-4.9, 1.35, -3.0], radius: 1.6 });
   return done(I);
 }
 
@@ -1760,6 +1859,20 @@ function shopInterior(C, kind) {
   I.indoor.push(aabb(-4.65, 0, -4.05, 4.65, 2.85, F - 0.05));
   I.interactables.push(ck ? { id: 'chicken', label: '치킨 사 먹기 (8,000원)', pos: [cx - 0.4, 1.3, cz + 0.7], radius: 1.4 }
     : { id: 'pizza', label: '피자 사 먹기 (7,000원)', pos: [cx, 1.3, cz + 0.7], radius: 1.4 });
+  if (!ck) {
+    // 요리사 days: a hook with the chef's whites on the right kitchen wall, the oven, the window table
+    const hk = group(g, 4.6, FL, -2.75, -PI / 2);
+    V(hk, BX(0.9, 0.08, 0.04), 0x6b4529, 0, 1.75, 0);
+    for (const s of [-1, 1]) V(hk, CY(0.012, 0.012, 0.1, 6), 0xc9ced3, s * 0.25, 1.73, 0.06, PI / 2, 0, 0, vcGloss());
+    V(hk, RB(0.42, 0.7, 0.14, 0.05, 2), 0xf6f5f0, -0.25, 1.36, 0.1, 0, 0, 0, vcSoft());
+    for (let k = 0; k < 3; k++) for (const s of [-1, 1]) V(hk, SP(0.012, 6, 4), 0xd8d4c8, -0.25 + s * 0.06, 1.55 - k * 0.12, 0.17);
+    V(hk, CY(0.1, 0.09, 0.14, 16), 0xf6f5f0, 0.25, 1.62, 0.1, 0, 0, 0, vcSoft());
+    V(hk, SP(0.12, 14, 10), 0xf6f5f0, 0.25, 1.73, 0.1, 0, 0, 0, vcSoft()).scale.set(1, 0.6, 1);
+    V(hk, RB(0.36, 0.5, 0.05, 0.03, 1), 0x2f5a3a, 0.25, 1.2, 0.08, 0, 0, 0, vcSoft());
+    I.interactables.push({ id: 'chefHook', label: '요리사 옷걸이', pos: [4.15, 1.45, -2.75], radius: 1.6 });
+    I.interactables.push({ id: 'pizzaOven', label: '화덕 (피자 만들기)', pos: [-3.25, 1.25, -2.05], radius: 1.7 });
+    I.interactables.push({ id: 'pizzaTable', label: '창가 손님 테이블', pos: [-3.6, 1.1, 1.25], radius: 1.7 });
+  }
   return done(I);
 }
 

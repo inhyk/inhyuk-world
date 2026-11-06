@@ -65,6 +65,9 @@ export function sfx(name, opt = {}) {
     case 'cheers': [784, 988].forEach((f, i) => tone(t + i * 0.05, f, 0.5, { gain: 0.1 })); break;
     case 'horn': tone(t, 392, 0.4, { type: 'sawtooth', gain: 0.07 }); tone(t, 494, 0.4, { type: 'sawtooth', gain: 0.06 }); break;
     case 'carDoor': noise(t, 0.12, { freq: 250, q: 2, gain: 0.35 }); break;
+    // jobs: fire engine / patrol siren (two tones) and a traffic police whistle
+    case 'siren': for (let i = 0; i < 2; i++) { tone(t + i * 0.6, 960, 0.55, { type: 'square', gain: 0.045, slide: -40 }); tone(t + i * 0.6 + 0.3, 760, 0.3, { type: 'square', gain: 0.04 }); } break;
+    case 'whistle': tone(t, 2650, 0.32, { type: 'sine', gain: 0.12, attack: 0.01 }); tone(t, 2710, 0.32, { type: 'sine', gain: 0.08 }); noise(t, 0.3, { freq: 2700, q: 4, gain: 0.05 }); break;
     default: break;
   }
 }

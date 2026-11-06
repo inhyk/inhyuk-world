@@ -22,7 +22,16 @@ await page.waitForTimeout(800);
 const G = (fn, arg) => page.evaluate(fn, arg);
 const shot = (n) => page.screenshot({ path: `${out}/${n}.png` });
 const step = () => G(() => window.__game.day.step?.id ?? 'done');
+/** Fast-forward the clock (test only) until the current step's time has come (rest steps end by themselves). */
+const waitReady = async () => {
+  if (await G(() => window.__game.day.ready())) return;
+  await G(() => { window.__game.day.timeScale = 240; });
+  await page.waitForFunction(() => window.__game.day.ready(), null, { timeout: 60000 });
+  await G(() => { window.__game.day.timeScale = 1; });
+  await page.waitForTimeout(200);
+};
 const act = async (key) => {
+  await waitReady();
   assert.ok(await G((k) => { const it = window.__game.places.interactables.find((i) => i.key === k); if (!it) return false; window.__game.day.use(it); return true; }, key), `no ${key}`);
   for (let i = 0; i < 40; i++) {
     await page.waitForTimeout(400);
@@ -32,7 +41,11 @@ const act = async (key) => {
   await page.waitForTimeout(300);
 };
 const goTo = (site) => G((k) => { const g = window.__game; const e = g.places.entrance(k); g.player.place(e.x, 0.2, e.z, 0); }, site);
-const skipRest = () => G(() => { window.__game.day._waitT = 0.1; });
+const skipRest = async () => {
+  // a rest step is a plain wait now: the card shows until when, then it ends by itself
+  assert.ok(/쉬는 중/.test(await G(() => document.getElementById('quest-wait')?.textContent ?? '')), 'rest shows the wait chip');
+  await waitReady();
+};
 
 assert.deepEqual(await G(() => [window.__game.state.mode, window.__game.state.gender]), ['kid', 'boy']);
 assert.equal(await G(() => window.__game.places.interactables.filter((i) => i.id === 'mom' || i.id === 'dad').length), 2, 'mom and dad are home');
@@ -49,6 +62,7 @@ await act('school:schoolLunch');
 assert.equal(await step(), 'rest1');
 await skipRest(); await page.waitForTimeout(500);
 assert.equal(await step(), 'taekwondo');
+await waitReady();
 await G(() => { const g = window.__game; g.day.use(g.places.interactables.find((i) => i.key === 'academy:taekwondo')); });
 await page.waitForTimeout(1200);
 await shot('02-taekwondo');
@@ -77,7 +91,8 @@ await page.waitForTimeout(300);
 for (const k of ['home:sink', 'home:breakfast', 'home:wardrobe']) await act(k);
 await goTo('school'); await page.waitForTimeout(600);
 await act('school:class');
-// PE time: outside the building the child falls (the test player stands at the gate, so it happens at once)
+// PE time (10:30): outside the building the child falls (the test player stands at the gate, so it happens at once)
+await waitReady();
 await goTo('school');
 await page.waitForFunction(() => window.__game.state.hurt === true && !window.__game.day.busy, null, { timeout: 20000 });
 await page.waitForTimeout(500);

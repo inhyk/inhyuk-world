@@ -1,7 +1,8 @@
-// The day: quest steps, interactions, sitting, time skips, sleeping, and the mini games
-// (work computer, company dinner grill, meeting presentation, beach photo).
+// The day: quest steps, interactions, sitting, the clock and waiting for a step's time, sleeping, and the
+// mini games (work computer, company dinner grill, meeting presentation, beach photo). Jobs: src/jobs.js.
 import * as THREE from 'three';
-import { planDay, TICKET, weekday, stepsFor, STEP_TIME, eat, workTask, checkWork, meatState, WAGE, SNACK_PRICE, formatClock } from '../core.mjs';
+import { planDay, TICKET, weekday, stepsFor, stepStart, stepReady, minutesLeft, tickClock, SEC_PER_MIN, eat, workTask, checkWork, meatState, WAGE, SNACK_PRICE, formatClock } from '../core.mjs';
+import { JOBS } from '../jobs.mjs';
 import { paint } from './mat.js';
 import { note } from './audio.js';
 import { rbox } from './geom.js';
@@ -10,7 +11,7 @@ import { LAYOUT } from './world.js';
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const OUTFIT_FOR = { work: 'suit', dinner: 'suit', visit: 'suit', trip: 'beach', trip2: 'beach', rest: 'casual', school: 'casual', kidRest: 'casual' };
+const OUTFIT_FOR = { work: 'suit', dinner: 'suit', visit: 'suit', trip: 'beach', trip2: 'beach', rest: 'casual', school: 'casual', kidRest: 'casual', job: 'casual' };
 // 학교종 (a traditional children's song) first line: 솔 솔 라 라 솔 솔 미
 const SONG = ['솔', '솔', '라', '라', '솔', '솔', '미', '솔', '솔', '미', '미', '레'];
 const NOTES = { 도: [262, 'A'], 레: [294, 'S'], 미: [330, 'D'], 파: [349, 'F'], 솔: [392, 'G'], 라: [440, 'H'], 시: [494, 'J'] };
@@ -20,8 +21,9 @@ export class Day {
     this.g = g; // {state, hud, places, player, vehicle, sky, engine, sfx, build, input, save, life}
     this.seat = null;
     this.busy = false;
-    this.timeTo = null;
     this.snackCd = 0;
+    // test-only clock speed-up for the browser checks (?fast=N or window.__game.day.timeScale)
+    this.timeScale = Number(new URLSearchParams(globalThis.location?.search ?? '').get('fast')) || 1;
     this.marker = this.makeMarker();
     g.engine.scene.add(this.marker);
   }
@@ -29,7 +31,7 @@ export class Day {
   get s() { return this.g.state; }
   get plan() {
     const s = this.s;
-    if (!s.plan || s.plan.day !== s.day) s.plan = planDay(s, { hasLicenseCenter: !!this.g.places.sites.license });
+    if (!s.plan || s.plan.day !== s.day) s.plan = planDay(s, { hasLicenseCenter: !!this.g.places.sites.license, hasPlaza: !!this.g.places.sites.plaza });
     return s.plan;
   }
   get kind() { return this.plan.kind; }
@@ -61,6 +63,8 @@ export class Day {
     if (this.g.driveTest?.active) return this.g.driveTest.target();
     const st = this.step;
     if (!st) return null;
+    const jt = this.g.jobs?.target(st);
+    if (jt) return jt;
     const [site, id] = st.target.split(':');
     const P = this.g.places;
     if (site === 'beach') return id === 'shells' ? new THREE.Vector3(-300, 0, 12) : new THREE.Vector3(-306, 0, -2);
@@ -73,55 +77,59 @@ export class Day {
     const st = this.step;
     const from = Math.max(0, Math.min(this.s.step - 1, this.steps.length - 6));
     const list = this.steps.map((x, i) => ({ label: x.label + (x.count ? ` (${Math.min(this.s.counts[x.id] ?? 0, x.count)}/${x.count})` : ''), done: i < this.s.step, now: i === this.s.step })).slice(from, from + 6);
-    const title = { work: '평범한 출근 날', dinner: '오늘은 회식 날', visit: '오늘은 출장 날', trip: '일본 여행 1일째', trip2: '일본 여행 2일째', rest: '쉬는 날', school: '1학년 학교 가는 날', kidRest: '신나는 주말' }[this.kind];
+    const title = { work: '평범한 출근 날', dinner: '오늘은 회식 날', visit: '오늘은 출장 날', trip: '일본 여행 1일째', trip2: '일본 여행 2일째', rest: '쉬는 날', school: '1학년 학교 가는 날', kidRest: '신나는 주말', job: JOBS[this.plan.job]?.title ?? '출근 날' }[this.kind];
     const goal = this.s.mode === 'kid' || this.s.ticket || this.kind === 'trip' || this.kind === 'trip2' ? null : { label: '✈️ 비행기표 모으기', now: this.s.money, max: TICKET };
-    const text = st ? st.text + (st.wait && this._waitFor === st.id ? ` (${this.restLeft ?? st.wait}초)` : '') : '오늘 할 일 끝! 자유롭게 놀아요';
-    this.g.hud.quest(text, list, goal);
+    const text = st ? st.text : '오늘 할 일 끝! 자유롭게 놀아요';
+    this.g.hud.quest(text, list, goal, st && !stepReady(st, this.s) ? this.waitText(st) : null);
     this.g.hud.clock(`${this.s.day}일차 · ${weekday(this.s.day)} · ${title}`, formatClock(this.s.hour), this.s.money);
   }
+
+  /** Quest card line while a step waits for its time (the clock never jumps; 인혁: "기다리고 다음 일을 하게"). */
+  waitText(st, short = false) {
+    const s = this.s, at = formatClock(stepStart(st, s)), m = minutesLeft(st, s);
+    const left = m >= 60 ? `${Math.floor(m / 60)}시간${m % 60 ? ` ${m % 60}분` : ''}` : `${m}분`;
+    const real = Math.max(1, Math.ceil((m * SEC_PER_MIN) / this.timeScale)); // real seconds (1 game minute = 0.5 s)
+    if (st.rest) return `⏳ ${st.job ? '대기 중' : '쉬는 중'} · ${at}까지 ${left} (진짜 ${real}초)`;
+    return short ? `⏳ 아직이에요! ${at}에 해요 (${left} 남았어요)` : `⏳ ${at}에 해요 · ${left} 남았어요 (진짜 ${real}초). 그동안 자유롭게 놀아요`;
+  }
+  ready(st = this.step) { return !st || stepReady(st, this.s); }
 
   complete(id) {
     const st = this.step;
     if (!st || st.id !== id) return false;
+    if (!this.ready(st)) { this.g.hud.toast(this.waitText(st, true), 2200); return false; }
     this.s.step++;
     this.g.sfx('done');
     this.g.hud.toast(`✔ ${st.label} 완료!`);
-    const t = STEP_TIME[id];
-    if (t != null && this.s.hour < t) this.timeTo = t;
     this.g.save();
+    this.g.jobs?.completed(st);
     return true;
   }
 
   // ------------------------------------------------------------------ main loop
   update(dt) {
     const s = this.s, P = this.g.places, pl = this.g.player;
-    // time: slow flow plus quick skips after steps
-    if (this.timeTo != null) {
-      s.hour = Math.min(this.timeTo, s.hour + dt * 2.5);
-      if (s.hour >= this.timeTo) this.timeTo = null;
-    } else if (!this.busy) s.hour += dt / 600; // 10 real seconds per game minute (인혁: "10초마다 1분")
-    if (s.hour >= 24) s.hour = 23.99;
+    // time just flows: 0.5 real seconds per game minute (인혁: "1분을 0.5초로 해줘"), paused while busy
+    if (!this.busy) tickClock(s, dt, this.timeScale);
     this.snackCd -= dt;
     // location steps
     const st = this.step;
     const where = this.g.vehicle?.driving ? this.g.vehicle.pos : pl.pos;
-    if (st && !this.busy) {
+    if (st && st.rest && !(s.restFrom && s.restFrom.id === st.id && s.restFrom.day === s.day)) s.restFrom = { id: st.id, hour: s.hour, day: s.day };
+    if (st && !this.busy && this.ready(st)) {
       const [site, id] = st.target.split(':');
       if (st.auto && !this.seat && pl.speed > 0.5) this.complete(st.id);
-      if (id === 'door' && st.id !== 'hurt' && !st.wait && !this.g.vehicle?.driving) {
+      if (st.rest) { this.g.hud.toast(st.job ? '⏰ 대기 끝!' : '쉬는 시간 끝!', 1500); this.complete(st.id); }
+      else if (id === 'door' && st.id !== 'hurt' && !this.g.vehicle?.driving) {
         const e = P.entrance(site);
         if (P.inside(pl.pos) === site || (e && e.distanceTo(pl.pos) < 7)) this.complete(st.id);
       }
       if (site === 'beach' && id === 'arrive' && where.x < LAYOUT.beachX - 4) this.complete(st.id);
       if (st.id === 'shells' && (s.counts.shells ?? 0) >= 5) this.complete(st.id);
-      if (st.wait) {
-        if (this._waitFor !== st.id) { this._waitFor = st.id; this._waitT = st.wait; }
-        this._waitT -= dt;
-        this.restLeft = Math.max(0, Math.ceil(this._waitT));
-        if (this._waitT <= 0) { this.g.hud.toast('쉬는 시간 끝!', 1500); this.complete(st.id); }
-      }
       if (st.id === 'hurt' && !P.inside(pl.pos)) this.hurtEvent();
     }
+    if (s.hour >= 23.5 && !this._lateToast) { this._lateToast = true; this.g.hud.toast('벌써 밤이 깊었어요! 침대에서 자요 💤', 3200); }
+    this.g.jobs?.update(dt);
     // marker
     const tg = this.target();
     this.marker.visible = !!tg && !this.seat;
@@ -144,6 +152,10 @@ export class Day {
     if (this.busy) return;
     const s = this.s, st = this.step, hud = this.g.hud;
     const now = st && st.target === it.key;
+    // a step whose time has not come yet waits (인혁: "기다리고 다음 일을 하게")
+    if (now && !this.ready(st)) { hud.toast(this.waitText(st, true), 2400); this.g.sfx('click'); return; }
+    // jobs: the job's own tasks and its lockers, desks, carts... (src/jobs.js)
+    if (this.g.jobs && (await this.g.jobs.use(it, st, now))) return;
     switch (it.id) {
       case 'bed':
       case 'hotelBed':
@@ -176,9 +188,9 @@ export class Day {
         break;
       case 'wardrobe': {
         const outfit = OUTFIT_FOR[this.kind] ?? 'suit';
-        await this.fadeAction(outfit === 'beach' ? '여행 옷으로 갈아입는 중…' : '정장으로 갈아입는 중…');
+        await this.fadeAction(outfit === 'beach' ? '여행 옷으로 갈아입는 중…' : outfit === 'casual' ? '옷 갈아입는 중…' : '정장으로 갈아입는 중…');
         this.setOutfit(outfit);
-        hud.toast(outfit === 'beach' ? '여행 옷 완성! 신난다' : '정장 완성! 멋있다');
+        hud.toast(outfit === 'beach' ? '여행 옷 완성! 신난다' : outfit === 'casual' ? (this.kind === 'job' ? '출근 옷 완성! 일터에서 일하는 옷으로 갈아입어요' : '옷 입기 완성!') : '정장 완성! 멋있다');
         if (now) this.complete('wardrobe');
         break;
       }
@@ -371,6 +383,9 @@ export class Day {
       case 'movie':
         await this.visit(it);
         break;
+      case 'show': // 분수 공연 (the plaza helper's g.show plays it; resolves when the show ends)
+        if (this.g.show) { await this.g.show.watch(it); this.complete('show'); }
+        break;
       case 'pray':
         this.g.sfx('cheers');
         hud.toast('짝짝! 소원을 빌었어요: 내일도 즐거운 하루 🙏', 2600);
@@ -443,6 +458,8 @@ export class Day {
     s.step = 0;
     s.hour = 6.9;
     s.counts = {};
+    s.restFrom = null;
+    this._lateToast = false;
     s.food = Math.max(25, s.food - 15);
     s.hp = Math.min(100, s.hp + 30);
     s.broken = [];
@@ -450,6 +467,7 @@ export class Day {
     if (s.mode === 'kid' && s.hurt && (s.day - 1) % 7 === 5) { s.hurt = false; this._healed = true; }
     this.g.player.limp = !!s.hurt;
     if (where === 'home') this.setOutfit('pajama');
+    this.g.jobs?.newDay();
     this.g.onNewDay?.();
     this.wakeUp();
     f.textContent = `${s.day}일차 · ${weekday(s.day)}`;
@@ -457,7 +475,7 @@ export class Day {
     f.classList.remove('on');
     this.busy = false;
     this.g.sfx('alarm');
-    this.g.hud.toast(this.kind === 'trip' ? '주말이다! 오늘은 일본 여행 ✈️' : this.kind === 'trip2' ? '료칸에서 맞는 아침! 🇯🇵' : this.kind === 'rest' ? '주말이다! 오늘은 쉬는 날 (비행기표는 아직 모으는 중)' : this.kind === 'dinner' ? '따르릉! 오늘은 회식 날이에요' : this.kind === 'visit' ? '따르릉! 오늘은 별빛테크로 출장!' : '따르릉! 일어날 시간이에요', 3000);
+    this.g.hud.toast(this.kind === 'job' ? `따르릉! 오늘도 ${JOBS[this.plan.job]?.name ?? ''} 출근하는 날이에요 ${JOBS[this.plan.job]?.icon ?? ''}` : this.kind === 'trip' ? '주말이다! 오늘은 일본 여행 ✈️' : this.kind === 'trip2' ? '료칸에서 맞는 아침! 🇯🇵' : this.kind === 'rest' ? '주말이다! 오늘은 쉬는 날 (비행기표는 아직 모으는 중)' : this.kind === 'dinner' ? '따르릉! 오늘은 회식 날이에요' : this.kind === 'visit' ? '따르릉! 오늘은 별빛테크로 출장!' : '따르릉! 일어날 시간이에요', 3000);
     this.g.save();
   }
 
@@ -545,7 +563,7 @@ export class Day {
         el.innerHTML = `<div class="os"><div class="os-bar"><b>SEONN OS</b><span>업무 ${n + 1} / ${need}</span><span class="sp"></span><span>${formatClock(s.hour)}</span><button class="alt exit" id="leave">일어나기</button></div>
           <div class="os-win"><div class="os-title">📁 ${task.title}</div><div class="os-body"><p>${task.prompt}</p><div id="task-area" class="${task.kind === 'mail' ? 'col' : 'row'}"></div></div></div></div>`;
         const area = el.querySelector('#task-area');
-        const ok = this._ok = () => { this._ok = null; this.g.sfx('done'); s.counts[st.id]++; s.hour = Math.min(s.hour + 1.4, 18); this.g.hud.toast('업무 완료! 👍', 1200); setTimeout(show, 500); };
+        const ok = this._ok = () => { this._ok = null; this.g.sfx('done'); s.counts[st.id]++; this.g.hud.toast('업무 완료! 👍', 1200); setTimeout(show, 500); };
         const bad = () => { this.g.sfx('wrong'); area.classList.remove('shake'); void area.offsetWidth; area.classList.add('shake'); };
         if (task.kind === 'type') {
           area.innerHTML = '<input id="ti" autocomplete="off" placeholder="여기에 쳐요"><button id="tb">보내기</button>';

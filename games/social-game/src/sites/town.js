@@ -993,9 +993,21 @@ function hospitalIn(I, M) {
   for (const [x, z] of [[-3.5, 0.25], [-1.2, 0.25], [1.6, -0.6], [3.6, -0.6], [3.6, 1.0], [-3.3, -3.0], [-1.6, -3.4], [2.6, -3.6]]) panelLight(g, M, x, z, 1.1, 0.3, M.cool);
   I.lamps.push({ pos: [-3.0, 2.8, 0.2], color: 0xf1f5ff, intensity: 10, range: 7 }, { pos: [3.0, 2.8, -1.2], color: 0xf1f5ff, intensity: 10, range: 7 }, { pos: [-3.2, 2.8, -3.0], color: 0xf4f6ff, intensity: 9, range: 6 }, { pos: [1.5, 2.8, 0.8], color: 0xf1f5ff, intensity: 7, range: 6 });
   I.npcSpots.push({ pos: [3.0, FL, -2.75], yaw: PI, pose: 'stand', role: 'staff' });
-  I.npcSpots.push({ pos: [-3.05, FL, -3.3], yaw: -PI / 2, pose: 'sit', role: 'staff' });
+  I.npcSpots.push({ pos: [-3.05, FL, -3.3], yaw: -PI / 2, pose: 'sit', role: 'doctor' });
   I.npcSpots.push({ ...rowA[0], pose: 'sit', role: 'guest' }, { ...rowA[2], pose: 'sit', role: 'guest' }, { ...rowC[1], pose: 'sit', role: 'guest' });
   I.interactables.push({ id: 'doctor', label: '진료 받기', pos: [-2.35, 1.2, -2.95], radius: 1.4, seat: { pos: [-2.05, FL + 1.12, -3.3], yaw: PI / 2, pitch: -0.08 } });
+  // 의사 days: a coat stand with the white coat by the door, the x-ray box above the desk, shots at the exam bed
+  const cs = placed(I, -0.95, -2.75, 0, 0.45, 0.45, 1.8);
+  V(cs, CY(0.2, 0.22, 0.04, 20), DK, 0, 0.02, 0, 0, 0, 0, vcGloss());
+  V(cs, CY(0.018, 0.018, 1.75, 10), 0xc9ced3, 0, 0.9, 0, 0, 0, 0, vcGloss());
+  for (let k = 0; k < 4; k++) V(cs, CY(0.01, 0.01, 0.16, 6), 0xc9ced3, Math.cos(k * PI / 2) * 0.07, 1.72, Math.sin(k * PI / 2) * 0.07, 0, -k * PI / 2, PI / 3, vcGloss());
+  V(cs, RB(0.4, 0.95, 0.16, 0.06, 2), 0xf6f6f2, 0, 1.22, 0.1, 0, 0, 0, vcSoft());
+  for (const sx of [-1, 1]) V(cs, RB(0.09, 0.62, 0.11, 0.04, 1), 0xf6f6f2, sx * 0.2, 1.33, 0.1, 0, 0, sx * 0.08, vcSoft());
+  V(cs, BX(0.08, 0.06, 0.005), 0x2f6fb0, -0.08, 1.48, 0.185);
+  V(cs, GC('steth2', () => torus(0.07, 0.007, 6, 20)), DK, 0.02, 1.52, 0.19);
+  I.interactables.push({ id: 'coatRack', label: '의사 가운 옷걸이', pos: [-0.95, 1.5, -2.55], radius: 1.5 });
+  I.interactables.push({ id: 'xray', label: '엑스레이 보기', pos: [-3.5, 1.7, -3.55], radius: 1.3 });
+  I.interactables.push({ id: 'shot', label: '예방 주사 놓기', pos: [-3.7, 1.2, -2.35], radius: 1.3 });
 }
 
 function pharmacyIn(I, M) {

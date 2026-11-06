@@ -20,8 +20,16 @@ export class Hud {
     this.hpBar.classList.toggle('low', hp < 25);
     this.foodBar.classList.toggle('low', food < 20);
   }
-  quest(text, steps = [], goal = null) {
+  quest(text, steps = [], goal = null, wait = null) {
     if (this._q !== text) { this.questText.textContent = text; this._q = text; }
+    // a step that waits for its time: a little clock chip above the quest text
+    if (this._w !== wait) {
+      this._w = wait;
+      let el = document.getElementById('quest-wait');
+      if (!el) { el = document.createElement('div'); el.id = 'quest-wait'; this.questText.before(el); }
+      el.classList.toggle('hidden', !wait);
+      el.textContent = wait ?? '';
+    }
     const gk = goal ? `${goal.label}|${goal.now}|${goal.max}` : '';
     if (this._g !== gk) {
       this._g = gk;
