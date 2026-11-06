@@ -10,6 +10,7 @@ const HAIR_COLORS = [0x2a211c, 0x3b2a20, 0x1c1a1a, 0x5a3a24, 0x2e2420];
 const SKINS = [0xf1c9a5, 0xe8b894, 0xf6d5b8, 0xd9a47e];
 const CAR_COLORS = [0xd8d8d4, 0x2b2d31, 0xc23b32, 0x3f6fb5, 0x8a9096, 0xe9e4d8, 0x2f5a46, 0xb8873a];
 const STYLES = ['sedan', 'hatch', 'suv', 'taxi', 'van', 'sedan'];
+const BUILD_D = 88; // people are made when the camera comes this close (they show from 70 m)
 
 function nameTag(text) {
   const c = document.createElement('canvas');
@@ -48,22 +49,48 @@ export class Life {
     if (!this.buildCharacter) return;
     this.spawnSpots(this.places.npcSpots);
     this.spawnWalkers();
+    // people are made later (lazily), so one of each outfit waits hidden in the scene while the game
+    // compiles its shaders: the first real person in an apron or pyjamas does not stall a frame
+    this.warm = new THREE.Group();
+    this.warm.visible = false;
+    let seed = 900;
+    for (const o of new Set([...Object.values(ROLE_OUTFIT), 'casual', 'suit', 'beach', 'pajama', 'chef'])) this.warm.add(this.person(seed++, o).group);
+    this.warm.add(nameTag('김 부장님'));
+    this.engine.scene.add(this.warm);
   }
 
-  /** People for a list of npc spots (also called later when an interior is built). */
+  /**
+   * People for a list of npc spots (also called later when an interior is built). A person is only
+   * made when the camera comes near (BUILD_D), one per frame, so a new interior full of people or
+   * the start of the game never stops the picture for long.
+   */
   spawnSpots(spots) {
     if (!this.buildCharacter) return;
     let seed = (this._seed ??= 1);
-    for (const sp of spots) {
-      const ch = this.person(seed++, ROLE_OUTFIT[sp.role] ?? (sp.site === 'restaurant' ? 'casual' : 'office'));
-      ch.group.position.copy(sp.wpos);
-      ch.group.rotation.y = sp.wyaw;
-      this.engine.scene.add(ch.group);
-      if (sp.role === 'boss') ch.group.add(nameTag('김 부장님'));
-      if (sp.role === 'kid') ch.group.scale.setScalar(0.72);
-      this.people.push({ ch, mode: sp.pose === 'type' ? 'type' : sp.pose === 'sit' ? 'sit' : 'idle', base: sp.pose, site: sp.site, wave: 0, t: this.R() * 10 });
-    }
+    for (const sp of spots) this.people.push({ ch: null, spot: sp, seed: seed++, mode: sp.pose === 'type' ? 'type' : sp.pose === 'sit' ? 'sit' : 'idle', base: sp.pose, site: sp.site, wave: 0, t: this.R() * 10 });
     this._seed = seed;
+  }
+
+  /** Make the person of a lazy entry (see spawnSpots). */
+  make(p) {
+    const sp = p.spot;
+    const ch = this.person(p.seed, ROLE_OUTFIT[sp.role] ?? (sp.site === 'restaurant' ? 'casual' : 'office'));
+    ch.group.position.copy(sp.wpos);
+    ch.group.rotation.y = sp.wyaw;
+    if (sp.role === 'boss') ch.group.add(nameTag('김 부장님'));
+    if (sp.role === 'kid') ch.group.scale.setScalar(0.72);
+    p.ch = ch;
+    return ch;
+  }
+
+  /**
+   * Far people leave the scene graph (not only hidden): three.js still walks hidden objects to update
+   * their matrices, ~25 bones and meshes per person.
+   */
+  show(g, on) {
+    g.visible = on;
+    if (on && !g.parent) this.engine.scene.add(g);
+    else if (!on && g.parent === this.engine.scene) this.engine.scene.remove(g);
   }
 
   spawnWalkers() {
@@ -101,9 +128,19 @@ export class Life {
 
   update(dt, playerPos, playerCar, night) {
     const cam = this.engine.camera.position;
+    // lazy people: all near ones at the very first update (behind the start screen), then one a frame
+    if (this.warm) { this.engine.scene.remove(this.warm); this.warm = null; }
+    let budget = this._started ? 1 : Infinity;
+    const ref = this._started ? cam : playerPos ?? playerCar ?? cam; // the camera is placed after this, on frame one
+    this._started = true;
     for (const p of this.people) {
+      if (!p.ch) {
+        if (budget <= 0 || p.spot.wpos.distanceToSquared(ref) > BUILD_D * BUILD_D) continue;
+        budget--;
+        try { this.make(p); } catch (e) { console.warn('person failed', e); p.ch = { group: new THREE.Group() }; }
+      }
       const far = p.ch.group.position.distanceToSquared(cam) > 70 * 70;
-      p.ch.group.visible = !far;
+      if (far === p.ch.group.visible || !p.ch.group.parent !== far) this.show(p.ch.group, !far);
       if (far) continue;
       p.t += dt;
       if (p.wave > 0) p.wave -= dt;
@@ -122,7 +159,7 @@ export class Life {
       g.position.set(w.x, w.y, w.z);
       g.rotation.y = w.dir > 0 ? -Math.PI / 2 : Math.PI / 2;
       const far = g.position.distanceToSquared(cam) > 90 * 90;
-      g.visible = !far;
+      if (far === g.visible || !g.parent !== far) this.show(g, !far);
       if (!far) w.ch.update?.(dt, { speed: w.pause > 0 ? 0 : w.speed, mode: w.pause > 0 ? 'idle' : 'walk' });
     }
     // cars
