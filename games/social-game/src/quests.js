@@ -710,15 +710,8 @@ export class Day {
     if (it.seatW) this.sit(it);
     this.busy = true;
     if (it.id === 'movie') {
-      const scr = $('screen');
-      await wait(900);
-      const title = ['햄찌 대모험', '우주 고양이', '젤리 타워 더 무비'][Math.floor(Math.random() * 3)];
-      scr.innerHTML = `<div class="movie"><div class="mv-title">${title}</div><div class="mv-stage"><span class="a">🐹</span><span class="b">🌻</span><span class="c">✨</span></div></div>`;
-      if (it.screenW) this.placeScreen(it.screenW); else scr.classList.add('hidden');
-      for (let i = 0; i < 6; i++) { await wait(1500); this.g.sfx(i % 2 ? 'pickup' : 'click'); }
-      scr.innerHTML = '<div class="movie"><div class="mv-title">끝 🎬</div></div>';
-      await wait(1200);
-      hud.toast(`“${title}” 재밌었다! 🍿`, 2600);
+      // 진짜 영화: 콩떡이 극장판 "햄찌 영화" (13분 31초) on the big screen, see src/cinema.js
+      await this.g.cinema?.watch(it);
     } else if (it.id === 'firetruck') {
       await wait(700);
       for (let i = 0; i < 3; i++) { this.g.sfx('horn'); await wait(700); }
