@@ -65,11 +65,11 @@ export class Minimap {
       g.fillStyle = '#4f8fd8'; g.strokeStyle = '#fff'; g.lineWidth = 2;
       g.beginPath(); g.arc(x, z, 5, 0, Math.PI * 2); g.fill(); g.stroke();
     }
-    // other players in the shared town
+    // other players in the shared town (and bears, which bring their own colour)
     for (const o of others) {
       const [x, z] = P(o.x, o.z);
       if (x < -6 || z < -6 || x > W + 6 || z > H + 6) continue;
-      g.fillStyle = '#5ad86a'; g.strokeStyle = '#fff'; g.lineWidth = 2;
+      g.fillStyle = o.color ?? '#5ad86a'; g.strokeStyle = '#fff'; g.lineWidth = 2;
       g.beginPath(); g.arc(x, z, 5, 0, Math.PI * 2); g.fill(); g.stroke();
     }
     if (target) {

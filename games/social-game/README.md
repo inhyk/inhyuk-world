@@ -72,6 +72,18 @@
 - 시계는 진짜 10초마다 게임 1분씩 간다(인혁이 요청). 출근, 점심, 퇴근 같은 일을 끝내면 그 시간으로 넘어간다.
 - 배고픔은 시간이 지나면 줄고, 0이 되면 체력이 줄어든다. 편의점과 냉장고에서 간식을 먹을 수 있다.
 
+## 숲의 반달가슴곰 (2026-11-06, 인혁: "숲에 곰이 가끔씩 있게 해주고 곰은 반달가슴곰에 진짜 곰처럼 만들어줘")
+
+- 어디: 동네 밖 언덕의 숲. 나무가 3그루 이상 서 있는 40m 칸(북쪽 언덕과 동쪽 언덕, 29칸)이다. 동네 안, 공항, 바닷가에는 안 나온다.
+- 언제: 날짜로 정해져서 다시 켜도 같다. 이틀에 하루쯤 곰 1마리(가끔 2마리)가 아침 6시 반~오후 사이 몇 시간 동안 숲 한 곳을 돌아다닌다. 시간이 끝나면 사람이 안 볼 때 숲으로 돌아간다.
+- 곰이 하는 일: 어슬렁어슬렁 걷기, 땅 냄새 맡기, 엉덩이 깔고 앉기, 뒷다리로 일어서서 둘러보기. 나무와 바위는 돌아서 간다.
+- 가까이 가면(15m): 나를 보고 일어서서 "훅훅" 하고 턱을 딱딱거린 뒤 천천히 숲으로 가 버린다. 처음엔 "🐻 반달가슴곰이다! 천천히 뒤로 물러나요".
+- 곰한테 뛰어가거나 아주 가까이(5m) 가면: 겁주려고 달려오다가 바로 앞에서 멈추고(블러프 차지) 으르렁거린다. 다치지는 않는다. 곰을 건드리면 앞발로 밀어서 체력 -5.
+- 지도: 가까운 곰은 미니맵에 짙은 갈색 점으로 나온다. 같이 사는 동네에서도 곰은 내 컴퓨터에만 있다.
+- 모델 `src/props/bear.js`: 뼈대 하나에 털 몸통(몸, 굵은 목, 머리, 네 다리, 둥근 귀), 털 카드 약 2,800장(사자 같은 목 갈기, 배 밑 술, 다리 털, 가슴의 흰 반달), 눈과 코끝과 발톱. 3 draw call, 약 29,000 삼각형, 곰 2마리가 같은 모양을 나눠 쓴다. 다리는 IK로 땅을 디딘다(발바닥 전체를 딛는 걸음, 질주, 일어서기, 앉기, 냄새 맡기, 훅훅).
+- 움직임과 일정 `src/wildlife.js`, 소리(훅훅, 그르렁, 으르렁)는 `src/audio.js` 에서 코드로 만든다.
+- 혼자 보기: `viewer.html?mod=props/bear&fn=bearPose&args={"mode":"stand"}` (mode: idle, walk, run, sniff, stand, sit)
+
 ## 조작
 
 - WASD 걷기, Shift 달리기, Space 점프, 마우스 둘러보기
@@ -102,6 +114,7 @@
 - `src/sites/*.js` 건물(집, 편의점, 회사, 별빛테크, 고깃집, 바다 펜션, 공항, 일본의 신사와 라멘 가게와 기념품 가게와 료칸), `src/site.js` 건물 약속
 - `src/flight.js` 비행기 타고 날아가는 장면, `src/drivetest.js` 면허 시험, `src/nav.js` 내비게이션, `src/elevator.js` 엘리베이터, `src/cloud.js` 로그인과 서버 저장
 - `src/town.js` 같이 사는 동네(연결, 다른 사람, 채팅, 차단, 신고), `online.mjs` 그 규칙(칸 이름, 위치, 숨김, 혼자 블럭 지키기), `online.test.mjs`
+- `src/wildlife.js` 숲의 반달가슴곰(숲 칸, 날마다 일정, 행동), `src/props/bear.js` 곰 모델과 움직임, `bear-check.mjs` 곰 검사
 - `kid-check.mjs` 어린이 이야기 자동 검사, `login-check.mjs` 로그인 검사(로컬 net 서버), `online-check.mjs` 같이 사는 동네 검사(로컬 net 서버, 두 컴퓨터)
 - `src/props/*.js` 자동차, 사람, 나무와 꽃, 가로등과 벤치, 블럭
 - `src/world.js` 땅, 도로, 바다와 건물 자리, `src/deco.js` 나무와 거리 소품 배치
@@ -117,6 +130,7 @@ npm run social-game:dev            # 다른 터미널
 node games/social-game/browser-check.mjs http://127.0.0.1:5173/ /tmp/social-shots
 node games/social-game/kid-check.mjs http://127.0.0.1:5173/ /tmp/social-kid
 node games/social-game/show-check.mjs http://127.0.0.1:5173/ /tmp/social-show   # 분수 광장과 공연 (약 3분)
+node games/social-game/bear-check.mjs http://127.0.0.1:5173/ /tmp/social-bear
 # 로그인과 같이 사는 동네는 로컬 net 서버가 있어야 한다 (저장소 AGENTS.md "시험해 보기" 1번). 계정을 2~3개 만든다.
 node games/social-game/login-check.mjs http://127.0.0.1:5173/ /tmp/social-login
 node games/social-game/online-check.mjs http://127.0.0.1:5173/ /tmp/social-online
