@@ -1,4 +1,5 @@
 // Plays one whole Monday and a bit of Tuesday in a real browser and saves screenshots.
+// Steps wait for their time now (the clock never jumps); the check fast-forwards those waits with day.timeScale.
 // node games/social-game/browser-check.mjs [url] [outDir]
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
@@ -25,7 +26,15 @@ await page.waitForTimeout(800);
 const shot = (name) => page.screenshot({ path: `${out}/${name}.png` });
 const G = (fn, arg) => page.evaluate(fn, arg);
 const step = () => G(() => window.__game.day.step?.id ?? 'done');
+/** Fast-forward the clock (test only) until the current step's time has come. */
+const waitReady = async () => {
+  if (await G(() => window.__game.day.ready())) return;
+  await G(() => { window.__game.day.timeScale = 240; });
+  await page.waitForFunction(() => window.__game.day.ready(), null, { timeout: 60000 });
+  await G(() => { window.__game.day.timeScale = 1; });
+};
 const act = async (key) => {
+  await waitReady();
   const ok = await G((k) => { const it = window.__game.places.interactables.find((i) => i.key === k); if (!it) return false; window.__game.day.use(it); return true; }, key);
   assert.ok(ok, `no interactable ${key}`);
   await page.waitForFunction(() => !window.__game.day.busy, null, { timeout: 20000 });
@@ -96,6 +105,15 @@ await shot('03-driving');
 await G(() => { const g = window.__game; g.vehicle.park(70, -22, 0); g.vehicle.driving = false; const e = g.places.entrance('office'); g.player.place(e.x, 0.2, e.z, 0); });
 await page.waitForTimeout(600);
 assert.equal(await step(), 'badge');
+// arriving before 9:00, 출근 waits for its time (no more jumping clock)
+if (await G(() => window.__game.state.hour < 8.9)) {
+  const h0 = await G(() => window.__game.state.hour);
+  await G(() => { const g = window.__game; g.day.use(g.places.interactables.find((i) => i.key === 'office:badge')); });
+  await page.waitForTimeout(300);
+  assert.equal(await step(), 'badge', 'too early to badge in');
+  assert.ok(/오전 9:00/.test(await G(() => document.getElementById('quest-wait')?.textContent ?? '')), 'wait chip shows 9:00');
+  assert.ok(await G(() => window.__game.state.hour) - h0 < 0.1, 'the clock did not jump');
+}
 await shot('04-office');
 await act('office:badge'); assert.equal(await step(), 'coffee');
 await act('office:coffee'); assert.equal(await step(), 'work');
@@ -103,12 +121,14 @@ await act('office:coffee'); assert.equal(await step(), 'work');
 // work, team meeting, lunch, work, print, manager, badge out
 await act('office:desk'); await solveSeat();
 assert.equal(await step(), 'teamMeeting');
+await waitReady();
 await G(() => { window.__game.day.use(window.__game.places.interactables.find((i) => i.key === 'office:teamMeeting')); });
 await page.waitForTimeout(1500);
 await shot('05a-meeting');
 await solveSeat();
 assert.equal(await step(), 'lunch');
 await act('office:lunch'); assert.equal(await step(), 'work2');
+await waitReady();
 await G(() => { window.__game.day.use(window.__game.places.interactables.find((i) => i.key === 'office:desk')); });
 await page.waitForTimeout(1600);
 await shot('05-computer');
@@ -169,6 +189,7 @@ await act('home:wardrobe'); assert.equal(await step(), 'drive-airport');
 await G(() => { const g = window.__game; const e = g.places.entrance('airport'); g.player.place(e.x, 0.2, e.z, 0); });
 await page.waitForTimeout(600);
 assert.equal(await step(), 'fly-japan');
+await waitReady();
 await G(() => { const g = window.__game; g.day.use(g.places.interactables.find((i) => i.key === 'airport:board')); });
 await page.waitForTimeout(9000);
 assert.equal(await G(() => window.__game.state.money), 200000, 'the ticket cost 1,000,000원');
@@ -192,6 +213,7 @@ await page.keyboard.down('KeyW'); await page.waitForTimeout(500); await page.key
 await page.waitForTimeout(300);
 assert.equal(await step(), 'onsen');
 await act('ryokan:onsen'); assert.equal(await step(), 'fly-home');
+await waitReady();
 await G(() => { const g = window.__game; g.day.use(g.places.interactables.find((i) => i.key === 'jpAirport:board')); });
 await page.waitForTimeout(3000);
 await page.waitForFunction(() => !window.__game.day.busy && !window.__game.flight.active, null, { timeout: 60000 });

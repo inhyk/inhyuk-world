@@ -476,7 +476,7 @@ function buildHands(skin) {
 }
 
 // ------------------------------------------------------------------------------------------ outfits
-const OUTFITS = ['pajama', 'suit', 'office', 'casual', 'beach', 'chef'];
+const OUTFITS = ['pajama', 'suit', 'office', 'casual', 'beach', 'chef', 'police', 'fire', 'doctor', 'mart', 'post'];
 const BRIGHT = [0xe07a3c, 0x4f8f5c, 0x7d5cc0, 0xd94f5c, 0x3f78c8, 0xf0b93a, 0x2f9c9a];
 
 /** Fill top / bottom / shoe buckets (and skin for exposed limbs) for an outfit. */
@@ -500,10 +500,16 @@ function dressUp(o, B, skinB, seed) {
     }
     case 'beach': topKind = 'floral'; topC = 0xffffff; botC = pick([0x2f5f8a, 0x2f8a7a, 0xd06a4a]); sleeves = 'short'; legs = 'shorts'; shoes = 'flipflop'; hem = 0.9; extras.push('openCollar', 'buttons'); break;
     case 'chef': topC = 0xf6f5f0; botC = 0x2a2c31; shoes = 'clog'; hem = 0.88; extras.push('apron', 'neckerchief', 'buttonsDouble'); break;
+    // job uniforms (인혁: "직업을 더 만들어줘. 다양하게 경찰, 소방관 같은 것도 넣어.")
+    case 'police': topC = 0x26406e; botC = 0x1a2236; shoes = 'dress'; hem = 0.95; extras.push('collar', 'placket', 'belt', 'badge', 'policeCap'); break;
+    case 'fire': topKind = 'fabric'; botKind = 'fabric'; topC = 0xb89a5a; botC = 0xa88a4e; shoes = 'dress'; hem = 0.86; extras.push('collar', 'reflect', 'fireHelmet', 'tank'); break;
+    case 'doctor': topC = 0xf6f6f2; botC = 0x2f4a6a; shoes = 'sneaker'; hem = 0.88; extras.push('lapels', 'shirtV', 'pocket', 'steth', 'buttons2'); break;
+    case 'mart': topC = 0xf4f4f2; botC = 0x3b3f48; shoes = 'sneaker'; hem = 0.95; extras.push('collar', 'vest'); break;
+    case 'post': topC = 0xd8452a; botC = 0x2a3048; shoes = 'sneaker'; hem = 0.9; extras.push('collar', 'placket', 'reflect', 'postCap', 'bag'); break;
     default: break;
   }
   // torso (top) and pelvis (bottom). Lathe profiles: [r, y], depth scaled.
-  const loose = o === 'beach' || o === 'chef' || hood ? 1.04 : 1;
+  const loose = o === 'beach' || o === 'chef' || o === 'fire' || o === 'doctor' || hood ? 1.04 : 1;
   const torso = bodyLoft([
     [hem, 0.15 * loose, 0.107 * loose, 2.4, 0.004], [1.0, 0.142 * loose, 0.1 * loose, 2.4, 0.0], [1.1, 0.146 * loose, 0.104 * loose, 2.5, -0.002], [1.2, 0.158 * loose, 0.112 * loose, 2.6, -0.004],
     [1.28, 0.165, 0.108, 2.8, -0.002], [1.335, 0.158, 0.098, 2.8, 0.002], [1.375, 0.12, 0.078, 2.4, 0.004], [1.4, 0.075, 0.06, 2.2, 0.004], [1.412, 0.05, 0.048, 2, 0.004],
@@ -577,7 +583,7 @@ function dressUp(o, B, skinB, seed) {
   if (extras.includes('lapels') || extras.includes('shirtV')) {
     // white shirt V and tie under an open jacket
     const v = new THREE.Shape(); v.moveTo(-0.075, 1.4); v.lineTo(0.075, 1.4); v.lineTo(0.0, 1.17); v.closePath();
-    const g = plate(v, 0.003, 0.002); g.rotateY(PI); g.translate(0, 0, zf(1.3) + 0.003); top.add(g, 'chest', 0xf4f4f2);
+    const g = plate(v, 0.003, 0.002); g.rotateY(PI); g.translate(0, 0, zf(1.3) + 0.003); top.add(g, 'chest', o === 'doctor' ? 0x9fc4e8 : 0xf4f4f2);
     if (extras.includes('tie')) {
       const t = new THREE.Shape(); t.moveTo(-0.012, 1.375); t.lineTo(0.012, 1.375); t.lineTo(0.022, 1.2); t.lineTo(0, 1.17); t.lineTo(-0.022, 1.2); t.closePath();
       const tg2 = plate(t, 0.004, 0.002); tg2.rotateY(PI); tg2.translate(0, 0, zf(1.3) - 0.003); top.add(tg2, 'chest', 0x9b2335);
@@ -633,8 +639,85 @@ function dressUp(o, B, skinB, seed) {
     const pg = plate(pk, 0.002, 0.002); pg.rotateY(PI); pg.translate(0, 0.9, -0.132); top.add(pg, 'hips', 0x2a2d33);
     for (const sg of [-1, 1]) top.add(tubeAlong([V(sg * 0.085, 1.3, -0.122), V(sg * 0.07, 1.4, -0.06), V(0, 1.43, 0.03)], 0.005, 12, 5), 'chest', 0x34383f);
   }
+  jobExtras(o, extras, top, bot, B.shoes, zf, loose);
   if (extras.includes('neckerchief')) { const k = new THREE.TorusGeometry(0.058, 0.014, 8, 24); k.rotateX(PI / 2 - 0.25); k.translate(0, 1.4, -0.006); top.add(smooth(k), 'chest', 0xc8333c); const kn = ellipsoid(0.02, 0.016, 0.012, 10, 8); kn.translate(0, 1.37, -0.075); top.add(kn, 'chest', 0xb02a33); }
   return { topKind, botKind };
+}
+
+/** Job uniform details: badge, caps and helmets (on the glossy shoe material), reflective bands, air tank, vest, bag. */
+function jobExtras(o, extras, top, bot, gloss, zf, loose) {
+  const H = HEAD_C;
+  if (extras.includes('badge')) {
+    const s = new THREE.Shape(); s.moveTo(-0.022, 0.03); s.lineTo(0.022, 0.03); s.lineTo(0.022, 0.0); s.quadraticCurveTo(0.018, -0.022, 0, -0.032); s.quadraticCurveTo(-0.018, -0.022, -0.022, 0.0); s.closePath();
+    const g = plate(s, 0.004, 0.002); g.rotateY(PI); g.translate(-0.075, 1.27, zf(1.27) * 0.95 - 0.006); gloss.add(g, 'chest', 0xd8b25a);
+    const n = plate(new THREE.Shape([new THREE.Vector2(-0.03, 0), new THREE.Vector2(0.03, 0), new THREE.Vector2(0.03, 0.014), new THREE.Vector2(-0.03, 0.014)]), 0.002, 0.001);
+    n.rotateY(PI); n.translate(0.075, 1.25, zf(1.25) * 0.95 - 0.004); gloss.add(n, 'chest', 0xf4f4f2);
+    for (const sg of [-1, 1]) { const ep = new THREE.BoxGeometry(0.06, 0.012, 0.09); ep.translate(sg * 0.15, 1.395, 0); top.add(ep, 'chest', 0x1a2c50); }
+  }
+  if (extras.includes('policeCap') || extras.includes('postCap')) {
+    const c = extras.includes('policeCap') ? 0x1f3354 : 0xd8452a, band = extras.includes('policeCap') ? 0x111318 : 0x2a3048;
+    // wide peaked crown: spiky hair stays inside it
+    const crown = latheGeo([[0.123, 1.615], [0.128, 1.655], [0.162, 1.722], [0.168, 1.756], [0.13, 1.776], [0.0, 1.782]], 30, 1.06);
+    crown.translate(H.x, 0, H.z); gloss.add(crown, 'head', c);
+    const b = latheGeo([[0.127, 1.612], [0.129, 1.616], [0.129, 1.652], [0.127, 1.656]], 30, 1.06); b.translate(H.x, 0, H.z); gloss.add(b, 'head', band);
+    const visor = new THREE.CylinderGeometry(0.125, 0.125, 0.012, 24, 1, false, PI / 2, PI); visor.scale(1, 1, 0.75);
+    visor.rotateX(-0.28); visor.translate(H.x, 1.618, H.z - 0.075); gloss.add(visor, 'head', 0x111318);
+    const em = ellipsoid(0.022, 0.026, 0.008, 12, 8); em.translate(H.x, 1.69, H.z - 0.152); gloss.add(em, 'head', extras.includes('policeCap') ? 0xd8b25a : 0xf4f4f2);
+  }
+  if (extras.includes('fireHelmet')) {
+    const dome = new THREE.SphereGeometry(1, 30, 14, 0, PI * 2, 0, PI / 2); dome.scale(0.152, 0.148, 0.168); dome.translate(H.x, 1.6, H.z + 0.004);
+    gloss.add(dome, 'head', 0xe8b830);
+    const brim = latheGeo([[0.14, 1.606], [0.2, 1.585], [0.206, 1.574], [0.2, 1.57], [0.14, 1.592]], 32, 1.18); brim.translate(H.x, 0, H.z + 0.03); gloss.add(brim, 'head', 0xd8a828);
+    const ridge = new THREE.BoxGeometry(0.03, 0.035, 0.3); ridge.translate(H.x, 1.745, H.z + 0.01); gloss.add(ridge, 'head', 0xd8a828);
+    const ref = latheGeo([[0.153, 1.62], [0.155, 1.625], [0.15, 1.648], [0.147, 1.652]], 30, 1.1); ref.translate(H.x, 0, H.z + 0.004); gloss.add(ref, 'head', 0xd9dcde);
+    const sh = ellipsoid(0.04, 0.045, 0.01, 14, 8); sh.translate(H.x, 1.66, H.z - 0.168); gloss.add(sh, 'head', 0xf4f4f2);
+  }
+  if (extras.includes('reflect')) {
+    const yb = o === 'fire' ? 0xd8e04a : 0xd9dcde;
+    for (const y of [1.0, 1.21]) {
+      const r = (y > 1.1 ? 0.16 : 0.144) * loose + 0.004;
+      const g = latheGeo([[r - 0.002, y - 0.018], [r + 0.001, y - 0.014], [r + 0.001, y + 0.014], [r - 0.002, y + 0.018]], 30, 0.72);
+      top.add(g, y > 1.1 ? 'chest' : 'spine', yb);
+    }
+    for (const side of ['L', 'R']) {
+      const el = J['elbow' + side], wr = J['hand' + side], kn = J['knee' + side], ft = J['foot' + side];
+      top.add(limb(el.clone().lerp(wr, 0.56), el.clone().lerp(wr, 0.68), 0.05, 0.049, { seg: 16, bulge: 0, capA: false, capB: false }), 'elbow' + side, yb);
+      if (o === 'fire') bot.add(limb(kn.clone().lerp(ft, 0.6), kn.clone().lerp(ft, 0.7), 0.06, 0.058, { seg: 16, bulge: 0, capA: false, capB: false }), 'knee' + side, yb);
+    }
+  }
+  if (extras.includes('tank')) {
+    // tank, backplate and straps stay outside the torso shell (it is seen through from the front otherwise)
+    const t = latheGeo([[0, 0.92], [0.06, 0.925], [0.075, 0.96], [0.075, 1.32], [0.06, 1.36], [0.025, 1.38], [0.025, 1.41], [0, 1.41]], 18); t.translate(0, 0, 0.215);
+    gloss.add(t, 'chest', 0xc9ced3);
+    const bp = new THREE.BoxGeometry(0.2, 0.42, 0.024); bp.translate(0, 1.12, 0.14); top.add(bp, 'chest', 0x2b2d31);
+    for (const sg of [-1, 1]) top.add(tubeAlong([V(sg * 0.08, 1.3, 0.14), V(sg * 0.11, 1.425, 0.0), V(sg * 0.1, 1.36, -0.118), V(sg * 0.075, 1.1, -0.128)], 0.012, 10, 5), 'chest', 0x2b2d31);
+  }
+  if (o === 'doctor') {
+    // the white coat goes on down to mid-thigh (a skirt round the hips)
+    const sk = latheGeo([[0.158, 0.765], [0.172, 0.755], [0.178, 0.77], [0.174, 0.86], [0.166, 0.96], [0.156, 1.03], [0.149, 1.07]], 32, 0.72); // bottom to top: faces out
+    top.add(sk, 'hips', 0xf6f6f2, [{ bone: 'spine', from: V(0, 1.0, 0), dir: V(0, 1, 0), width: 0.04, max: 0.6 }]);
+    for (const sg of [-1, 1]) { const pk = new THREE.BoxGeometry(0.075, 0.07, 0.006); pk.translate(sg * 0.085, 0.86, -0.128); top.add(pk, 'hips', 0xe4e4de); }
+  }
+  if (extras.includes('steth')) {
+    for (const sg of [-1, 1]) top.add(tubeAlong([V(0, 1.42, 0.05), V(sg * 0.065, 1.41, -0.02), V(sg * 0.07, 1.33, -0.112), V(sg * 0.05, 1.2, -0.122)], 0.006, 12, 5), 'chest', 0x2b2d31);
+    const d = new THREE.CylinderGeometry(0.018, 0.018, 0.01, 16); d.rotateX(PI / 2); d.translate(0.05, 1.185, -0.126); gloss.add(d, 'chest', 0xc9ced3);
+  }
+  if (extras.includes('vest')) {
+    const vg = bodyLoft([[0.96, 0.152, 0.11, 2.4, 0.002], [1.0, 0.149, 0.106, 2.4, 0.0], [1.1, 0.153, 0.11, 2.5, -0.002], [1.2, 0.166, 0.118, 2.6, -0.004], [1.29, 0.17, 0.112, 2.8, -0.002], [1.335, 0.162, 0.1, 2.8, 0.002]], 30, 0);
+    // bodyLoft winds its faces inwards (the torso gets away with it through bump()); turn the vest outwards
+    const ix = vg.index.array;
+    for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; }
+    vg.computeVertexNormals();
+    top.add(vg, 'chest', 0x1f8a4c, [{ bone: 'spine', from: V(0, 1.12, 0), dir: V(0, -1, 0), width: 0.07, max: 1 }, { bone: 'hips', from: V(0, 0.98, 0), dir: V(0, -1, 0), width: 0.05 }]);
+    const tag = new THREE.BoxGeometry(0.06, 0.03, 0.004); tag.translate(-0.07, 1.24, zf(1.24) * 1.05 - 0.008); gloss.add(tag, 'chest', 0xf4f4f2);
+    const dot = new THREE.BoxGeometry(0.014, 0.03, 0.005); dot.translate(-0.098, 1.24, zf(1.24) * 1.05 - 0.01); gloss.add(dot, 'chest', 0xf28a1e);
+  }
+  if (extras.includes('bag')) {
+    top.add(tubeAlong([V(-0.12, 1.4, 0.0), V(-0.05, 1.32, -0.12), V(0.08, 1.12, -0.13), V(0.16, 0.98, -0.06)], 0.012, 12, 5), 'chest', 0x3a2a20);
+    top.add(tubeAlong([V(-0.12, 1.4, 0.0), V(-0.06, 1.3, 0.12), V(0.08, 1.12, 0.13), V(0.16, 0.98, 0.06)], 0.012, 12, 5), 'chest', 0x3a2a20);
+    const bag = new THREE.BoxGeometry(0.07, 0.2, 0.26); bag.translate(0.18, 0.92, 0); gloss.add(bag, 'hips', 0x6b4529);
+    const flap = new THREE.BoxGeometry(0.075, 0.08, 0.265); flap.translate(0.181, 0.99, 0); gloss.add(flap, 'hips', 0xd8452a);
+  }
 }
 
 function buildShoe(shoeB, skinB, side, kind, R) {
@@ -741,6 +824,7 @@ export function buildCharacter({ skin, hair = 'short', hairColor = 0x2a211c, out
     mk('top', B.top.build(), topMat(kinds.topKind));
     mk('bottom', B.bottom.build(), topMat(kinds.botKind));
     mk('shoes', B.shoes.build(), shoeMat());
+    if (meshes.hair) meshes.hair.visible = name !== 'fire'; // under the fire helmet
   }
   setOutfit(outfit);
 
@@ -934,6 +1018,8 @@ export function buildFirstPersonArm({ outfit = 'casual', skin } = {}) {
     const look = {
       pajama: [topMat('stripes'), 0xffffff, 0xf0f0f0, true], suit: [topMat('cloth'), 0x232f4d, 0xf2f2f0, true], office: [topMat('cloth'), 0xcfe0f2, 0xc6d8ec, true],
       casual: [topMat('cloth'), 0xe07a3c, 0xc96a30, true], beach: [topMat('floral'), 0xffffff, 0xffffff, false], chef: [topMat('cloth'), 0xf6f5f0, 0xe6e4dc, true],
+      police: [topMat('cloth'), 0x26406e, 0x1a2c50, true], fire: [topMat('fabric'), 0xb89a5a, 0xd8e04a, true], doctor: [topMat('cloth'), 0xf6f6f2, 0xe8e8e2, true],
+      mart: [topMat('cloth'), 0xf4f4f2, 0xe4e4e0, true], post: [topMat('cloth'), 0xd8452a, 0xd9dcde, true],
     }[name] ?? [topMat('cloth'), 0xe07a3c, 0xc96a30, true];
     const [m, c, cc, long] = look;
     if (!long) { sleeve = new THREE.Group(); cuffM = new THREE.Group(); return; }

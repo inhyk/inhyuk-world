@@ -16,6 +16,8 @@ import { Vehicle } from './src/vehicle.js';
 import { Life } from './src/life.js';
 import { Day } from './src/quests.js';
 import { Cinema } from './src/cinema.js';
+import { Jobs } from './src/jobs.js';
+import { JOBS } from './jobs.mjs';
 import { dressTown, dressJapan } from './src/deco.js';
 import { Flight } from './src/flight.js';
 import { Cloud } from './src/cloud.js';
@@ -179,8 +181,9 @@ async function boot() {
   };
 
   const minimap = new Minimap($('minimap'));
-  const day = new Day({ state, hud, places, player, vehicle, sky, engine, sfx, build, input, save, life });
+  const day = new Day({ state, hud, places, player, vehicle, sky, engine, sfx, build, input, save, life, col });
   day.g.cinema = new Cinema(day.g); // 영화관 1관: 진짜 영화 (햄찌 영화)
+  day.g.jobs = new Jobs(day); // 경찰관, 소방관, 의사, 요리사, 마트 직원, 우체부 (인혁: "직업을 더 만들어줘")
   const flight = new Flight({ engine, player, build, hud, sfx, places, life, state, props, sky });
   let lifts = { prompt: () => null, update: () => {}, busy: false };
   try { lifts = new Elevators({ engine, colliders: col, places, player, hud, sfx, input }); } catch (e) { console.warn('elevators failed', e); }
@@ -224,7 +227,8 @@ async function boot() {
     input.lock();
     sfx('alarm');
     const first = state.day === 1 && state.step === 0;
-    hud.toast(first ? (state.mode === 'kid' ? '나는 이제 1학년! 오늘부터 학교에 가요 🎒' : '돈이 별로 없어요… 회사에서 일해서 1,000,000원을 모아 비행기를 타요! ✈️') : '이어서 해요!', 3600);
+    const J = state.mode === 'job' ? JOBS[state.job] : null;
+    hud.toast(first ? (state.mode === 'kid' ? '나는 이제 1학년! 오늘부터 학교에 가요 🎒' : J ? `${J.icon} 오늘부터 나는 ${J.name}! 열심히 일해서 1,000,000원을 모아 비행기를 타요 ✈️` : '돈이 별로 없어요… 회사에서 일해서 1,000,000원을 모아 비행기를 타요! ✈️') : '이어서 해요!', 3600);
     fresh = first;
     if (fresh) setTimeout(() => hud.toast('따르릉! 1일차 아침이에요. 오른쪽 퀘스트를 따라가요', 3000), 3800);
     if (matchMedia('(pointer: coarse)').matches) { $('touch').classList.remove('hidden'); input.locked = true; }
@@ -239,9 +243,9 @@ async function boot() {
   };
   town = new Town({ engine, build, places, player, vehicle, hud, cloud, input, colliders: col, breakables: deco.breakables, props, state, flight, openLogin: () => openLogin(), ensureStarted });
   // story choice (인혁: 직장인 / 어린이, 어린이는 남자 / 여자)
-  const begin = (mode, gender) => {
+  const begin = (mode, gender, job) => {
     replacingAll = true;
-    const fresh2 = { ...newState(), mode, gender, money: mode === 'kid' ? 10000 : 30000 };
+    const fresh2 = { ...newState(), mode, gender, ...(job ? { job } : {}), money: mode === 'kid' ? 10000 : 30000 };
     try { localStorage.setItem(SAVE_KEY, serialize(fresh2)); sessionStorage.setItem('sg-autoplay', '1'); } catch { /* blocked */ }
     location.reload();
   };
@@ -249,9 +253,12 @@ async function boot() {
   $('m-kid').onclick = () => $('kid-pick').classList.remove('hidden');
   $('m-boy').onclick = () => begin('kid', 'boy');
   $('m-girl').onclick = () => begin('kid', 'girl');
+  // more jobs next to 직장인 (인혁: "직업을 더 만들어줘. 다양하게 경찰, 소방관 같은 것도 넣어.")
+  $('job-row').innerHTML = Object.entries(JOBS).map(([k, J]) => `<button id="m-job-${k}" class="job" style="--jc:${J.color}"><span class="ji">${J.icon}</span><b>${J.name}</b><small>${J.pick}</small></button>`).join('');
+  for (const k of Object.keys(JOBS)) $(`m-job-${k}`).onclick = () => begin('job', undefined, k);
   if (fresh) { $('play').classList.add('hidden'); $('modes').classList.remove('hidden'); }
   else {
-    $('play').textContent = `이어서 하기 (${state.mode === 'kid' ? (state.gender === 'girl' ? '👧 어린이' : '👦 어린이') : '👔 직장인'} · ${state.day}일차)`;
+    $('play').textContent = `이어서 하기 (${state.mode === 'kid' ? (state.gender === 'girl' ? '👧 어린이' : '👦 어린이') : state.mode === 'job' && JOBS[state.job] ? `${JOBS[state.job].icon} ${JOBS[state.job].name}` : '👔 직장인'} · ${state.day}일차)`;
     $('new-game').classList.remove('hidden');
     $('new-game').onclick = () => { $('modes').classList.remove('hidden'); $('new-game').classList.add('hidden'); $('who').textContent = '새로 시작하면 지금 기록은 지워져요'; };
   }
@@ -336,7 +343,7 @@ async function boot() {
     hud.prompt(prompt);
     if (action && input.hit('KeyE')) action();
     // blocks (on foot, not in menus)
-    build.enabled = !driving && !day.seat && !day.busy && input.locked;
+    build.enabled = !driving && !day.seat && !day.busy && !day.g.jobs?.tool && input.locked;
     if (blocks.length) build.update(dt, input, player.pos);
     if (player.arm) player.arm.update?.(dt, { swing: build.swing ?? 0, walk: Math.min(1, player.speed / 5) });
     build.swing = Math.max(0, (build.swing ?? 0) - dt * 3);
@@ -409,7 +416,7 @@ async function boot() {
   engine.start();
   addEventListener('beforeunload', saveLocal);
   setInterval(saveLocal, 15000);
-  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife };
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife, jobs: day.g.jobs };
   window.__ready = true;
 }
 
