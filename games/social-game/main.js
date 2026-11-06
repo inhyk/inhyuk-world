@@ -28,6 +28,8 @@ import { Album } from './src/album.js';
 import { Town } from './src/town.js';
 import { Show } from './src/show.js';
 import { Wildlife } from './src/wildlife.js';
+import { prepareStatic } from './src/perf.js';
+import { texReady } from './src/tex.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
 
@@ -215,7 +217,12 @@ async function boot() {
 
   // compile every shader now so the first look around does not freeze
   pct(96, 'shaders'); await frame();
-  try { await engine.renderer.compileAsync(engine.scene, engine.camera); } catch (e) { console.warn('precompile', e); }
+  prepareStatic({ engine, places, world });
+  await texReady(); // texture pixels are made by workers while the town is built
+  try { await lights.compileBoth(engine.renderer, engine.scene, engine.camera, null, engine.composer.readBuffer); } catch (e) { console.warn('precompile', e); }
+  // behind the loading screen: everything goes to the GPU once, and one real frame makes the shadow and
+  // post-processing shaders, so the first look around (and out of the flat) does not stop
+  try { player.updateCamera(0); engine.renderOnce(); engine.warmUp(); } catch (e) { console.warn('first frame', e); }
   pct(100);
   $('loading').classList.add('hidden');
   $('play').classList.remove('hidden');
@@ -375,6 +382,7 @@ async function boot() {
     if ((deco._t = (deco._t ?? 0) - dt) <= 0) {
       deco._t = 0.25;
       for (const sc of deco.scatters) sc.update(engine.camera.position);
+      places.cullFar(engine.camera.position, engine.scene.fog.density);
       places.updateInteriors(engine.camera.position, (spots) => { try { life.spawnSpots(spots); } catch (e) { console.warn('people failed', e); } });
     }
     ambience(sky.daylight, night, Math.max(0, Math.min(1, (LAYOUT.beachX + 40 - player.pos.x) / 60)));

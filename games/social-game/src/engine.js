@@ -39,10 +39,15 @@ export class Engine {
     r.toneMappingExposure = 1.0;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFShadowMap;
+    // the sun's shadow map is drawn once per frame (start() asks for it); left on auto, the GTAO
+    // normal pass drew every shadow caster a second time
+    r.shadowMap.autoUpdate = false;
     this.renderer = r;
     setAnisotropy(Math.min(8, r.capabilities.getMaxAnisotropy()));
 
     this.scene = new THREE.Scene();
+    // the scene itself never moves; left on, it made every object recompute its world matrix each frame
+    this.scene.matrixAutoUpdate = false;
     this.camera = new THREE.PerspectiveCamera(72, 1, 0.05, 2400);
     this.updaters = new Set();
     this.lateUpdaters = new Set();
@@ -70,6 +75,23 @@ export class Engine {
       g.blendIntensity = 0.85;
       g.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 12 });
       g.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+      // AO is soft, so it is worked out at half resolution (a quarter of the pixels) and blended
+      // over the full-size picture
+      const setSize = g.setSize.bind(g);
+      g.setSize = (w, h) => setSize(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)));
+      g.setSize(size.x, size.y);
+      // the normal/depth pass only draws what is near: far buildings, trees and the ground add no
+      // corner shadow you could see from inside a room (engine.aoHide lists what to leave out)
+      g._overrideVisibility = () => {
+        const cache = g._visibilityCache;
+        if (!this._lines || this._linesAge-- <= 0) {
+          this._lines = [];
+          this._linesAge = 120;
+          this.scene.traverse((o) => { if (o.isPoints || o.isLine || o.isLine2) this._lines.push(o); });
+        }
+        for (const o of this._lines) if (o.visible) { o.visible = false; cache.push(o); }
+        for (const o of this.aoHide?.(this.camera.position) ?? []) if (o.visible) { o.visible = false; cache.push(o); }
+      };
       c.addPass(g);
       this.gtao = g;
     }
@@ -128,12 +150,35 @@ export class Engine {
       for (const fn of this.updaters) fn(dt, this.elapsed);
       for (const fn of this.lateUpdaters) fn(dt, this.elapsed);
       this.finish.uniforms.uTime.value = this.elapsed;
+      this.renderer.shadowMap.needsUpdate = true;
       this.composer.render(dt);
       if (!document.hidden) this.adapt(ms);
     };
     requestAnimationFrame(tick);
   }
 
+  /**
+   * Draw everything once into a tiny target with no culling, while the loading screen is up: every
+   * texture and mesh goes to the GPU now instead of in the frame where it first comes into view
+   * (walking out of the flat used to stop the picture for ~0.4 s: ~150 textures, ~1000 meshes).
+   * Hidden things (the far island) wait. Call it after one real frame (the shadow map must exist).
+   */
+  warmUp() {
+    const r = this.renderer, off = [];
+    this.scene.traverse((o) => { if (o.frustumCulled && (o.isMesh || o.isLine || o.isPoints || o.isSprite)) { o.frustumCulled = false; off.push(o); } });
+    const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType });
+    const prev = r.getRenderTarget();
+    try {
+      r.setRenderTarget(rt);
+      r.shadowMap.needsUpdate = false; // keeps the shadow map of the frame drawn just before
+      r.render(this.scene, this.camera);
+    } finally {
+      r.setRenderTarget(prev);
+      rt.dispose();
+      for (const o of off) o.frustumCulled = true;
+    }
+  }
+
   /** Render one frame now (used by tests and the viewer). */
-  renderOnce() { this.composer.render(0.016); }
+  renderOnce() { this.renderer.shadowMap.needsUpdate = true; this.composer.render(0.016); }
 }
