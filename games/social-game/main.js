@@ -207,7 +207,7 @@ async function boot() {
   pct(96, 'shaders'); await frame();
   prepareStatic({ engine, places, world });
   await texReady(); // texture pixels are made by workers while the town is built
-  try { await lights.compileBoth(engine.renderer, engine.scene, engine.camera); } catch (e) { console.warn('precompile', e); }
+  try { await lights.compileBoth(engine.renderer, engine.scene, engine.camera, null, engine.composer.readBuffer); } catch (e) { console.warn('precompile', e); }
   // one frame behind the loading screen: shadow and post-processing shaders are made now, not on the first look
   try { player.updateCamera(0); engine.renderOnce(); } catch (e) { console.warn('first frame', e); }
   pct(100);

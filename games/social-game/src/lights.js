@@ -29,14 +29,20 @@ export class LightPool {
     for (const l of this.lights) l.visible = on;
   }
 
-  /** compileAsync for `root` with the lights in and out of the scene (see setLive). */
-  compileBoth(renderer, root, camera, scene = null) {
-    const was = this.live, ps = [];
+  /**
+   * compileAsync for `root` with the lights in and out of the scene (see setLive). `target` is the
+   * render target the picture is really drawn into (the post-processing buffer): shaders made for the
+   * screen instead (sRGB, tone mapped) would not be the ones used, and would be made again later.
+   */
+  compileBoth(renderer, root, camera, scene = null, target = null) {
+    const was = this.live, ps = [], prev = renderer.getRenderTarget();
+    if (target) renderer.setRenderTarget(target);
     for (const on of [true, false]) {
       for (const l of this.lights) l.visible = on;
       ps.push(renderer.compileAsync(root, camera, scene));
     }
     for (const l of this.lights) l.visible = was;
+    renderer.setRenderTarget(prev);
     return Promise.all(ps);
   }
   add(a) { this.anchors.push({ intensity: 6, range: 9, color: 0xffe2b0, when: 'night', ...a, pos: a.pos.isVector3 ? a.pos : new THREE.Vector3(...a.pos) }); }
