@@ -51,7 +51,7 @@ export const SITES = [
   // more buildings (인혁: "건물을 더 만들어줘", 2026-11-05)
   ...[
     ['mart', -60, -28, 0, '세온 마트'], ['cinema', -15, -27, 0, '영화관'], ['fire', 160, -20, 0, '소방서'], ['police', 190, -19, 0, '경찰서'],
-    ['bank', -95, 18, Math.PI, '은행'], ['post', -75, 18, Math.PI, '우체국'], ['chicken', -150, 100, 0, '치킨'], ['pizza', -132, 100, 0, '피자'],
+    ['gallery', -12, 24, Math.PI, '세온 갤러리'], ['bank', -95, 18, Math.PI, '은행'], ['post', -75, 18, Math.PI, '우체국'], ['chicken', -150, 100, 0, '치킨'], ['pizza', -132, 100, 0, '피자'],
   ].map(([kind, x, z, yaw, label]) => ({ key: `civic-${kind}`, mod: 'civic', fn: 'buildCivic', args: { kind }, pos: [x, 0, z], yaw, label, color: '#a8c4ff', small: kind === 'chicken' || kind === 'pizza' })),
   { key: 'apt108', mod: 'apartment', fn: 'buildApartment', args: { main: false, dong: '108동', seed: 8 }, pos: [60, 0, 55], yaw: Math.PI, label: '108동', color: '#e8c08a' },
   { key: 'apt109', mod: 'apartment', fn: 'buildApartment', args: { main: false, dong: '109동', seed: 9 }, pos: [100, 0, 55], yaw: Math.PI, label: '109동', color: '#e8c08a' },
