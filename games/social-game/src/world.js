@@ -55,6 +55,8 @@ export const SITES = [
   ].map(([kind, x, z, yaw, label]) => ({ key: `civic-${kind}`, mod: 'civic', fn: 'buildCivic', args: { kind }, pos: [x, 0, z], yaw, label, color: '#a8c4ff', small: kind === 'chicken' || kind === 'pizza' })),
   { key: 'apt108', mod: 'apartment', fn: 'buildApartment', args: { main: false, dong: '108동', seed: 8 }, pos: [60, 0, 55], yaw: Math.PI, label: '108동', color: '#e8c08a' },
   { key: 'apt109', mod: 'apartment', fn: 'buildApartment', args: { main: false, dong: '109동', seed: 9 }, pos: [100, 0, 55], yaw: Math.PI, label: '109동', color: '#e8c08a' },
+  // 분수 광장: fountain, stage and the Friday-night show (인혁 계획 7: "분수를 만들고 분수에서 공연을 하게 해줘")
+  { key: 'plaza', mod: 'plaza', fn: 'buildPlaza', pos: [22, 0, 28.5], yaw: Math.PI, label: '분수 광장', color: '#6ad0f0' },
   { key: 'store', mod: 'store', fn: 'buildStore', pos: [-110, 0, -17.5], yaw: 0, label: '편의점', color: '#5ac8f2' },
   { key: 'office', mod: 'office', fn: 'buildOffice', pos: [40, 0, -31], yaw: 0, label: '세온 컴퍼니', color: '#7a9cff' },
   { key: 'restaurant', mod: 'restaurant', fn: 'buildRestaurant', pos: [112, 0, -19], yaw: 0, label: '고깃집', color: '#ff7a5a' },
