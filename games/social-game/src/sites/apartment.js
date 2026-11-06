@@ -83,7 +83,14 @@ function mapRect(A, geo, key, u0 = 0, u1 = 1, v0 = 0, v1 = 1) {
   return geo;
 }
 /** Soft (displaced) rounded box for cushions, pillows, duvets, towels. */
+// cushions and mattresses repeat in every flat and house: each shape is made once and copied
+const softCache = new Map();
 function softBox(w, h, d, r, puff = 0.02, wob = 0.006, seed = 1) {
+  const k = [w, h, d, r, puff, wob, seed].join(',');
+  if (!softCache.has(k)) softCache.set(k, softBoxGeo(w, h, d, r, puff, wob, seed));
+  return softCache.get(k).clone();
+}
+function softBoxGeo(w, h, d, r, puff, wob, seed) {
   const sg = (v) => Math.max(2, Math.min(18, Math.round(v / 0.07)));
   const raw = new THREE.BoxGeometry(w, h, d, sg(w), sg(h), sg(d));
   const p = raw.attributes.position, iw = w / 2 - r, ih = h / 2 - r, id = d / 2 - r;
