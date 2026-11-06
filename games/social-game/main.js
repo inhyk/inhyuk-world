@@ -23,6 +23,7 @@ import { guide, guideText } from './src/nav.js';
 import { DriveTest } from './src/drivetest.js';
 import { Album } from './src/album.js';
 import { Town } from './src/town.js';
+import { prepareStatic } from './src/perf.js';
 import { texReady } from './src/tex.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
@@ -204,6 +205,7 @@ async function boot() {
 
   // compile every shader now so the first look around does not freeze
   pct(96, 'shaders'); await frame();
+  prepareStatic({ engine, places, world });
   await texReady(); // texture pixels are made by workers while the town is built
   try { await engine.renderer.compileAsync(engine.scene, engine.camera); } catch (e) { console.warn('precompile', e); }
   pct(100);
@@ -359,6 +361,7 @@ async function boot() {
     if ((deco._t = (deco._t ?? 0) - dt) <= 0) {
       deco._t = 0.25;
       for (const sc of deco.scatters) sc.update(engine.camera.position);
+      places.cullFar(engine.camera.position, engine.scene.fog.density);
       places.updateInteriors(engine.camera.position, (spots) => { try { life.spawnSpots(spots); } catch (e) { console.warn('people failed', e); } });
     }
     ambience(sky.daylight, night, Math.max(0, Math.min(1, (LAYOUT.beachX + 40 - player.pos.x) / 60)));
