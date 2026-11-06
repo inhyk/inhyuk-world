@@ -299,7 +299,22 @@ export const TYCOON = [
   { id: 'slide', name: '미끄럼틀', price: 7000, need: 'pool' },
   { id: 'gold', name: '황금 떨어뜨리개', price: 11000, need: 'up2', drop: { value: 120, every: 1.0 } },
   { id: 'tower', name: '깃발 탑', price: 16000, need: 'slide' },
-  { id: 'statue', name: '황금 트로피 동상', price: 28000, need: 'tower', finale: true },
+  { id: 'statue', name: '황금 트로피 동상', price: 28000, need: 'tower', finale: true, reward: 200 },
+  // 더 지을 것 (2026-11-06 추가). 먼저 사야 하는 것(need)은 언제나 이 목록에서 앞에 있다.
+  { id: 'mailbox', name: '우체통', price: 120, need: 'fence' },
+  { id: 'bench', name: '벤치와 화분', price: 380, need: 'walls' },
+  { id: 'balcony', name: '2층 발코니', price: 2600, need: 'walls2' },
+  { id: 'drop5', name: '다이아 떨어뜨리개', price: 30000, need: 'gold', drop: { value: 400, every: 1.0 } },
+  { id: 'up3', name: '레이저 업그레이더 ×2', price: 120000, need: 'drop5', mult: 2 },
+  { id: 'yard', name: '뒷마당 넓히기', price: 40000, need: 'statue' },
+  { id: 'garage', name: '차고와 자동차', price: 55000, need: 'yard' },
+  { id: 'trampoline', name: '트램펄린', price: 70000, need: 'yard' },
+  { id: 'swing', name: '그네', price: 85000, need: 'yard' },
+  { id: 'pond', name: '오리 연못', price: 100000, need: 'trampoline' },
+  { id: 'greenhouse', name: '유리 온실', price: 130000, need: 'swing' },
+  { id: 'soccer', name: '축구 골대', price: 160000, need: 'pond' },
+  { id: 'walls3', name: '3층 집', price: 200000, need: 'greenhouse' },
+  { id: 'rocket', name: '로켓 발사대', price: 300000, need: 'walls3', finale: true, reward: 300 },
 ];
 export const TYCOON_START_DROP = { value: 5, every: 1.5 };
 export const TYCOON_REWARD = 200;
