@@ -15,6 +15,7 @@ import { Minimap } from './src/minimap.js';
 import { Vehicle } from './src/vehicle.js';
 import { Life } from './src/life.js';
 import { Day } from './src/quests.js';
+import { Cinema } from './src/cinema.js';
 import { dressTown, dressJapan } from './src/deco.js';
 import { Flight } from './src/flight.js';
 import { Cloud } from './src/cloud.js';
@@ -177,6 +178,7 @@ async function boot() {
 
   const minimap = new Minimap($('minimap'));
   const day = new Day({ state, hud, places, player, vehicle, sky, engine, sfx, build, input, save, life });
+  day.g.cinema = new Cinema(day.g); // 영화관 1관: 진짜 영화 (햄찌 영화)
   const flight = new Flight({ engine, player, build, hud, sfx, places, life, state, props, sky });
   let lifts = { prompt: () => null, update: () => {}, busy: false };
   try { lifts = new Elevators({ engine, colliders: col, places, player, hud, sfx, input }); } catch (e) { console.warn('elevators failed', e); }
