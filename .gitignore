@@ -64,6 +64,7 @@ tools/node_modules/
 # Generated FREE DRIVE game
 /public/play/free-drive/
 /public/play/social-game/
+/public/play/brickverse/
 
 # Generated MINERAL VALLEY
 /public/play/mineral-valley/
