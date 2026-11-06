@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Colliders } from './collide.js';
 import { snapCell } from '../core.mjs';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { texBusy, texReady } from './tex.js';
 
 const REACH = 6;
 
@@ -312,6 +313,9 @@ export class Build {
 
   /** Small rendered pictures of every block for the hotbar. */
   makeIcons() {
+    // the block textures are made by workers: draw the pictures once they are there
+    for (const b of this.blocks) this.proto(b.id);
+    if (texBusy()) { this.icons = {}; texReady().then(() => { this.icons = null; this.renderHotbar(); }); return; }
     const r = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
     r.setSize(96, 96);
     r.outputColorSpace = THREE.SRGBColorSpace;
@@ -342,7 +346,7 @@ export class Build {
       const d = document.createElement('div');
       d.className = 'slot' + (i === this.slot ? ' sel' : '') + (n <= 0 ? ' empty' : '');
       d.title = b.name;
-      d.innerHTML = `<span class="k">${i + 1}</span><img alt="${b.name}" src="${this.icons[b.id]}"><span class="n">${n}</span>`;
+      d.innerHTML = `<span class="k">${i + 1}</span>${this.icons[b.id] ? `<img alt="${b.name}" src="${this.icons[b.id]}">` : ''}<span class="n">${n}</span>`;
       el.appendChild(d);
     });
   }

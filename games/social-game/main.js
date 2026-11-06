@@ -23,6 +23,7 @@ import { guide, guideText } from './src/nav.js';
 import { DriveTest } from './src/drivetest.js';
 import { Album } from './src/album.js';
 import { Town } from './src/town.js';
+import { texReady } from './src/tex.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
 
@@ -203,6 +204,7 @@ async function boot() {
 
   // compile every shader now so the first look around does not freeze
   pct(96, 'shaders'); await frame();
+  await texReady(); // texture pixels are made by workers while the town is built
   try { await engine.renderer.compileAsync(engine.scene, engine.camera); } catch (e) { console.warn('precompile', e); }
   pct(100);
   $('loading').classList.add('hidden');

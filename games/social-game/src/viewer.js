@@ -6,6 +6,7 @@ import { Engine } from './engine.js';
 import { Sky } from './sky.js';
 import { mat } from './mat.js';
 import { plane } from './geom.js';
+import { texReady } from './tex.js';
 import '@fontsource/jua';
 
 const q = new URLSearchParams(location.search);
@@ -42,6 +43,7 @@ async function main() {
   const out = await mod[q.get('fn')](args);
   const obj = out.isObject3D ? out : out.group;
   engine.scene.add(obj);
+  await texReady(); // texture pixels come from workers
   if (q.get('debug') === '1' && out.colliders) {
     for (const c of out.colliders) {
       const b = new THREE.Box3(new THREE.Vector3(...c.min), new THREE.Vector3(...c.max));
