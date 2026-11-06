@@ -134,7 +134,8 @@ export class Places {
           site.interiorReady = false;
           const ready = () => { site.interiorReady = true; };
           const r = this.engine.renderer;
-          Promise.all([r.compileAsync?.(parts.group, this.engine.camera, this.engine.scene), texReady()]).then(ready, ready);
+          const compile = this.lights?.compileBoth ? this.lights.compileBoth(r, parts.group, this.engine.camera, this.engine.scene) : r.compileAsync?.(parts.group, this.engine.camera, this.engine.scene);
+          Promise.all([compile, texReady()]).then(ready, ready);
         }
         for (const b of parts.colliders ?? []) this.build?.addStatic(this.col.add({ ...xbox(site, b), tag: key }));
         for (const it of parts.interactables ?? []) {
