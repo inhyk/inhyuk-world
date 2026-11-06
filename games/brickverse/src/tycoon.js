@@ -2,7 +2,7 @@
 import { THREE, textSprite, signMesh } from './render.js';
 import { TYCOON, TYCOON_START_DROP, TYCOON_REWARD, TYCOON_AWAY_RATE, tycoonAvailable, tycoonIncome, tycoonAwayEarnings, displayName } from '../core.mjs';
 import {
-  PLOT_SLOTS, tycoonBase, tycoonItem, plotBuilder, DROPPERS, DROP_COLOR, BELT, UPGRADERS, COLLECTOR, BUY_SPOTS,
+  PLOT_SLOTS, tycoonBase, tycoonItem, plotBuilder, DROPPERS, DROP_COLOR, BELT, UPGRADERS, UPGRADE_COLOR, COLLECTOR, BUY_SPOTS,
 } from '../worlds.mjs';
 
 const dropGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
@@ -62,7 +62,8 @@ export class Tycoon {
     let sign;
     if (owner) {
       tycoonBase(parts, slot);
-      for (const id of owner.items) tycoonItem(parts, slot, id);
+      const has = id => owner.items.includes(id);
+      for (const id of owner.items) tycoonItem(parts, slot, id, has);
     } else {
       const b = plotBuilder(parts, slot);
       b.plat(0, 0, 0, 41, 41, { c: '#d9dde4', h: 0.4, round: 0.15 });
@@ -91,7 +92,7 @@ export class Tycoon {
   refreshPads() {
     for (const p of this.pads) { this.game.removeParts(p.handle); }
     this.pads = [];
-    const avail = tycoonAvailable(this.save.items).slice(0, BUY_SPOTS.length);
+    const avail = tycoonAvailable(this.save.items).sort((a, b) => a.price - b.price).slice(0, BUY_SPOTS.length);
     avail.forEach((it, i) => {
       const parts = [];
       const b = plotBuilder(parts, this.mySlot);
@@ -135,11 +136,13 @@ export class Tycoon {
     this.game.effects.burst(x, y, z, ['#ffd23f', '#5ad16b', '#ffffff'], 30, 8);
     this.game.ui.toast(`✨ ${it.name} 완성!`);
     if (it.finale) {
-      s.done = true;
-      this.game.addCoins(TYCOON_REWARD);
-      this.game.effects.confetti(x, y + 4, z, 220);
+      const reward = it.reward ?? TYCOON_REWARD;
+      if (it.id === 'statue') s.done = true;
+      this.game.addCoins(reward);
+      this.game.effects.confetti(x, y + 4, z, it.id === 'rocket' ? 380 : 220);
       this.game.sfx('win');
-      this.game.ui.big(`🏆 공장 완성! +${TYCOON_REWARD} 코인`, 3200, 'gold');
+      this.game.ui.big(it.id === 'rocket' ? `🚀 로켓 발사대 완성! +${reward} 코인` : `🏆 공장 완성! +${reward} 코인`, 3600, 'gold');
+      if (it.id === 'statue') setTimeout(() => this.game.ui.toast('뒤에 뒷마당을 넓혀서 더 지을 수 있어! 🏡', 4200), 3800);
     }
     this.game.persist();
     this.game.net.send({ t: 'ty', o: this.itemIndexes() });
@@ -179,7 +182,7 @@ export class Tycoon {
           if (has(id) && before < r && d.r >= r) {
             const it = TYCOON.find(t => t.id === id);
             d.value *= it.mult; d.ups++;
-            d.color.set(id === 'up1' ? '#4dfffc' : '#ff6bf1');
+            d.color.set(UPGRADE_COLOR[id]);
           }
         }
         if (d.r >= BELT.r1 + 0.6) { earned += d.value; return false; }

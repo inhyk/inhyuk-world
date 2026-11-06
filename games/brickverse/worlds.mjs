@@ -502,10 +502,11 @@ export const PLOT_SLOTS = [
 ];
 export const PLOT_COLORS = ['#3fa7ff', '#ff5e7e', '#5ad16b', '#ffb820', '#9b5cff', '#21c7b8'];
 
-export const DROPPERS = { start: -14, drop2: -10, drop3: -6, drop4: -2, gold: 2 };
-export const DROP_COLOR = { start: '#c7ccd6', drop2: '#3fa7ff', drop3: '#5ad16b', drop4: '#ff8a3d', gold: '#ffd23f' };
-export const BELT = { f: -12, r0: -16, r1: 10, top: 1.4, speed: 3.2 };
-export const UPGRADERS = { up1: 5, up2: 7.6 };
+export const DROPPERS = { drop5: -17, start: -14, drop2: -10, drop3: -6, drop4: -2, gold: 2 };
+export const DROP_COLOR = { start: '#c7ccd6', drop2: '#3fa7ff', drop3: '#5ad16b', drop4: '#ff8a3d', gold: '#ffd23f', drop5: '#7df9ff' };
+export const BELT = { f: -12, r0: -18.6, r1: 10, top: 1.4, speed: 3.2 };
+export const UPGRADERS = { up1: 5, up2: 7.6, up3: 9.3 };
+export const UPGRADE_COLOR = { up1: '#4dfffc', up2: '#ff6bf1', up3: '#ff3b3b' };
 export const COLLECTOR = { f: -12, r: 12.6 };
 export const COLLECT_PAD = { f: -7.2, r: 12.6 };
 export const BUY_SPOTS = [[15, -14], [15, -7], [15, 0], [15, 7], [15, 14]];
@@ -517,7 +518,7 @@ export function plotBuilder(out, slot) {
 
 function dropperParts(b, id) {
   const r = DROPPERS[id], col = DROP_COLOR[id];
-  const metal = id === 'gold' ? 'gold' : 'plastic';
+  const metal = id === 'gold' ? 'gold' : id === 'drop5' ? 'ice' : 'plastic';
   b.box(-14.4, r, 2.8, 0.7, 5.6, 0.7, { c: '#4b5163', m: 'metal' });
   b.box(-13.2, r, 5.3, 0.6, 0.5, 2.6, { c: '#4b5163', m: 'metal', deco: true });
   b.box(BELT.f, r, 5.0, 2.2, 1.6, 2.2, { c: col, m: metal });
@@ -547,21 +548,26 @@ export function tycoonBase(out, slot) {
   return b;
 }
 
-// 산 물건의 부품
-export function tycoonItem(out, slot, id) {
+// 산 물건의 부품. has(id): 이 땅 주인이 그것을 샀나 (지붕이 3층 위로 올라가는 것처럼 서로 맞추려고)
+export function tycoonItem(out, slot, id, has = () => false) {
   const b = plotBuilder(out, slot);
   const wall = '#fff7ea', trim = '#c98a4b';
   switch (id) {
     case 'floor': b.plat(1, -7, 0.35, 20, 14, { h: 0.3, m: 'wood', c: '#e8c39a' }); break;
-    case 'drop2': case 'drop3': case 'drop4': case 'gold': dropperParts(b, id); break;
+    case 'drop2': case 'drop3': case 'drop4': case 'gold': case 'drop5': dropperParts(b, id); break;
     case 'fence': {
-      for (const [f, r, w, d] of [[-19.6, 0, 40, 0.4], [0, -19.6, 0.4, 40], [0, 19.6, 0.4, 40], [19.6, -18, 3.6, 0.4], [19.6, 18, 3.6, 0.4]]) b.plat(f, r, 1.3, w, d, { c: '#ffffff', h: 1.1 });
-      for (let k = -19.6; k <= 19.6; k += 4.9) for (const [f, r] of [[-19.6, k], [k, -19.6], [k, 19.6]]) b.plat(f, r, 1.6, 0.6, 0.6, { c: trim, h: 1.5, deco: true });
+      // 뒷마당이 있으면 뒤 울타리에 문(r 13.5~18.5)을 낸다
+      const back = has('yard') ? [[-19.6, -3.25, 33.5, 0.4], [-19.6, 19.25, 1.5, 0.4]] : [[-19.6, 0, 40, 0.4]];
+      for (const [f, r, w, d] of [...back, [0, -19.6, 0.4, 40], [0, 19.6, 0.4, 40], [19.6, -18, 3.6, 0.4], [19.6, 18, 3.6, 0.4]]) b.plat(f, r, 1.3, w, d, { c: '#ffffff', h: 1.1 });
+      for (let k = -19.6; k <= 19.6; k += 4.9) for (const [f, r] of [[-19.6, k], [k, -19.6], [k, 19.6]]) {
+        if (has('yard') && f === -19.6 && r > 13 && r < 19) continue;
+        b.plat(f, r, 1.6, 0.6, 0.6, { c: trim, h: 1.5, deco: true });
+      }
       break;
     }
-    case 'up1': case 'up2': {
+    case 'up1': case 'up2': case 'up3': {
       const r = UPGRADERS[id];
-      const c = id === 'up1' ? '#4dfffc' : '#ff6bf1';
+      const c = UPGRADE_COLOR[id];
       for (const s of [-1, 1]) b.box(BELT.f + s * 1.6, r, 2.4, 0.5, 2.4, 0.5, { c: '#3a3f4b', m: 'metal' });
       b.box(BELT.f, r, 3.75, 0.7, 0.5, 3.7, { c, m: 'neon' });
       b.box(BELT.f, r, 2.6, 0.12, 1.8, 2.7, { c, k: 'glass', deco: true });
@@ -611,9 +617,138 @@ export function tycoonItem(out, slot, id) {
       break;
     }
     case 'roof': {
+      const up = has('walls3') ? 3.9 : 0; // 3층이 있으면 그 위로
       const cols = ['#e8553f', '#d9452f', '#c9381f'];
-      [[21, 15.6], [17, 11.6], [12, 7.4], [6, 3.4]].forEach(([w, d], i) => b.plat(1, -7, 9.6 + i * 1.1, w, d, { c: cols[i % 3], h: 1.1 }));
-      b.box(1, -10, 14.6, 1.2, 2.4, 1.2, { c: '#a7a9b4', m: 'stone' });
+      [[21, 15.6], [17, 11.6], [12, 7.4], [6, 3.4]].forEach(([w, d], i) => b.plat(1, -7, 9.6 + up + i * 1.1, w, d, { c: cols[i % 3], h: 1.1 }));
+      b.box(1, -10, 14.6 + up, 1.2, 2.4, 1.2, { c: '#a7a9b4', m: 'stone' });
+      break;
+    }
+    case 'walls3': {
+      // 3층 바닥 (사다리 구멍만 비움), 벽, 창문, 2층에서 올라가는 사다리
+      const floor = { h: 0.3, m: 'wood', c: '#e8c39a' };
+      b.plat(1, -2.75, 9.4, 11.5, 14, floor);
+      b.plat(1, -14.25, 9.4, 5.5, 14, floor);
+      b.plat(2.3, -10, 9.4, 3, 11.4, floor);
+      const h = 3.6, y = 9.4 + h / 2, c = '#ffd6e0';
+      b.box(-6 + 0.25, -7, y, 20, h, 0.5, { c });
+      b.box(1, -17 + 0.25, y, 0.5, h, 14, { c });
+      b.box(1, 3 - 0.25, y, 0.5, h, 14, { c });
+      b.box(8 - 0.25, -12, y, 10, h, 0.5, { c });
+      b.box(8 - 0.25, 0.5, y, 5, h, 0.5, { c });
+      b.box(8 - 0.25, -5, 9.4 + 0.6, 5, 1.2, 0.5, { c });
+      b.box(8 + 0.02, -5, 11.7, 4.6, 2.2, 0.1, { c: '#bfe9ff', k: 'glass', deco: true });
+      for (const f of [-2, 4]) for (const r of [-17.05, 3.05]) b.box(f, r, 11.4, 0.1, 1.6, 3, { c: '#bfe9ff', k: 'glass', deco: true });
+      b.box(-5.2, -10, (5.3 + 9.4) / 2, 2.4, 9.4 - 5.3, 0.6, { k: 'ladder', c: '#c98a4b', m: 'wood' });
+      for (let t = 5.8; t < 9.4; t += 0.7) b.box(-4.85, -10, t, 2.5, 0.14, 0.14, { c: '#8b5a3c', m: 'wood', deco: true, round: 0.03 });
+      break;
+    }
+    case 'mailbox': {
+      b.box(17.6, -17.6, 0.65, 0.22, 1.2, 0.22, { c: '#4b5163', m: 'metal' });
+      b.box(17.6, -17.6, 1.45, 0.6, 0.55, 0.9, { c: '#ff4d5e', round: 0.2 });
+      b.box(17.6, -17.25, 1.75, 0.06, 0.45, 0.12, { c: '#ffd23f', deco: true });
+      break;
+    }
+    case 'bench': {
+      b.plat(10.6, 14, 0.85, 3.2, 1, { c: '#c98a4b', m: 'wood', h: 0.2 });
+      b.box(10.15, 14, 1.3, 3.2, 0.8, 0.15, { c: '#c98a4b', m: 'wood', deco: true });
+      for (const r of [12.8, 15.2]) b.box(10.6, r, 0.45, 0.2, 0.75, 0.8, { c: '#3a3f4b', m: 'metal', deco: true });
+      for (const r of [16.9, 11.4]) {
+        b.box(10.6, r, 0.55, 0.8, 0.8, 0.8, { c: '#d9774b', shape: 'cyl', w2: 0.6 });
+        b.box(10.6, r, 1.25, 1.0, 0.8, 1.0, { c: r > 15 ? '#ff8fc7' : '#ffd23f', shape: 'sphere', deco: true });
+      }
+      break;
+    }
+    case 'balcony': {
+      b.plat(9.1, -7.5, 5.3, 12, 2.2, { h: 0.3, m: 'wood', c: '#e8c39a' });
+      b.box(10.15, -7.5, 5.9, 12, 1.2, 0.1, { c: '#bfe9ff', k: 'glass' });
+      for (const r of [-13.45, -1.55]) b.box(9.1, r, 5.9, 0.1, 1.2, 2.2, { c: '#bfe9ff', k: 'glass' });
+      b.box(10.15, -7.5, 6.55, 12.1, 0.12, 0.2, { c: '#ffffff', deco: true });
+      for (const r of [-13.2, -1.8]) b.box(9.9, r, 2.55, 0.3, 5.0, 0.3, { c: trim, m: 'wood' });
+      break;
+    }
+    case 'yard': {
+      b.plat(-26, 0, 0, 41, 11, { c: PLOT_COLORS[slot], h: 0.4, round: 0.15 });
+      b.plat(-25.75, 0, 0.05, 39, 10.5, { c: '#e7efe0', h: 0.4, m: 'grass', round: 0.05 });
+      for (const [f, r, w, d] of [[-31.1, 0, 40, 0.4], [-25.8, -19.6, 0.4, 10.6], [-25.8, 19.6, 0.4, 10.6]]) b.plat(f, r, 1.3, w, d, { c: '#ffffff', h: 1.1 });
+      for (let k = -19.6; k <= 19.6; k += 4.9) b.plat(-31.1, k, 1.6, 0.6, 0.6, { c: trim, h: 1.5, deco: true });
+      break;
+    }
+    case 'garage': {
+      b.plat(-26.5, -15.5, 4.3, 7.6, 8.4, { c: '#4b5163', m: 'metal', h: 0.3 });
+      for (const f of [-30.3, -22.7]) for (const r of [-18.9, -12.1]) b.box(f, r, 2.1, 0.35, 4.0, 0.35, { c: '#ffffff' });
+      b.plat(-26.5, -15.5, 0.12, 6.4, 7.6, { c: '#c7ccd6', m: 'stone', h: 0.1 });
+      // 자동차 (앞이 큰 땅 쪽)
+      b.box(-26, -15.5, 0.95, 2.5, 0.9, 4.4, { c: '#ff4d5e' });
+      b.box(-26.4, -15.5, 1.8, 2.1, 0.85, 2.4, { c: '#ff4d5e' });
+      b.box(-26.4, -15.5, 1.8, 2.16, 0.6, 1.9, { c: '#bfe9ff', k: 'glass', deco: true });
+      for (const f of [-27.4, -24.6]) for (const r of [-16.8, -14.2]) b.box(f, r, 0.42, 0.84, 0.36, 0.84, { c: '#23262f', shape: 'cyl', rz: Math.PI / 2, deco: true });
+      for (const r of [-16.4, -14.6]) b.box(-23.78, r, 1.05, 0.45, 0.25, 0.06, { c: '#fff6c2', m: 'neon', deco: true });
+      break;
+    }
+    case 'trampoline': {
+      const f = -27, r = -8;
+      for (const [df, dr, w, d] of [[-2.15, 0, 4.6, 0.3], [2.15, 0, 4.6, 0.3], [0, -2.15, 0.3, 4.0], [0, 2.15, 0.3, 4.0]]) b.plat(f + df, r + dr, 0.75, w, d, { c: '#3fa7ff', h: 0.25 });
+      b.plat(f, r, 0.7, 4.0, 4.0, { k: 'bounce', c: '#2a2d36', m: 'matte', h: 0.15 });
+      for (const df of [-2, 2]) for (const dr of [-2, 2]) b.box(f + df, r + dr, 0.32, 0.18, 0.6, 0.18, { c: '#4b5163', m: 'metal', deco: true });
+      break;
+    }
+    case 'swing': {
+      const f = -23.6;
+      for (const r of [2.2, 6.8]) b.box(f, r, 2.1, 0.3, 4.1, 0.3, { c: '#ff8a3d' });
+      b.box(f, 4.5, 4.2, 5.0, 0.3, 0.3, { c: '#ff8a3d' });
+      for (const r of [3.4, 5.6]) {
+        for (const dr of [-0.38, 0.38]) b.box(f, r + dr, 2.6, 0.05, 3.0, 0.05, { c: '#c7ccd6', deco: true, round: 0 });
+        b.box(f, r, 1.05, 0.9, 0.12, 0.55, { c: '#ffd23f', deco: true });
+      }
+      break;
+    }
+    case 'pond': {
+      const f = -27, r = 10.5;
+      for (const [df, dr, w, d] of [[-3.2, 0, 5.6, 0.6], [3.2, 0, 5.6, 0.6], [0, -2.8, 0.6, 7.0], [0, 2.8, 0.6, 7.0]]) b.plat(f + df, r + dr, 0.6, w, d, { c: '#a7a9b4', m: 'stone', h: 0.5 });
+      b.plat(f, r, 0.4, 5.0, 5.8, { c: '#3fc8ff', m: 'water', h: 0.1, deco: true, shadow: false });
+      b.plat(f, r, 0.2, 5.0, 5.8, { c: '#2f8fbf', h: 0.1 });
+      for (const [df, dr] of [[-1.2, -0.8], [1.3, 0.9]]) {
+        b.box(f + df, r + dr, 0.65, 0.7, 0.45, 0.9, { c: '#ffd23f', shape: 'sphere', deco: true });
+        b.box(f + df + 0.35, r + dr, 1.0, 0.42, 0.42, 0.42, { c: '#ffd23f', shape: 'sphere', deco: true });
+        b.box(f + df + 0.62, r + dr, 0.98, 0.16, 0.12, 0.2, { c: '#ff8a3d', deco: true });
+      }
+      break;
+    }
+    case 'greenhouse': {
+      const f0 = -31, f1 = -26.6, r0 = 14.4, r1 = 19.2, fm = (f0 + f1) / 2, rm = (r0 + r1) / 2;
+      for (const f of [f0, f1]) for (const r of [r0, r1]) b.box(f, r, 1.5, 0.2, 3.0, 0.2, { c: '#ffffff' });
+      b.box(f0, rm, 1.5, r1 - r0, 3.0, 0.1, { c: '#bfe9ff', k: 'glass' });
+      b.box(fm, r1, 1.5, 0.1, 3.0, f1 - f0, { c: '#bfe9ff', k: 'glass' });
+      b.box(fm, r0, 1.5, 0.1, 3.0, f1 - f0, { c: '#bfe9ff', k: 'glass' });
+      b.box(f1, r1 - 0.9, 1.5, 1.8, 3.0, 0.1, { c: '#bfe9ff', k: 'glass' });
+      b.box(fm, rm, 3.1, r1 - r0 + 0.2, 0.15, f1 - f0 + 0.2, { c: '#bfe9ff', k: 'glass' });
+      for (const [df, dr, col] of [[-1.2, -1.2, '#ff5e7e'], [-1.2, 0.6, '#ffd23f'], [0.6, -1.2, '#9b5cff']]) {
+        b.box(fm + df, rm + dr, 0.45, 0.7, 0.7, 0.7, { c: '#d9774b', shape: 'cyl', w2: 0.55 });
+        b.box(fm + df, rm + dr, 1.15, 0.9, 0.9, 0.9, { c: '#4fbf5a', shape: 'sphere', deco: true });
+        b.box(fm + df, rm + dr, 1.6, 0.35, 0.3, 0.35, { c: col, shape: 'sphere', deco: true });
+      }
+      break;
+    }
+    case 'soccer': {
+      const f = -30.3, r = 4.5;
+      for (const dr of [-2.4, 2.4]) b.box(f, r + dr, 1.25, 0.2, 2.5, 0.2, { c: '#ffffff' });
+      b.box(f, r, 2.5, 5.0, 0.2, 0.2, { c: '#ffffff' });
+      b.box(f - 0.5, r, 1.25, 4.8, 2.4, 0.05, { c: '#ffffff', k: 'glass', deco: true });
+      b.box(-26.6, r, 0.6, 0.85, 0.85, 0.85, { c: '#ffffff', m: 'checker', shape: 'sphere', deco: true });
+      b.plat(-27, r, 0.08, 0.15, 6.2, { c: '#ffffff', h: 0.04, deco: true, shadow: false, round: 0 });
+      break;
+    }
+    case 'rocket': {
+      const f = -27.6, r = -1.5;
+      b.plat(f, r, 0.55, 5.6, 5.6, { c: '#4b5163', m: 'metal', h: 0.5 });
+      b.box(f, r, 5.3, 2.2, 8.6, 2.2, { c: '#ffffff', shape: 'cyl' });
+      for (const t of [3.0, 7.6]) b.box(f, r, t, 2.3, 0.5, 2.3, { c: '#ff4d5e', shape: 'cyl', deco: true });
+      b.box(f, r, 10.9, 2.2, 2.6, 2.2, { c: '#ff4d5e', shape: 'cone', deco: true });
+      b.box(f + 1.05, r, 6.4, 0.7, 0.7, 0.2, { c: '#3fa7ff', shape: 'sphere', deco: true });
+      for (const [df, dr, w, d] of [[1.35, 0, 0.18, 1.0], [-1.35, 0, 0.18, 1.0], [0, 1.35, 1.0, 0.18], [0, -1.35, 1.0, 0.18]]) b.box(f + df, r + dr, 1.6, w, 1.6, d, { c: '#ff4d5e', deco: true });
+      b.box(f, r, 0.75, 1.4, 0.5, 1.4, { c: '#ff9a3d', m: 'neon', shape: 'cone', rx: Math.PI, deco: true });
+      b.box(f, r + 3.4, 5.0, 0.5, 9.0, 0.5, { c: '#c7ccd6', m: 'metal' });
+      for (const t of [3.5, 7.0]) b.box(f, r + 2.5, t, 1.6, 0.2, 0.3, { c: '#c7ccd6', m: 'metal', deco: true });
       break;
     }
     case 'garden': {
@@ -662,14 +797,14 @@ export function tycoonItem(out, slot, id) {
 
 export function buildTycoon() {
   const parts = [], signs = [], effects = [], coins = [];
-  parts.push({ x: 0, y: -3, z: 0, w: 170, h: 6, d: 130, c: '#86cf5f', m: 'grass', round: 1.2, shadow: false });
+  parts.push({ x: 0, y: -3, z: 0, w: 170, h: 6, d: 160, c: '#86cf5f', m: 'grass', round: 1.2, shadow: false });
   parts.push({ x: 0, y: -1.1, z: 0, w: 1600, h: 0.2, d: 1600, c: '#33a6ff', m: 'water', deco: true, shadow: false, round: 0 });
-  for (const [x, z, w, d] of [[0, -66, 172, 2], [0, 66, 172, 2], [-86, 0, 2, 132], [86, 0, 2, 132]]) parts.push({ x, y: 4, z, w, h: 12, d, hidden: true });
+  for (const [x, z, w, d] of [[0, -81, 172, 2], [0, 81, 172, 2], [-86, 0, 2, 162], [86, 0, 2, 162]]) parts.push({ x, y: 4, z, w, h: 12, d, hidden: true });
   parts.push({ x: 0, y: 0.04, z: 0, w: 150, h: 0.12, d: 12, c: '#c7ccd6', m: 'stone', round: 0.05 });
   for (let x = -70; x <= 70; x += 7) parts.push({ x, y: 0.12, z: 0, w: 3, h: 0.04, d: 0.4, c: '#ffffff', deco: true, shadow: false, round: 0 });
   const rnd = seeded(77);
   for (let i = 0; i < 26; i++) {
-    const x = (rnd() - 0.5) * 160, z = (rnd() > 0.5 ? 1 : -1) * (54 + rnd() * 8);
+    const x = (rnd() - 0.5) * 160, z = (rnd() > 0.5 ? 1 : -1) * (66 + rnd() * 10);
     tree(parts, x, z, rnd);
   }
   for (const x of [-74, 74]) for (const z of [-30, 30]) tree(parts, x, z, rnd);

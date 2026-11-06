@@ -119,7 +119,7 @@ test('저장 정리: 이상한 값은 기본값, 안 산 모자는 못 쓴다', 
   assert.deepEqual(cleanSave(JSON.parse(JSON.stringify(defaultSave(() => 0.5)))).name, defaultSave(() => 0.5).name);
 });
 
-test('타이쿤: 모두 사면 7~25분 걸린다 (발판 왕복 시간 포함 추정)', () => {
+test('타이쿤: 모두 사면 10~35분 걸린다 (발판 왕복 시간 포함 추정)', () => {
   const owned = [];
   let cash = 0, time = 0;
   while (owned.length < TYCOON.length) {
@@ -130,7 +130,7 @@ test('타이쿤: 모두 사면 7~25분 걸린다 (발판 왕복 시간 포함 �
     cash += rate * (wait + 6) - next.price;
     owned.push(next.id);
   }
-  assert.ok(time > 7 * 60 && time < 25 * 60, `${Math.round(time / 60)}분`);
+  assert.ok(time > 10 * 60 && time < 35 * 60, `${Math.round(time / 60)}분`);
   assert.ok(tycoonIncome([]) === TYCOON_START_DROP.value / TYCOON_START_DROP.every);
 });
 
@@ -216,4 +216,13 @@ test('타이쿤 밖에 있으면 0.5배로 쌓인다', () => {
   assert.equal(tycoonAwayEarnings([], 30 * 24 * 3600 * 1000), Math.floor(tycoonIncome([]) * 0.5 * 7 * 24 * 3600));
   assert.equal(cleanSave({ tycoon: { away: 1700000000000 } }).tycoon.away, 1700000000000);
   assert.equal(cleanSave({ tycoon: { away: 'x' } }).tycoon.away, 0);
+});
+
+test('타이쿤 목록: 먼저 사야 하는 것은 앞에 있고, 끝판은 둘', () => {
+  const seen = new Set();
+  for (const it of TYCOON) { assert.ok(!it.need || seen.has(it.need), it.id); seen.add(it.id); }
+  assert.equal(TYCOON.length, 34);
+  assert.deepEqual(TYCOON.filter(it => it.finale).map(it => [it.id, it.reward]), [['statue', 200], ['rocket', 300]]);
+  const all = TYCOON.map(it => it.id);
+  assert.deepEqual(cleanSave({ tycoon: { items: all } }).tycoon.items, all);
 });
