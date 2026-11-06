@@ -23,6 +23,7 @@ import { guide, guideText } from './src/nav.js';
 import { DriveTest } from './src/drivetest.js';
 import { Album } from './src/album.js';
 import { Town } from './src/town.js';
+import { Show } from './src/show.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
 
@@ -186,6 +187,8 @@ async function boot() {
   places.onInterior = (site, parts) => { if (parts.frames?.length) album.fillFrames(parts.frames); };
   const driveTest = new DriveTest({ engine, places, vehicle, player, hud, sfx, state, day, cloud });
   day.g.driveTest = driveTest;
+  // 분수 광장 공연 (인혁 계획 7)
+  day.g.show = new Show({ engine, places, life, sky, state, hud, player, day, lights, input, sfx });
   if (!places.sites.license) state.license = true; // no test centre loaded: never lock the car
   day.g.onNewDay = () => {
     // trees, bushes and shells grow back every morning
@@ -386,6 +389,7 @@ async function boot() {
       navEl.classList.remove('hidden');
     } else navEl.classList.add('hidden');
     town.update(dt);
+    day.g.show.update(dt);
     minimap.draw(player.pos, driving ? vehicle.yaw : player.yaw, vehicle && !driving ? vehicle.pos : null, day.target(), town.dots());
   });
   engine.onUpdate((dt) => {

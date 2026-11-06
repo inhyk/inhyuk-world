@@ -28,6 +28,18 @@
 - 큰길 남쪽: 세온 은행, 우체국. 학교길: 바삭 치킨, 피자 하우스. 아파트 108동, 109동
 - `src/sites/civic.js` 의 `buildCivic({ kind })`, 모두 겉모습만 있는 건물(안에는 못 들어감)
 
+## 분수 광장과 공연 (인혁이 계획 7, 2026-11-06)
+
+"어느날엔 공연도 하게 해줘. 그리고 분수를 만들고 분수에서 공연을 하게 해줘."
+
+- 세온 분수 광장: 큰길 남쪽, 세온 컴퍼니 앞 횡단보도 건너편(갤러리 오른쪽). 걸어서도 차로도 큰길에서 바로 간다.
+- 분수: 조각한 돌 테두리와 조개 무늬, 두 층 그릇에서 흘러내리는 물 커튼, 테두리에서 안으로 휘는 물줄기 12개, 꼭대기 물줄기, 공연 물줄기 16개, 물결과 물보라. 밤에는 물속 조명 색이 천천히 바뀐다.
+- 분수 앞 무대(LED 띠, 스피커, 트러스 조명 탑과 무빙 라이트), 벤치, 꽃밭과 나무, 랜턴 가로등과 전구 줄, 공연 포스터가 붙은 광고탑, 이름 돌.
+- 공연: 금요일 저녁 7시~9시(`show-days.mjs` 의 `isShowDay`, `SHOW_HOUR`). 6시 45분부터 동네 사람들이 모이고, 7시에 가수, 기타, 키보드, 드럼, 댄서 2명이 노래하고 분수가 음악에 맞춰 춤춘다. 한 곡은 약 100초이고 조금 쉬었다가 다시 한다.
+- 무대 앞 가운데 벤치에서 E: 앉아서 처음부터 끝까지 본다(가사 자막, E로 그만 보기). 공연이 없을 때는 언제 하는지 알려 준다. 공연 날 아침에 "오늘 저녁 7시 분수 광장에서 공연이 있어요!" 알림이 뜬다.
+- 분수 왼쪽 테두리에서 E: 100원 동전을 던지고 소원 빌기. 동전은 분수 바닥에 쌓인다.
+- 노래는 코드로 새로 만든 곡이다(120 BPM, 소리 파일 없음). 공연은 내 화면에서만 열린다(같이 사는 동네에서도).
+
 ## 하루
 
 - 평일: 일어나기, 세수, 아침, 옷 입기, 운전해서 회사, 사원증 찍고 출근, 모닝 커피, 일하기(컴퓨터 업무 2개), 팀 회의, 점심, 일하기, 보고서 출력, 부장님 결재, 사원증 찍고 퇴근, 집에 가기, 씻기, 자기
@@ -74,6 +86,7 @@
 - `kid-check.mjs` 어린이 이야기 자동 검사, `login-check.mjs` 로그인 검사(로컬 net 서버), `online-check.mjs` 같이 사는 동네 검사(로컬 net 서버, 두 컴퓨터)
 - `src/props/*.js` 자동차, 사람, 나무와 꽃, 가로등과 벤치, 블럭
 - `src/world.js` 땅, 도로, 바다와 건물 자리, `src/deco.js` 나무와 거리 소품 배치
+- `src/sites/plaza.js` 분수 광장, `src/fountain.js` 분수 물(물줄기, 물방울, 물결, 물속 조명), `src/show.js` 금요일 공연(사람, 조명, 분수 춤, 동전 소원), `src/show-music.js` 공연 노래
 - `src/player.js`, `src/vehicle.js`, `src/build.js`, `src/quests.js`, `src/life.js` 걷기, 운전, 블럭, 하루와 미니게임, 동네 사람과 차
 - `viewer.html` 모델 하나만 보는 개발용 화면 (빌드에는 안 들어감), `tools/shot.mjs` 화면 사진
 
@@ -84,6 +97,7 @@ npm run test:social-game
 npm run social-game:dev            # 다른 터미널
 node games/social-game/browser-check.mjs http://127.0.0.1:5173/ /tmp/social-shots
 node games/social-game/kid-check.mjs http://127.0.0.1:5173/ /tmp/social-kid
+node games/social-game/show-check.mjs http://127.0.0.1:5173/ /tmp/social-show   # 분수 광장과 공연 (약 3분)
 # 로그인과 같이 사는 동네는 로컬 net 서버가 있어야 한다 (저장소 AGENTS.md "시험해 보기" 1번). 계정을 2~3개 만든다.
 node games/social-game/login-check.mjs http://127.0.0.1:5173/ /tmp/social-login
 node games/social-game/online-check.mjs http://127.0.0.1:5173/ /tmp/social-online

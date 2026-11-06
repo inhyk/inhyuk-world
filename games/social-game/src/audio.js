@@ -16,6 +16,8 @@ function ac() {
 }
 export function unlock() { ac(); }
 export function setMuted(m) { muted = m; if (master) master.gain.value = m ? 0 : 0.55; }
+/** The shared context and master gain (the fountain show plays its music through them), or null. */
+export function audioOut() { return ac() ? { ctx, master } : null; }
 
 function noiseBuffer(sec = 0.5) {
   const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate);
