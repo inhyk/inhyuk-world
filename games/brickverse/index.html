@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#3d8fff">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect x=%2210%22 y=%2220%22 width=%2280%22 height=%2260%22 rx=%2212%22 fill=%22%233fa7ff%22/%3E%3C/svg%3E">
+<title>브릭버스 · BRICKVERSE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&display=swap" rel="stylesheet">
+</head>
+<body>
+<canvas id="game" tabindex="0" aria-label="브릭버스 게임 화면. WASD나 방향키로 움직이고 스페이스로 점프합니다. 드래그하면 시점이 돌아갑니다."></canvas>
+<div id="loading">브릭버스 여는 중…</div>
+
+<div id="hud">
+  <div class="tl">
+    <div class="chip world"><span id="world-icon">🏠</span><b id="world-name">브릭 광장</b></div>
+    <div class="chip coin"><span class="coin-ico" aria-hidden="true"></span><b id="coins">0</b></div>
+    <button id="user-chip" class="chip user" hidden><span>👤</span><b id="user-name"></b><i id="user-cloud" aria-hidden="true">☁️</i></button>
+    <div id="world-info" hidden></div>
+  </div>
+  <div class="tr">
+    <div class="buttons">
+      <button id="btn-home" title="광장으로 (R)" aria-label="광장으로">🏠</button>
+      <button id="btn-wardrobe" title="꾸미기" aria-label="꾸미기">👕</button>
+      <button id="btn-friends" title="친구랑 같이" aria-label="친구랑 같이">👥</button>
+      <button id="btn-login" title="로그인" aria-label="로그인">👤</button>
+      <button id="btn-sound" title="효과음" aria-label="효과음 켜고 끄기">🔊</button>
+      <button id="btn-menu" title="메뉴" aria-label="메뉴">⚙️</button>
+    </div>
+    <div id="players" hidden></div>
+  </div>
+  <div id="log" aria-live="polite"></div>
+  <div class="bc">
+    <button id="btn-chat" title="말하기 (T)">💬 말하기</button>
+    <button id="btn-emote" title="감정 표현 (G, 1~4)">😀 표현</button>
+  </div>
+  <div id="chat-panel" class="panel-pop" hidden><div id="chat-grid"></div></div>
+  <div id="emote-panel" class="panel-pop" hidden><div id="emote-grid"></div></div>
+  <div id="toast" aria-live="polite"></div>
+  <div id="big" aria-live="polite"></div>
+  <p class="hint">WASD 이동 · Space 점프 · 끌기 시점 · 휠 확대 · T 말하기 · 1~4 표현</p>
+</div>
+<div id="stick" aria-label="이동 조이스틱"><i></i></div>
+<button id="jump" aria-label="점프">⤒</button>
+
+<section id="title">
+  <div class="title-card">
+    <div class="logo" aria-label="BRICKVERSE">
+      <span style="--c:#ff5e7e">B</span><span style="--c:#ff8a3d">R</span><span style="--c:#ffd23f">I</span><span style="--c:#5ad16b">C</span><span style="--c:#21c7b8">K</span><span style="--c:#3fa7ff">V</span><span style="--c:#4a5cff">E</span><span style="--c:#9b5cff">R</span><span style="--c:#ff6fb5">S</span><span style="--c:#ff5e7e">E</span>
+    </div>
+    <p class="kr">브릭버스</p>
+    <p class="lead">아바타를 꾸미고, 빛나는 문을 골라 들어가 놀아요!<br>점프 탑 · 타이쿤 · 바닥이 사라져요 · 친구랑 같이</p>
+    <div class="title-buttons">
+      <button id="play" class="primary big">▶ 시작하기</button>
+      <button id="title-wardrobe" class="ghost">👕 먼저 꾸미기</button>
+      <button id="title-login" class="ghost">👤 로그인</button>
+    </div>
+    <p class="small">WASD·방향키 이동 · Space 점프 · 마우스로 끌어서 시점 돌리기</p>
+  </div>
+</section>
+
+<section id="wardrobe" hidden aria-label="꾸미기">
+  <header>
+    <div>
+      <h2>👕 꾸미기</h2>
+      <p class="who"><b id="wardrobe-name"></b> · 🪙 <span id="wardrobe-coins">0</span></p>
+    </div>
+    <button id="wardrobe-done" class="primary">다 했어 ✓</button>
+  </header>
+  <nav class="tabs">
+    <button data-tab="skin">🖐 피부</button><button data-tab="shirt">👕 셔츠</button><button data-tab="pants">👖 바지</button>
+    <button data-tab="hat">🎩 모자</button><button data-tab="face">😊 얼굴</button><button data-tab="emblem">⭐ 무늬</button><button data-tab="name">🏷 별명</button>
+  </nav>
+  <div id="wardrobe-grid" class="grid"></div>
+</section>
+
+<section id="friends" hidden aria-label="친구랑 같이">
+  <div class="card">
+    <button id="friends-close" class="x" aria-label="닫기">✕</button>
+    <h2>👥 친구랑 같이</h2>
+    <p id="room-status" class="status"></p>
+    <div id="room-idle">
+      <button id="room-create" class="primary wide">🏠 방 만들기</button>
+      <p class="or">또는 친구가 알려 준 코드</p>
+      <div class="join-row">
+        <input id="room-code" maxlength="6" placeholder="ABC123" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="방 코드">
+        <button id="room-join" class="primary">들어가기</button>
+      </div>
+      <p class="small">최대 6명. 같은 문으로 들어가면 같은 게임에서 만나요. 이름 대신 별명만 보여요.</p>
+    </div>
+    <div id="room-live" hidden>
+      <p class="code-label">방 코드</p>
+      <p id="room-code-big" class="code">······</p>
+      <ul id="room-people"></ul>
+      <button id="room-leave" class="ghost wide">방에서 나가기</button>
+    </div>
+  </div>
+</section>
+
+<section id="login" hidden aria-label="로그인">
+  <div class="card">
+    <button id="login-close" class="x" aria-label="닫기">✕</button>
+    <h2>👤 로그인</h2>
+    <form id="login-out" autocomplete="on">
+      <p class="small">젤리 타워, 사회적 게임이랑 같은 seonn 계정이야. 로그인하면 코인, 산 옷, 점프 탑, 공장 기록이 서버에도 저장돼서 다른 기기에서 이어서 할 수 있어.</p>
+      <label class="field"><span>닉네임</span><input id="login-nick" name="username" maxlength="10" placeholder="2~10글자" autocomplete="username" spellcheck="false"></label>
+      <label class="field"><span>비밀번호</span><input id="login-pw" name="password" type="password" maxlength="16" placeholder="4~16글자" autocomplete="current-password"></label>
+      <p id="login-err" class="err" aria-live="polite"></p>
+      <div class="row2"><button id="do-login" type="submit" class="primary">로그인</button><button id="do-signup" type="button" class="ghost">✨ 새 계정 만들기</button></div>
+      <p class="small warn">진짜 이름, 전화번호, 학교는 쓰지 마. 이메일이 없어서 비밀번호를 잊으면 되찾을 수 없어!</p>
+    </form>
+    <div id="login-in" hidden>
+      <p class="hello"><b id="me-nick"></b> 님으로 로그인했어 👋</p>
+      <p id="cloud-status" class="status"></p>
+      <p class="small">친구 방에서는 꾸미기에서 고른 별명이 보여.</p>
+      <div class="row2"><button id="do-save" class="primary">☁️ 지금 저장</button><button id="do-logout" class="ghost">로그아웃</button></div>
+    </div>
+  </div>
+</section>
+<dialog id="choose" aria-labelledby="choose-title">
+  <h2 id="choose-title">어느 기록으로 할까?</h2>
+  <p id="choose-lead">이 기기와 서버의 기록이 달라. 하나를 골라 줘. 고르지 않은 기록은 없어져.</p>
+  <button id="choose-local" class="pick"><b>📱 이 기기 기록</b><span id="choose-local-text"></span></button>
+  <button id="choose-server" class="pick"><b>☁️ 서버 기록</b><span id="choose-server-text"></span></button>
+</dialog>
+<dialog id="menu">
+  <h2>⚙️ 메뉴</h2>
+  <button id="menu-sound" class="wide"></button>
+  <button id="menu-music" class="wide"></button>
+  <button id="menu-obby" class="wide">🌈 점프 탑 처음부터</button>
+  <button id="menu-reset" class="wide danger">🗑 모든 기록 지우기</button>
+  <button id="menu-close" class="primary wide">닫기</button>
+</dialog>
+<dialog id="confirm-reset">
+  <h2>정말 다 지울까?</h2>
+  <p>코인, 산 모자와 얼굴, 점프 탑 체크포인트, 타이쿤 공장, 기록이 모두 지워져. 로그인했으면 서버 기록도 지워져. 되돌릴 수 없어!</p>
+  <div class="row"><button id="reset-cancel" autofocus>취소</button><button id="reset-ok" class="danger">다 지우기</button></div>
+</dialog>
+<div id="fade"></div>
+<script type="module" src="main.js"></script>
+</body>
+</html>
