@@ -1961,11 +1961,11 @@ function buildGallery(C) {
     pottedPlant(g, x + 0.6, 0.45, 6.3, { kind: 'bush', h: 0.7, seed: 40 + x, pot: 0x3a2a1e, potR: 0.3, potH: 0.08 });
     solid(site, x, 0.25, 6.3, 2.6, 0.5, 1.0);
   }
-  const og = group(g, 0, 0.06, 6.4);
+  const og = group(g, 3.4, 0.06, 6.4); // beside the path, not in front of the door
   put(og, RB(1.2, 0.5, 1.2, 0.02, 1), mat('concrete'), 0, 0.25, 0);
   for (let k = 0; k < 3; k++) put(og, torus(0.55 - k * 0.12, 0.06, 10, 40), paint([0xd8553a, 0xe8b04a, 0x3a8a7a][k], 0.35, 0.2, { clearcoat: 1 }), 0, 1.15 + k * 0.08, 0, PI / 2 - 0.3 + k * 0.35, k * 0.9, 0);
-  solid(site, 0, 0.8, 6.4, 1.2, 1.6, 1.2);
-  site.lamps.push({ pos: [0, 2.0, 7.2], color: 0xffe2b8, intensity: 0.6, range: 5 });
+  solid(site, 3.4, 0.8, 6.4, 1.2, 1.6, 1.2);
+  site.lamps.push({ pos: [3.4, 2.0, 7.2], color: 0xffe2b8, intensity: 0.6, range: 5 });
   acUnit(C, -6, H, -5.5); acUnit(C, -4.4, H, -5.5);
   site.colliders.push(aabb(X0, HH, BZ, X1, H + 0.6, F));
   site.extra.height = H + 0.6;
