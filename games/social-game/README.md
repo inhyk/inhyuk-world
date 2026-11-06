@@ -125,6 +125,19 @@
 - 연결이 끊기면 혼자 하기로 돌아오고 "🔄 다시 들어가기" 버튼이 나온다. 서버가 아직 같이 쓰는 세계를 모르면(배포 전) "같이 사는 동네는 아직 준비 중이에요" 라고 하고 혼자 계속한다.
 - 칸 이름: 블럭 `b|x|y|z`(값 `{i: 블럭, r: 돌림}`), 부순 것 `p|<종류>.<번호>`(ttl 600초). 나무 번호는 모든 컴퓨터에서 같다(`deco.js` 가 정해진 씨앗으로 심는다).
 
+## 최적화 (인혁이 계획: "게임을 최적화 해줘", 2026-11-06)
+
+모습은 그대로 두고 덜 그리고 덜 계산하게 했다. `perf-check.mjs` 로 재고, 전과 후 화면 사진을 같은 자리에서 비교했다.
+
+- 해 그림자 맵은 한 프레임에 한 번만 그린다 (실내 AO 패스가 한 번 더 그리고 있었다). 실내 AO 는 절반 해상도로, 가까운 건물만 넣어서 계산한다
+- 안개에 완전히 가려지는 먼 곳(동네에서 본 일본, 일본에서 본 동네)은 그리지 않는다 (`places.cullFar`)
+- 나무, 덤불, 풀은 하나씩 거리로 자세한 모양과 먼 모양을 고르고, 가까운 것만 그림자를 만든다 (`scatter.js`)
+- 켜진 등이 없으면(낮에 밖) 점광원을 장면에서 뺀다. 두 경우 셰이더를 처음에 다 만들어 둔다 (`lights.js`)
+- 셰이더는 진짜 그리는 후처리 버퍼용으로 미리 만들고, 로딩 화면 뒤에서 동네 전체를 GPU 에 한 번 올린다 (`engine.warmUp`). 새 실내는 셰이더와 텍스처가 준비된 뒤에 보인다
+- 움직이지 않는 건물, 땅, 나무는 행렬을 한 번만 계산한다 (`places.freeze`, 움직이는 것은 `userData.dynamic`)
+- 동네 사람은 가까이 갈 때 한 프레임에 한 명씩 만들고, 먼 사람은 장면에서 뺀다. 머리, 손, 머리카락처럼 같은 모양은 한 번만 만든다
+- 코드로 그리는 텍스처는 웹 워커 여러 개가 동시에 만든다 (`texgen.js`, `texworker.js`)
+
 ## 파일
 
 - `main.js` 시작, 매 프레임 흐름
@@ -142,6 +155,8 @@
 - `src/sites/plaza.js` 분수 광장, `src/fountain.js` 분수 물(물줄기, 물방울, 물결, 물속 조명), `src/show.js` 금요일 공연(사람, 조명, 분수 춤, 동전 소원), `src/show-music.js` 공연 노래
 - `src/player.js`, `src/vehicle.js`, `src/build.js`, `src/quests.js`, `src/life.js` 걷기, 운전, 블럭, 하루와 미니게임, 동네 사람과 차
 - `viewer.html` 모델 하나만 보는 개발용 화면 (빌드에는 안 들어감), `tools/shot.mjs` 화면 사진
+- `src/perf.js` 다 짓고 나서 하는 최적화(고정, 안개 컬링, AO 에서 뺄 것), `src/texgen.js` 텍스처 픽셀, `src/texworker.js` 그걸 다른 코어에서
+- `perf-check.mjs` 속도 재기: 시작 시간, 자리별 프레임 시간, 그리기 호출, 삼각형, 메모리, 큰길을 달릴 때 끊김
 
 ## 시험
 
@@ -156,6 +171,8 @@ node games/social-game/job-check.mjs http://127.0.0.1:5173/ /tmp/social-jobs    
 # 로그인과 같이 사는 동네는 로컬 net 서버가 있어야 한다 (저장소 AGENTS.md "시험해 보기" 1번). 계정을 2~3개 만든다.
 node games/social-game/login-check.mjs http://127.0.0.1:5173/ /tmp/social-login
 node games/social-game/online-check.mjs http://127.0.0.1:5173/ /tmp/social-online
+# 속도 재기: 빌드(npm run social-game:build) 후 public/ 에서 정적 서버를 띄우고
+node games/social-game/perf-check.mjs http://127.0.0.1:5275/play/social-game/ /tmp/social-perf
 ```
 
 playwright 가 `tools/node_modules` 에 없으면 `PLAYWRIGHT_MJS=<playwright 의 index.mjs 경로>` 를 붙인다.

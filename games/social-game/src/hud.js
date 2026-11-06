@@ -15,8 +15,12 @@ export class Hud {
   }
   show() { this.el.classList.remove('hidden'); }
   bars(hp, food) {
-    this.hp.style.width = `${Math.max(0, Math.min(100, hp))}%`;
-    this.food.style.width = `${Math.max(0, Math.min(100, food))}%`;
+    // called every frame: only touch the page when a bar really moved (style writes cost a re-layout)
+    const h = Math.max(0, Math.min(100, hp)).toFixed(1), f = Math.max(0, Math.min(100, food)).toFixed(1);
+    if (h === this._hp && f === this._food) return;
+    this._hp = h; this._food = f;
+    this.hp.style.width = `${h}%`;
+    this.food.style.width = `${f}%`;
     this.hpBar.classList.toggle('low', hp < 25);
     this.foodBar.classList.toggle('low', food < 20);
   }

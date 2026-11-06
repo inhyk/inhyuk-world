@@ -15,6 +15,35 @@ export class LightPool {
     }
     this.glow = [];      // {mat, base, when}
     this.t = 0;
+    this.live = true;
+  }
+
+  /**
+   * While no lamp shines (a sunny day outdoors) the point lights leave the scene: every lit pixel then
+   * skips six light sums, which is a big share of the picture's cost. Shaders for both cases are
+   * compiled up front (compileBoth), so switching never stalls.
+   */
+  setLive(on) {
+    if (this.live === on) return;
+    this.live = on;
+    for (const l of this.lights) l.visible = on;
+  }
+
+  /**
+   * compileAsync for `root` with the lights in and out of the scene (see setLive). `target` is the
+   * render target the picture is really drawn into (the post-processing buffer): shaders made for the
+   * screen instead (sRGB, tone mapped) would not be the ones used, and would be made again later.
+   */
+  compileBoth(renderer, root, camera, scene = null, target = null) {
+    const was = this.live, ps = [], prev = renderer.getRenderTarget();
+    if (target) renderer.setRenderTarget(target);
+    for (const on of [true, false]) {
+      for (const l of this.lights) l.visible = on;
+      ps.push(renderer.compileAsync(root, camera, scene));
+    }
+    for (const l of this.lights) l.visible = was;
+    renderer.setRenderTarget(prev);
+    return Promise.all(ps);
   }
   add(a) { this.anchors.push({ intensity: 6, range: 9, color: 0xffe2b0, when: 'night', ...a, pos: a.pos.isVector3 ? a.pos : new THREE.Vector3(...a.pos) }); }
   remove(pred) { this.anchors = this.anchors.filter((a) => !pred(a)); }
@@ -42,11 +71,14 @@ export class LightPool {
         free.distance = c.a.range;
       }
     }
+    let live = false;
     for (const l of this.lights) {
       const want = l.userData.target ? 1 : 0;
       l.userData.level += (want - l.userData.level) * Math.min(1, dt * 4);
       if (l.userData.target) l.userData.base = l.userData.target.intensity;
       l.intensity = (l.userData.base ?? 0) * l.userData.level;
+      if (want || l.userData.level > 0.002) live = true;
     }
+    this.setLive(live);
   }
 }

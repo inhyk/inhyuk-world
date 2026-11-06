@@ -96,6 +96,34 @@ class Bucket {
   }
 }
 
+// ------------------------------------------------------------------------------------------ caches
+// Making a person used to take ~22 ms, most of it rebuilding the same shapes. Shapes that do not
+// depend on the person are made once and copied; finished bucket parts are shared (Bucket.build
+// only reads them).
+const shapeCache = new Map();
+/** memo(key, make) → a copy of the geometry make() returned the first time for this key. */
+function memo(key, make) {
+  let g = shapeCache.get(key);
+  if (!g) { g = make(); shapeCache.set(key, g); }
+  return g.clone();
+}
+const partCache = new Map();
+/** Run build() once per key, recording the parts it adds to `buckets`; later calls replay them. */
+function cachedParts(key, buckets, build) {
+  let rec = partCache.get(key);
+  if (!rec) {
+    const marks = buckets.map((b) => b.parts.length);
+    build();
+    rec = buckets.map((b, i) => b.parts.slice(marks[i]));
+    partCache.set(key, rec);
+    return;
+  }
+  buckets.forEach((b, i) => b.parts.push(...rec[i]));
+}
+const geoCache = new Map();
+const sharedGeo = (key, make) => { if (!geoCache.has(key)) geoCache.set(key, make()); return geoCache.get(key); };
+const vkey = (v) => `${v.x.toFixed(5)},${v.y.toFixed(5)},${v.z.toFixed(5)}`;
+
 /** Lathe profile [[r, y]] around +Y, smooth; optional depth scale (zs) and front flattening. */
 function latheGeo(pts, seg = 20, zs = 1, xs = 1) {
   const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(Math.max(r, 1e-4), y)), seg);
@@ -118,7 +146,12 @@ function along(g, a, b) {
   return g;
 }
 /** Tapered limb tube from a to b: radii r0 → r1, profile bulge, rounded ends. */
-function limb(a, b, r0, r1, { seg = 18, bulge = 0.08, zs = 1, capA = true, capB = true, folds = 0, rnd = null } = {}) {
+function limb(a, b, r0, r1, opts = {}) {
+  if (opts.rnd) return limbGeo(a, b, r0, r1, opts);
+  const { seg = 18, bulge = 0.08, zs = 1, capA = true, capB = true, folds = 0 } = opts;
+  return memo(`limb|${vkey(a)}|${vkey(b)}|${r0}|${r1}|${seg}|${bulge}|${zs}|${capA}|${capB}|${folds}`, () => limbGeo(a, b, r0, r1, opts));
+}
+function limbGeo(a, b, r0, r1, { seg = 18, bulge = 0.08, zs = 1, capA = true, capB = true, folds = 0, rnd = null } = {}) {
   const L = a.distanceTo(b);
   const pts = [];
   seg = Math.max(8, Math.round(seg * 0.8));
@@ -195,6 +228,10 @@ function bodyLoft(sec, M = 32, dome = 0.5) {
 }
 /** Thin rounded flat piece from a 2D outline, extruded `depth`, bevelled. */
 function plate(shape, depth, bevel = 0.004) {
+  const j = shape.toJSON();
+  return memo(`plate|${depth}|${bevel}|${JSON.stringify([j.curves, j.holes])}`, () => plateGeo(shape, depth, bevel));
+}
+function plateGeo(shape, depth, bevel) {
   const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 2, curveSegments: 8 });
   return smooth(g, 0.9);
 }
@@ -510,12 +547,12 @@ function dressUp(o, B, skinB, seed) {
   }
   // torso (top) and pelvis (bottom). Lathe profiles: [r, y], depth scaled.
   const loose = o === 'beach' || o === 'chef' || o === 'fire' || o === 'doctor' || hood ? 1.04 : 1;
-  const torso = bodyLoft([
+  const torso = memo(`torso|${hem}|${loose}`, () => bump(bodyLoft([
     [hem, 0.15 * loose, 0.107 * loose, 2.4, 0.004], [1.0, 0.142 * loose, 0.1 * loose, 2.4, 0.0], [1.1, 0.146 * loose, 0.104 * loose, 2.5, -0.002], [1.2, 0.158 * loose, 0.112 * loose, 2.6, -0.004],
     [1.28, 0.165, 0.108, 2.8, -0.002], [1.335, 0.158, 0.098, 2.8, 0.002], [1.375, 0.12, 0.078, 2.4, 0.004], [1.4, 0.075, 0.06, 2.2, 0.004], [1.412, 0.05, 0.048, 2, 0.004],
-  ], 30, 0.4);
-  top.add(bump(torso, (v) => 0.0016 * Math.sin(v.y * 80 + v.x * 25) * sstep(1.22, 1.02, v.y)), 'chest', topC, [{ bone: 'spine', from: V(0, 1.12, 0), dir: V(0, -1, 0), width: 0.07, max: 1 }, { bone: 'hips', from: V(0, 0.98, 0), dir: V(0, -1, 0), width: 0.05 }]);
-  const pelvis = bodyLoft([[0.81, 0.07, 0.065, 2.2, 0.01], [0.85, 0.14, 0.098, 2.4, 0.008], [0.9, 0.158, 0.106, 2.6, 0.004], [0.96, 0.152, 0.102, 2.6, 0.0], [1.01, 0.14, 0.097, 2.5, 0.0]], 32, 0.3);
+  ], 30, 0.4), (v) => 0.0016 * Math.sin(v.y * 80 + v.x * 25) * sstep(1.22, 1.02, v.y)));
+  top.add(torso, 'chest', topC, [{ bone: 'spine', from: V(0, 1.12, 0), dir: V(0, -1, 0), width: 0.07, max: 1 }, { bone: 'hips', from: V(0, 0.98, 0), dir: V(0, -1, 0), width: 0.05 }]);
+  const pelvis = memo('pelvis', () => bodyLoft([[0.81, 0.07, 0.065, 2.2, 0.01], [0.85, 0.14, 0.098, 2.4, 0.008], [0.9, 0.158, 0.106, 2.6, 0.004], [0.96, 0.152, 0.102, 2.6, 0.0], [1.01, 0.14, 0.097, 2.5, 0.0]], 32, 0.3));
   bot.add(pelvis, 'hips', botC, [{ bone: 'spine', from: V(0, 1.0, 0), dir: V(0, 1, 0), width: 0.04, max: 0.6 }]);
   // deltoids round the shoulders into the sleeves
   for (const side of ['L', 'R']) {
@@ -560,7 +597,8 @@ function dressUp(o, B, skinB, seed) {
       bot.add(hemL, 'thigh' + side, shade(botC, 0.9));
       skinB.add(limb(kn.clone().lerp(th, 0.15), ankle, 0.05, 0.034, { seg: 16, bulge: 0.08 }), 'knee' + side, 0xffffff, [{ bone: 'thigh' + side, from: kn, dir: kn.clone().sub(ft).normalize(), width: 0.04 }]);
     }
-    buildShoe(shoe, skinB, side, shoes, R);
+    const accent = [0xe8455a, 0x3f78c8, 0x2f9c9a][Math.floor(R() * 3)];
+    cachedParts(`shoe|${shoes}|${side}|${accent}`, [shoe, skinB], () => buildShoe(shoe, skinB, side, shoes, accent));
   }
   // ---- extras
   const zf = (y) => -0.66 * (y > 1.17 ? lerp(0.15, 0.168, (y - 1.17) / 0.14) : lerp(0.14, 0.15, (y - 1.0) / 0.17)); // torso front surface z at height y (centre line)
@@ -720,11 +758,10 @@ function jobExtras(o, extras, top, bot, gloss, zf, loose) {
   }
 }
 
-function buildShoe(shoeB, skinB, side, kind, R) {
+function buildShoe(shoeB, skinB, side, kind, accent) {
   const f = J['foot' + side], sg = side === 'L' ? -1 : 1;
   const bone = 'foot' + side;
   const base = { sneaker: [0xf2f2ef, 0xffffff], dress: [0x1a1a1c, 0x0f0f10], brown: [0x6a4027, 0x2a1e18], slipper: [0xf1d7c8, 0xd9c0b3], flipflop: [0x2f8fb0, 0xf0e6d0], clog: [0x1d1f22, 0x111213] }[kind] ?? [0x333333, 0x222222];
-  const accent = [0xe8455a, 0x3f78c8, 0x2f9c9a][Math.floor(R() * 3)];
   if (kind === 'flipflop') {
     // bare foot + flat sole with a thong strap
     let foot = ellipsoid(0.045, 0.032, 0.11, 16, 12); foot.translate(f.x, 0.04, f.z - 0.05); skinB.add(foot, bone);
@@ -796,7 +833,7 @@ export function buildCharacter({ skin, hair = 'short', hairColor = 0x2a211c, out
     if (!geo) return;
     const m = new THREE.SkinnedMesh(geo, material);
     m.name = key;
-    m.castShadow = true; m.receiveShadow = true;
+    m.castShadow = key !== 'face'; m.receiveShadow = true; // eyes and mouth lie on the head: the head's shadow covers theirs
     m.bind(skeleton, new THREE.Matrix4());
     m.boundingSphere = new THREE.Sphere(V(0, 0.85, 0), 1.25);
     m.frustumCulled = true;
@@ -804,13 +841,13 @@ export function buildCharacter({ skin, hair = 'short', hairColor = 0x2a211c, out
     meshes[key] = m;
   };
   // fixed parts: head, face, hair, hands
+  // head, face and hands are the same for everyone, hair per style: made once, shared
   const skinFixed = new Bucket(), faceB = new Bucket(), hairB = new Bucket();
-  buildHead(skeleton, faceB, skinFixed);
-  buildHands(skinFixed);
-  buildHair(hairB, hair);
-  buildEyebrows(hairB, hairColor);
-  mk('face', faceB.build(), faceMat());
-  mk('hair', hairB.build(), hairMat(hairColor));
+  cachedParts('head', [faceB, skinFixed], () => { buildHead(skeleton, faceB, skinFixed); buildHands(skinFixed); });
+  cachedParts('hair|' + hair, [hairB], () => { buildHair(hairB, hair); buildEyebrows(hairB, hairColor); });
+  // the merged face and hair geometry is shared too (never disposed: mk only replaces outfit meshes)
+  mk('face', sharedGeo('face', () => faceB.build()), faceMat());
+  mk('hair', sharedGeo('hair|' + hair, () => hairB.build()), hairMat(hairColor));
 
   let current = null;
   function setOutfit(name) {
