@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { LAYOUT } from './world.js';
 import { rng } from './noise.js';
 
-const ROLE_OUTFIT = { coworker: 'office', receptionist: 'office', clerk: 'office', client: 'suit', chef: 'chef', guest: 'casual', boss: 'suit', guard: 'office', staff: 'office', kid: 'casual', teacher: 'office' };
+const ROLE_OUTFIT = { coworker: 'office', receptionist: 'office', clerk: 'office', client: 'suit', chef: 'chef', guest: 'casual', boss: 'suit', guard: 'office', staff: 'office', kid: 'casual', teacher: 'office', police: 'police', doctor: 'doctor', firefighter: 'fire' };
 const HAIRS = ['short', 'spiky', 'bob', 'long', 'bun'];
 const HAIR_COLORS = [0x2a211c, 0x3b2a20, 0x1c1a1a, 0x5a3a24, 0x2e2420];
 const SKINS = [0xf1c9a5, 0xe8b894, 0xf6d5b8, 0xd9a47e];

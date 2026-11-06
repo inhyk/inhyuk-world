@@ -15,6 +15,9 @@ import { Minimap } from './src/minimap.js';
 import { Vehicle } from './src/vehicle.js';
 import { Life } from './src/life.js';
 import { Day } from './src/quests.js';
+import { Cinema } from './src/cinema.js';
+import { Jobs } from './src/jobs.js';
+import { JOBS } from './jobs.mjs';
 import { dressTown, dressJapan } from './src/deco.js';
 import { Flight } from './src/flight.js';
 import { Cloud } from './src/cloud.js';
@@ -23,6 +26,8 @@ import { guide, guideText } from './src/nav.js';
 import { DriveTest } from './src/drivetest.js';
 import { Album } from './src/album.js';
 import { Town } from './src/town.js';
+import { Show } from './src/show.js';
+import { Wildlife } from './src/wildlife.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
 
@@ -176,7 +181,9 @@ async function boot() {
   };
 
   const minimap = new Minimap($('minimap'));
-  const day = new Day({ state, hud, places, player, vehicle, sky, engine, sfx, build, input, save, life });
+  const day = new Day({ state, hud, places, player, vehicle, sky, engine, sfx, build, input, save, life, col });
+  day.g.cinema = new Cinema(day.g); // 영화관 1관: 진짜 영화 (햄찌 영화)
+  day.g.jobs = new Jobs(day); // 경찰관, 소방관, 의사, 요리사, 마트 직원, 우체부 (인혁: "직업을 더 만들어줘")
   const flight = new Flight({ engine, player, build, hud, sfx, places, life, state, props, sky });
   let lifts = { prompt: () => null, update: () => {}, busy: false };
   try { lifts = new Elevators({ engine, colliders: col, places, player, hud, sfx, input }); } catch (e) { console.warn('elevators failed', e); }
@@ -186,6 +193,8 @@ async function boot() {
   places.onInterior = (site, parts) => { if (parts.frames?.length) album.fillFrames(parts.frames); };
   const driveTest = new DriveTest({ engine, places, vehicle, player, hud, sfx, state, day, cloud });
   day.g.driveTest = driveTest;
+  // 분수 광장 공연 (인혁 계획 7)
+  day.g.show = new Show({ engine, places, life, sky, state, hud, player, day, lights, input, sfx });
   if (!places.sites.license) state.license = true; // no test centre loaded: never lock the car
   day.g.onNewDay = () => {
     // trees, bushes and shells grow back every morning
@@ -195,6 +204,9 @@ async function boot() {
       if (e.col) col.add(e.col);
     }
   };
+  // 반달가슴곰 in the forest (인혁: "숲에 곰이 가끔씩 있게 해줘")
+  let wildlife = null;
+  try { wildlife = new Wildlife({ engine, colliders: col, groundAt, player, vehicle, hud, sfx, state, places, flight, trees: deco.breakables }); } catch (e) { console.warn('wildlife failed', e); }
   let fresh = !localStorage.getItem(SAVE_KEY);
   day.wakeUp();
   day.setOutfit(state.outfit);
@@ -215,7 +227,8 @@ async function boot() {
     input.lock();
     sfx('alarm');
     const first = state.day === 1 && state.step === 0;
-    hud.toast(first ? (state.mode === 'kid' ? '나는 이제 1학년! 오늘부터 학교에 가요 🎒' : '돈이 별로 없어요… 회사에서 일해서 1,000,000원을 모아 비행기를 타요! ✈️') : '이어서 해요!', 3600);
+    const J = state.mode === 'job' ? JOBS[state.job] : null;
+    hud.toast(first ? (state.mode === 'kid' ? '나는 이제 1학년! 오늘부터 학교에 가요 🎒' : J ? `${J.icon} 오늘부터 나는 ${J.name}! 열심히 일해서 1,000,000원을 모아 비행기를 타요 ✈️` : '돈이 별로 없어요… 회사에서 일해서 1,000,000원을 모아 비행기를 타요! ✈️') : '이어서 해요!', 3600);
     fresh = first;
     if (fresh) setTimeout(() => hud.toast('따르릉! 1일차 아침이에요. 오른쪽 퀘스트를 따라가요', 3000), 3800);
     if (matchMedia('(pointer: coarse)').matches) { $('touch').classList.remove('hidden'); input.locked = true; }
@@ -230,9 +243,9 @@ async function boot() {
   };
   town = new Town({ engine, build, places, player, vehicle, hud, cloud, input, colliders: col, breakables: deco.breakables, props, state, flight, openLogin: () => openLogin(), ensureStarted });
   // story choice (인혁: 직장인 / 어린이, 어린이는 남자 / 여자)
-  const begin = (mode, gender) => {
+  const begin = (mode, gender, job) => {
     replacingAll = true;
-    const fresh2 = { ...newState(), mode, gender, money: mode === 'kid' ? 10000 : 30000 };
+    const fresh2 = { ...newState(), mode, gender, ...(job ? { job } : {}), money: mode === 'kid' ? 10000 : 30000 };
     try { localStorage.setItem(SAVE_KEY, serialize(fresh2)); sessionStorage.setItem('sg-autoplay', '1'); } catch { /* blocked */ }
     location.reload();
   };
@@ -240,9 +253,12 @@ async function boot() {
   $('m-kid').onclick = () => $('kid-pick').classList.remove('hidden');
   $('m-boy').onclick = () => begin('kid', 'boy');
   $('m-girl').onclick = () => begin('kid', 'girl');
+  // more jobs next to 직장인 (인혁: "직업을 더 만들어줘. 다양하게 경찰, 소방관 같은 것도 넣어.")
+  $('job-row').innerHTML = Object.entries(JOBS).map(([k, J]) => `<button id="m-job-${k}" class="job" style="--jc:${J.color}"><span class="ji">${J.icon}</span><b>${J.name}</b><small>${J.pick}</small></button>`).join('');
+  for (const k of Object.keys(JOBS)) $(`m-job-${k}`).onclick = () => begin('job', undefined, k);
   if (fresh) { $('play').classList.add('hidden'); $('modes').classList.remove('hidden'); }
   else {
-    $('play').textContent = `이어서 하기 (${state.mode === 'kid' ? (state.gender === 'girl' ? '👧 어린이' : '👦 어린이') : '👔 직장인'} · ${state.day}일차)`;
+    $('play').textContent = `이어서 하기 (${state.mode === 'kid' ? (state.gender === 'girl' ? '👧 어린이' : '👦 어린이') : state.mode === 'job' && JOBS[state.job] ? `${JOBS[state.job].icon} ${JOBS[state.job].name}` : '👔 직장인'} · ${state.day}일차)`;
     $('new-game').classList.remove('hidden');
     $('new-game').onclick = () => { $('modes').classList.remove('hidden'); $('new-game').classList.add('hidden'); $('who').textContent = '새로 시작하면 지금 기록은 지워져요'; };
   }
@@ -264,6 +280,7 @@ async function boot() {
   // ------------------------------------------------------------------ frame
   let hurtT = 0;
   let navT = 0;
+  if (wildlife) wildlife.onHurt = (n) => { hurt(state, n); hurtT = 0.6; sfx('hit'); };
   player.onLand = (h) => {
     const dmg = fallDamage(h);
     if (dmg > 0) { hurt(state, dmg); hurtT = 0.6; sfx('hit'); hud.toast(`아야! 체력 -${dmg}`, 1000); }
@@ -326,7 +343,7 @@ async function boot() {
     hud.prompt(prompt);
     if (action && input.hit('KeyE')) action();
     // blocks (on foot, not in menus)
-    build.enabled = !driving && !day.seat && !day.busy && input.locked;
+    build.enabled = !driving && !day.seat && !day.busy && !day.g.jobs?.tool && input.locked;
     if (blocks.length) build.update(dt, input, player.pos);
     if (player.arm) player.arm.update?.(dt, { swing: build.swing ?? 0, walk: Math.min(1, player.speed / 5) });
     build.swing = Math.max(0, (build.swing ?? 0) - dt * 3);
@@ -351,6 +368,7 @@ async function boot() {
     lights.update(dt, engine.camera.position, night, inside);
     places.updateDoors(dt, [player.pos, ...life.walkers.map((w) => w.ch.group.position)], sfx);
     life.update(dt, driving ? null : player.pos, driving ? vehicle.pos : null, night);
+    wildlife?.update(dt);
     if (props.nature?.windUniform) props.nature.windUniform.value = t;
     const wn = world.sea.material.normalMap; if (wn) { wn.offset.set(t * 0.004, t * 0.0025); }
     if (world.foam) { world.foam.position.x = LAYOUT.beachX - 27.2 + Math.sin(t * 0.6) * 0.9; world.foam.material.opacity = 0.35 + 0.25 * Math.sin(t * 0.6 + 1); }
@@ -386,7 +404,8 @@ async function boot() {
       navEl.classList.remove('hidden');
     } else navEl.classList.add('hidden');
     town.update(dt);
-    minimap.draw(player.pos, driving ? vehicle.yaw : player.yaw, vehicle && !driving ? vehicle.pos : null, day.target(), town.dots());
+    day.g.show.update(dt);
+    minimap.draw(player.pos, driving ? vehicle.yaw : player.yaw, vehicle && !driving ? vehicle.pos : null, day.target(), wildlife ? [...town.dots(), ...wildlife.dots()] : town.dots());
   });
   engine.onUpdate((dt) => {
     if (flight.active) { /* flight.update placed the camera */ }
@@ -397,7 +416,7 @@ async function boot() {
   engine.start();
   addEventListener('beforeunload', saveLocal);
   setInterval(saveLocal, 15000);
-  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco };
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife, jobs: day.g.jobs };
   window.__ready = true;
 }
 
