@@ -10,8 +10,12 @@ import {
   GAME, TOWNS, townId, townName, blockKey, parseBlockKey, buildKeyOf, blockValue, parseBlockValue,
   propKey, parsePropKey, PROP_TTL, packPose, unpackPose, samePose, HIDDEN, lerpAngle, follow, SNAP_DIST,
   isPrivate, lookFor, SoloBlocks, TEXT, placeErrorText,
+  PoseTrack, peerNum, assignSeats, rideStep, seatOf, SEAT_POS, DRIVER_POS, RIDE_NEAR, RIDE_SLOW,
 } from '../online.mjs';
 import { xbox } from './places.js';
+import { exitSpot } from './vehicle.js';
+import { groundAt } from './world.js';
+import { sfx } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
 const POSE_EVERY = 0.1;     // seconds (10 per second)
@@ -36,6 +40,21 @@ function nameTag(text) {
   return s;
 }
 
+/** World spot of a car-local point [x, y, z] for a car at pos turned by yaw (cars only turn around y). */
+function seatWorld(pos, yaw, local, out = new THREE.Vector3()) {
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  return out.set(pos.x + local[0] * c + local[2] * s, pos.y + local[1], pos.z - local[0] * s + local[2] * c);
+}
+const SEAT_UP = 0.36; // character seat height (hips sit 0.07 above it)
+/** Puts a character in a car seat (hips on the seat point), facing the way the car goes. */
+function seatChar(ch, pos, yaw, local, kid, mode, dt) {
+  const sc = kid ? 0.72 : 1;
+  seatWorld(pos, yaw, [local[0], local[1] - (SEAT_UP + 0.07) * sc, local[2] - 0.1 * sc], ch.group.position);
+  ch.group.rotation.set(0, yaw, 0);
+  ch.group.scale.setScalar(sc);
+  ch.update?.(dt, { speed: 0, mode, seat: SEAT_UP });
+}
+
 export class Town {
   /**
    * g: { engine, build, places, player, vehicle, hud, cloud, input, colliders, breakables, props,
@@ -55,6 +74,12 @@ export class Town {
     this.lines = [];
     this.social = null;
     this.poseT = 0; this.poseIdle = 0; this.lastPose = null; this.checkT = 0;
+    this.seats = [0, 0, 0];      // driver: peer numbers in my car's seats (front right, rear left, rear right)
+    this.askOrder = new Map();   // driver: peer number → when they first asked (first come, first seated)
+    this.ride = null;           // passenger: { pid, n, nick, seat (-1 while asking), askedAt, lastAt }
+    this.rideLook = { yaw: 0, pitch: 0 };
+    this.rideCam = new THREE.Vector3();
+    this.byNum = new Map();      // peer number → remote
     this.propsByKey = new Map();
     for (const e of g.breakables) if (e.key) this.propsByKey.set(e.key, e);
     const home = g.places.sites.home;
@@ -63,6 +88,10 @@ export class Town {
   }
 
   get me() { return this.world?.user?.id ?? null; }
+  /** My peer number in this town (what drivers put in their seat list). */
+  get myNum() { return peerNum(this.world?.id); }
+  /** Sitting in a friend's car. */
+  get riding() { return !!this.ride && this.ride.seat >= 0; }
   get inv() { return this.g.state.inventory; }
 
   // ------------------------------------------------------------------ joining and leaving
@@ -130,6 +159,7 @@ export class Town {
 
   /** Back to solo (button, logout, or before joining another town). */
   leave(quiet = false) {
+    this.endRide();
     const w = this.world;
     this.world = null;
     w?.close();
@@ -142,6 +172,7 @@ export class Town {
 
   lost(message) {
     const n = TOWNS.indexOf(this.townKey) + 1;
+    this.endRide();
     this.world = null;
     if (this.live) this.goSolo();
     this.clearRemotes();
@@ -313,7 +344,9 @@ export class Town {
     const tag = nameTag(user?.nickname ?? '친구');
     tag.visible = false;
     scene.add(tag);
-    this.remotes.set(pid, { pid, user, look, ch, tag, car: null, target: null, pos: new THREE.Vector3(), yaw: 0, seen: false, visible: false });
+    const num = peerNum(pid);
+    this.remotes.set(pid, { pid, num, user, look, ch, tag, car: null, target: null, track: new PoseTrack(), lastAt: 0, pos: new THREE.Vector3(), yaw: 0, seen: false, visible: false, host: null, seat: -1 });
+    if (num) this.byNum.set(num, this.remotes.get(pid));
     this.refreshPeople();
     if (this.live && user?.nickname) this.g.hud.toast(TEXT.hello(user.nickname), 1600);
   }
@@ -327,15 +360,20 @@ export class Town {
     scene.remove(r.tag);
     r.tag.material.map?.dispose(); r.tag.material.dispose();
     this.remotes.delete(pid);
+    if (this.byNum.get(r.num) === r) this.byNum.delete(r.num);
+    this.askOrder.delete(r.num);
     this.refreshPeople();
     if (say && this.live && r.user?.nickname) this.g.hud.toast(TEXT.bye(r.user.nickname), 1600);
   }
-  clearRemotes() { for (const pid of [...this.remotes.keys()]) this.removeRemote(pid); this.refreshPeople(); }
+  clearRemotes() { for (const pid of [...this.remotes.keys()]) this.removeRemote(pid); this.seats = [0, 0, 0]; this.askOrder.clear(); this.refreshPeople(); }
 
   remotePose(pid, d) {
     const r = this.remotes.get(pid);
     const p = unpackPose(d);
-    if (r && p) r.target = p;
+    if (!r || !p) return;
+    r.target = p;
+    r.lastAt = performance.now();
+    r.track.push(p, r.lastAt); // poses without a clock (older games) or hidden ones empty the track
   }
 
   privateAt(p) { return isPrivate(this.g.places.inside(p), p, this.homeBox); }
@@ -343,6 +381,7 @@ export class Town {
   updateRemotes(dt) {
     const cam = this.g.engine.camera.position;
     const k = follow(dt, 12);
+    const now = performance.now();
     for (const r of this.remotes.values()) {
       const t = r.target;
       let show = !!t && !t.hidden && !this.blocked.has(r.user?.id);
@@ -351,13 +390,32 @@ export class Town {
         if (this.privateAt(want)) show = false;
         else {
           const before = r.pos.clone();
-          if (!r.seen || r.pos.distanceTo(want) > SNAP_DIST) { r.pos.copy(want); r.yaw = t.yaw; r.seen = true; }
+          // played back a little in the past between two poses (smooth cars); older games: follow the newest
+          const s = r.track.ready ? r.track.sample(now) : null;
+          if (s) { r.pos.set(s.x, s.y, s.z); r.yaw = s.yaw; r.seen = true; }
+          else if (!r.seen || r.pos.distanceTo(want) > SNAP_DIST) { r.pos.copy(want); r.yaw = t.yaw; r.seen = true; }
           else { r.pos.lerp(want, k); r.yaw = lerpAngle(r.yaw, t.yaw, k); }
-          r.speed = dt > 0 ? before.distanceTo(r.pos) / dt : 0;
+          r.speed = s ? s.speed : dt > 0 ? before.distanceTo(r.pos) / dt : 0;
           if (Math.hypot(r.pos.x - cam.x, r.pos.z - cam.z) > DRAW_RANGE) show = false;
         }
       }
       r.visible = show;
+    }
+    // who sits in which car: the driver's seat list decides (my own car's list when I drive)
+    const me = this.myNum, v = this.g.vehicle;
+    const myCar = v?.driving ? { pos: new THREE.Vector3(v.pos.x, v.y, v.pos.z), yaw: v.yaw, seats: this.seats, mine: true } : null;
+    for (const r of this.remotes.values()) {
+      const t = r.target;
+      r.host = null; r.seat = -1;
+      if (!r.visible || t.mode === 'drive' || !t.ride) continue;
+      if (t.ride === me && myCar) { r.seat = seatOf(myCar.seats, r.num); if (r.seat >= 0) r.host = myCar; continue; }
+      const d = this.byNum.get(t.ride);
+      if (!d?.visible || d.target?.mode !== 'drive') continue;
+      r.seat = seatOf(d.target.seats, r.num);
+      if (r.seat >= 0) r.host = { pos: d.pos, yaw: d.yaw, seats: d.target.seats, mine: false };
+    }
+    for (const r of this.remotes.values()) {
+      const t = r.target, show = r.visible;
       const driving = show && t.mode === 'drive';
       if (driving && !r.car && this.g.props.car) {
         try { r.car = this.g.props.car.buildCar({ color: r.look.carColor, style: 'sedan' }); this.g.engine.scene.add(r.car.group); } catch (e) { console.warn('remote car failed', e); r.car = null; }
@@ -367,18 +425,179 @@ export class Town {
         if (driving) { r.car.group.position.copy(r.pos); r.car.group.rotation.set(0, r.yaw, 0); }
       }
       if (r.ch) {
-        r.ch.group.visible = show && !driving;
-        if (show && !driving) {
+        r.ch.group.visible = show;
+        if (driving) seatChar(r.ch, r.pos, r.yaw, DRIVER_POS, t.kid, 'drive', dt);
+        else if (r.host) seatChar(r.ch, r.host.pos, r.host.yaw, SEAT_POS[r.seat], t.kid, 'sit', dt);
+        else if (show) {
           r.ch.group.position.copy(r.pos);
-          r.ch.group.rotation.y = r.yaw;
+          r.ch.group.rotation.set(0, r.yaw, 0);
           r.ch.group.scale.setScalar(t.kid ? 0.72 : 1);
           r.ch.update?.(dt, { speed: r.speed, mode: t.mode === 'run' ? 'run' : t.mode === 'walk' || r.speed > 0.3 ? 'walk' : 'idle' });
         }
       }
       r.tag.visible = show;
-      if (show) r.tag.position.set(r.pos.x, r.pos.y + (driving ? 2.0 : t.kid ? 1.6 : 2.1), r.pos.z);
+      if (!show) continue;
+      if (r.host) {
+        // name tags of the people in a car stack above it (the driver's lowest)
+        const ahead = r.host.seats.slice(0, r.seat).filter((n) => n && n !== me).length;
+        r.tag.position.set(r.host.pos.x, r.host.pos.y + 2.0 + 0.42 * (ahead + (r.host.mine ? 0 : 1)), r.host.pos.z);
+      } else r.tag.position.set(r.pos.x, r.pos.y + (driving ? 2.0 : t.kid ? 1.6 : 2.1), r.pos.z);
     }
   }
+
+  // ------------------------------------------------------------------ riding in a friend's car
+  /** Driver: seat friends who ask (first come, first seated), free the seats of those who stopped. */
+  updateSeats() {
+    const v = this.g.vehicle, me = this.myNum;
+    const open = !!v?.driving && !this.g.flight?.active;
+    const now = performance.now();
+    const riders = [];
+    for (const r of this.remotes.values()) {
+      const t = r.target;
+      const seated = this.seats.includes(r.num);
+      const asking = !!t && me > 0 && (t.hidden ? seated : t.ride === me);
+      if (!asking) { this.askOrder.delete(r.num); continue; }
+      if (!this.askOrder.has(r.num)) this.askOrder.set(r.num, now);
+      riders.push({
+        n: r.num, asking, hidden: !!t.hidden, blocked: this.blocked.has(r.user?.id), at: this.askOrder.get(r.num),
+        near: !t.hidden && !!v && Math.hypot(t.x - v.pos.x, t.z - v.pos.z) < RIDE_NEAR + 2,
+      });
+    }
+    riders.sort((a, b) => a.at - b.at);
+    const res = assignSeats(this.seats, riders, { open, slow: !!v && Math.abs(v.speed) < RIDE_SLOW });
+    if (!res.added.length && !res.removed.length) return;
+    this.seats = res.seats;
+    this.lastPose = null; this.poseT = 0; // tell everyone right away
+    const nick = (n) => this.byNum.get(n)?.user?.nickname ?? '친구';
+    for (const n of res.added) this.g.hud.toast(TEXT.rideGot(nick(n)), 2400);
+    if (open) for (const n of res.removed) this.g.hud.toast(TEXT.rideLeft(nick(n)), 2000);
+    if (open) sfx('carDoor');
+  }
+
+  /** E near a friend's car that takes riders. → {d, label, fn} or null */
+  ridePrompt(pos) {
+    if (!this.live || this.ride || this.g.vehicle?.driving) return null;
+    let best = null, bd = RIDE_NEAR;
+    for (const r of this.remotes.values()) {
+      const t = r.target;
+      if (!r.visible || t?.mode !== 'drive' || !t.seats || this.blocked.has(r.user?.id)) continue;
+      const d = Math.hypot(r.pos.x - pos.x, r.pos.z - pos.z);
+      if (d < bd) { bd = d; best = r; }
+    }
+    if (!best) return null;
+    const r = best, nick = r.user?.nickname ?? '친구';
+    const full = !r.target.seats.includes(0);
+    return {
+      d: bd - 0.6, label: full ? TEXT.rideFull(nick) : TEXT.ridePrompt(nick),
+      fn: () => {
+        if (full) this.g.hud.toast(TEXT.rideFull(nick), 1800);
+        else if (r.speed > RIDE_SLOW) this.g.hud.toast('차가 멈추면 탈 수 있어요', 1600);
+        else this.askRide(r);
+      },
+    };
+  }
+
+  askRide(r) {
+    const now = performance.now();
+    this.ride = { pid: r.pid, n: r.num, nick: r.user?.nickname ?? '친구', seat: -1, askedAt: now, lastAt: now };
+    this.lastPose = null; this.poseT = 0;
+    this.g.hud.toast(TEXT.rideAsk(this.ride.nick), 1600);
+  }
+
+  /** E while riding. */
+  rideAction() {
+    const d = this.remotes.get(this.ride?.pid);
+    if (d && d.speed > RIDE_SLOW) return { label: TEXT.rideStop, fn: () => this.g.hud.toast(TEXT.rideStop, 1400) };
+    return { label: '차에서 내리기', fn: () => this.getOut(TEXT.rideBye) };
+  }
+
+  /** Passenger, every frame: wait for a seat, sit, follow the car, get out when put out. */
+  updateRide(dt) {
+    const ride = this.ride;
+    if (!ride) return;
+    const d = this.remotes.get(ride.pid);
+    if (d) ride.lastAt = Math.max(ride.askedAt, d.lastAt);
+    const gone = !d || this.blocked.has(d.user?.id);
+    const step = rideStep(ride, d?.target ?? null, this.myNum, performance.now(), gone);
+    const hud = this.g.hud;
+    if (step.what === 'full' || step.what === 'closed') {
+      hud.toast(step.what === 'full' ? TEXT.rideFull(ride.nick) : TEXT.rideClosed(ride.nick), 2200);
+      this.ride = null; this.lastPose = null; this.poseT = 0;
+      return;
+    }
+    if (step.what === 'out') {
+      this.getOut(!gone && d?.target && d.target.mode !== 'drive' ? TEXT.rideOut(ride.nick) : TEXT.rideBye);
+      return;
+    }
+    if (step.what === 'wait') return;
+    const { player } = this.g;
+    if (step.what === 'seated') {
+      this.rideLook.yaw = this.rideLook.pitch = 0;
+      this.rideCam.set(0, 0, 0);
+      player.speed = 0; player.vel.set(0, 0, 0);
+      if (player.arm) player.arm.group.visible = false;
+      sfx('carDoor');
+      hud.toast(TEXT.rideIn(ride.nick), 3000);
+      this.lastPose = null; this.poseT = 0;
+    }
+    ride.seat = step.seat;
+    // look around with the mouse (the friend drives)
+    const inp = this.g.input, L = this.rideLook;
+    L.yaw = THREE.MathUtils.clamp(L.yaw - (inp.mouse.dx + inp.touchLook.dx) * 0.0022, -2.6, 2.6);
+    L.pitch = THREE.MathUtils.clamp(L.pitch - (inp.mouse.dy + inp.touchLook.dy) * 0.0022, -0.7, 0.6);
+    // I am where my seat is (quests, minimap, the sky and my pose follow)
+    const sw = seatWorld(d.pos, d.yaw, SEAT_POS[ride.seat]);
+    player.pos.set(sw.x, d.pos.y + 0.3, sw.z);
+    player.yaw = d.yaw + L.yaw; player.pitch = L.pitch;
+    if (player.avatar) {
+      player.avatar.group.visible = player.view === 'third';
+      if (player.view === 'third') seatChar(player.avatar, d.pos, d.yaw, SEAT_POS[ride.seat], this.g.state.mode === 'kid', 'sit', dt);
+    }
+    if (player.arm) player.arm.group.visible = false;
+  }
+
+  /** Camera in my seat (first person) or behind the friend's car (V). */
+  updateRideCamera(dt, view) {
+    const d = this.remotes.get(this.ride?.pid);
+    if (!d || !this.riding) return;
+    const cam = this.g.engine.camera, L = this.rideLook;
+    const yaw = d.yaw + L.yaw;
+    const dir = new THREE.Vector3(-Math.sin(yaw) * Math.cos(L.pitch), Math.sin(L.pitch), -Math.cos(yaw) * Math.cos(L.pitch));
+    if (view !== 'third') {
+      const s = SEAT_POS[this.ride.seat], kid = this.g.state.mode === 'kid';
+      const eye = seatWorld(d.pos, d.yaw, [s[0], s[1] + (kid ? 0.5 : 0.64), s[2] - 0.08]);
+      cam.position.copy(eye);
+      cam.lookAt(eye.clone().add(dir));
+      return;
+    }
+    const back = 7.2;
+    const want = new THREE.Vector3(d.pos.x + Math.sin(yaw) * back, d.pos.y + 2.7 - L.pitch * 4, d.pos.z + Math.cos(yaw) * back);
+    const g = groundAt(want.x, want.z) + 0.6;
+    if (want.y < g) want.y = g;
+    if (this.rideCam.lengthSq() === 0 || this.rideCam.distanceTo(want) > 30) this.rideCam.copy(want);
+    this.rideCam.lerp(want, Math.min(1, dt * 6));
+    cam.position.copy(this.rideCam);
+    cam.lookAt(d.pos.x, d.pos.y + 1.1, d.pos.z);
+  }
+
+  /** Out of the friend's car, next to my seat's door (or anywhere free around it). */
+  getOut(text) {
+    const ride = this.ride;
+    if (!ride) return;
+    this.ride = null; this.lastPose = null; this.poseT = 0;
+    if (ride.seat < 0) return;
+    const { player, colliders, vehicle } = this.g;
+    const d = this.remotes.get(ride.pid);
+    const pos = d?.seen ? d.pos : player.pos, yaw = d?.seen ? d.yaw : player.yaw;
+    const p = exitSpot(colliders, groundAt, pos, pos.y, yaw, vehicle?.half ?? { w: 0.99, l: 2.31 }, ride.seat === 1 ? 1 : -1);
+    player.place(p.x, Math.max(p.y, groundAt(p.x, p.z)) + 0.05, p.z, yaw);
+    if (player.avatar) player.avatar.group.visible = player.view === 'third';
+    if (player.arm) player.arm.group.visible = player.view === 'first';
+    sfx('carDoor');
+    if (text) this.g.hud.toast(text, 2600);
+  }
+  /** Leaving the town or losing it: out of the car quietly. */
+  endRide() { this.getOut(null); }
 
   /** Other players for the minimap. */
   dots() {
@@ -396,11 +615,13 @@ export class Town {
     const kid = state.mode === 'kid';
     let d;
     if (flight?.active || this.privateAt(at)) d = HIDDEN.slice();
-    else if (driving) d = packPose({ mode: 'drive', x: vehicle.pos.x, y: vehicle.y ?? vehicle.pos.y, z: vehicle.pos.z, yaw: vehicle.yaw, kid });
-    else d = packPose({ mode: player.speed > 5 ? 'run' : player.speed > 0.3 ? 'walk' : 'idle', x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw, kid });
+    else if (driving) d = packPose({ mode: 'drive', x: vehicle.pos.x, y: vehicle.y ?? vehicle.pos.y, z: vehicle.pos.z, yaw: vehicle.yaw, kid, t: 0, seats: this.seats });
+    else d = packPose({ mode: this.riding ? 'idle' : player.speed > 5 ? 'run' : player.speed > 0.3 ? 'walk' : 'idle', x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw, kid, t: 0, ride: this.ride?.n });
     this.poseIdle += POSE_EVERY;
     if (samePose(d, this.lastPose) && this.poseIdle < 1) return;
-    if (this.world?.pose(d)) { this.lastPose = d; this.poseIdle = 0; }
+    const out = d.slice();
+    if (out.length > 6) out[6] = Math.round(performance.now() / 10) % 1000000 || 1; // my clock, for smooth playback
+    if (this.world?.pose(out)) { this.lastPose = d; this.poseIdle = 0; }
   }
 
   /** Every frame. */
@@ -408,6 +629,8 @@ export class Town {
     if (!this.world) return;
     this.updateRemotes(dt);
     if (!this.live) return;
+    this.updateSeats();
+    this.updateRide(dt);
     this.sendPose(dt);
     const inp = this.g.input;
     if (inp.hit('KeyT') || inp.hit('Enter') || inp.hit('NumpadEnter')) this.openChat();
