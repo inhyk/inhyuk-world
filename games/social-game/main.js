@@ -304,11 +304,12 @@ async function boot() {
     if (input.hit('KeyG') && !day.seat) album.open();
     if (input.hit('KeyP') && !day.seat) day.photo();
     const driving = vehicle?.driving;
+    const riding = town.riding; // 같이 사는 동네: sitting in a friend's car (인혁: "차를 같이 탈 수 있게 해줘")
     flight.update(dt, input);
     driveTest.update(dt);
     lifts.update(dt);
     // movement
-    if (!driving) player.update(dt);
+    if (!driving && !riding) player.update(dt);
     if (vehicle) {
       vehicle.lights = sky.daylight < 0.4;
       vehicle.update(dt, driving ? input : null);
@@ -324,7 +325,8 @@ async function boot() {
     // E: car, doors, things
     let prompt = '', action = null;
     if (!day.seat && !day.busy && !flight.active) {
-      if (driving) {
+      if (riding) { const a = town.rideAction(); prompt = a.label; action = a.fn; }
+      else if (driving) {
         if (Math.abs(vehicle.speed) < 2) { prompt = '차에서 내리기'; action = () => { vehicle.driving = false; const p = vehicle.exitPoint(); player.place(p.x, Math.max(p.y, groundAt(p.x, p.z)) + 0.05, p.z, vehicle.yaw); if (player.avatar) player.avatar.group.visible = player.view === 'third'; if (player.arm) player.arm.group.visible = player.view === 'first'; sfx('carDoor'); }; }
       } else {
         const cand = [];
@@ -339,6 +341,8 @@ async function boot() {
           if (to.dot(fwd) < 0.35 && d > 0.9) continue;
           cand.push({ d: d - to.dot(fwd), label: it.label, fn: () => day.use(it) });
         }
+        const rp = town.ridePrompt(player.pos);
+        if (rp) cand.push(rp);
         const lp = lifts.prompt(player.pos);
         if (lp) cand.push({ d: 0.5, label: lp.label, fn: lp.fn });
         const door = places.doorNear(player.pos);
@@ -350,7 +354,7 @@ async function boot() {
     hud.prompt(prompt);
     if (action && input.hit('KeyE')) action();
     // blocks (on foot, not in menus)
-    build.enabled = !driving && !day.seat && !day.busy && !day.g.jobs?.tool && input.locked;
+    build.enabled = !driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && input.locked;
     if (blocks.length) build.update(dt, input, player.pos);
     if (player.arm) player.arm.update?.(dt, { swing: build.swing ?? 0, walk: Math.min(1, player.speed / 5) });
     build.swing = Math.max(0, (build.swing ?? 0) - dt * 3);
@@ -418,6 +422,7 @@ async function boot() {
   engine.onUpdate((dt) => {
     if (flight.active) { /* flight.update placed the camera */ }
     else if (vehicle?.driving) vehicle.updateCamera(dt, player.view, look);
+    else if (town.riding) town.updateRideCamera(dt, player.view);
     else if (!day.seat) player.updateCamera(dt);
     input.endFrame();
   }, true);

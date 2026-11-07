@@ -186,15 +186,21 @@ export class Vehicle {
   }
 
   /** Where the driver gets out (left side). */
-  exitPoint() {
-    const s = Math.sin(this.yaw), c = Math.cos(this.yaw);
-    const side = (d, along = 0) => new THREE.Vector3(this.pos.x - c * d - s * along, this.y, this.pos.z + s * d - c * along);
-    // driver's side first, then the other side, then behind and in front; the first free spot wins
-    const tries = [side(this.half.w + 0.8), side(this.half.w + 1.3), side(-(this.half.w + 0.8)), side(-(this.half.w + 1.3)), side(0, this.half.l + 1.0), side(0, -(this.half.l + 1.0)), side(this.half.w + 2.2)];
-    for (const p of tries) {
-      const y = Math.max(p.y, this.groundAt(p.x, p.z));
-      if (bodyFree(this.col, p.x, y + 0.05, p.z)) { p.y = y; return p; }
-    }
-    return tries[0];
+  exitPoint() { return exitSpot(this.col, this.groundAt, this.pos, this.y, this.yaw, this.half, 1); }
+}
+
+/**
+ * A free spot next to a car to get out. side 1 = the driver's (left) side first, -1 = the right side first;
+ * then the other side, then behind and in front.
+ */
+export function exitSpot(col, groundAt, pos, y0, yaw, half, side = 1) {
+  const s = Math.sin(yaw), c = Math.cos(yaw);
+  const at = (d, along = 0) => new THREE.Vector3(pos.x - c * d - s * along, y0, pos.z + s * d - c * along);
+  const w = half.w, l = half.l;
+  const tries = [at(side * (w + 0.8)), at(side * (w + 1.3)), at(-side * (w + 0.8)), at(-side * (w + 1.3)), at(0, l + 1.0), at(0, -(l + 1.0)), at(side * (w + 2.2))];
+  for (const p of tries) {
+    const y = Math.max(p.y, groundAt(p.x, p.z));
+    if (bodyFree(col, p.x, y + 0.05, p.z)) { p.y = y; return p; }
   }
+  return tries[0];
 }

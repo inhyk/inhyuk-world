@@ -4,6 +4,7 @@ import {
   GAME, TOWNS, townId, townName, KEY_RE, blockKey, parseBlockKey, buildKeyOf, blockValue, parseBlockValue,
   propKey, parsePropKey, scatterKey, cellAlive, packPose, unpackPose, samePose, HIDDEN, lerpAngle, follow,
   isPrivate, PRIVATE_SITES, lookFor, SoloBlocks, placeErrorText, TEXT,
+  peerNum, assignSeats, seatOf, rideStep, PoseTrack, SEATS, SEAT_POS, RIDE_WAIT, RIDE_STALE,
 } from './online.mjs';
 
 test('town ids are valid world names', () => {
@@ -74,7 +75,7 @@ test('poses pack to small number arrays and back', () => {
   assert.ok(d.every((n) => typeof n === 'number'), 'numbers only (strings get filtered)');
   assert.ok(JSON.stringify(d).length < 512);
   const p = unpackPose(d);
-  assert.deepEqual(p, { mode: 'walk', x: 10.12, y: 0.26, z: -33.99, yaw: 1.235, kid: true, hidden: false });
+  assert.deepEqual(p, { mode: 'walk', x: 10.12, y: 0.26, z: -33.99, yaw: 1.235, kid: true, hidden: false, t: null, seats: null, ride: 0 });
   const drive = unpackPose(packPose({ mode: 'drive', x: 1, y: 2, z: 3, yaw: 7 }));
   assert.equal(drive.mode, 'drive');
   assert.ok(Math.abs(drive.yaw - (7 - Math.PI * 2)) < 0.001, 'yaw wraps to -PI..PI');
@@ -98,6 +99,139 @@ test('samePose', () => {
   assert.equal(samePose([1, 2, 3], [1, 2, 3]), true);
   assert.equal(samePose([1, 2, 3], [1, 2, 4]), false);
   assert.equal(samePose(null, [1]), false);
+  // the clock (slot 6) does not count, the seat list does
+  assert.equal(samePose([3, 1, 2, 3, 0, 0, 100, [5, 0, 0]], [3, 1, 2, 3, 0, 0, 200, [5, 0, 0]]), true);
+  assert.equal(samePose([3, 1, 2, 3, 0, 0, 100, [5, 0, 0]], [3, 1, 2, 3, 0, 0, 100, [5, 6, 0]]), false);
+});
+
+test('ride slots: the clock and the seat list or the car I ride in, still readable by older games', () => {
+  const drive = packPose({ mode: 'drive', x: 1, y: 0.3, z: 2, yaw: 0.5, t: 123456, seats: [7, 0, 12] });
+  assert.deepEqual(drive, [3, 1, 0.3, 2, 0.5, 0, 123456, [7, 0, 12]]);
+  assert.ok(drive.length <= 8, 'older games refuse poses longer than 8');
+  assert.ok(drive.flat().every((n) => typeof n === 'number'), 'numbers only (strings are filtered and checked for phone numbers)');
+  const u = unpackPose(drive);
+  assert.deepEqual([u.mode, u.t, u.seats, u.ride], ['drive', 123456, [7, 0, 12], 0]);
+  const rider = unpackPose(packPose({ mode: 'idle', x: 1, y: 0, z: 2, t: 5, ride: 7 }));
+  assert.deepEqual([rider.mode, rider.t, rider.seats, rider.ride], ['idle', 5, null, 7]);
+  // a walker who rides nothing keeps 6 or 7 numbers
+  assert.deepEqual(packPose({ mode: 'walk', x: 1 }), [1, 1, 0, 0, 0, 0]);
+  assert.deepEqual(packPose({ mode: 'walk', x: 1, t: 0 }), [1, 1, 0, 0, 0, 0, 0]);
+  assert.equal(unpackPose([1, 1, 0, 0, 0, 0, 0]).t, null, 'clock 0 means none');
+  // bad seat lists and riders are dropped, not trusted
+  assert.equal(unpackPose([3, 1, 0, 2, 0, 0, 9, [1, 2]]).seats, null);
+  assert.equal(unpackPose([3, 1, 0, 2, 0, 0, 9, [1, 'x', 0]]).seats, null);
+  assert.equal(unpackPose([3, 1, 0, 2, 0, 0, 9, 7]).ride, 0, 'a driver rides nothing');
+  assert.equal(unpackPose([0, 1, 0, 2, 0, 0, 9, [1, 0, 0]]).seats, null, 'only a driver has seats');
+  assert.equal(unpackPose([0, 1, 0, 2, 0, 0, 9, -3]).ride, 0);
+  assert.equal(unpackPose([0, 1, 0, 2, 0, 0, 9, 1.5]).ride, 0);
+  assert.deepEqual(packPose({ mode: 'drive', seats: [0, -1, 2.5] }).at(-1), [0, 0, 0]);
+  assert.deepEqual(packPose({ mode: 'hidden', seats: [1, 2, 3], ride: 4 }), [4], 'hidden carries nothing');
+});
+
+test('peer numbers come from the server ids', () => {
+  assert.equal(peerNum('p12'), 12);
+  assert.equal(peerNum('p1'), 1);
+  for (const id of ['', 'x12', 'p', 'p1x', null, 12, 'p1234567890']) assert.equal(peerNum(id), 0, String(id));
+});
+
+test('the driver seats askers: front first, first come first seated, at most 3', () => {
+  assert.equal(SEATS, 3);
+  assert.equal(SEAT_POS.length, 3);
+  const ask = (n, extra = {}) => ({ n, asking: true, near: true, blocked: false, hidden: false, ...extra });
+  let r = assignSeats([0, 0, 0], [ask(5)]);
+  assert.deepEqual(r, { seats: [5, 0, 0], added: [5], removed: [] });
+  r = assignSeats(r.seats, [ask(5), ask(9), ask(3), ask(4)]);
+  assert.deepEqual(r.seats, [5, 9, 3], 'the fourth waits: no seat');
+  assert.deepEqual(r.added, [9, 3]);
+  // someone stops asking (got out): only their seat frees, nobody moves
+  r = assignSeats(r.seats, [ask(5), ask(3), ask(4)]);
+  assert.deepEqual(r.seats, [5, 4, 3]);
+  assert.deepEqual([r.added, r.removed], [[4], [9]]);
+  // far away or a moving car: no new rider, the seated stay
+  r = assignSeats([5, 0, 0], [ask(5), ask(8, { near: false })]);
+  assert.deepEqual(r.seats, [5, 0, 0]);
+  r = assignSeats([5, 0, 0], [ask(5), ask(8)], { slow: false });
+  assert.deepEqual(r.seats, [5, 0, 0]);
+});
+
+test('blocked, hidden and gone riders; the driver getting out empties the car', () => {
+  const ask = (n, extra = {}) => ({ n, asking: true, near: true, blocked: false, hidden: false, ...extra });
+  assert.deepEqual(assignSeats([0, 0, 0], [ask(5, { blocked: true })]).seats, [0, 0, 0], 'a blocked friend cannot get in');
+  assert.deepEqual(assignSeats([5, 7, 0], [ask(5, { blocked: true }), ask(7)]), { seats: [0, 7, 0], added: [], removed: [5] }, 'blocking puts them out');
+  assert.deepEqual(assignSeats([5, 0, 0], [ask(5, { hidden: true })]).seats, [5, 0, 0], 'a hidden rider keeps the seat');
+  assert.deepEqual(assignSeats([0, 0, 0], [ask(5, { hidden: true })]).seats, [0, 0, 0], 'but never gets a new one');
+  assert.deepEqual(assignSeats([5, 7, 0], [ask(7)]).seats, [0, 7, 0], 'left the town: seat freed');
+  assert.deepEqual(assignSeats([5, 7, 2], [ask(5), ask(7), ask(2)], { open: false }), { seats: [0, 0, 0], added: [], removed: [5, 7, 2] });
+  assert.deepEqual(assignSeats(null, [ask(5)]).seats, [5, 0, 0]);
+  assert.equal(seatOf([5, 7, 0], 7), 1);
+  assert.equal(seatOf([5, 7, 0], 0), -1, 'an empty seat is nobody');
+  assert.equal(seatOf(null, 7), -1);
+});
+
+test('the passenger sits only once the driver lists it, and is put out when the list says so', () => {
+  const me = 7, t0 = 1000;
+  const ride = { seat: -1, askedAt: t0, lastAt: t0 };
+  const car = (seats) => ({ mode: 'drive', hidden: false, seats });
+  assert.equal(rideStep(ride, car([0, 0, 0]), me, t0 + 200).what, 'wait');
+  assert.deepEqual(rideStep(ride, car([3, me, 0]), me, t0 + 300), { what: 'seated', seat: 1 });
+  ride.seat = 1;
+  assert.deepEqual(rideStep(ride, car([3, me, 0]), me, t0 + 400), { what: 'ride', seat: 1 });
+  assert.equal(rideStep(ride, car([3, 0, 0]), me, t0 + 500).what, 'out', 'dropped from the list (blocked, toggle...)');
+  assert.equal(rideStep(ride, { mode: 'walk', hidden: false, seats: null }, me, t0 + 500).what, 'out', 'the driver got out');
+  assert.equal(rideStep(ride, { mode: 'hidden', hidden: true }, me, t0 + 500).what, 'out', 'the driver went somewhere private');
+  assert.equal(rideStep(ride, car([3, me, 0]), me, t0 + 500, true).what, 'out', 'the driver left or I blocked them');
+  assert.equal(rideStep(ride, car([3, me, 0]), me, t0 + RIDE_STALE + 1).what, 'out', 'no news from the driver (they blocked me)');
+  // asking that does not work out
+  const ask = { seat: -1, askedAt: t0, lastAt: t0 };
+  assert.equal(rideStep(ask, car([1, 2, 3]), me, t0 + RIDE_WAIT + 1).what, 'full');
+  assert.equal(rideStep(ask, { mode: 'drive', hidden: false, seats: null }, me, t0 + 10).what, 'closed', 'an older game takes no riders');
+  assert.equal(rideStep(ask, { mode: 'idle', hidden: false, seats: null }, me, t0 + RIDE_WAIT + 1).what, 'closed');
+  assert.equal(rideStep(ask, car([0, 0, 0]), 0, t0 + 10).what, 'wait', 'no peer number yet');
+});
+
+test('a car is played back smoothly between poses, on the sender clock', () => {
+  const tr = new PoseTrack(100);
+  assert.equal(tr.sample(0), null);
+  // 10 m/s along x, poses every 100 ms, arriving late and unevenly (40-90 ms)
+  const late = [40, 90, 50, 80, 45, 60];
+  for (let i = 0; i < 6; i++) tr.push({ x: i, y: 0, z: 0, yaw: 0, t: 1000 + i * 10 }, 5000 + i * 100 + late[i]);
+  const xs = [];
+  for (let now = 5300; now <= 5600; now += 50) xs.push(tr.sample(now).x);
+  const steps = xs.slice(1).map((x, i) => x - xs[i]);
+  for (const s of steps) assert.ok(Math.abs(s - 0.5) < 1e-6, `even steps ${steps}`);
+  assert.ok(Math.abs(tr.sample(5400).speed - 10) < 1e-6);
+  // past the newest pose it waits there
+  const end = tr.sample(99999);
+  assert.ok(Math.abs(end.x - 5) < 1e-6, `held at ${end.x}`);
+  assert.equal(end.speed, 0);
+  // doubled or late poses are ignored; a teleport or a new page starts again
+  tr.push({ x: 4, y: 0, z: 0, yaw: 0, t: 1040 }, 6000);
+  assert.equal(tr.list.length, 6);
+  tr.push({ x: 500, y: 0, z: 0, yaw: 0, t: 1060 }, 6100);
+  assert.equal(tr.list.length, 1, 'teleport');
+  tr.push({ x: 500, y: 0, z: 0, yaw: 0, t: 3 }, 6200);
+  assert.equal(tr.list.length, 1, 'their clock went back: start again');
+  tr.push({ mode: 'hidden', hidden: true }, 6300);
+  assert.equal(tr.ready, false);
+});
+
+test('a driver whose game paused: no jump back or forward on screen, it glides back onto the path', () => {
+  const tr = new PoseTrack(100);
+  let now = 10000, sent = 0, x = 0;
+  const shown = [];
+  const send = () => tr.push({ x, y: 0, z: 0, yaw: 0, t: 1000 + sent / 10 }, now + 40);
+  for (let f = 0; f < 400; f++) {
+    // the sender moves 20 m/s and sends every 100 ms, but stops for 0.6 s (a hitch) after 2 s
+    if (f % 6 === 0 && !(f >= 120 && f < 156)) { send(); }
+    now += 1000 / 60; sent += 1000 / 60;
+    if (!(f >= 120 && f < 156)) x += 20 / 60; else x += 2 / 60; // paused game: its car barely moves
+    const s = tr.sample(now);
+    if (s) shown.push(s.x);
+  }
+  let back = 0, maxStep = 0;
+  for (let i = 1; i < shown.length; i++) { const d = shown[i] - shown[i - 1]; if (d < -0.02) back++; maxStep = Math.max(maxStep, Math.abs(d)); }
+  assert.equal(back, 0, 'never backwards');
+  assert.ok(maxStep < 0.8, `no big jumps (${maxStep.toFixed(2)} m in a frame at 20 m/s ≈ 0.33)`);
 });
 
 test('angles blend the short way and smoothing does not depend on frame rate', () => {
