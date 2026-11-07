@@ -88,7 +88,7 @@ export class Day {
   waitText(st, short = false) {
     const s = this.s, at = formatClock(stepStart(st, s)), m = minutesLeft(st, s);
     const left = m >= 60 ? `${Math.floor(m / 60)}시간${m % 60 ? ` ${m % 60}분` : ''}` : `${m}분`;
-    const real = Math.max(1, Math.ceil((m * SEC_PER_MIN) / this.timeScale)); // real seconds (1 game minute = 0.5 s)
+    const real = Math.max(1, Math.ceil((m * SEC_PER_MIN) / this.timeScale)); // real seconds (1 game minute = SEC_PER_MIN s)
     if (st.rest) return `⏳ ${st.job ? '대기 중' : '쉬는 중'} · ${at}까지 ${left} (진짜 ${real}초)`;
     return short ? `⏳ 아직이에요! ${at}에 해요 (${left} 남았어요)` : `⏳ ${at}에 해요 · ${left} 남았어요 (진짜 ${real}초). 그동안 자유롭게 놀아요`;
   }
@@ -109,7 +109,7 @@ export class Day {
   // ------------------------------------------------------------------ main loop
   update(dt) {
     const s = this.s, P = this.g.places, pl = this.g.player;
-    // time just flows: 0.5 real seconds per game minute (인혁: "1분을 0.5초로 해줘"), paused while busy
+    // time just flows: SEC_PER_MIN (2) real seconds per game minute (인혁: "1분을 2초로 바꿔"), paused while busy
     if (!this.busy) tickClock(s, dt, this.timeScale);
     this.snackCd -= dt;
     // location steps

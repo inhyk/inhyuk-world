@@ -79,7 +79,7 @@ assert.equal(wish.coins, 1, 'the coin lies in the basin');
 
 // 3. Friday evening: the crowd gathers, the show starts at 19:00
 await G(() => { const g = window.__game; g.state.day = 5; g.state.plan = null; g.state.hour = 18.8; g.sky.setHour(18.8, true); g.player.place(22, 0.2, 21.5, 0); g.player.pitch = -0.05; });
-await page.waitForTimeout(2000); // the clock runs 0.5 s per game minute: about 18:52 now
+await page.waitForTimeout(2000); // the clock runs 2 s per game minute: about 18:49 now
 const gather = await G(() => { const S = window.__game.day.g.show; return { present: S.present, playing: S.playing, crowd: S.crowd.filter((c) => c.state !== 'away').length }; });
 console.log('18:51', JSON.stringify(gather));
 assert.ok(gather.present && !gather.playing && gather.crowd > 10, 'the crowd comes before the show');
