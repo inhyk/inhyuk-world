@@ -132,14 +132,14 @@ test('child story: school, 태권도 → 피아노 → 1시간 쉬기 → 영어
 });
 
 // ------------------------------------------------------------------ clock and waiting (인혁 plan: "1분을 0.5초로", "기다리고 다음 일을 하게")
-test('the clock: 0.5 real seconds per game minute, and it stops at midnight until you sleep', () => {
+test('the clock: 2 real seconds per game minute, and it stops at midnight until you sleep', () => {
   const s = newState();
   s.hour = 7;
-  tickClock(s, 0.5);
-  assert.ok(Math.abs(s.hour - (7 + 1 / 60)) < 1e-9, 'half a second is one minute');
-  tickClock(s, 30);
-  assert.ok(Math.abs(s.hour - (8 + 1 / 60)) < 1e-9, '30 seconds is one hour');
-  tickClock(s, 3, 60); // test speed-up
+  tickClock(s, 2);
+  assert.ok(Math.abs(s.hour - (7 + 1 / 60)) < 1e-9, 'two seconds is one minute');
+  tickClock(s, 120);
+  assert.ok(Math.abs(s.hour - (8 + 1 / 60)) < 1e-9, '120 seconds is one hour');
+  tickClock(s, 12, 60); // test speed-up
   assert.ok(Math.abs(s.hour - (14 + 1 / 60)) < 1e-9);
   tickClock(s, 10000);
   assert.equal(s.hour, LAST_HOUR);

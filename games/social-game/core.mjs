@@ -185,8 +185,8 @@ export function stepStart(st, s) {
 export const stepReady = (st, s) => { const t = stepStart(st, s); return t == null || s.hour >= t - 1e-6; };
 /** Game minutes until step st may start (0 when it can). */
 export function minutesLeft(st, s) { const t = stepStart(st, s); return t == null ? 0 : Math.max(0, Math.ceil((t - s.hour) * 60 - 1e-6)); }
-/** Clock speed: real seconds per game minute (인혁: "1분을 0.5초로 해줘"). */
-export const SEC_PER_MIN = 0.5;
+/** Clock speed: real seconds per game minute (인혁: "1분을 2초로 바꿔", before that 0.5 s). */
+export const SEC_PER_MIN = 2;
 /** Advance the clock by dt real seconds (never past LAST_HOUR). */
 export function tickClock(s, dt, scale = 1) { s.hour = Math.min(LAST_HOUR, s.hour + (dt * scale) / (SEC_PER_MIN * 60)); return s; }
 
