@@ -30,16 +30,18 @@ export class Tycoon {
     const [x, , z] = b.world(23.5, 0, 0);
     game.world.def.spawn = { x, y: 0.2, z, yaw: Math.atan2(-b.F[0], -b.F[1]) };
     void s;
-    // 나가 있던 동안 쌓인 돈 (0.5배)
+    // 나가 있던 동안 쌓인 돈 (0.001%). 1달러가 안 되는 돈은 bank 에 모아 둔다.
     const now = Date.now();
     if (this.save.away > 0) {
-      const gain = tycoonAwayEarnings(this.save.items, now - this.save.away);
+      const raw = tycoonAwayEarnings(this.save.items, now - this.save.away) + (this.save.bank || 0);
+      const gain = Math.floor(raw);
+      this.save.bank = Math.min(0.999999, raw - gain);
       if (gain > 0) {
         this.save.pending += gain;
         setTimeout(() => game.ui.big(`자리 비운 동안 💵 ${money(gain)} 쌓였어!`, 3200, 'gold'), 1700);
-        setTimeout(() => game.ui.toast('초록 발판을 밟으면 받을 수 있어 (나가 있을 때는 0.5배로 쌓여)', 4200), 1900);
-        game.persist();
+        setTimeout(() => game.ui.toast('초록 발판을 밟으면 받을 수 있어 (나가 있을 때는 0.001%로 쌓여)', 4200), 1900);
       }
+      game.persist();
     }
     this.save.away = now;
     this.refreshPads();
@@ -118,7 +120,9 @@ export class Tycoon {
   updateInfo() {
     const done = this.save.items.length;
     const rate = tycoonIncome(this.save.items);
-    this.game.ui.setInfo(`<b>💵 ${money(this.save.cash)}</b><small>초당 ${money(rate)} · 나가 있으면 ${money(rate * TYCOON_AWAY_RATE)} · 지은 것 ${done}/${TYCOON.length}</small>`);
+    const hour = rate * TYCOON_AWAY_RATE * 3600;
+    const away = hour >= 100 ? money(hour) : `$${hour.toFixed(2)}`;
+    this.game.ui.setInfo(`<b>💵 ${money(this.save.cash)}</b><small>초당 ${money(rate)} · 나가 있으면 1시간에 ${away} · 지은 것 ${done}/${TYCOON.length}</small>`);
   }
 
   buy(it) {

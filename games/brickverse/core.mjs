@@ -328,13 +328,14 @@ export function tycoonIncome(owned) {
   return rate * mult;
 }
 
-// 타이쿤 밖에 있거나 게임을 꺼 둔 동안에도 돈이 쌓인다 (원래의 0.5배).
+// 타이쿤 밖에 있거나 게임을 꺼 둔 동안에도 돈이 쌓인다: 원래 버는 돈의 0.001% (인혁이가 정함, 2026-11-07).
+// 1달러가 안 되는 돈은 버리지 않고 save.tycoon.bank 에 모아 둔다 (그래서 소수점 그대로 돌려준다).
 // 기기 시계가 이상해도 너무 커지지 않게 7일까지만 센다.
-export const TYCOON_AWAY_RATE = 0.5;
+export const TYCOON_AWAY_RATE = 0.001 / 100;
 export const TYCOON_AWAY_MAX_SEC = 7 * 24 * 3600;
 export function tycoonAwayEarnings(owned, ms) {
   const sec = Math.min(Math.max(0, Number.isFinite(ms) ? ms / 1000 : 0), TYCOON_AWAY_MAX_SEC);
-  return Math.floor(tycoonIncome(owned) * TYCOON_AWAY_RATE * sec);
+  return tycoonIncome(owned) * TYCOON_AWAY_RATE * sec;
 }
 
 export function tycoonAvailable(owned) {
@@ -352,7 +353,7 @@ export function defaultSave(rand = Math.random) {
     name: randomName(rand),
     owned: { hat: [0, 1, 2], face: [0, 1, 2], emblem: [0, 1, 2] },
     obby: { cp: 0, top: 0, best: 0, clears: 0, paid: 0 },
-    tycoon: { cash: 0, pending: 0, items: [], done: false, away: 0 },
+    tycoon: { cash: 0, pending: 0, items: [], done: false, away: 0, bank: 0 },
     survival: { best: 0, wins: 0 },
     sound: true,
     music: true,
@@ -397,7 +398,7 @@ export function cleanSave(raw, rand = Math.random) {
   // 순서가 꼬인 저장(먼저 사야 하는 게 없음)은 그 물건을 뺀다
   const ok = [];
   for (const it of TYCOON) if (items.includes(it.id) && (!it.need || ok.includes(it.need))) ok.push(it.id);
-  s.tycoon = { cash: Math.floor(num(t.cash, 0, 1e12, 0)), pending: Math.floor(num(t.pending, 0, 1e12, 0)), items: ok, done: !!t.done && ok.includes('statue'), away: Math.floor(num(t.away, 0, 1e14, 0)) };
+  s.tycoon = { cash: Math.floor(num(t.cash, 0, 1e12, 0)), pending: Math.floor(num(t.pending, 0, 1e12, 0)), items: ok, done: !!t.done && ok.includes('statue'), away: Math.floor(num(t.away, 0, 1e14, 0)), bank: num(t.bank, 0, 1, 0) };
   s.survival = { best: Math.floor(num(raw.survival?.best, 0, 3600, 0)), wins: Math.floor(num(raw.survival?.wins, 0, 99_999, 0)) };
   s.sound = raw.sound !== false;
   s.music = raw.music !== false;
