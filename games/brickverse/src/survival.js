@@ -3,7 +3,7 @@
 import { THREE } from './render.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { Avatar } from './avatar.js';
-import { SURVIVAL, tileIndex, makeBox, newPlayer, stepPlayer, seeded, displayName, ADJECTIVES, ANIMALS, SKINS, COLORS, P, PHRASES } from '../core.mjs';
+import { SURVIVAL, tileIndex, tileAt, makeBox, newPlayer, stepPlayer, seeded, displayName, ADJECTIVES, ANIMALS, SKINS, COLORS, P, PHRASES } from '../core.mjs';
 import { LAYER_COLORS } from '../worlds.mjs';
 
 const { N, TILE, LAYERS, LAVA, LOBBY, FALL_AFTER, ROUND_WAIT } = SURVIVAL;
@@ -94,41 +94,84 @@ export class Survival {
       const name = `🤖 ${displayName([Math.floor(rnd() * ADJECTIVES.length), Math.floor(rnd() * ANIMALS.length)])}`;
       const avatar = new Avatar(look, name);
       this.game.world.group.add(avatar.root);
-      const skill = 0.45 + rnd() * 0.5;
-      this.bots.push({ avatar, pl: newPlayer(0, LOBBY, 0), alive: false, yaw: rnd() * 6, think: 0, dir: { x: 0, z: 0 }, skill, jump: false, name, wanderT: rnd() * 5, rnd: seeded(seed + k * 101) });
+      const skill = 0.8 + rnd() * 0.2; // 0.8~1.0: 잘하는 봇 (2026-11-07 인혁: "컴퓨터가 너무 못해")
+      this.bots.push({ avatar, pl: newPlayer(0, LOBBY, 0), alive: false, yaw: rnd() * 6, think: 0, dir: { x: 0, z: 0 }, skill, jump: false, target: null, lastDir: null, leap: false, name, wanderT: rnd() * 5, rnd: seeded(seed + k * 101) });
     }
   }
 
+  // 칸 하나 (없으면 null)
+  tileOf(L, i, j) {
+    if (L < 0 || L >= LAYERS.length || i < 0 || j < 0 || i >= N || j >= N) return null;
+    return this.tiles[tileIndex(L, i, j)];
+  }
+  // 멀쩡한 칸인가 (다른 봇이 가려는 칸은 조금 피한다)
+  intact(t) { return !!t && t.state === 0; }
+  // 이 칸 둘레 8칸 중 멀쩡한 칸 수 (클수록 오래 버틸 수 있는 곳)
+  room(t) {
+    let n = 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) if ((di || dj) && this.intact(this.tileOf(t.L, t.i + di, t.j + dj))) n++;
+    return n;
+  }
+
+  // 봇: 서 있는 칸이 떨어지기 전에 계속 옆 칸으로 옮겨 가고, 둘레에 바닥이 많이 남은 칸을 고른다.
+  // 앞에 구멍이 있으면 점프로 건너고, 옆 칸이 다 없으면 두 칸 떨어진 곳으로 뛴다.
+  plan(b, L, i, j) {
+    const taken = new Set(this.bots.filter(o => o !== b && o.alive && o.target).map(o => o.target));
+    let best = null, bestScore = -1e9;
+    for (let r = 1; r <= 2 && !best; r++) {
+      for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+        if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+        const t = this.tileOf(L, i + di, j + dj);
+        if (!this.intact(t)) continue;
+        const diag = di && dj ? 1 : 0;
+        const centre = (Math.abs(t.i - (N - 1) / 2) + Math.abs(t.j - (N - 1) / 2)) * 0.12;
+        const keep = b.lastDir ? (di * b.lastDir[0] + dj * b.lastDir[1] > 0 ? 0.6 : 0) : 0; // 가던 쪽으로 계속 (덜 흔들림)
+        let score = this.room(t) * 1.4 - diag * 0.9 - centre + keep - (taken.has(t) ? 3 : 0) - (r - 1) * 2.5;
+        score += b.rnd() * (1 - b.skill) * 6; // 실수
+        if (score > bestScore) { bestScore = score; best = t; }
+      }
+    }
+    if (best) { b.lastDir = [Math.sign(best.i - i), Math.sign(best.j - j)]; b.leap = Math.max(Math.abs(best.i - i), Math.abs(best.j - j)) > 1; }
+    return best;
+  }
+
   botBrain(b, dt) {
-    b.think -= dt;
     const pl = b.pl;
     if (!b.alive) {
       // 대기실에서 어슬렁
       b.wanderT -= dt;
       if (b.wanderT <= 0) { b.wanderT = 1.5 + b.rnd() * 3; const a = b.rnd() * 6.28; const go = b.rnd() < 0.6; b.dir = go ? { x: Math.cos(a) * 0.5, z: Math.sin(a) * 0.5 } : { x: 0, z: 0 }; }
       if (Math.abs(pl.x) > 8 || Math.abs(pl.z) > 8) b.dir = { x: -Math.sign(pl.x) * 0.5, z: -Math.sign(pl.z) * 0.5 };
+      b.target = null;
       return;
     }
-    const under = pl.ground?.tile !== undefined ? this.tiles[pl.ground.tile] : null;
-    const danger = under && under.state === 1;
-    if (b.think <= 0 || danger) {
-      b.think = (0.25 + b.rnd() * 0.5) / b.skill;
-      // 같은 층의 아직 멀쩡한 바닥 중 가까운 곳으로
-      const L = LAYERS.findIndex(ly => Math.abs(pl.y - ly) < 1.5);
-      let best = null, bestScore = -1e9;
-      for (let tries = 0; tries < 14; tries++) {
-        const t = this.tiles[Math.floor(b.rnd() * this.tiles.length)];
-        if (t.state !== 0 || (L >= 0 && t.L !== L)) continue;
-        const d = Math.hypot(t.x - pl.x, t.z - pl.z);
-        const score = -Math.abs(d - 5 * b.skill) - (Math.abs(t.x) + Math.abs(t.z)) * 0.05 + b.rnd() * 2;
-        if (score > bestScore) { bestScore = score; best = t; }
-      }
-      if (best) {
-        const dx = best.x - pl.x, dz = best.z - pl.z, len = Math.hypot(dx, dz) || 1;
-        b.dir = { x: dx / len, z: dz / len };
-        b.jump = danger && b.rnd() < b.skill * 0.9 && len > TILE * 0.8;
-      } else b.dir = { x: (b.rnd() - 0.5), z: (b.rnd() - 0.5) };
+    b.think -= dt;
+    const L = pl.ground ? LAYERS.findIndex(ly => Math.abs(pl.y - ly) < 1.2) : -1;
+    if (L < 0) return; // 떨어지는 중: 하던 방향 그대로
+    const at = tileAt(pl.x, pl.z);
+    if (!at) { b.dir = { x: -Math.sign(pl.x), z: -Math.sign(pl.z) }; return; }
+    const [i, j] = at;
+    const here = this.tileOf(L, i, j);
+    const arrived = b.target && b.target.L === L && b.target.i === i && b.target.j === j;
+    const lost = !b.target || b.target.L !== L || b.target.state !== 0;
+    // 목표 칸에 들어서면 바로 다음 칸을 고른다 (서 있으면 바닥이 떨어지니까). 반응 속도는 실력에 따라.
+    if ((arrived || lost) && b.think <= 0) {
+      b.target = this.plan(b, L, i, j);
+      b.think = (1 - b.skill) * 0.25;
+      if (!b.target) b.target = null;
     }
+    const t = b.target;
+    if (!t) { b.dir = { x: 0, z: 0 }; return; }
+    // 목표 칸 가운데로 (도착하면 다음 칸 쪽으로 미리 기울이기)
+    const dx = t.x - pl.x, dz = t.z - pl.z, len = Math.hypot(dx, dz) || 1;
+    b.dir = { x: dx / len, z: dz / len };
+    // 바로 앞이 구멍이면 점프 (두 칸 너머로 갈 때도)
+    const ax = pl.x + b.dir.x * 1.3, az = pl.z + b.dir.z * 1.3;
+    const ahead = tileAt(ax, az);
+    const aheadTile = ahead && this.tileOf(L, ahead[0], ahead[1]);
+    const gap = !this.intact(aheadTile) && aheadTile !== t;
+    const sinking = here && here.state === 1 && here.t > FALL_AFTER * 0.7 && len > TILE * 0.9;
+    if ((gap || (b.leap && len < TILE * 1.7) || sinking) && b.rnd() < 0.55 + b.skill * 0.45) b.jump = true;
   }
 
   // ───── 판 진행 ─────
@@ -156,7 +199,7 @@ export class Survival {
     this.bots.forEach((b, k) => {
       const [i, j] = spots[list.length + k];
       Object.assign(b.pl, newPlayer(-HALF + (i + 0.5) * TILE, LAYERS[0] + 0.5, -HALF + (j + 0.5) * TILE));
-      b.alive = true;
+      b.alive = true; b.target = null; b.lastDir = null; b.think = 0;
     });
     this.remoteAlive = new Map(list.filter(id => id !== meId).map(id => [id, true]));
     this.game.sfx('go');

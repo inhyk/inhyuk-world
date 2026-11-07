@@ -208,14 +208,18 @@ test('바닥 칸 번호', () => {
   assert.equal(tileAt(half + 1, 0), null);
 });
 
-test('타이쿤 밖에 있으면 0.5배로 쌓인다', () => {
+test('타이쿤 밖에 있으면 0.001%로 쌓인다 (소수점 그대로)', () => {
   const rate = tycoonIncome(['floor', 'drop2']);
-  assert.equal(tycoonAwayEarnings(['floor', 'drop2'], 60_000), Math.floor(rate * 0.5 * 60));
+  assert.ok(Math.abs(tycoonAwayEarnings(['floor', 'drop2'], 3_600_000) - rate * 0.00001 * 3600) < 1e-9);
   assert.equal(tycoonAwayEarnings([], -5000), 0);
   assert.equal(tycoonAwayEarnings([], NaN), 0);
-  assert.equal(tycoonAwayEarnings([], 30 * 24 * 3600 * 1000), Math.floor(tycoonIncome([]) * 0.5 * 7 * 24 * 3600));
-  assert.equal(cleanSave({ tycoon: { away: 1700000000000 } }).tycoon.away, 1700000000000);
-  assert.equal(cleanSave({ tycoon: { away: 'x' } }).tycoon.away, 0);
+  assert.ok(Math.abs(tycoonAwayEarnings([], 30 * 24 * 3600 * 1000) - tycoonIncome([]) * 0.00001 * 7 * 24 * 3600) < 1e-9);
+  // 다 지은 공장은 1시간에 200달러 넘게, 처음 공장은 1달러도 안 된다
+  assert.ok(tycoonAwayEarnings(TYCOON.map(it => it.id), 3_600_000) > 200);
+  assert.ok(tycoonAwayEarnings([], 3_600_000) < 1);
+  assert.equal(cleanSave({ tycoon: { away: 1700000000000, bank: 0.5 } }).tycoon.bank, 0.5);
+  assert.equal(cleanSave({ tycoon: { away: 'x', bank: 7 } }).tycoon.away, 0);
+  assert.equal(cleanSave({ tycoon: { bank: 7 } }).tycoon.bank, 1);
 });
 
 test('타이쿤 목록: 먼저 사야 하는 것은 앞에 있고, 끝판은 둘', () => {
