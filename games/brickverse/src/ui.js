@@ -1,6 +1,6 @@
 // 화면 위 글자와 버튼: 코인, 세계 이름, 알림, 옷장, 친구 방, 메뉴, 말하기와 감정 표현.
-import { SKINS, COLORS, HATS, FACES, EMBLEMS, ADJECTIVES, ANIMALS, PHRASES, EMOTES, displayName, GIFT_AMOUNTS, halfOf } from '../core.mjs';
-import { faceTexture, emblemTexture } from './avatar.js';
+import { SKINS, COLORS, HATS, FACES, EMBLEMS, HAIRS, HAIR_COLORS, ADJECTIVES, ANIMALS, PHRASES, EMOTES, displayName, GIFT_AMOUNTS, halfOf } from '../core.mjs';
+import { faceTexture, emblemTexture, hairIcon } from './avatar.js';
 
 const $ = id => document.getElementById(id);
 const HAT_ICON = { none: '🚫', cap: '🧢', beanie: '🧶', party: '🥳', flower: '🌸', antenna: '👽', bunny: '🐰', cat: '🐱', chef: '👨‍🍳', headphones: '🎧', tophat: '🎩', horns: '🐲', viking: '⛑️', crown: '👑', wizard: '🧙', halo: '😇' };
@@ -169,6 +169,20 @@ export class UI {
       case 'skin': swatches(SKINS, 'skin'); break;
       case 'shirt': swatches(COLORS, 'shirt'); break;
       case 'pants': swatches(COLORS, 'pants'); break;
+      case 'hair': {
+        items(HAIRS, 'hair', it => hairIcon(it.id, HAIR_COLORS[look.hairColor]));
+        const title = document.createElement('p'); title.className = 'sub-title'; title.textContent = '머리 색';
+        grid.append(title);
+        HAIR_COLORS.forEach((c, i) => {
+          const b = document.createElement('button');
+          b.className = 'swatch small' + (look.hairColor === i ? ' on' : '');
+          b.style.background = c;
+          b.setAttribute('aria-label', `머리 색 ${i + 1}`);
+          b.addEventListener('click', () => { g.setLook({ hairColor: i }); this.renderWardrobe(); });
+          grid.append(b);
+        });
+        break;
+      }
       case 'hat': items(HATS, 'hat', it => HAT_ICON[it.id] ?? '🎩'); break;
       case 'face': items(FACES, 'face', it => faceTexture(it.id).image.toDataURL()); break;
       case 'emblem': items(EMBLEMS, 'emblem', it => (it.id === 'none' ? '🚫' : emblemTexture(it.id).image.toDataURL())); break;

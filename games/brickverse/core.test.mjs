@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, tileAt, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -262,4 +262,17 @@ test('타이쿤 돈 주기: 정수 금액만, 반은 내림', () => {
   for (const bad of [{ amt: 0, n: 1 }, { amt: -5, n: 1 }, { amt: 1.5, n: 1 }, { amt: '100', n: 1 }, { amt: GIFT_MAX + 1, n: 1 }, { amt: 100 }, null]) assert.ok(!validGift(bad), JSON.stringify(bad));
   assert.equal(halfOf(1001), 500);
   assert.equal(halfOf(0), 0);
+});
+
+test('머리카락: 공짜 머리는 늘 가지고, 안 산 머리는 못 쓰고, 예전 6칸 옷 배열도 읽힌다', () => {
+  const s = cleanSave({ look: { hair: 9 }, owned: { hair: [] } });
+  assert.ok(FREE_HAIRS.every(i => s.owned.hair.includes(i)));
+  assert.equal(s.look.hair, DEFAULT_LOOK.hair);
+  const bought = cleanSave({ coins: 100, look: { hair: 9, hairColor: 4 }, owned: { hair: [9] } });
+  assert.equal(bought.look.hair, 9);
+  assert.equal(HAIRS[9].id, 'curly');
+  assert.equal(bought.look.hairColor, 4);
+  const old = lookFromArray([1, 5, 15, 1, 0, 1]);
+  assert.equal(old.hair, DEFAULT_LOOK.hair);
+  assert.equal(lookToArray(DEFAULT_LOOK).length, 8);
 });

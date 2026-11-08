@@ -257,8 +257,27 @@ export const EMOTES = [
   { id: 'sit', name: '🪑 앉기' },
 ];
 
-export const DEFAULT_LOOK = Object.freeze({ skin: 1, shirt: 5, pants: 15, hat: 1, face: 0, emblem: 1 });
-const LOOK_LIMITS = { skin: SKINS.length, shirt: COLORS.length, pants: COLORS.length, hat: HATS.length, face: FACES.length, emblem: EMBLEMS.length };
+// 머리카락 (2026-11-08 인혁: "머리카락을 만들어줘"). 값이 0 인 것은 처음부터 가진다.
+export const HAIRS = [
+  { id: 'none', name: '없음', price: 0 },
+  { id: 'short', name: '짧은 머리', price: 0 },
+  { id: 'bangs', name: '앞머리', price: 0 },
+  { id: 'spiky', name: '뾰족 머리', price: 0 },
+  { id: 'bob', name: '단발', price: 0 },
+  { id: 'long', name: '긴 머리', price: 20 },
+  { id: 'pony', name: '포니테일', price: 20 },
+  { id: 'pigtails', name: '양갈래', price: 30 },
+  { id: 'bun', name: '똥머리', price: 30 },
+  { id: 'curly', name: '곱슬 머리', price: 40 },
+  { id: 'mohawk', name: '모히칸', price: 50 },
+  { id: 'swoop', name: '옆으로 넘긴 머리', price: 60 },
+];
+export const HAIR_COLORS = ['#2b2522', '#5a3825', '#8a5a36', '#e8c26a', '#d9682c', '#ff8fc7', '#4a8cff', '#9b5cff', '#4fbf5a', '#f4f1ea'];
+export const FREE_HAIRS = HAIRS.map((h, i) => (h.price === 0 ? i : -1)).filter(i => i >= 0);
+
+// 새 칸(hair, hairColor)은 끝에 붙인다: 예전 게임이 보낸 6칸짜리 옷 배열도 그대로 읽힌다
+export const DEFAULT_LOOK = Object.freeze({ skin: 1, shirt: 5, pants: 15, hat: 1, face: 0, emblem: 1, hair: 1, hairColor: 1 });
+const LOOK_LIMITS = { skin: SKINS.length, shirt: COLORS.length, pants: COLORS.length, hat: HATS.length, face: FACES.length, emblem: EMBLEMS.length, hair: HAIRS.length, hairColor: HAIR_COLORS.length };
 export const LOOK_KEYS = Object.keys(LOOK_LIMITS);
 
 const int = (v, max, fallback = 0) => (Number.isInteger(v) && v >= 0 && v < max ? v : fallback);
@@ -372,7 +391,7 @@ export function defaultSave(rand = Math.random) {
     coins: 0,
     look: { ...DEFAULT_LOOK },
     name: randomName(rand),
-    owned: { hat: [0, 1, 2], face: [0, 1, 2], emblem: [0, 1, 2] },
+    owned: { hat: [0, 1, 2], face: [0, 1, 2], emblem: [0, 1, 2], hair: [...FREE_HAIRS] },
     obby: { cp: 0, top: 0, best: 0, clears: 0, paid: 0 },
     tycoon: { cash: 0, pending: 0, items: [], done: false, away: 0, bank: 0 },
     survival: { best: 0, wins: 0 },
@@ -399,9 +418,11 @@ export function cleanSave(raw, rand = Math.random) {
     hat: ownedList(raw.owned?.hat, HATS.length),
     face: ownedList(raw.owned?.face, FACES.length),
     emblem: ownedList(raw.owned?.emblem, EMBLEMS.length),
+    hair: [...new Set([...FREE_HAIRS, ...ownedList(raw.owned?.hair, HAIRS.length)])].sort((a, b) => a - b),
   };
   const look = cleanLook(raw.look);
   if (!s.owned.hat.includes(look.hat)) look.hat = DEFAULT_LOOK.hat;
+  if (!s.owned.hair.includes(look.hair)) look.hair = DEFAULT_LOOK.hair;
   if (!s.owned.face.includes(look.face)) look.face = DEFAULT_LOOK.face;
   if (!s.owned.emblem.includes(look.emblem)) look.emblem = DEFAULT_LOOK.emblem;
   s.look = look;

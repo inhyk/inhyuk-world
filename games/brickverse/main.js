@@ -14,7 +14,7 @@ import { Tower } from './src/tower.js';
 import { startUpdateCheck } from './src/update.js';
 import {
   P, SAVE_KEY, makeBox, placeBox, newPlayer, stepPlayer, clearMotion, segmentDistance, cleanSave, defaultSave,
-  HATS, FACES, EMBLEMS, PHRASES, displayName, lookToArray, lookFromArray, packPose, unpackPose,
+  HATS, FACES, EMBLEMS, HAIRS, PHRASES, displayName, lookToArray, lookFromArray, packPose, unpackPose,
   OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS, validGift, GIFT_MAX, NET_VERSION, GIFT_WAIT_MS, packBlocks, unpackBlocks, inTower, cellKey, TOWER,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
@@ -29,7 +29,7 @@ const WORLD_INFO = [
   { icon: '🏗️', name: '하늘 타워 짓기', build: buildTower },
 ];
 const fmtTime = ms => { const s = ms / 1000; return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; };
-const LOOK_KEYS = { hat: HATS, face: FACES, emblem: EMBLEMS };
+const LOOK_KEYS = { hat: HATS, face: FACES, emblem: EMBLEMS, hair: HAIRS };
 
 // ───── 저장 ─────
 function loadSave() {

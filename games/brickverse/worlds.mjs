@@ -156,8 +156,8 @@ export function buildHub() {
     for (let i = 0; i < 4; i++) parts.push({ x: x - 3.5 + i * 1.4, y: 4.6, z: z - 3.7, w: 1.1, h: 1.3, d: 0.3, c: ['#ff4d5e', '#3fa7ff', '#ffd23f', '#5ad16b'][i], deco: true });
     signs.push({ x, y: 7.4, z: z + 4.6, ry: 0, w: 7, h: 1.6, lines: ['👕 옷가게'], bg: '#ffffff', fg: '#ff4d7a', accent: '#ff5e7e' });
     zones.push({ x0: x - 3, x1: x + 3, y0: 0, y1: 4, z0: z + 2.6, z1: z + 5.2, wardrobe: true });
-    npcs.push({ x: x + 2, z: z - 1, yaw: 0, still: true, name: '옷가게 주인 리본', look: { skin: 8, shirt: 8, pants: 9, hat: 4, face: 1, emblem: 2 } });
-    npcs.push({ x: x - 3.5, z: z - 1.5, yaw: 0.4, still: true, mannequin: true, look: { skin: 9, shirt: 1, pants: 12, hat: 10, face: 6, emblem: 6 } });
+    npcs.push({ x: x + 2, z: z - 1, yaw: 0, still: true, name: '옷가게 주인 리본', look: { skin: 8, shirt: 8, pants: 9, hat: 4, face: 1, emblem: 2, hair: 7, hairColor: 5 } });
+    npcs.push({ x: x - 3.5, z: z - 1.5, yaw: 0.4, still: true, mannequin: true, look: { skin: 9, shirt: 1, pants: 12, hat: 10, face: 6, emblem: 6, hair: 4, hairColor: 0 } });
   }
   // 안내판
   signs.push({ x: 30, y: 3.4, z: 8, ry: -Math.PI / 2, w: 8, h: 4.6, lines: ['브릭버스에 온 걸 환영해!', 'WASD 이동 · Space 점프', '마우스 끌기: 시점 · 휠: 확대', '빛나는 문으로 게임에 들어가!', '🪙 코인으로 모자와 얼굴을 사요'], bg: '#ffffff', fg: '#2a2d3a', accent: '#3fa7ff', sizes: [86, 62, 62, 62, 62] });
@@ -231,9 +231,9 @@ export function buildHub() {
   for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; coins.push([Math.cos(a) * 16, 1.4, Math.sin(a) * 16]); }
   for (const [x, z] of [[-60, -50], [60, -50], [-60, 60], [55, 62], [0, 66], [-66, 0], [66, 0], [-24, -58], [24, -58]]) coins.push([x, 1.4, z]);
   // 돌아다니는 주민
-  npcs.push({ x: 8, z: 22, wander: true, name: '브릭 주민 단단이', look: { skin: 0, shirt: 3, pants: 12, hat: 2, face: 2, emblem: 4 } });
-  npcs.push({ x: -16, z: -16, wander: true, name: '브릭 주민 몽글이', look: { skin: 7, shirt: 9, pants: 5, hat: 6, face: 0, emblem: 2 } });
-  npcs.push({ x: 22, z: -20, wander: true, name: '브릭 주민 반짝이', look: { skin: 5, shirt: 7, pants: 11, hat: 15, face: 7, emblem: 1 } });
+  npcs.push({ x: 8, z: 22, wander: true, name: '브릭 주민 단단이', look: { skin: 0, shirt: 3, pants: 12, hat: 0, face: 2, emblem: 4, hair: 3, hairColor: 4 } });
+  npcs.push({ x: -16, z: -16, wander: true, name: '브릭 주민 몽글이', look: { skin: 7, shirt: 9, pants: 5, hat: 6, face: 0, emblem: 2, hair: 5, hairColor: 3 } });
+  npcs.push({ x: 22, z: -20, wander: true, name: '브릭 주민 반짝이', look: { skin: 5, shirt: 7, pants: 11, hat: 15, face: 7, emblem: 1, hair: 9, hairColor: 7 } });
   return { parts, coins, zones, signs, effects, npcs, spawn: { x: 0, y: 0.3, z: 18, yaw: Math.PI }, killY: -20, sky: 'hub' };
 }
 
