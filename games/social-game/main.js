@@ -19,6 +19,7 @@ import { Cinema } from './src/cinema.js';
 import { Jobs } from './src/jobs.js';
 import { JOBS } from './jobs.mjs';
 import { dressTown, dressJapan } from './src/deco.js';
+import { dressEdges } from './src/land.js';
 import { Flight } from './src/flight.js';
 import { Leave } from './src/leave.js';
 import { Cloud } from './src/cloud.js';
@@ -29,6 +30,7 @@ import { Album } from './src/album.js';
 import { Town } from './src/town.js';
 import { Show } from './src/show.js';
 import { Wildlife } from './src/wildlife.js';
+import { Insects } from './src/insects.js';
 import { prepareStatic } from './src/perf.js';
 import { texReady } from './src/tex.js';
 import { startUpdateCheck } from './src/update.js';
@@ -100,6 +102,8 @@ async function boot() {
   try { jdeco = dressJapan({ scene: engine.scene, props, build, colliders: col, lights, quality: engine.quality, places }); } catch (e) { console.warn('japan deco failed', e); }
   deco.scatters.push(...jdeco.scatters);
   deco.breakables.push(...jdeco.breakables);
+  // fences, signs and mountain forests at the edge of the land (인혁 계획 6)
+  try { deco.edges = dressEdges({ scene: engine.scene, places }); } catch (e) { console.warn('edges failed', e); }
   pct(80, 'deco'); await frame();
 
   // player, car, people
@@ -213,6 +217,9 @@ async function boot() {
   // 반달가슴곰 in the forest (인혁: "숲에 곰이 가끔씩 있게 해줘")
   let wildlife = null;
   try { wildlife = new Wildlife({ engine, colliders: col, groundAt, player, vehicle, hud, sfx, state, places, flight, trees: deco.breakables }); } catch (e) { console.warn('wildlife failed', e); }
+  // 곤충 채집 (인혁이 계획: "곤충을 채집할 수 있게 해줘."): C 채집망, K 곤충 도감 (B 는 포즈)
+  let insects = null;
+  try { insects = new Insects({ engine, player, input, groundAt, colliders: col, places, state, hud, sfx, build, flight, vehicle, breakables: deco.breakables, scatters: deco.scatters, save: () => save() }); } catch (e) { console.warn('insects failed', e); }
   let fresh = !localStorage.getItem(SAVE_KEY);
   day.wakeUp();
   day.setOutfit(state.outfit);
@@ -347,6 +354,11 @@ async function boot() {
     const dmg = fallDamage(h);
     if (dmg > 0) { hurt(state, dmg); hurtT = 0.6; sfx('hit'); hud.toast(`아야! 체력 -${dmg}`, 1000); }
   };
+  // the fence at the edge of the land (인혁 계획 6)
+  let edgeT = 0;
+  const onEdge = () => { const now = performance.now(); if (now - edgeT > 4000) { edgeT = now; hud.toast('🚧 더 이상 갈 수 없어요', 1800); } };
+  player.onEdge = onEdge;
+  if (vehicle) vehicle.onEdge = onEdge;
   player.onStep = () => sfx('step', { surface: player.pos.x < LAYOUT.beachX ? 'sand' : places.inside(player.pos) ? 'wood' : 'stone' });
   let fainting = false;
   const look = { yaw: 0, pitch: 0 };
@@ -358,6 +370,7 @@ async function boot() {
     if (input.hit('KeyL')) openLogin();
     if (input.hit('KeyG') && !day.seat) album.open();
     if (input.hit('KeyP') && !day.seat) day.photo();
+    if (insects && !day.seat) { if (input.hit('KeyC')) insects.toggleNet(); if (input.hit('KeyK')) insects.open(); }
     if (input.hit('KeyO') && $('start').classList.contains('hidden')) day.g.leave.open();
     if (input.hit('KeyB')) openPoseMenu();
     if (player.pose && poseBlocked()) endPose();
@@ -414,15 +427,16 @@ async function boot() {
     hud.prompt(prompt, player.pose ? 'P' : 'E');
     if (action && input.hit('KeyE')) action();
     // blocks (on foot, not in menus)
-    build.enabled = !driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && !player.pose && input.locked;
+    build.enabled = !driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && !player.pose && input.locked && !insects?.holding;
+    insects?.canSwing(!driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && !player.pose && input.locked);
     if (blocks.length) build.update(dt, input, player.pos);
-    if (player.arm) player.arm.update?.(dt, { swing: build.swing ?? 0, walk: Math.min(1, player.speed / 5) });
+    if (player.arm) player.arm.update?.(dt, { swing: insects?.holding ? 0 : build.swing ?? 0, walk: Math.min(1, player.speed / 5) });
     build.swing = Math.max(0, (build.swing ?? 0) - dt * 3);
-    if (player.arm && build.selectedId && player.arm.hold && player._held !== build.selectedId()) {
-      player._held = build.selectedId();
-      const p = player._held ? build.proto(player._held).clone() : null;
-      if (p) p.scale.setScalar(0.1);
-      player.arm.hold(p);
+    const holdId = insects?.holding ? 'net' : build.selectedId?.();
+    if (player.arm && player.arm.hold && player._held !== holdId) {
+      player._held = holdId;
+      if (holdId === 'net') player.arm.hold(insects.holdItem(player.arm, engine.camera));
+      else { const p = holdId ? build.proto(holdId).clone() : null; if (p) p.scale.setScalar(0.1); player.arm.hold(p); }
     }
     // body, time, world
     const inside = flight.active ? 'plane' : places.inside(player.pos);
@@ -440,6 +454,7 @@ async function boot() {
     places.updateDoors(dt, [player.pos, ...life.walkers.map((w) => w.ch.group.position)], sfx);
     life.update(dt, driving ? null : player.pos, driving ? vehicle.pos : null, night);
     wildlife?.update(dt);
+    insects?.update(dt);
     if (props.nature?.windUniform) props.nature.windUniform.value = t;
     const wn = world.sea.material.normalMap; if (wn) { wn.offset.set(t * 0.004, t * 0.0025); }
     if (world.foam) { world.foam.position.x = LAYOUT.beachX - 27.2 + Math.sin(t * 0.6) * 0.9; world.foam.material.opacity = 0.35 + 0.25 * Math.sin(t * 0.6 + 1); }
@@ -490,7 +505,7 @@ async function boot() {
   addEventListener('beforeunload', saveLocal);
   setInterval(saveLocal, 15000);
   window.__update = startUpdateCheck({ save }); // 새 버전이 나오면 새로고침 버튼 (인혁이 계획 6-3)
-  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife, jobs: day.g.jobs, poses: { open: openPoseMenu, start: startPose, stop: endPose } };
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife, insects, jobs: day.g.jobs, poses: { open: openPoseMenu, start: startPose, stop: endPose } };
   window.__ready = true;
 }
 

@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { bodyFree } from './collide.js';
 import { pushOut } from '../online.mjs';
+import { keepIn } from './world.js';
 
 const tmp = [];
 
@@ -85,7 +86,9 @@ export class Vehicle {
     const ox = this.pos.x, oz = this.pos.z;
     this.pos.x = nx; this.pos.z = nz;
     this.friendHit = null;
-    const hit = this.resolve();
+    let hit = this.resolve();
+    // the fence at the edge of the land (인혁 계획 6): the car stops short of it
+    if (keepIn(this.pos, this.half.l + 0.4)) { hit = hit || true; if (this.driving) this.onEdge?.(); }
     this.bump = this.friendHit ? { what: this.friendHit, speed: Math.abs(this.speed) } : null;
     if (hit) {
       this.impact = Math.abs(this.speed);

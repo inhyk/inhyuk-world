@@ -155,6 +155,10 @@ const SPOTS = [
   { name: 'school', hour: 15, at: [-120, 0.2, 113, Math.PI / 2] },
   { name: 'japan', hour: 15, at: [2180, 0.2, 4, -Math.PI / 2] },
   { name: 'night', hour: 21, at: [-30, 0.2, -9, -Math.PI / 2] },
+  // out on the hills by the edge of the land (인혁 계획 6: "나무랑 땅이 보이게 해 줘")
+  { name: 'hills', hour: 15, at: [-40, 0.2, -395, 0] },
+  { name: 'edgeE', hour: 15, at: [620, 0.2, 10, -Math.PI / 2] },
+  { name: 'edgeS', hour: 15, at: [20, 0.2, 520, Math.PI] },
 ];
 
 async function goTo(s) {

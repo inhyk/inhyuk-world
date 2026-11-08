@@ -104,10 +104,86 @@ function japanGround(x, z) {
   const hills = Math.hypot(ox, on);
   if (hills > 0) h += smooth(0, 140, hills) * (18 + 26 * worldNoise(x, z, 0.009, 3, 21)) + smooth(0, 50, hills) * 3 * worldNoise(x, z, 0.03, 2, 23);
   if (os > 0) h = h * smooth(25, 0, os) - Math.min(os, 35) * 0.03 - Math.max(0, os - 35) * 0.15;
+  // far past the fence the island's hills go down into the sea (to the north they reach on under Mt Fuji)
+  const c = EDGE.japan.coast, cd = Math.hypot(ox, on * 0.7);
+  if (cd > c[0]) h = h * smooth(c[1], c[0], cd) - smooth(c[0], c[1], cd) * 14;
   return h;
 }
 
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+/**
+ * How far you can go (인혁 계획 6: "언덕 같은 데 계속 가면 나무도 없고 땅도 없어져. 나무랑 땅이 보이게 해 줘").
+ * The land goes on past the fence: the hills climb into a ring of wooded mountains and past them slope
+ * down into the sea, so from anywhere you can stand there is ground all the way to the fog. A wooden
+ * fence on the hills (buoys in the sea) marks the edge: `play` metres outside the town rectangle.
+ *   home: the beach side (west) is open, the sea stops at x = sea
+ *   japan: the sea is to the south (z = sea)
+ * mount: where the mountains rise (metres outside the town), coast: where the land goes under the sea.
+ */
+export const EDGE = {
+  home: { min: LAYOUT.townMin, max: LAYOUT.townMax, play: 330, open: 'w', sea: -400, mount: [350, 720], coast: [800, 920] },
+  japan: { min: LAYOUT.jMin, max: LAYOUT.jMax, play: 200, open: 's', sea: 130, mount: null, coast: [400, 520] },
+};
+export const edgeOf = (x) => (x > 1500 ? EDGE.japan : EDGE.home);
+
+/** Nearest point of the land's town rectangle (the open side reaches out forever) and the distance to it. */
+function nearTown(E, x, z) {
+  const rx = E.open === 'w' && x <= LAYOUT.beachX ? x : Math.min(Math.max(x, E.min[0]), E.max[0]);
+  const rz = E.open === 's' && z >= E.max[1] ? z : Math.min(Math.max(z, E.min[1]), E.max[1]);
+  return { rx, rz, out: Math.hypot(x - rx, z - rz) };
+}
+/** Metres outside the town rectangle (0 inside), the way the hills are measured. */
+export function townOut(x, z) { return nearTown(edgeOf(x), x, z).out; }
+/** The same for one land (EDGE.home or EDGE.japan) wherever (x, z) is. */
+export function landOut(E, x, z) { return nearTown(E, x, z).out; }
+
+/**
+ * Keep a body (player p.x/p.z, or a car's centre) inside the fence, `pad` metres short of it.
+ * Returns true when it had to be pushed back.
+ */
+export function keepIn(p, pad = 0.6) {
+  const E = edgeOf(p.x);
+  let hit = false;
+  const lim = E.play - pad;
+  const { rx, rz, out } = nearTown(E, p.x, p.z);
+  if (out > lim) { const k = lim / out; p.x = rx + (p.x - rx) * k; p.z = rz + (p.z - rz) * k; hit = true; }
+  if (E.open === 'w' && p.x < E.sea + pad) { p.x = E.sea + pad; hit = true; }
+  if (E.open === 's' && p.z > E.sea - pad) { p.z = E.sea - pad; hit = true; }
+  return hit;
+}
+
+/**
+ * The fence line as points about `step` metres apart: [{x, z, nx, nz}] with (nx, nz) pointing into the
+ * land. Goes around the town on the hills and comes back along the sea limit.
+ */
+export function edgePath(E, step = 2.5) {
+  const pts = [];
+  const line = (x0, z0, x1, z1) => {
+    const n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / step));
+    for (let i = 0; i < n; i++) { const t = i / n; pts.push([x0 + (x1 - x0) * t, z0 + (z1 - z0) * t]); }
+  };
+  const arc = (cx, cz, a0, a1) => {
+    const n = Math.max(2, Math.round(Math.abs(a1 - a0) * E.play / step));
+    for (let i = 0; i < n; i++) { const a = a0 + (a1 - a0) * (i / n); pts.push([cx + Math.cos(a) * E.play, cz + Math.sin(a) * E.play]); }
+  };
+  const [x0, z0] = E.min, [x1, z1] = E.max, P = E.play, H = Math.PI / 2;
+  if (E.open === 'w') {
+    line(E.sea, z0 - P, x1, z0 - P); arc(x1, z0, -H, 0); line(x1 + P, z0, x1 + P, z1); arc(x1, z1, 0, H);
+    line(x1, z1 + P, E.sea, z1 + P); line(E.sea, z1 + P, E.sea, z0 - P);
+  } else {
+    line(x0 - P, E.sea, x0 - P, z0); arc(x0, z0, Math.PI, Math.PI + H); line(x0, z0 - P, x1, z0 - P); arc(x1, z0, -H, 0);
+    line(x1 + P, z0, x1 + P, E.sea); line(x1 + P, E.sea, x0 - P, E.sea);
+  }
+  return pts.map(([x, z]) => {
+    const r = nearTown(E, x, z);
+    let nx = r.rx - x, nz = r.rz - z;
+    if (E.open === 'w' && x <= E.sea + 0.01) { nx = 1; nz = 0; }
+    if (E.open === 's' && z >= E.sea - 0.01) { nx = 0; nz = -1; }
+    const l = Math.hypot(nx, nz) || 1;
+    return { x, z, nx: nx / l, nz: nz / l };
+  });
+}
 
 /** Terrain height at (x, z). Flat town, rolling hills around it, a beach sloping into the sea. */
 export function groundAt(x, z) {
@@ -119,6 +195,14 @@ export function groundAt(x, z) {
   let h = 0;
   const out = Math.hypot(x > L.beachX ? ox : 0, oz);
   if (out > 0) h += smooth(0, 160, out) * (14 + 30 * worldNoise(x, z, 0.008, 3, 3)) + smooth(0, 60, out) * 4 * worldNoise(x, z, 0.03, 2, 5);
+  // past the fence (EDGE): wooded mountains, then the land slopes down into the sea. Inside the fence
+  // nothing changes, so the trees, the 곰 숲 and the roads stay where they were.
+  const E = EDGE.home;
+  if (out > E.mount[0]) {
+    const k = smooth(E.mount[0], E.mount[1], out) * smooth(L.beachX + 40, L.beachX + 300, x);
+    if (k > 0) h += k * (55 + 115 * worldNoise(x, z, 0.0032, 4, 31) + 28 * worldNoise(x, z, 0.012, 3, 37));
+  }
+  if (out > E.coast[0]) h = h * smooth(E.coast[1], E.coast[0], out) - smooth(E.coast[0], E.coast[1], out) * 14;
   if (x < L.beachX) {
     const t = L.beachX - x; // metres from the end of the town
     const dune = Math.max(0, 1 - Math.abs(t - 6) / 6) * 0.35 * worldNoise(x, z, 0.08, 2, 9);
@@ -131,21 +215,84 @@ export function groundAt(x, z) {
   return h;
 }
 
-function heightMesh(minX, maxX, minZ, maxZ, step, material) {
-  const nx = Math.round((maxX - minX) / step), nz = Math.round((maxZ - minZ) / step);
-  const g = new THREE.PlaneGeometry(maxX - minX, maxZ - minZ, nx, nz).rotateX(-Math.PI / 2);
-  g.translate((minX + maxX) / 2, 0, (minZ + maxZ) / 2);
-  const p = g.attributes.position, uv = g.attributes.uv;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), z = p.getZ(i);
-    p.setY(i, groundAt(x, z));
-    uv.setXY(i, x, z);
+/**
+ * Ground as square tiles, merged per material in 512 m blocks: 4 m cells near where you can walk, 8 m and
+ * 16 m farther out (인혁 계획 6: the land goes on to the fog). Tiles all under the sea are left out.
+ * Heights are sampled one cell past every tile edge so the normals match across tiles, and a skirt
+ * hangs under every tile edge so a fine tile next to a coarse one never shows a crack.
+ * xs, zs: tile edges; stepOf(x0, z0, x1, z1) -> cell size; matOf(x0, z0) -> material name.
+ */
+function groundTiles(xs, zs, stepOf, matOf) {
+  const parts = new Map();
+  for (let a = 0; a + 1 < xs.length; a++) for (let b = 0; b + 1 < zs.length; b++) {
+    const x0 = xs[a], x1 = xs[a + 1], z0 = zs[b], z1 = zs[b + 1];
+    const step = stepOf(x0, z0, x1, z1);
+    const nx = Math.round((x1 - x0) / step), nz = Math.round((z1 - z0) / step), W = nx + 3;
+    const H = new Float32Array(W * (nz + 3));
+    let top = -Infinity;
+    for (let j = 0; j < nz + 3; j++) for (let i = 0; i < W; i++) {
+      const h = groundAt(x0 + (i - 1) * step, z0 + (j - 1) * step);
+      H[j * W + i] = h;
+      if (i > 0 && j > 0 && i <= nx + 1 && j <= nz + 1 && h > top) top = h;
+    }
+    if (top < LAYOUT.seaY - 3) continue; // under the sea
+    // tiles are merged per material in blocks of 2 x 2, so each block can be left out when it is
+    // behind the camera or deep in the fog (the far island)
+    const key = `${matOf(x0, z0)}:${a >> 1},${b >> 1}`;
+    if (!parts.has(key)) parts.set(key, { pos: [], nor: [], idx: [] });
+    const P = parts.get(key), base = P.pos.length / 3;
+    const at = (i, j) => H[(j + 1) * W + i + 1];
+    for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
+      const gx = at(i - 1, j) - at(i + 1, j), gz = at(i, j - 1) - at(i, j + 1), l = Math.hypot(gx, 2 * step, gz);
+      P.pos.push(x0 + i * step, at(i, j), z0 + j * step);
+      P.nor.push(gx / l, (2 * step) / l, gz / l);
+    }
+    const v = (i, j) => base + j * (nx + 1) + i;
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) P.idx.push(v(i, j), v(i, j + 1), v(i + 1, j), v(i + 1, j), v(i, j + 1), v(i + 1, j + 1));
+    // skirts: a strip hanging down from each edge, both faces
+    const drop = step * 0.8 + 2;
+    const edge = [];
+    for (let i = 0; i <= nx; i++) edge.push([i, 0]);
+    for (let j = 1; j <= nz; j++) edge.push([nx, j]);
+    for (let i = nx - 1; i >= 0; i--) edge.push([i, nz]);
+    for (let j = nz - 1; j >= 0; j--) edge.push([0, j]);
+    const sb = P.pos.length / 3;
+    for (const [i, j] of edge) {
+      const k = v(i, j) * 3;
+      P.pos.push(P.pos[k], P.pos[k + 1] - drop, P.pos[k + 2]);
+      P.nor.push(P.nor[k], P.nor[k + 1], P.nor[k + 2]);
+    }
+    for (let e = 0; e < edge.length; e++) {
+      const e2 = (e + 1) % edge.length;
+      const t0 = v(...edge[e]), t1 = v(...edge[e2]), b0 = sb + e, b1 = sb + e2;
+      P.idx.push(t0, b0, t1, t1, b0, b1, t0, t1, b0, t1, b1, b0);
+    }
   }
-  g.computeVertexNormals();
-  const m = new THREE.Mesh(g, material);
-  m.receiveShadow = true;
-  return m;
+  const out = [];
+  for (const [key, P] of parts) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P.pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(P.nor, 3));
+    const uv = new Float32Array((P.pos.length / 3) * 2);
+    for (let i = 0, n = P.pos.length / 3; i < n; i++) { uv[i * 2] = P.pos[i * 3]; uv[i * 2 + 1] = P.pos[i * 3 + 2]; }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    g.setIndex(P.pos.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(P.idx, 1) : new THREE.Uint16BufferAttribute(P.idx, 1));
+    g.computeBoundingBox(); g.computeBoundingSphere();
+    const m = new THREE.Mesh(g, mat(key.split(':')[0]));
+    m.receiveShadow = true;
+    m.name = `ground-${key}`;
+    out.push(m);
+  }
+  return out;
 }
+
+/** Smallest distance outside the town over a tile (sampled every 32 m). */
+function tileOut(x0, z0, x1, z1) {
+  let best = Infinity;
+  for (let x = x0; x <= x1 + 0.1; x += (x1 - x0) / 8) for (let z = z0; z <= z1 + 0.1; z += (z1 - z0) / 8) best = Math.min(best, townOut(x, z));
+  return best;
+}
+const edges = (a, n, size = 256) => Array.from({ length: n + 1 }, (_, i) => a + i * size);
 
 export function buildWorld(scene) {
   const L = LAYOUT;
@@ -154,22 +301,26 @@ export function buildWorld(scene) {
   scene.add(root);
   const colliders = [];
 
-  // terrain: grass for the land, sand for the beach
-  root.add(heightMesh(L.beachX, 760, -560, 560, 4, mat('grass')));
-  root.add(heightMesh(-900, L.beachX, -560, 560, 4, mat('sand')));
-  // Japan island
-  root.add(heightMesh(JX - 420, JX + 420, -520, L.jMax[1] + 22, 4, mat('grass')));
-  root.add(heightMesh(JX - 420, JX + 420, L.jMax[1] + 22, 420, 4, mat('sand')));
+  // terrain: grass for the land, sand for the beach. Fine tiles where you can walk (EDGE), coarser
+  // ones for the mountains past the fence, all the way down to the sea around the island.
+  const homeE = EDGE.home, jE = EDGE.japan;
+  const stepHome = (x0, z0, x1, z1) => { const o = tileOut(x0, z0, x1, z1); return o <= homeE.play + 80 ? 4 : o <= homeE.play + 400 ? 8 : 16; };
+  for (const m of groundTiles(edges(L.beachX - 256, 7), edges(-1152, 9), stepHome, (x0) => (x0 < L.beachX ? 'sand' : 'grass'))) root.add(m);
+  // Japan island: hills to the north (under Mt Fuji), the beach and the sea to the south
+  const jz = L.jMax[1] + 22;
+  const stepJp = (x0, z0, x1, z1) => { const o = tileOut(x0, z0, x1, z1); return o <= jE.play + 80 ? 4 : o <= jE.play + 300 ? 8 : 16; };
+  for (const m of groundTiles(edges(JX - 128 - 256 * 3, 7), edges(jz - 256 * 4, 5), stepJp, (x0, z0) => (z0 >= jz ? 'sand' : 'grass'))) root.add(m);
   const jsea = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), mat('water'));
-  { const g = new THREE.PlaneGeometry(2800, 2600).rotateX(-Math.PI / 2); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 2800, uv.getY(i) * 2600); jsea.geometry = g; }
-  jsea.position.set(JX - 560, L.seaY - 0.05, 100);
+  { const g = new THREE.PlaneGeometry(2800, 3400).rotateX(-Math.PI / 2); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 2800, uv.getY(i) * 3400); jsea.geometry = g; }
+  jsea.position.set(JX - 560, L.seaY - 0.05, 0);
   root.add(jsea);
 
-  // sea
-  const seaGeo = new THREE.PlaneGeometry(2400, 2400, 1, 1).rotateX(-Math.PI / 2);
-  const uvs = seaGeo.attributes.uv; for (let i = 0; i < uvs.count; i++) uvs.setXY(i, uvs.getX(i) * 2400, uvs.getY(i) * 2400);
+  // sea: west of the beach and all around the island up to the Japan sea (x 240), which it meets edge to edge
+  const SW = 240 - (L.beachX - 2420), SD = 3400;
+  const seaGeo = new THREE.PlaneGeometry(SW, SD, 1, 1).rotateX(-Math.PI / 2);
+  const uvs = seaGeo.attributes.uv; for (let i = 0; i < uvs.count; i++) uvs.setXY(i, uvs.getX(i) * SW, uvs.getY(i) * SD);
   const sea = new THREE.Mesh(seaGeo, mat('water'));
-  sea.position.set(L.beachX - 1200 - 20, L.seaY, 0);
+  sea.position.set(240 - SW / 2, L.seaY, 0);
   sea.receiveShadow = true;
   root.add(sea);
   // foam where the waves meet the sand
