@@ -281,8 +281,10 @@ export class UI {
     for (const r of this.game.remotes.values()) {
       if (!r.avatar) continue;
       const b = document.createElement('button');
-      b.textContent = r.name;
+      const old = !(r.v >= 2);
+      b.textContent = old ? `${r.name} (새로고침 필요)` : r.name;
       b.className = r.id === this.giftTo ? 'on' : '';
+      if (old) b.classList.add('old');
       b.addEventListener('click', () => { this.game.sfx('click'); this.giftTo = r.id; this.renderGift(); });
       people.append(b);
     }

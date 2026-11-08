@@ -235,3 +235,7 @@ body:not(.playing) #carpet-bar, body.dressing #carpet-bar { display: none; }
 .gift-people button.on, .gift-amounts button.on { background: var(--blue); color: #fff; box-shadow: 0 4px 0 var(--blue-d); }
 .gift-amounts button:disabled { opacity: .4; cursor: default; }
 #gift-send:disabled { opacity: .5; cursor: default; }
+
+.gift-people button.old { background: #fff1e6; color: #9a5a1a; }
+/* 새 버전 알림 (src/update.js) */
+#update-banner { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); z-index: 60; padding: 12px 24px; border: 0; border-radius: 18px; background: #ffcf3f; color: #2b1a0c; font: 20px Jua, sans-serif; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); cursor: pointer; animation: bump .4s; white-space: nowrap; max-width: calc(100vw - 24px); }

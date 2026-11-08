@@ -58,7 +58,7 @@
     "test:social-game": "node --test \"games/social-game/*.test.mjs\"",
     "brickverse:dev": "vite --config games/brickverse/vite.config.js --host 127.0.0.1",
     "brickverse:build": "vite build --config games/brickverse/vite.config.js",
-    "test:brickverse": "node --test games/brickverse/core.test.mjs",
+    "test:brickverse": "node --test games/brickverse/*.test.mjs",
     "test:geometry-dash": "node --test games/geometry-dash/core.test.mjs",
     "test:undertale-echo": "node --test games/undertale-echo/*.test.mjs",
     "test:undertale-echo:browser": "node games/undertale-echo/browser-check.mjs",

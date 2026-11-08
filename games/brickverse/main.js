@@ -11,10 +11,11 @@ import { Tycoon, remoteTycoonFrom } from './src/tycoon.js';
 import { Survival } from './src/survival.js';
 import { Cloud } from './src/cloud.js';
 import { Tower } from './src/tower.js';
+import { startUpdateCheck } from './src/update.js';
 import {
   P, SAVE_KEY, makeBox, placeBox, newPlayer, stepPlayer, clearMotion, segmentDistance, cleanSave, defaultSave,
   HATS, FACES, EMBLEMS, PHRASES, displayName, lookToArray, lookFromArray, packPose, unpackPose,
-  OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS, validGift, GIFT_MAX, packBlocks, unpackBlocks, inTower, cellKey, TOWER,
+  OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS, validGift, GIFT_MAX, NET_VERSION, GIFT_WAIT_MS, packBlocks, unpackBlocks, inTower, cellKey, TOWER,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
 
@@ -363,7 +364,7 @@ game.net = new Net({
 });
 
 function myHi() {
-  const msg = { t: 'hi', n: game.save.name, l: lookToArray(game.save.look), w: game.worldId };
+  const msg = { t: 'hi', v: NET_VERSION, n: game.save.name, l: lookToArray(game.save.look), w: game.worldId };
   if (game.worldId === 2 && game.world?.runtime) msg.o = game.world.runtime.itemIndexes();
   else msg.o = game.save.tycoon.items.length ? undefined : undefined;
   return msg;
@@ -401,6 +402,7 @@ game.giveMoney = (to, amt) => {
   const t = game.save.tycoon, r = game.remotes.get(to);
   amt = Math.floor(amt);
   if (!r || !game.net.active) { ui.toast('친구가 방에 없어'); return false; }
+  if (!(r.v >= NET_VERSION)) { sound.nope(); ui.toast(`${r.name} 님 게임이 예전 버전이야. 친구에게 새로고침해 달라고 해 줘!`, 4200); return false; }
   if (!(amt >= 1) || amt > GIFT_MAX) return false;
   if (t.cash < amt) { sound.nope(); ui.toast(`돈이 모자라! 지금 ${cash$(t.cash)} 있어`); return false; }
   t.cash -= amt;
@@ -410,9 +412,9 @@ game.giveMoney = (to, amt) => {
     giftsOut.delete(n);
     game.save.tycoon.cash += amt;
     game.persist();
-    ui.toast(`친구에게 전하지 못해서 ${cash$(amt)} 돌려받았어`);
+    ui.toast(`친구에게 전하지 못해서 ${cash$(amt)} 돌려받았어. 친구도 새로고침했는지 봐 줘!`, 4200);
     if (game.worldId === 2) game.world.runtime?.updateInfo();
-  }, 6000);
+  }, GIFT_WAIT_MS);
   giftsOut.set(n, { to, amt, timer });
   game.net.sendTo(to, { t: 'gift', amt, n });
   sound.cash();
@@ -456,6 +458,7 @@ function onMessage(data, from) {
       if (!r.avatar) { r.avatar = new Avatar(r.look, r.name); view.scene.add(r.avatar.root); }
       else { r.avatar.setLook(r.look); r.avatar.setName(r.name); }
       if (Number.isInteger(data.w)) r.w = data.w;
+      r.v = Number.isInteger(data.v) ? data.v : 1;
       if (data.o !== undefined) {
         const items = remoteTycoonFrom(data.o);
         if (items) { r.tycoon = items; if (game.worldId === 2) game.world.runtime?.remoteChanged(r.slot); }
@@ -780,6 +783,7 @@ function frame(now) {
 }
 
 loadWorld(0);
+game.update = startUpdateCheck({ save: () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(game.save)); } catch { /* 무시 */ } } });
 requestAnimationFrame(t => { last = t; frame(t); });
 $('loading')?.remove();
 
