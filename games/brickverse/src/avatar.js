@@ -1,7 +1,7 @@
 // 블록 아바타: 몸, 얼굴, 모자, 셔츠 무늬, 이름표, 말풍선, 걷기/점프/감정 표현 움직임.
 import { THREE } from './render.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { SKINS, COLORS, HATS, FACES, EMBLEMS, P } from '../core.mjs';
+import { SKINS, COLORS, HATS, FACES, EMBLEMS, HAIRS, HAIR_COLORS, P } from '../core.mjs';
 
 const geo = {
   leg: new RoundedBoxGeometry(0.5, 0.62, 0.52, 2, 0.1),
@@ -214,6 +214,107 @@ function hatGroup(id, shirtColor) {
   return g;
 }
 
+// ───── 머리카락 ─────
+// 머리(가로 1.0, 높이 0.92, 깊이 0.92)의 가운데가 (0, 0.48, 0), 윗면이 0.94, 얼굴은 +z 쪽.
+// 모자를 쓰면 위로 솟는 부분(tall)은 숨긴다.
+const COVER_HATS = new Set(['cap', 'beanie', 'chef', 'tophat', 'viking', 'wizard', 'party', 'crown']);
+function hairGroup(id, color, covered) {
+  const g = new THREE.Group();
+  const mat = stdMat(color, { roughness: 0.6 });
+  const box = (w, h, d, x, y, z, r = 0.08, tall = false) => {
+    if (tall && covered) return null;
+    const m = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2.2, h / 2.2, d / 2.2)), mat);
+    m.position.set(x, y, z); m.castShadow = true; g.add(m); return m;
+  };
+  const ball = (r, x, y, z, tall = false, sy = 1) => {
+    if (tall && covered) return null;
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), mat);
+    m.position.set(x, y, z); m.scale.y = sy; m.castShadow = true; g.add(m); return m;
+  };
+  const cone = (r, h, x, y, z, rx = 0, rz = 0) => {
+    if (covered) return null;
+    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 8), mat);
+    m.position.set(x, y, z); m.rotation.set(rx, 0, rz); m.castShadow = true; g.add(m); return m;
+  };
+  const cap = () => { box(1.08, 0.2, 1.0, 0, 0.96, -0.02, 0.09, true); box(1.08, 0.5, 0.16, 0, 0.66, -0.48); };
+  const fringe = () => box(1.04, 0.16, 0.12, 0, 0.86, 0.47, 0.05);
+  switch (id) {
+    case 'short': cap(); fringe(); for (const s of [-1, 1]) box(0.1, 0.34, 0.5, s * 0.53, 0.72, -0.16, 0.04); break;
+    case 'bangs':
+      cap(); for (const s of [-1, 1]) box(0.1, 0.42, 0.7, s * 0.53, 0.68, -0.08, 0.04);
+      for (const x of [-0.33, 0, 0.33]) box(0.34, 0.26, 0.12, x, 0.8, 0.48, 0.06);
+      break;
+    case 'spiky':
+      cap(); fringe();
+      for (const [x, z, rx, rz] of [[0, 0.15, 0.3, 0], [-0.3, 0, 0.1, 0.45], [0.3, 0, 0.1, -0.45], [0, -0.25, -0.3, 0], [-0.25, -0.3, -0.2, 0.3], [0.25, -0.3, -0.2, -0.3]]) cone(0.17, 0.5, x, 1.18, z, rx, rz);
+      break;
+    case 'bob':
+      cap(); fringe(); box(1.12, 0.78, 0.2, 0, 0.5, -0.47);
+      for (const s of [-1, 1]) box(0.14, 0.78, 0.86, s * 0.56, 0.5, -0.04, 0.06);
+      break;
+    case 'long':
+      cap(); fringe(); box(1.1, 1.55, 0.18, 0, 0.18, -0.5, 0.08);
+      for (const s of [-1, 1]) box(0.14, 1.1, 0.5, s * 0.56, 0.38, -0.2, 0.06);
+      break;
+    case 'pony':
+      cap(); fringe(); box(0.2, 0.2, 0.2, 0, 0.82, -0.56, 0.06);
+      box(0.3, 0.8, 0.28, 0, 0.42, -0.66, 0.12);
+      break;
+    case 'pigtails':
+      cap(); fringe();
+      for (const s of [-1, 1]) { ball(0.18, s * 0.6, 0.72, -0.12); box(0.24, 0.62, 0.24, s * 0.7, 0.36, -0.12, 0.1); }
+      break;
+    case 'bun': cap(); fringe(); ball(0.27, 0, 1.12, -0.1, true); break;
+    case 'curly':
+      for (const [x, y, z, r] of [[0, 0.98, 0, 0.36], [-0.35, 0.92, 0.12, 0.25], [0.35, 0.92, 0.12, 0.25], [-0.38, 0.86, -0.25, 0.28], [0.38, 0.86, -0.25, 0.28], [0, 0.9, -0.38, 0.3], [-0.5, 0.62, -0.1, 0.2], [0.5, 0.62, -0.1, 0.2], [0, 0.66, -0.5, 0.26]]) ball(r, x, y, z, y > 0.85);
+      box(1.0, 0.14, 0.12, 0, 0.88, 0.47, 0.06);
+      break;
+    case 'mohawk':
+      box(1.06, 0.08, 0.96, 0, 0.95, -0.02, 0.03);
+      for (let k = 0; k < 5; k++) box(0.16, 0.3 + (k === 1 || k === 2 ? 0.1 : 0), 0.18, 0, 1.12 + (k === 1 || k === 2 ? 0.05 : 0), 0.34 - k * 0.2, 0.05, true);
+      break;
+    case 'swoop':
+      cap(); box(1.12, 0.5, 0.16, 0, 0.66, -0.48);
+      { const top = box(0.9, 0.28, 0.42, 0.12, 1.06, 0.2, 0.12, true); if (top) top.rotation.z = -0.25; } // 모자를 쓰면 없음 (null)
+      { const side = box(0.62, 0.22, 0.14, 0.2, 0.84, 0.47, 0.06); if (side) side.rotation.z = -0.3; }
+      break;
+    default: break;
+  }
+  return g;
+}
+
+// 꾸미기 창에 보여 줄 작은 그림
+const hairIconCache = new Map();
+export function hairIcon(id, color) {
+  const key = `${id}|${color}`;
+  if (hairIconCache.has(key)) return hairIconCache.get(key);
+  const c = document.createElement('canvas');
+  c.width = c.height = 96;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffdcb5'; g.beginPath(); g.roundRect(22, 26, 52, 52, 12); g.fill();
+  g.fillStyle = '#1e1f26'; g.fillRect(36, 50, 6, 9); g.fillRect(54, 50, 6, 9);
+  g.fillStyle = color;
+  const rr = (x, y, w, h, r = 6) => { g.beginPath(); g.roundRect(x, y, w, h, r); g.fill(); };
+  const top = () => rr(19, 18, 58, 16, 8);
+  switch (id) {
+    case 'short': top(); rr(19, 26, 8, 16, 3); rr(69, 26, 8, 16, 3); break;
+    case 'bangs': top(); rr(22, 28, 52, 12, 5); break;
+    case 'spiky': top(); for (const x of [26, 40, 54, 66]) { g.beginPath(); g.moveTo(x - 7, 22); g.lineTo(x, 4); g.lineTo(x + 7, 22); g.fill(); } break;
+    case 'bob': top(); rr(16, 24, 12, 46, 5); rr(68, 24, 12, 46, 5); break;
+    case 'long': top(); rr(14, 24, 13, 66, 6); rr(69, 24, 13, 66, 6); break;
+    case 'pony': top(); rr(70, 24, 16, 40, 8); break;
+    case 'pigtails': top(); g.beginPath(); g.arc(14, 46, 10, 0, 7); g.arc(82, 46, 10, 0, 7); g.fill(); rr(8, 50, 12, 30, 6); rr(76, 50, 12, 30, 6); break;
+    case 'bun': top(); g.beginPath(); g.arc(48, 12, 12, 0, 7); g.fill(); break;
+    case 'curly': for (const [x, y, r] of [[30, 22, 13], [48, 16, 15], [66, 22, 13], [20, 38, 10], [76, 38, 10]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); } break;
+    case 'mohawk': rr(40, 2, 16, 30, 6); break;
+    case 'swoop': top(); g.beginPath(); g.moveTo(20, 30); g.quadraticCurveTo(50, 6, 80, 22); g.lineTo(76, 34); g.quadraticCurveTo(50, 22, 26, 38); g.fill(); break;
+    default: g.strokeStyle = '#ff4d5e'; g.lineWidth = 6; g.beginPath(); g.arc(48, 48, 34, 0, 7); g.moveTo(24, 72); g.lineTo(72, 24); g.stroke(); break;
+  }
+  const url = c.toDataURL();
+  hairIconCache.set(key, url);
+  return url;
+}
+
 // ───── 이름표, 말풍선 ─────
 function labelSprite(text, { bg = 'rgba(20,22,30,0.62)', fg = '#ffffff', size = 40, pad = 18, maxW = 460, tail = false } = {}) {
   const c = document.createElement('canvas');
@@ -277,6 +378,7 @@ export class Avatar {
     this.face = new THREE.Mesh(geo.face, this.mats.face);
     this.face.position.set(0, 0.46, 0.462); this.head.add(this.face);
     this.hatSlot = new THREE.Group(); this.hatSlot.position.y = 0.94; this.head.add(this.hatSlot);
+    this.hairSlot = new THREE.Group(); this.head.add(this.hairSlot);
 
     this.tag = null; this.bubble = null; this.bubbleTime = 0;
     this.phase = 0; this.t = 0; this.emote = 0; this.visualY = null;
@@ -297,6 +399,10 @@ export class Avatar {
     this.hatSlot.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
     this.hatSlot.clear();
     this.hatSlot.add(hatGroup(HATS[look.hat].id, COLORS[look.shirt]));
+    this.hairSlot.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    this.hairSlot.clear();
+    const hair = HAIRS[look.hair ?? 1] ?? HAIRS[1];
+    this.hairSlot.add(hairGroup(hair.id, HAIR_COLORS[look.hairColor ?? 1] ?? HAIR_COLORS[1], COVER_HATS.has(HATS[look.hat]?.id)));
   }
 
   setName(text, color) {
@@ -342,6 +448,7 @@ export class Avatar {
         default: break;
       }
     }
+    if (this.aim && !s.climb && s.emote !== 4) { la = -1.5; ra = -1.32; lz = 0.12; rz = -0.5; } // 블래스터를 두 손으로 앞으로
     lerp(this.arms[0].rotation, 'x', la); lerp(this.arms[1].rotation, 'x', ra);
     lerp(this.arms[0].rotation, 'z', lz); lerp(this.arms[1].rotation, 'z', rz);
     lerp(this.legs[0].rotation, 'x', ll); lerp(this.legs[1].rotation, 'x', rl);
@@ -367,6 +474,7 @@ export class Avatar {
     this.root.removeFromParent();
     for (const m of Object.values(this.mats)) m.dispose();
     this.hatSlot.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    this.hairSlot.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
     for (const s of [this.tag, this.bubble]) if (s) { s.material.map.dispose(); s.material.dispose(); }
   }
 }

@@ -137,6 +137,13 @@ export class Controls {
   // 카메라가 보는 쪽 (캐릭터가 이쪽을 본다)
   get facing() { return this.yaw + Math.PI; }
 
+  // 마우스를 화면에 붙잡기만 (쉬프트락이 이미 켜져 있을 때, 예: 배틀에서 클릭)
+  lockPointer() {
+    if (matchMedia('(pointer: coarse)').matches || this.locked) return;
+    this.wantLock = true;
+    try { const r = this.canvas.requestPointerLock?.(); r?.catch?.(() => {}); } catch { /* 안 되는 브라우저 */ }
+  }
+
   setShiftLock(on) {
     this.shiftLock = on;
     const mouse = !matchMedia('(pointer: coarse)').matches;

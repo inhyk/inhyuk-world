@@ -50,6 +50,7 @@ export const PORTALS = [
   { id: 'tycoon', world: 2, name: '블록 공장 타이쿤', sub: '돈 모아서 집 짓기', color: '#ffb820', icon: '🏭' },
   { id: 'survival', world: 3, name: '바닥이 사라져요', sub: '끝까지 살아남기', color: '#9b5cff', icon: '🔥' },
   { id: 'tower', world: 4, name: '하늘 타워 짓기', sub: '블록으로 높이높이', color: '#21c7b8', icon: '🏗️' },
+  { id: 'battle', world: 5, name: '블록 배틀 로얄', sub: '블래스터로 끝까지', color: '#ff5e3a', icon: '🎯' },
 ];
 
 function tree(out, x, z, rnd, scale = 1, y0 = 0) {
@@ -156,8 +157,8 @@ export function buildHub() {
     for (let i = 0; i < 4; i++) parts.push({ x: x - 3.5 + i * 1.4, y: 4.6, z: z - 3.7, w: 1.1, h: 1.3, d: 0.3, c: ['#ff4d5e', '#3fa7ff', '#ffd23f', '#5ad16b'][i], deco: true });
     signs.push({ x, y: 7.4, z: z + 4.6, ry: 0, w: 7, h: 1.6, lines: ['👕 옷가게'], bg: '#ffffff', fg: '#ff4d7a', accent: '#ff5e7e' });
     zones.push({ x0: x - 3, x1: x + 3, y0: 0, y1: 4, z0: z + 2.6, z1: z + 5.2, wardrobe: true });
-    npcs.push({ x: x + 2, z: z - 1, yaw: 0, still: true, name: '옷가게 주인 리본', look: { skin: 8, shirt: 8, pants: 9, hat: 4, face: 1, emblem: 2 } });
-    npcs.push({ x: x - 3.5, z: z - 1.5, yaw: 0.4, still: true, mannequin: true, look: { skin: 9, shirt: 1, pants: 12, hat: 10, face: 6, emblem: 6 } });
+    npcs.push({ x: x + 2, z: z - 1, yaw: 0, still: true, name: '옷가게 주인 리본', look: { skin: 8, shirt: 8, pants: 9, hat: 4, face: 1, emblem: 2, hair: 7, hairColor: 5 } });
+    npcs.push({ x: x - 3.5, z: z - 1.5, yaw: 0.4, still: true, mannequin: true, look: { skin: 9, shirt: 1, pants: 12, hat: 10, face: 6, emblem: 6, hair: 4, hairColor: 0 } });
   }
   // 안내판
   signs.push({ x: 30, y: 3.4, z: 8, ry: -Math.PI / 2, w: 8, h: 4.6, lines: ['브릭버스에 온 걸 환영해!', 'WASD 이동 · Space 점프', '마우스 끌기: 시점 · 휠: 확대', '빛나는 문으로 게임에 들어가!', '🪙 코인으로 모자와 얼굴을 사요'], bg: '#ffffff', fg: '#2a2d3a', accent: '#3fa7ff', sizes: [86, 62, 62, 62, 62] });
@@ -211,7 +212,7 @@ export function buildHub() {
   for (const [x, z] of [[-21, 21], [21, 21], [-21, -21], [21, -21], [-6, 28], [6, 28], [-12, 40], [12, 40]]) lamp(parts, x, z);
   for (const [x, z, w, d] of [[-9, 9, 3, 3], [9, 9, 3, 3], [-9, -9, 3, 3], [9, -9, 3, 3], [-28, 24, 6, 3], [26, 24, 6, 3], [-50, -20, 4, 8]]) flowers(parts, x, z, w, d, rnd);
   // 나무
-  const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -44 && Math.abs(x) < 48) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
+  const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -44 && Math.abs(x) < 60) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
     || (Math.abs(x - 42) < 14 && Math.abs(z + 6) < 15) || (Math.abs(x + 42) < 8 && Math.abs(z - 40) < 8) || (Math.abs(x - 36) < 12 && Math.abs(z - 34) < 12)
     || (Math.abs(x - 30) < 4 && Math.abs(z - 8) < 6) || (Math.abs(x) < 5 && z > 20 && z < 60);
   let placed = 0;
@@ -231,9 +232,9 @@ export function buildHub() {
   for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; coins.push([Math.cos(a) * 16, 1.4, Math.sin(a) * 16]); }
   for (const [x, z] of [[-60, -50], [60, -50], [-60, 60], [55, 62], [0, 66], [-66, 0], [66, 0], [-24, -58], [24, -58]]) coins.push([x, 1.4, z]);
   // 돌아다니는 주민
-  npcs.push({ x: 8, z: 22, wander: true, name: '브릭 주민 단단이', look: { skin: 0, shirt: 3, pants: 12, hat: 2, face: 2, emblem: 4 } });
-  npcs.push({ x: -16, z: -16, wander: true, name: '브릭 주민 몽글이', look: { skin: 7, shirt: 9, pants: 5, hat: 6, face: 0, emblem: 2 } });
-  npcs.push({ x: 22, z: -20, wander: true, name: '브릭 주민 반짝이', look: { skin: 5, shirt: 7, pants: 11, hat: 15, face: 7, emblem: 1 } });
+  npcs.push({ x: 8, z: 22, wander: true, name: '브릭 주민 단단이', look: { skin: 0, shirt: 3, pants: 12, hat: 0, face: 2, emblem: 4, hair: 3, hairColor: 4 } });
+  npcs.push({ x: -16, z: -16, wander: true, name: '브릭 주민 몽글이', look: { skin: 7, shirt: 9, pants: 5, hat: 6, face: 0, emblem: 2, hair: 5, hairColor: 3 } });
+  npcs.push({ x: 22, z: -20, wander: true, name: '브릭 주민 반짝이', look: { skin: 5, shirt: 7, pants: 11, hat: 15, face: 7, emblem: 1, hair: 9, hairColor: 7 } });
   return { parts, coins, zones, signs, effects, npcs, spawn: { x: 0, y: 0.3, z: 18, yaw: Math.PI }, killY: -20, sky: 'hub' };
 }
 
@@ -1035,4 +1036,122 @@ export function buildTower({ slot = 0 } = {}) {
     tree(parts, x, z, rnd); n++;
   }
   return { parts, signs, effects, zones, coins, npcs: [], spawn: { x: mx, y: 0.1, z: mz + half + 9, yaw: Math.PI }, sky: 'tower', killY: -15 };
+}
+
+// ───────────────────────── 블록 배틀 로얄 ─────────────────────────
+// 섬(지름 약 200)에 마을, 창고, 저격 탑, 상자, 바위, 언덕. 하늘 대기실에서 시작해 낙하산으로 내려간다.
+// loot: 블래스터와 회복 주스, 방패가 놓일 수 있는 자리 (src/battle.js 가 판마다 골라 놓는다).
+export const BATTLE_LOBBY = { x: 0, y: 92, z: 0 };
+
+// 축(axis)을 따라 a0~a1 에 서는 벽. holes: [{ a: 가운데, w: 너비, y0, y1 }] 를 뚫는다.
+function wall(out, axis, fixed, a0, a1, h, holes, c, t = 0.5) {
+  const put = (a, b, y0, y1) => {
+    if (b - a < 0.05 || y1 - y0 < 0.05) return;
+    const mid = (a + b) / 2, len = b - a;
+    out.push(axis === 'x' ? { x: mid, y: (y0 + y1) / 2, z: fixed, w: len, h: y1 - y0, d: t, c } : { x: fixed, y: (y0 + y1) / 2, z: mid, w: t, h: y1 - y0, d: len, c });
+  };
+  const hs = [...holes].sort((p, q) => p.a - q.a);
+  let a = a0;
+  for (const hole of hs) {
+    const h0 = hole.a - hole.w / 2, h1 = hole.a + hole.w / 2;
+    put(a, h0, 0, h);
+    put(h0, h1, 0, hole.y0);
+    put(h0, h1, hole.y1, h);
+    a = h1;
+  }
+  put(a, a1, 0, h);
+}
+
+function bHouse(out, loot, x, z, w, d, h, c, roofC, door = 's') {
+  out.push({ x, y: 0.1, z, w, h: 0.2, d, c: '#d9c3a5', m: 'wood', round: 0.02 });
+  const doorHole = { w: 2.4, y0: 0, y1: 3 }, win = { w: 2, y0: 1.2, y1: 2.4 };
+  const sides = { s: ['x', z + d / 2, x - w / 2, x + w / 2, x], n: ['x', z - d / 2, x - w / 2, x + w / 2, x], e: ['z', x + w / 2, z - d / 2, z + d / 2, z], w: ['z', x - w / 2, z - d / 2, z + d / 2, z] };
+  for (const [k, [axis, fixed, a0, a1, mid]] of Object.entries(sides)) {
+    const holes = k === door ? [{ ...doorHole, a: mid }] : [{ ...win, a: mid + (k === 'n' || k === 'w' ? -1 : 1) * (Math.min(w, d) * 0.18) }];
+    wall(out, axis, fixed, a0, a1, h, holes, c);
+  }
+  out.push({ x, y: h + 0.25, z, w: w + 0.8, h: 0.5, d: d + 0.8, c: roofC });
+  for (const [px, pz, pw, pd] of [[x, z - d / 2 - 0.15, w + 0.8, 0.3], [x, z + d / 2 + 0.15, w + 0.8, 0.3], [x - w / 2 - 0.15, z, 0.3, d + 0.8], [x + w / 2 + 0.15, z, 0.3, d + 0.8]]) out.push({ x: px, y: h + 0.85, z: pz, w: pw, h: 0.7, d: pd, c: roofC });
+  // 지붕으로 가는 사다리 (문 반대쪽 바깥)
+  const back = { s: [x, z - d / 2 - 0.35, 2.2, 0.5], n: [x, z + d / 2 + 0.35, 2.2, 0.5], e: [x - w / 2 - 0.35, z, 0.5, 2.2], w: [x + w / 2 + 0.35, z, 0.5, 2.2] }[door];
+  out.push({ x: back[0], y: (h + 1.2) / 2, z: back[1], w: back[2], h: h + 1.2, d: back[3], k: 'ladder', c: '#a0612f', m: 'wood' });
+  loot.push([x - w * 0.22, 0.7, z], [x + w * 0.22, 0.7, z - d * 0.2]);
+  loot.push([x, h + 1.1, z]);
+}
+
+function bTower(out, loot, x, z, c) {
+  out.push({ x, y: 7, z, w: 3, h: 14, d: 3, c, m: 'stone' });
+  out.push({ x: x + 1.8, y: 7.3, z, w: 0.6, h: 14.6, d: 2.2, k: 'ladder', c: '#a0612f', m: 'wood' });
+  out.push({ x, y: 14.3, z, w: 6, h: 0.6, d: 6, c: '#c7ccd6', m: 'metal' });
+  for (const [px, pz, pw, pd] of [[x, z - 2.85, 6, 0.3], [x, z + 2.85, 6, 0.3], [x - 2.85, z, 0.3, 6]]) out.push({ x: px, y: 15.1, z: pz, w: pw, h: 1.0, d: pd, c: '#c7ccd6', m: 'metal' });
+  loot.push([x - 1, 15.2, z]);
+}
+
+function bWarehouse(out, loot, x, z, rnd) {
+  const w = 26, d = 16, h = 6.5, c = '#9aa3b5';
+  out.push({ x, y: 0.1, z, w, h: 0.2, d, c: '#b8bcc6', m: 'stone', round: 0.02 });
+  wall(out, 'x', z - d / 2, x - w / 2, x + w / 2, h, [{ a: x, w: 5, y0: 0, y1: 4.5 }], c, 0.6);
+  wall(out, 'x', z + d / 2, x - w / 2, x + w / 2, h, [{ a: x, w: 5, y0: 0, y1: 4.5 }], c, 0.6);
+  wall(out, 'z', x - w / 2, z - d / 2, z + d / 2, h, [{ a: z, w: 2.5, y0: 1.5, y1: 3 }], c, 0.6);
+  wall(out, 'z', x + w / 2, z - d / 2, z + d / 2, h, [{ a: z, w: 2.5, y0: 1.5, y1: 3 }], c, 0.6);
+  out.push({ x, y: h + 0.3, z, w: w + 1, h: 0.6, d: d + 1, c: '#5b6275', m: 'metal' });
+  for (let k = 0; k < 7; k++) {
+    const cx = x + (rnd() - 0.5) * (w - 6), cz = z + (rnd() - 0.5) * (d - 6), n = 1 + Math.floor(rnd() * 2);
+    for (let q = 0; q < n; q++) out.push({ x: cx, y: 1 + q * 2, z: cz, w: 2, h: 2, d: 2, c: '#b9824f', m: 'wood' });
+  }
+  loot.push([x - 8, 0.7, z], [x + 8, 0.7, z], [x, 0.7, z - 3]);
+}
+
+export function buildBattle() {
+  const parts = [], signs = [], effects = [], coins = [], loot = [];
+  const rnd = seeded(5150);
+  parts.push({ x: 0, y: -3, z: 0, w: 214, h: 6, d: 214, c: '#7cc95a', m: 'grass', round: 1.5, shadow: false });
+  parts.push({ x: 0, y: -2.85, z: 0, w: 232, h: 5.2, d: 232, c: '#f5dfa6', m: 'sand', round: 2, shadow: false });
+  parts.push({ x: 0, y: -1.1, z: 0, w: 1600, h: 0.2, d: 1600, c: '#33a6ff', m: 'water', deco: true, shadow: false, round: 0 });
+  for (const [x, z, w, d] of [[0, -118, 240, 2], [0, 118, 240, 2], [-118, 0, 2, 240], [118, 0, 2, 240]]) parts.push({ x, y: 4, z, w, h: 14, d, hidden: true });
+  // 하늘 대기실
+  const L = BATTLE_LOBBY;
+  parts.push({ x: L.x, y: L.y - 0.4, z: L.z, w: 26, h: 0.8, d: 26, c: '#d9f3ff', k: 'glass' });
+  parts.push({ x: L.x, y: L.y - 0.85, z: L.z, w: 26.4, h: 0.1, d: 26.4, c: '#ffffff', deco: true, shadow: false });
+  for (const [x, z, w, d] of [[0, -13, 26, 0.6], [0, 13, 26, 0.6], [-13, 0, 0.6, 26], [13, 0, 0.6, 26]]) parts.push({ x: L.x + x, y: L.y + 0.8, z: L.z + z, w, h: 1.6, d, c: '#ff5e3a' });
+  signs.push({ x: L.x, y: L.y + 4.4, z: L.z - 13, ry: 0, w: 11, h: 3.2, lines: ['🎯 블록 배틀 로얄', '블래스터를 주워 마지막까지 남으면 승리!', '줄어드는 안전 구역 안에 있어야 해'], bg: '#2a1b0e', fg: '#ffffff', accent: '#ff5e3a', sizes: [66, 40, 40] });
+  parts.push({ x: L.x, y: L.y + 1.4, z: L.z - 13.2, w: 0.5, h: 2.8, d: 0.5, c: '#3a3f4b', m: 'metal', deco: true });
+  effects.push({ type: 'portal', x: L.x + 9.5, y: L.y + 2, z: L.z + 9.5, w: 2.6, h: 3.4, color: '#3fa7ff', ry: -3 * Math.PI / 4 });
+  signs.push({ x: L.x + 9.5, y: L.y + 4.3, z: L.z + 9.5, ry: -3 * Math.PI / 4, w: 3.4, h: 0.9, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
+  const zones = [{ x0: L.x + 8.4, x1: L.x + 10.6, y0: L.y, y1: L.y + 3.5, z0: L.z + 8.4, z1: L.z + 10.6, portal: 0 }];
+  // 마을
+  const village = [[-58, -48, 's', '#ffd6a5', '#e8553f'], [-44, -52, 's', '#cdeac0', '#3f8f5a'], [-60, -30, 'e', '#bde0fe', '#3f6fbf'], [-40, -32, 'w', '#ffc8dd', '#c04f7a'], [-52, -14, 'n', '#fff3b0', '#d6a22a'], [-34, -12, 'n', '#e0d4ff', '#6c5ce7']];
+  for (const [x, z, door, c, rc] of village) bHouse(parts, loot, x, z, 9, 8, 3.8, c, rc, door);
+  // 따로 있는 집
+  const lone = [[40, -60, 's'], [70, -20, 'w'], [-78, 30, 'e'], [-20, 62, 'n'], [24, 70, 'n'], [78, 52, 'w'], [8, -80, 's'], [-70, 72, 'e']];
+  lone.forEach(([x, z, door], i) => bHouse(parts, loot, x, z, 8 + (i % 2), 7 + (i % 3), 3.6, hsl(i * 40, 60, 82), hsl(i * 40, 55, 45), door));
+  bWarehouse(parts, loot, 48, 32, rnd);
+  bWarehouse(parts, loot, -14, -78, rnd);
+  for (const [x, z, c] of [[0, 0, '#c7ccd6'], [70, -70, '#b0a8c8'], [-80, -80, '#a8c0b0'], [-6, 86, '#c8b8a8']]) bTower(parts, loot, x, z, c);
+  // 언덕 (층층이 쌓은 땅)
+  for (const [x, z, s] of [[20, -30, 1], [-20, 30, 1.2], [80, 0, 0.9], [-86, -6, 1]]) {
+    for (let k = 0; k < 4; k++) parts.push({ x, y: 0.75 + k * 1.5 - 0.75, z, w: (22 - k * 5) * s, h: 1.5, d: (18 - k * 4) * s, c: hsl(100 - k * 6, 45, 52 - k * 3), m: 'grass', round: 0.3 });
+    loot.push([x, 6.2, z]);
+  }
+  // 상자 무더기와 바위
+  for (let k = 0; k < 46; k++) {
+    const x = (rnd() - 0.5) * 190, z = (rnd() - 0.5) * 190;
+    if (Math.hypot(x, z) > 100) continue;
+    const n = 1 + Math.floor(rnd() * 3);
+    for (let q = 0; q < n; q++) parts.push({ x: x + (q === 2 ? 2.1 : 0), y: 1 + (q === 1 ? 2 : 0), z, w: 2, h: 2, d: 2, c: '#b9824f', m: 'wood' });
+    if (k % 3 === 0) loot.push([x + 2.6, 0.7, z]);
+  }
+  for (let k = 0; k < 22; k++) {
+    const x = (rnd() - 0.5) * 200, z = (rnd() - 0.5) * 200, s = 2 + rnd() * 3;
+    if (Math.hypot(x, z) > 102) continue;
+    parts.push({ x, y: s * 0.35, z, w: s * 1.4, h: s, d: s, c: '#a7a9b4', m: 'stone', ry: rnd() * 3, round: 0.5 });
+  }
+  // 나무 (집과 길을 피해서)
+  const near = (x, z) => [...village, ...lone].some(([hx, hz]) => Math.abs(x - hx) < 8 && Math.abs(z - hz) < 8) || Math.hypot(x - 48, z - 32) < 18 || Math.hypot(x + 14, z + 78) < 18;
+  for (let n = 0, tries = 0; n < 70 && tries < 600; tries++) {
+    const x = (rnd() - 0.5) * 205, z = (rnd() - 0.5) * 205;
+    if (Math.hypot(x, z) > 104 || near(x, z)) continue;
+    tree(parts, x, z, rnd); n++;
+  }
+  return { parts, signs, effects, zones, coins, loot, npcs: [], spawn: { x: L.x, y: L.y + 0.1, z: L.z + 5, yaw: Math.PI }, sky: 'hub', killY: -20 };
 }

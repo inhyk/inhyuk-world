@@ -239,3 +239,43 @@ body:not(.playing) #carpet-bar, body.dressing #carpet-bar { display: none; }
 .gift-people button.old { background: #fff1e6; color: #9a5a1a; }
 /* 새 버전 알림 (src/update.js) */
 #update-banner { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); z-index: 60; padding: 12px 24px; border: 0; border-radius: 18px; background: #ffcf3f; color: #2b1a0c; font: 20px Jua, sans-serif; box-shadow: 0 6px 18px rgba(0, 0, 0, .3); cursor: pointer; animation: bump .4s; white-space: nowrap; max-width: calc(100vw - 24px); }
+
+/* ───── 머리 ───── */
+.grid .sub-title { grid-column: 1 / -1; margin: 8px 0 0; color: #5b6275; font-size: 15px; }
+.grid .swatch.small { aspect-ratio: 1; border-radius: 12px; }
+.item .pic img[src^="data:"] { background: #fff; }
+
+/* ───── 블록 배틀 로얄 ───── */
+body.battle.playing:not(.dressing) #crosshair { display: block; }
+#crosshair.hit::before, #crosshair.hit::after { background: #ff4d5e; animation: hitflash .25s; }
+@keyframes hitflash { from { transform: scale(1.6); } }
+#battle-hud { position: fixed; left: 50%; bottom: 66px; transform: translateX(-50%); z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+body:not(.playing) #battle-hud, body.dressing #battle-hud { display: none; }
+#battle-hud .bars { display: flex; gap: 8px; }
+#battle-hud .bar { position: relative; width: 170px; height: 22px; border-radius: 11px; background: rgba(20, 22, 30, .55); overflow: hidden; box-shadow: 0 2px 0 rgba(0, 0, 0, .2); }
+#battle-hud .bar i { position: absolute; inset: 0 auto 0 0; background: #5ad16b; transition: width .2s; }
+#battle-hud .bar.ar i { background: #3fa7ff; }
+#battle-hud .bar span { position: relative; display: block; text-align: center; color: #fff; font-size: 14px; line-height: 22px; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+#battle-hud .slots { display: flex; gap: 6px; pointer-events: auto; }
+#battle-hud .slots button { width: 52px; height: 46px; padding: 0; display: grid; place-items: center; background: rgba(255, 255, 255, .55); opacity: .45; position: relative; }
+#battle-hud .slots button b { font-size: 22px; font-weight: normal; }
+#battle-hud .slots button small { position: absolute; right: 4px; bottom: 1px; font-size: 11px; color: #3d4458; }
+#battle-hud .slots button.have { opacity: 1; background: var(--panel); }
+#battle-hud .slots button.on { background: linear-gradient(#ffb36b, #ff8a3d); box-shadow: 0 4px 0 #c45f1a; }
+#fire-btn, #zoom-btn { display: none; }
+#scope { position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0; transition: opacity .15s; background: radial-gradient(circle at center, transparent 0 28vmin, rgba(10, 12, 20, .92) 28.5vmin); }
+#scope.on { opacity: 1; }
+#hurt { position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0; box-shadow: inset 0 0 90px 30px rgba(255, 40, 60, .55); }
+#hurt.on { animation: hurt .45s; }
+@keyframes hurt { 0% { opacity: 1; } 100% { opacity: 0; } }
+#world-info .warn-zone { color: #e03a55; font-size: 15px; }
+@media (pointer: coarse) {
+  body.battle.playing #fire-btn { display: block; position: fixed; right: max(130px, calc(env(safe-area-inset-right) + 130px)); bottom: max(30px, env(safe-area-inset-bottom)); width: 84px; height: 84px; border-radius: 50%; font-size: 36px; background: rgba(255, 94, 58, .9); z-index: 6; touch-action: none; }
+  body.battle.playing #fire-btn.on { transform: scale(.92); }
+  body.battle.playing #zoom-btn:not([hidden]) { display: block; position: fixed; right: max(36px, env(safe-area-inset-right)); bottom: max(196px, calc(env(safe-area-inset-bottom) + 196px)); width: 52px; height: 52px; border-radius: 50%; font-size: 22px; z-index: 6; }
+  #zoom-btn.on { background: var(--blue); }
+  #battle-hud { bottom: max(186px, calc(env(safe-area-inset-bottom) + 186px)); }
+  body.battle #btn-lock { display: none; }
+  #battle-hud .bar { width: 130px; }
+  body.battle.playing #crosshair { display: block; }
+}

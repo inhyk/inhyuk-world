@@ -257,8 +257,27 @@ export const EMOTES = [
   { id: 'sit', name: '🪑 앉기' },
 ];
 
-export const DEFAULT_LOOK = Object.freeze({ skin: 1, shirt: 5, pants: 15, hat: 1, face: 0, emblem: 1 });
-const LOOK_LIMITS = { skin: SKINS.length, shirt: COLORS.length, pants: COLORS.length, hat: HATS.length, face: FACES.length, emblem: EMBLEMS.length };
+// 머리카락 (2026-11-08 인혁: "머리카락을 만들어줘"). 값이 0 인 것은 처음부터 가진다.
+export const HAIRS = [
+  { id: 'none', name: '없음', price: 0 },
+  { id: 'short', name: '짧은 머리', price: 0 },
+  { id: 'bangs', name: '앞머리', price: 0 },
+  { id: 'spiky', name: '뾰족 머리', price: 0 },
+  { id: 'bob', name: '단발', price: 0 },
+  { id: 'long', name: '긴 머리', price: 20 },
+  { id: 'pony', name: '포니테일', price: 20 },
+  { id: 'pigtails', name: '양갈래', price: 30 },
+  { id: 'bun', name: '똥머리', price: 30 },
+  { id: 'curly', name: '곱슬 머리', price: 40 },
+  { id: 'mohawk', name: '모히칸', price: 50 },
+  { id: 'swoop', name: '옆으로 넘긴 머리', price: 60 },
+];
+export const HAIR_COLORS = ['#2b2522', '#5a3825', '#8a5a36', '#e8c26a', '#d9682c', '#ff8fc7', '#4a8cff', '#9b5cff', '#4fbf5a', '#f4f1ea'];
+export const FREE_HAIRS = HAIRS.map((h, i) => (h.price === 0 ? i : -1)).filter(i => i >= 0);
+
+// 새 칸(hair, hairColor)은 끝에 붙인다: 예전 게임이 보낸 6칸짜리 옷 배열도 그대로 읽힌다
+export const DEFAULT_LOOK = Object.freeze({ skin: 1, shirt: 5, pants: 15, hat: 1, face: 0, emblem: 1, hair: 1, hairColor: 1 });
+const LOOK_LIMITS = { skin: SKINS.length, shirt: COLORS.length, pants: COLORS.length, hat: HATS.length, face: FACES.length, emblem: EMBLEMS.length, hair: HAIRS.length, hairColor: HAIR_COLORS.length };
 export const LOOK_KEYS = Object.keys(LOOK_LIMITS);
 
 const int = (v, max, fallback = 0) => (Number.isInteger(v) && v >= 0 && v < max ? v : fallback);
@@ -372,10 +391,11 @@ export function defaultSave(rand = Math.random) {
     coins: 0,
     look: { ...DEFAULT_LOOK },
     name: randomName(rand),
-    owned: { hat: [0, 1, 2], face: [0, 1, 2], emblem: [0, 1, 2] },
+    owned: { hat: [0, 1, 2], face: [0, 1, 2], emblem: [0, 1, 2], hair: [...FREE_HAIRS] },
     obby: { cp: 0, top: 0, best: 0, clears: 0, paid: 0 },
     tycoon: { cash: 0, pending: 0, items: [], done: false, away: 0, bank: 0 },
     survival: { best: 0, wins: 0 },
+    battle: { wins: 0, kills: 0, best: 0 },
     tower: { blocks: [], best: 0 },
     sound: true,
     music: true,
@@ -399,9 +419,11 @@ export function cleanSave(raw, rand = Math.random) {
     hat: ownedList(raw.owned?.hat, HATS.length),
     face: ownedList(raw.owned?.face, FACES.length),
     emblem: ownedList(raw.owned?.emblem, EMBLEMS.length),
+    hair: [...new Set([...FREE_HAIRS, ...ownedList(raw.owned?.hair, HAIRS.length)])].sort((a, b) => a - b),
   };
   const look = cleanLook(raw.look);
   if (!s.owned.hat.includes(look.hat)) look.hat = DEFAULT_LOOK.hat;
+  if (!s.owned.hair.includes(look.hair)) look.hair = DEFAULT_LOOK.hair;
   if (!s.owned.face.includes(look.face)) look.face = DEFAULT_LOOK.face;
   if (!s.owned.emblem.includes(look.emblem)) look.emblem = DEFAULT_LOOK.emblem;
   s.look = look;
@@ -423,6 +445,7 @@ export function cleanSave(raw, rand = Math.random) {
   for (const it of TYCOON) if (items.includes(it.id) && (!it.need || ok.includes(it.need))) ok.push(it.id);
   s.tycoon = { cash: Math.floor(num(t.cash, 0, 1e12, 0)), pending: Math.floor(num(t.pending, 0, 1e12, 0)), items: ok, done: !!t.done && ok.includes('statue'), away: Math.floor(num(t.away, 0, 1e14, 0)), bank: num(t.bank, 0, 1, 0) };
   s.survival = { best: Math.floor(num(raw.survival?.best, 0, 3600, 0)), wins: Math.floor(num(raw.survival?.wins, 0, 99_999, 0)) };
+  s.battle = { wins: Math.floor(num(raw.battle?.wins, 0, 99_999, 0)), kills: Math.floor(num(raw.battle?.kills, 0, 9_999_999, 0)), best: Math.floor(num(raw.battle?.best, 0, 99, 0)) };
   s.tower = { blocks: cleanTowerBlocks(raw.tower?.blocks), best: Math.floor(num(raw.tower?.best, 0, TOWER.TOP + 1, 0)) };
   s.sound = raw.sound !== false;
   s.music = raw.music !== false;
@@ -438,7 +461,7 @@ export const OBBY_CLEAR_COINS = 100;
 
 // ───────────── 네트워크 ─────────────
 // 위치는 숫자만 보낸다 (글자열 속 숫자는 서버가 가릴 수 있다).
-export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower'];
+export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower', 'battle'];
 const r2 = v => Math.round(v * 100) / 100;
 export function packPose(pl, yaw, w, anim, emote) {
   return [w, r2(pl.x), r2(pl.y), r2(pl.z), r2(yaw), anim, emote];
@@ -527,3 +550,65 @@ export const GIFT_MAX = 1_000_000_000;
 export const validGift = d => Number.isInteger(d?.amt) && d.amt >= 1 && d.amt <= GIFT_MAX && Number.isInteger(d?.n) && d.n > 0;
 // 반 주기: 1달러 이상일 때만
 export const halfOf = cash => Math.max(0, Math.floor(cash / 2));
+
+// ───── 블록 배틀 로얄 (2026-11-08 인혁: "배그같은 총게임") ─────
+// 장난감 블래스터로 맞히면 체력이 줄고, 0 이 되면 탈락 (펑 사라짐). 안전 구역은 점점 줄어든다.
+export const WEAPONS = [
+  { id: 'pistol', name: '블래스터 권총', dmg: 14, rate: 3.2, spread: 0.014, range: 70, pellets: 1, auto: false, color: '#ff8a3d', icon: '🔫' },
+  { id: 'rifle', name: '연사 블래스터', dmg: 9, rate: 8, spread: 0.024, range: 90, pellets: 1, auto: true, color: '#3fa7ff', icon: '🏹' },
+  { id: 'shotgun', name: '샷건 블래스터', dmg: 9, rate: 1.1, spread: 0.085, range: 30, pellets: 7, auto: false, color: '#5ad16b', icon: '💥' },
+  { id: 'sniper', name: '저격 블래스터', dmg: 70, rate: 0.75, spread: 0.0015, range: 220, pellets: 1, auto: false, color: '#9b5cff', icon: '🎯', zoom: true },
+];
+export const LOOT = [...WEAPONS.slice(1).map(w => ({ kind: 'weapon', id: w.id })), { kind: 'heal', id: 'juice', amount: 35 }, { kind: 'shield', id: 'shield', amount: 50 }];
+export const BATTLE = Object.freeze({ HP: 100, ARMOR: 100, PLAYERS: 12, LOBBY_WAIT: 10, DROP_Y: 72, FALL: -7, ZONE_DPS: [2, 3, 5, 8, 12], R0: 96 });
+
+// 맞으면 방패가 먼저 줄고 남은 만큼 체력이 준다
+export function applyDamage(s, dmg) {
+  const d = Math.max(0, dmg);
+  const fromArmor = Math.min(s.armor, d * 0.7);
+  return { hp: Math.max(0, s.hp - (d - fromArmor)), armor: s.armor - fromArmor };
+}
+
+// 안전 구역 단계: 기다렸다가(wait) 줄어든다(shrink). 다음 원은 앞 원 안쪽 어딘가.
+export function zonePhases(seed, r0 = BATTLE.R0) {
+  const rnd = seeded(seed);
+  const radii = [r0, 62, 38, 20, 8, 0];
+  const waits = [25, 20, 18, 15, 12], shrinks = [22, 18, 15, 12, 10];
+  const out = [];
+  let cx = 0, cz = 0, t = 0;
+  for (let n = 0; n < radii.length - 1; n++) {
+    const R = radii[n], r = radii[n + 1];
+    const a = rnd() * Math.PI * 2, d = rnd() * Math.max(0, R - r) * 0.8;
+    const nx = cx + Math.cos(a) * d, nz = cz + Math.sin(a) * d;
+    out.push({ start: t + waits[n], end: t + waits[n] + shrinks[n], from: { x: cx, z: cz, r: R }, to: { x: nx, z: nz, r }, dps: BATTLE.ZONE_DPS[n] });
+    t += waits[n] + shrinks[n];
+    cx = nx; cz = nz;
+  }
+  return out;
+}
+
+// t 초(구역이 시작된 뒤)의 안전 구역
+export function zoneAt(phases, t) {
+  let z = { ...phases[0].from, dps: phases[0].dps, next: phases[0].start - t, shrinking: false, phase: 0 };
+  for (let n = 0; n < phases.length; n++) {
+    const p = phases[n];
+    if (t < p.start) { z = { ...p.from, dps: p.dps, next: p.start - t, shrinking: false, phase: n }; break; }
+    if (t < p.end) {
+      const k = (t - p.start) / (p.end - p.start);
+      z = { x: p.from.x + (p.to.x - p.from.x) * k, z: p.from.z + (p.to.z - p.from.z) * k, r: p.from.r + (p.to.r - p.from.r) * k, dps: p.dps, next: p.end - t, shrinking: true, phase: n };
+      break;
+    }
+    z = { ...p.to, dps: p.dps, next: 0, shrinking: false, phase: n + 1 };
+  }
+  return z;
+}
+export const outsideZone = (z, x, zz) => Math.hypot(x - z.x, zz - z.z) > z.r;
+
+// 광선이 사람 몸 상자(발 x, y, z, 너비 1, 키 P.H)에 맞는 거리 (안 맞으면 Infinity)
+export function rayBody(ox, oy, oz, dx, dy, dz, bx, by, bz) {
+  const b = { x0: bx - P.R, x1: bx + P.R, y0: by, y1: by + P.H, z0: bz - P.R, z1: bz + P.R, on: true };
+  const t = rayBoxes(ox, oy, oz, dx, dy, dz, [b], 1e9);
+  return t >= 1e9 ? Infinity : t;
+}
+// 몇 등이고 코인은 얼마
+export const battleCoins = (place, kills) => kills * 5 + Math.max(0, 13 - place) * 2 + (place === 1 ? 30 : 0);
