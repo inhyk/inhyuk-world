@@ -11,7 +11,7 @@ import { LAYOUT } from './world.js';
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const OUTFIT_FOR = { work: 'suit', dinner: 'suit', visit: 'suit', trip: 'beach', trip2: 'beach', rest: 'casual', school: 'casual', kidRest: 'casual', job: 'casual' };
+const OUTFIT_FOR = { work: 'suit', dinner: 'suit', visit: 'suit', trip: 'beach', trip2: 'beach', rest: 'casual', school: 'casual', kidRest: 'casual', job: 'casual', leave: 'casual' };
 // 학교종 (a traditional children's song) first line: 솔 솔 라 라 솔 솔 미
 const SONG = ['솔', '솔', '라', '라', '솔', '솔', '미', '솔', '솔', '미', '미', '레'];
 const NOTES = { 도: [262, 'A'], 레: [294, 'S'], 미: [330, 'D'], 파: [349, 'F'], 솔: [392, 'G'], 라: [440, 'H'], 시: [494, 'J'] };
@@ -77,10 +77,14 @@ export class Day {
     const st = this.step;
     const from = Math.max(0, Math.min(this.s.step - 1, this.steps.length - 6));
     const list = this.steps.map((x, i) => ({ label: x.label + (x.count ? ` (${Math.min(this.s.counts[x.id] ?? 0, x.count)}/${x.count})` : ''), done: i < this.s.step, now: i === this.s.step })).slice(from, from + 6);
-    const title = { work: '평범한 출근 날', dinner: '오늘은 회식 날', visit: '오늘은 출장 날', trip: '일본 여행 1일째', trip2: '일본 여행 2일째', rest: '쉬는 날', school: '1학년 학교 가는 날', kidRest: '신나는 주말', job: JOBS[this.plan.job]?.title ?? '출근 날' }[this.kind];
-    const goal = this.s.mode === 'kid' || this.s.ticket || this.kind === 'trip' || this.kind === 'trip2' ? null : { label: '✈️ 비행기표 모으기', now: this.s.money, max: TICKET };
-    const text = st ? st.text : '오늘 할 일 끝! 자유롭게 놀아요';
+    const kid = this.s.mode === 'kid', leave = this.kind === 'leave';
+    const title = { work: '평범한 출근 날', dinner: '오늘은 회식 날', visit: '오늘은 출장 날', trip: '일본 여행 1일째', trip2: '일본 여행 2일째', rest: '쉬는 날', school: '1학년 학교 가는 날', kidRest: '신나는 주말', job: JOBS[this.plan.job]?.title ?? '출근 날', leave: kid ? '🏖️ 쉬는 날' : '🏖️ 휴가' }[this.kind];
+    const goal = kid || this.s.ticket || this.kind === 'trip' || this.kind === 'trip2' ? null : { label: '✈️ 비행기표 모으기', now: this.s.money, max: TICKET };
+    // 휴가 (인혁 계획 4): no steps and no marker, just a free day
+    const text = leave ? (kid ? '🏖️ 오늘은 쉬는 날!\n마음대로 놀아요' : '🏖️ 오늘은 휴가!\n마음대로 놀아요') : st ? st.text : '오늘 할 일 끝! 자유롭게 놀아요';
     this.g.hud.quest(text, list, goal, st && !stepReady(st, this.s) ? this.waitText(st) : null);
+    this.g.hud.questNote(leave ? `${kid ? '' : '💰 일당은 그대로 받았어요 (유급 휴가)\n'}💤 밤 9시부터 침대에서 잘 수 있어요\n내일은 다시 ${kid ? '학교 가는' : '출근하는'} 날이에요` : null);
+    this.g.leave?.render();
     this.g.hud.clock(`${this.s.day}일차 · ${weekday(this.s.day)} · ${title}`, formatClock(this.s.hour), this.s.money);
   }
 
@@ -159,8 +163,9 @@ export class Day {
     switch (it.id) {
       case 'bed':
       case 'hotelBed':
-        if ((st && st.id === 'sleep' && it.id === 'bed') || (st && st.id === 'pension' && it.id === 'hotelBed') || s.hour >= 21.5) { if (st && (st.id === 'sleep' || st.id === 'pension')) this.s.step++; await this.sleep(); }
-        else hud.toast(st && st.id === 'wake' ? '벌써 일어났어요! 이제 준비해요' : '아직 잘 시간이 아니에요');
+        // a vacation day has no 'sleep' step: the bed works from 9 p.m. like the sleep step on other days
+        if ((st && st.id === 'sleep' && it.id === 'bed') || (st && st.id === 'pension' && it.id === 'hotelBed') || s.hour >= 21.5 || (this.kind === 'leave' && it.id === 'bed' && s.hour >= 21)) { if (st && (st.id === 'sleep' || st.id === 'pension')) this.s.step++; await this.sleep(); }
+        else hud.toast(this.kind === 'leave' ? '🏖️ 쉬는 날도 밤 9시부터 잘 수 있어요 💤 마음대로 놀아요!' : st && st.id === 'wake' ? '벌써 일어났어요! 이제 준비해요' : '아직 잘 시간이 아니에요');
         break;
       case 'sink':
         await this.fadeAction('어푸어푸… 💦', 'water');

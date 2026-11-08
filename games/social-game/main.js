@@ -20,6 +20,7 @@ import { Jobs } from './src/jobs.js';
 import { JOBS } from './jobs.mjs';
 import { dressTown, dressJapan } from './src/deco.js';
 import { Flight } from './src/flight.js';
+import { Leave } from './src/leave.js';
 import { Cloud } from './src/cloud.js';
 import { Elevators } from './src/elevator.js';
 import { guide, guideText } from './src/nav.js';
@@ -190,6 +191,7 @@ async function boot() {
   let lifts = { prompt: () => null, update: () => {}, busy: false };
   try { lifts = new Elevators({ engine, colliders: col, places, player, hud, sfx, input }); } catch (e) { console.warn('elevators failed', e); }
   day.g.flight = flight;
+  day.g.leave = new Leave(day, { lifts }); // 휴가 내기 (인혁 계획 4)
   const album = new Album({ hud, input, sfx });
   day.g.album = album;
   places.onInterior = (site, parts) => { if (parts.frames?.length) album.fillFrames(parts.frames); };
@@ -303,6 +305,7 @@ async function boot() {
     if (input.hit('KeyL')) openLogin();
     if (input.hit('KeyG') && !day.seat) album.open();
     if (input.hit('KeyP') && !day.seat) day.photo();
+    if (input.hit('KeyO') && $('start').classList.contains('hidden')) day.g.leave.open();
     const driving = vehicle?.driving;
     const riding = town.riding; // 같이 사는 동네: sitting in a friend's car (인혁: "차를 같이 탈 수 있게 해줘")
     flight.update(dt, input);

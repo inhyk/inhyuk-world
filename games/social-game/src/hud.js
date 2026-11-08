@@ -56,6 +56,16 @@ export class Hud {
       this.questList.appendChild(li);
     }
   }
+  /** 휴가 날: a beach-coloured quest card with a small note line under the text (null: a normal card). */
+  questNote(note) {
+    if (this._n === note) return;
+    this._n = note;
+    let el = document.getElementById('quest-note');
+    if (!el) { el = document.createElement('div'); el.id = 'quest-note'; this.questText.after(el); }
+    el.classList.toggle('hidden', !note);
+    el.textContent = note ?? '';
+    document.getElementById('quest')?.classList.toggle('leave', !!note);
+  }
   clock(dayText, timeText, money) {
     if (this._d !== dayText) { this.dayEl.textContent = dayText; this._d = dayText; }
     if (this._t !== timeText) { this.timeEl.textContent = timeText; this._t = timeText; }
