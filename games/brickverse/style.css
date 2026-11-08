@@ -216,3 +216,13 @@ body:not(.playing) #btn-lock, body.dressing #btn-lock { display: none; }
   body.shift-lock.playing:not(.dressing) #crosshair { display: none; }
 }
 @media (pointer: fine) { .hint { right: 72px; } }
+
+/* ───── 🌈 카펫 조종 ───── */
+#build-bar .call { flex: none; font-size: 14px; padding: 8px 10px; white-space: nowrap; background: linear-gradient(90deg, #ffe0e6, #fff4c2, #e0ffe8, #e0f0ff, #f0e0ff); }
+#carpet-bar { position: fixed; left: 50%; bottom: 152px; transform: translateX(-50%); z-index: 6; display: flex; gap: 8px; align-items: center; background: rgba(255, 255, 255, .94); border-radius: 18px; padding: 8px 10px; box-shadow: var(--shadow); }
+#carpet-bar button { font-size: 15px; padding: 9px 12px; white-space: nowrap; }
+#carpet-bar .up, #carpet-bar .down { width: 48px; font-size: 20px; padding: 6px 0; background: #e5f3ff; touch-action: none; }
+#carpet-bar .on { background: var(--blue); color: #fff; }
+#carpet-bar .tip { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -6px); margin: 0; font-size: 13px; color: #fff; white-space: nowrap; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); pointer-events: none; }
+body:not(.playing) #carpet-bar, body.dressing #carpet-bar { display: none; }
+@media (pointer: coarse) { #carpet-bar { bottom: max(232px, calc(env(safe-area-inset-bottom) + 232px)); } #carpet-bar .up, #carpet-bar .down { width: 56px; height: 48px; } }

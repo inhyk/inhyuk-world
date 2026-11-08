@@ -618,8 +618,9 @@ function updateMe(dt) {
     if (me.dead <= 0) respawn();
     return;
   }
-  const mv = game.wardrobeOpen || !game.started ? { x: 0, z: 0 } : controls.move();
-  const jump = game.started && !game.wardrobeOpen && controls.takeJump();
+  let mv = game.wardrobeOpen || !game.started ? { x: 0, z: 0 } : controls.move();
+  let jump = game.started && !game.wardrobeOpen && controls.takeJump();
+  if (w.runtime?.driving) { mv = { x: 0, z: 0 }; jump = false; } // 🌈 카펫을 조종하는 동안은 키가 카펫을 움직인다
   const ev = stepPlayer(me.pl, { mx: mv.x, mz: mv.z, jump }, w.boxes, dt);
   const moving = Math.hypot(mv.x, mv.z) > 0.1;
   if (controls.shiftLock && game.started && !game.wardrobeOpen) {
