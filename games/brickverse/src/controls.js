@@ -12,6 +12,18 @@ export class Controls {
     this.dragging = null;
     this.pinch = null;
     this.onKey = null;
+    // 쉬프트락: 켜면 컴퓨터에서는 마우스를 화면에 붙잡고(Pointer Lock) 마우스만 움직여도 시점이 돈다
+    this.shiftLock = false;
+    this.onLockChange = null;
+    document.addEventListener('mousemove', e => {
+      if (!this.locked) return;
+      this.yaw -= e.movementX * 0.0032;
+      this.pitch = clamp(this.pitch + e.movementY * 0.0032, -0.55, 1.25);
+    });
+    document.addEventListener('pointerlockchange', () => {
+      // Esc 등으로 마우스가 풀리면 쉬프트락도 끈다
+      if (!this.locked && this.shiftLock && this.wantLock) { this.shiftLock = false; this.wantLock = false; this.onLockChange?.(false); }
+    });
 
     addEventListener('keydown', e => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -29,7 +41,7 @@ export class Controls {
     canvas.addEventListener('pointerdown', e => {
       canvas.focus({ preventScroll: true });
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      canvas.setPointerCapture?.(e.pointerId);
+      try { if (!this.locked) canvas.setPointerCapture?.(e.pointerId); } catch { /* 마우스를 붙잡은 동안에는 못 잡는다 */ }
       if (pointers.size === 2) {
         const [a, b] = [...pointers.values()];
         this.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), start: this.want };
@@ -120,6 +132,23 @@ export class Controls {
   }
 
   faceBehind(yaw) { this.yaw = yaw + Math.PI; }
+
+  get locked() { return document.pointerLockElement === this.canvas; }
+  // 카메라가 보는 쪽 (캐릭터가 이쪽을 본다)
+  get facing() { return this.yaw + Math.PI; }
+
+  setShiftLock(on) {
+    this.shiftLock = on;
+    const mouse = !matchMedia('(pointer: coarse)').matches;
+    if (on && mouse) {
+      this.wantLock = true;
+      try { const r = this.canvas.requestPointerLock?.(); r?.catch?.(() => {}); } catch { /* 안 되는 브라우저: 붙잡기 없이 쉬프트락만 */ }
+    } else {
+      this.wantLock = false;
+      if (this.locked) document.exitPointerLock?.();
+    }
+    this.onLockChange?.(on);
+  }
 }
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

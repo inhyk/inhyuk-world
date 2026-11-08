@@ -201,3 +201,18 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; }
   #build-bar { bottom: max(166px, calc(env(safe-area-inset-bottom) + 166px)); max-width: calc(100vw - 16px); }
   #build-bar .blocks { max-width: calc(100vw - 150px); }
 }
+
+/* ───── 쉬프트락 ───── */
+#btn-lock { position: fixed; right: max(14px, env(safe-area-inset-right)); bottom: 34px; z-index: 6; width: 46px; height: 46px; padding: 0; font-size: 21px; border-radius: 14px; background: var(--panel); }
+#btn-lock.on { background: linear-gradient(#5cb8ff, var(--blue)); box-shadow: 0 4px 0 var(--blue-d); }
+#crosshair { display: none; position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; z-index: 6; pointer-events: none; }
+#crosshair::before, #crosshair::after { content: ''; position: absolute; background: #fff; box-shadow: 0 0 0 1.5px rgba(20, 30, 60, .55); border-radius: 2px; }
+#crosshair::before { left: 10px; top: 2px; width: 2px; height: 18px; }
+#crosshair::after { top: 10px; left: 2px; width: 18px; height: 2px; }
+body.shift-lock.playing:not(.dressing) #crosshair { display: block; }
+body:not(.playing) #btn-lock, body.dressing #btn-lock { display: none; }
+@media (pointer: coarse) {
+  #btn-lock { right: max(36px, env(safe-area-inset-right)); bottom: max(128px, calc(env(safe-area-inset-bottom) + 128px)); width: 52px; height: 52px; border-radius: 50%; background: rgba(255, 255, 255, .88); }
+  body.shift-lock.playing:not(.dressing) #crosshair { display: none; }
+}
+@media (pointer: fine) { .hint { right: 72px; } }

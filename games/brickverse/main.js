@@ -57,6 +57,7 @@ game.effects = effects;
 const ui = new UI(game);
 game.ui = ui;
 game.canvas = canvas;
+game.controls = controls;
 game.camera = view.camera;
 
 // 나
@@ -294,6 +295,7 @@ game.restartObby = () => {
 
 // ───── 옷장 ─────
 game.wardrobe = open => {
+  if (open) game.setShiftLock(false);
   game.wardrobeOpen = open;
   document.body.classList.toggle('dressing', open);
   if (open) game.wardrobeYaw = me.yaw;
@@ -506,9 +508,23 @@ game.start = () => {
   }
 };
 
+// ───── 쉬프트락 ─────
+game.setShiftLock = on => { if (controls.shiftLock !== on) controls.setShiftLock(on); };
+game.toggleShiftLock = () => { if (game.started && !game.wardrobeOpen) { sound.click(); controls.setShiftLock(!controls.shiftLock); } };
+controls.onLockChange = on => {
+  document.body.classList.toggle('shift-lock', on);
+  const b = $('btn-lock');
+  b.classList.toggle('on', on);
+  b.textContent = on ? '🔒' : '🔓';
+  b.setAttribute('aria-pressed', String(on));
+  if (on && !game.save.shiftTip) { game.save.shiftTip = true; ui.toast(matchMedia('(pointer: coarse)').matches ? '🔒 쉬프트락: 캐릭터가 카메라 쪽을 봐. 한 번 더 누르면 꺼져' : '🔒 쉬프트락: 마우스로 시점, Shift 로 끄기 (Esc 도 돼)', 3600); }
+};
+$('btn-lock').addEventListener('click', () => game.toggleShiftLock());
+
 controls.onKey = (k) => {
   if (!game.started) { if (k === 'Enter' || k === 'Space') game.start(); return; }
   if (k === 'Escape') { ui.closeWardrobe(); ui.closeFriends(); ui.togglePanel(null); }
+  if (k === 'ShiftLeft' || k === 'ShiftRight') { game.toggleShiftLock(); return; }
   if (game.wardrobeOpen) return;
   if (k === 'KeyT' || k === 'Slash') ui.togglePanel('chat');
   if (k === 'KeyG') ui.togglePanel('emote');
@@ -518,7 +534,7 @@ controls.onKey = (k) => {
 };
 
 // ───── 매 프레임 ─────
-let last = performance.now(), titleSpin = 0;
+let last = performance.now(), titleSpin = 0, shoulder = 0;
 const epoch = () => (Date.now() / 1000) % 100000;
 
 function updateWorld(dt) {
@@ -606,12 +622,16 @@ function updateMe(dt) {
   const jump = game.started && !game.wardrobeOpen && controls.takeJump();
   const ev = stepPlayer(me.pl, { mx: mv.x, mz: mv.z, jump }, w.boxes, dt);
   const moving = Math.hypot(mv.x, mv.z) > 0.1;
-  if (moving) {
+  if (controls.shiftLock && game.started && !game.wardrobeOpen) {
+    // 쉬프트락: 언제나 카메라가 보는 쪽을 본다 (옆으로 걸으면 게걸음)
+    let d = controls.facing - me.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+    me.yaw += d * (1 - Math.exp(-dt * 24));
+  } else if (moving) {
     const target = Math.atan2(mv.x, mv.z);
     let d = target - me.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
     me.yaw += d * (1 - Math.exp(-dt * 16));
-    if (me.emote) { me.emote = 0; sendPose(true); }
   }
+  if (moving && me.emote) { me.emote = 0; sendPose(true); }
   if (ev.jumped) { sound.jump(); if (me.emote) me.emote = 0; }
   if (ev.bounce) sound.bounce();
   if (ev.landed && ev.hard) sound.land();
@@ -693,7 +713,12 @@ function frame(now) {
     if (wide) view.camera.setViewOffset(W, H, panel.width / 2, 0, W, H);
     else view.camera.setViewOffset(W, H, 0, (H - panel.top) / 2, W, H);
     me.yaw = a + Math.sin(now / 1400) * 0.5;
-  } else controls.update(view.camera, tx, ty, tz, game.world.boxes, dt);
+  } else {
+    // 쉬프트락이면 어깨 너머로 (카메라를 오른쪽으로 비켜서 캐릭터가 왼쪽에 보이게)
+    shoulder += ((controls.shiftLock ? 1.7 : 0) - shoulder) * (1 - Math.exp(-dt * 10));
+    const rx = Math.cos(controls.yaw), rz = -Math.sin(controls.yaw);
+    controls.update(view.camera, tx + rx * shoulder, ty, tz + rz * shoulder, game.world.boxes, dt);
+  }
   view.follow(me.pl.x, me.pl.y, me.pl.z);
   // 네트워크
   poseTimer -= dt;

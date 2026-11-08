@@ -380,6 +380,7 @@ export function defaultSave(rand = Math.random) {
     sound: true,
     music: true,
     tutorial: false,
+    shiftTip: false,
   };
 }
 
@@ -426,6 +427,7 @@ export function cleanSave(raw, rand = Math.random) {
   s.sound = raw.sound !== false;
   s.music = raw.music !== false;
   s.tutorial = !!raw.tutorial;
+  s.shiftTip = !!raw.shiftTip;
   return s;
 }
 
