@@ -335,7 +335,8 @@ export class Tower {
       const d = this.down; this.down = null;
       if (!d || d.id !== e.pointerId || !this.ready()) return;
       if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 8 || performance.now() - d.t > 450) return;
-      this.act(e.clientX, e.clientY, d.button === 2 ? 'remove' : this.mode);
+      const [x, y] = this.game.controls.locked ? [innerWidth / 2, innerHeight / 2] : [e.clientX, e.clientY];
+      this.act(x, y, d.button === 2 ? 'remove' : this.mode);
     };
     this.onLeave = () => { this.hover = null; };
     c.addEventListener('pointerdown', this.onDown);
@@ -428,7 +429,8 @@ export class Tower {
     }
     // 미리 보기 (마우스)
     let tg = null;
-    if (this.hover && this.ready()) tg = this.target(this.pick(this.hover.x, this.hover.y));
+    const aim = this.game.controls.locked ? { x: innerWidth / 2, y: innerHeight / 2 } : this.hover;
+    if (aim && this.ready()) tg = this.target(this.pick(aim.x, aim.y));
     if (tg && !tg.hidden) {
       const [x, y, z] = this.world(tg.i, tg.j, tg.k);
       this.ghost.position.set(x, y, z);

@@ -104,6 +104,7 @@ export class UI {
   }
 
   togglePanel(which) {
+    if (which) this.game.setShiftLock(false);
     const chat = which === 'chat' && this.el.chatPanel.hidden;
     const emote = which === 'emote' && this.el.emotePanel.hidden;
     this.el.chatPanel.hidden = !chat;
@@ -191,6 +192,7 @@ export class UI {
 
   // ───── 로그인 ─────
   openLogin() {
+    this.game.setShiftLock(false);
     this.closeWardrobe(); this.closeFriends();
     $('login').hidden = false;
     this.game.controlsOff(true);
@@ -255,6 +257,7 @@ export class UI {
 
   // ───── 친구 방 ─────
   openFriends() {
+    this.game.setShiftLock(false);
     this.closeWardrobe();
     this.el.friends.hidden = false;
     this.renderFriends();
@@ -297,7 +300,7 @@ export class UI {
     }
   }
 
-  openMenu() { this.syncMenu(); this.el.menu.showModal(); }
+  openMenu() { this.game.setShiftLock(false); this.syncMenu(); this.el.menu.showModal(); }
   syncMenu() {
     $('menu-sound').textContent = `효과음: ${this.game.save.sound ? '켜짐 🔊' : '꺼짐 🔇'}`;
     $('menu-music').textContent = `배경 음악: ${this.game.save.music ? '켜짐 🎵' : '꺼짐'}`;
