@@ -69,6 +69,7 @@ export const sfx = {
   shoot: () => { tone(900, 0.07, { type: 'square', vol: 0.08, slide: -600 }); noiseBurst(0.04, 0.05, 2500); },
   hit: () => tone(1500, 0.05, { type: 'triangle', vol: 0.16 }),
   hurt: () => { tone(200, 0.12, { type: 'sawtooth', vol: 0.12, slide: -80 }); },
+  reload: () => { tone(520, 0.05, { type: 'square', vol: 0.1 }); tone(380, 0.06, { type: 'square', vol: 0.1, delay: 0.12 }); },
 };
 
 // ───── 배경 음악: 세계마다 다른 짧은 반복 ─────

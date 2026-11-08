@@ -589,7 +589,7 @@ controls.onKey = (k) => {
   if (k === 'KeyT' || k === 'Slash') ui.togglePanel('chat');
   if (k === 'KeyG') ui.togglePanel('emote');
   if (k === 'KeyR' && game.worldId === 0) game.goHome();
-  if ((game.worldId === 4 || game.worldId === 5) && game.world.runtime?.key(k)) return;
+  if ((game.worldId === 3 || game.worldId === 4 || game.worldId === 5) && game.world.runtime?.key?.(k)) return;
   if (k.startsWith('Digit')) { const n = Number(k.slice(5)); if (n >= 1 && n <= 4) game.emote(n); }
 };
 
@@ -757,7 +757,9 @@ function frame(now) {
   me.avatar.place(me.pl.x, me.pl.y, me.pl.z, me.yaw, dt);
   me.avatar.animate(dt, { speed, grounded: !!me.pl.ground, vy: me.pl.vy, climb: me.pl.climb, emote: me.emote });
   // 카메라
-  const tx = me.pl.x, ty = (me.avatar.visualY ?? me.pl.y) + 2.3, tz = me.pl.z;
+  let tx = me.pl.x, ty = (me.avatar.visualY ?? me.pl.y) + 2.3, tz = me.pl.z;
+  const spec = game.world.runtime?.spectateTarget?.(); // 탈락해서 관전 중이면 그 사람을 따라간다
+  if (spec) { tx = spec.x; ty = spec.y + 2.3; tz = spec.z; }
   if (!game.started) {
     titleSpin += dt * 0.08;
     view.camera.position.set(Math.sin(titleSpin) * 34, 14, Math.cos(titleSpin) * 34 + 4);
@@ -780,7 +782,7 @@ function frame(now) {
     const rx = Math.cos(controls.yaw), rz = -Math.sin(controls.yaw);
     controls.update(view.camera, tx + rx * shoulder, ty, tz + rz * shoulder, game.world.boxes, dt);
   }
-  view.follow(me.pl.x, me.pl.y, me.pl.z);
+  view.follow(tx, ty - 2.3, tz);
   // 네트워크
   poseTimer -= dt;
   if (poseTimer <= -0.075) { poseTimer = 0; sendPose(false); }
