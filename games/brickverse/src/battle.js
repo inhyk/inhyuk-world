@@ -4,10 +4,11 @@
 import { THREE } from './render.js';
 import { Avatar } from './avatar.js';
 import {
-  BATTLE, WEAPONS, LOOT, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, rayBoxes, battleCoins,
+  BATTLE, WEAPONS, LOOT, freshAmmo, reloadAmmo, ammoBox, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, rayBoxes, battleCoins,
   newPlayer, stepPlayer, seeded, displayName, ADJECTIVES, ANIMALS, SKINS, COLORS, PHRASES,
 } from '../core.mjs';
 import { BATTLE_LOBBY } from '../worlds.mjs';
+import { Spectate } from './spectate.js';
 
 const WI = Object.fromEntries(WEAPONS.map((w, i) => [w.id, i]));
 const r2 = v => Math.round(v * 100) / 100;
@@ -86,7 +87,7 @@ export class Battle {
   }
   near(x, z, r = 4) { return this.boxesIn(x - r, z - r, x + r, z + r); }
 
-  freshMe() { return { hp: BATTLE.HP, armor: 0, alive: false, weapons: new Set(['pistol']), cur: 'pistol', kills: 0, para: false, outTimer: 0, place: 0 }; }
+  freshMe() { return { hp: BATTLE.HP, armor: 0, alive: false, weapons: new Set(['pistol']), cur: 'pistol', kills: 0, para: false, outTimer: 0, place: 0, ammo: { pistol: freshAmmo('pistol') }, reloading: 0, emptyTold: 0 }; }
   get net() { return this.game.net; }
   get auth() { return !this.net.active || this.net.host; }
   get myId() { return this.net.active ? this.net.id : 'me'; }
@@ -113,6 +114,7 @@ export class Battle {
     hud.id = 'battle-hud';
     hud.innerHTML = `
       <div class="bars"><div class="bar hp"><i></i><span></span></div><div class="bar ar"><i></i><span></span></div></div>
+      <div class="ammo"><b class="mag">12</b><span class="res">/ ∞</span><i class="rl"><u></u></i><em class="rltext">재장전 중…</em></div>
       <div class="slots">${WEAPONS.map((w, i) => `<button data-w="${w.id}" title="${w.name} (${i + 1})"><b>${w.icon}</b><small>${i + 1}</small></button>`).join('')}</div>`;
     hud.querySelectorAll('.slots button').forEach(b => b.addEventListener('click', () => { if (this.me.weapons.has(b.dataset.w)) { this.game.sfx('click'); this.equip(b.dataset.w); } }));
     document.body.append(hud);
@@ -125,8 +127,16 @@ export class Battle {
     const zoom = document.createElement('button');
     zoom.id = 'zoom-btn'; zoom.textContent = '🔭'; zoom.setAttribute('aria-label', '확대');
     zoom.addEventListener('click', () => { this.zoom = !this.zoom; zoom.classList.toggle('on', this.zoom); });
-    document.body.append(fire, zoom);
-    this.fireEl = fire; this.zoomEl = zoom;
+    const reload = document.createElement('button');
+    reload.id = 'reload-btn'; reload.textContent = '🔄'; reload.setAttribute('aria-label', '재장전');
+    reload.addEventListener('click', () => this.startReload());
+    document.body.append(fire, zoom, reload);
+    this.fireEl = fire; this.zoomEl = zoom; this.reloadEl = reload;
+    // 미니맵 (오른쪽 위 버튼 밑)
+    const mini = document.createElement('canvas');
+    mini.id = 'minimap'; mini.width = mini.height = 280;
+    document.querySelector('#hud .tr')?.insertBefore(mini, document.getElementById('players'));
+    this.mini = mini; this.miniTimer = 0;
     const scope = document.createElement('div'); scope.id = 'scope';
     const hurt = document.createElement('div'); hurt.id = 'hurt';
     document.body.append(scope, hurt);
@@ -145,11 +155,40 @@ export class Battle {
     ar.style.opacity = m.armor > 0 ? 1 : 0.45;
     this.hud.querySelectorAll('.slots button').forEach(b => { b.classList.toggle('have', m.weapons.has(b.dataset.w)); b.classList.toggle('on', m.cur === b.dataset.w); });
     this.zoomEl.hidden = m.cur !== 'sniper';
+    this.updateAmmo();
+  }
+  updateAmmo() {
+    const m = this.me, a = m.ammo[m.cur], w = WEAPONS[WI[m.cur]];
+    if (!a) return;
+    const box = this.hud.querySelector('.ammo');
+    box.querySelector('.mag').textContent = a.mag;
+    box.querySelector('.res').textContent = `/ ${a.res === Infinity ? '∞' : a.res}`;
+    box.classList.toggle('low', a.mag <= Math.ceil(w.mag / 4));
+    box.classList.toggle('reloading', m.reloading > 0);
+    box.querySelector('.rl u').style.width = m.reloading > 0 ? `${(1 - m.reloading / w.reload) * 100}%` : '0%';
+  }
+  // 재장전 (R, 🔄, 탄창이 비면 저절로)
+  startReload() {
+    const m = this.me, w = WEAPONS[WI[m.cur]], a = m.ammo[m.cur];
+    if (!m.alive || m.reloading > 0 || !a || a.mag >= w.mag) return;
+    if (a.res <= 0) { this.noAmmo(); return; }
+    m.reloading = w.reload;
+    this.game.sfx('reload');
+    this.updateAmmo();
+  }
+  noAmmo() {
+    const m = this.me;
+    if (performance.now() - m.emptyTold < 1500) return;
+    m.emptyTold = performance.now();
+    this.game.sfx('nope');
+    this.game.ui.toast('총알이 없어! 📦 총알 상자를 찾거나 다른 블래스터로 바꿔 (1번 권총은 끝없어)', 2200);
   }
 
   equip(id) {
     if (!this.me.weapons.has(id)) return;
+    if (this.me.cur !== id) this.me.reloading = 0;
     this.me.cur = id;
+    if (!this.me.ammo[id]) this.me.ammo[id] = freshAmmo(id);
     disposeObj(this.myGun);
     this.myGun = makeGun(id);
     this.attachGun(this.game.myAvatar, this.myGun);
@@ -180,6 +219,8 @@ export class Battle {
     this.game.setShiftLock(true);
   }
   key(code) {
+    if (this.spec?.key(code)) return true;
+    if (code === 'KeyR') { this.startReload(); return true; }
     if (code.startsWith('Digit')) {
       const w = WEAPONS[Number(code.slice(5)) - 1];
       if (w && this.me.weapons.has(w.id)) { this.equip(w.id); this.game.sfx('click'); }
@@ -218,12 +259,16 @@ export class Battle {
     spots.forEach(([x, y, z], i) => {
       if (rnd() < 0.18) return;
       const roll = rnd();
-      const item = roll < 0.24 ? LOOT[0] : roll < 0.44 ? LOOT[1] : roll < 0.56 ? LOOT[2] : roll < 0.8 ? LOOT[3] : LOOT[4];
+      const item = roll < 0.2 ? LOOT[0] : roll < 0.36 ? LOOT[1] : roll < 0.46 ? LOOT[2] : roll < 0.64 ? LOOT[3] : roll < 0.78 ? LOOT[4] : LOOT[5];
       const mesh = new THREE.Group();
       if (item.kind === 'weapon') { const g = makeGun(item.id); g.scale.setScalar(1.3); mesh.add(g); }
       else if (item.kind === 'heal') { const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.35), new THREE.MeshStandardMaterial({ color: '#ff6fb5', roughness: 0.4 })); const s = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4), new THREE.MeshStandardMaterial({ color: '#ffffff' })); s.position.set(0.12, 0.5, 0); b.add(s); mesh.add(b); }
-      else { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.32, 0.12, 6), new THREE.MeshStandardMaterial({ color: '#3fa7ff', metalness: 0.4, roughness: 0.3, emissive: '#1f5fbf', emissiveIntensity: 0.4 })); b.rotation.x = Math.PI / 2; mesh.add(b); }
-      const color = item.kind === 'weapon' ? WEAPONS[WI[item.id]].color : item.kind === 'heal' ? '#ff6fb5' : '#3fa7ff';
+      else if (item.kind === 'ammo') {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.45, 0.55), new THREE.MeshStandardMaterial({ color: '#8a6a2f', roughness: 0.6 }));
+        for (let q = 0; q < 4; q++) { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.3, 8), new THREE.MeshStandardMaterial({ color: '#ffd23f', metalness: 0.5, roughness: 0.3 })); s.position.set(-0.24 + q * 0.16, 0.36, 0); b.add(s); }
+        mesh.add(b);
+      } else { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.32, 0.12, 6), new THREE.MeshStandardMaterial({ color: '#3fa7ff', metalness: 0.4, roughness: 0.3, emissive: '#1f5fbf', emissiveIntensity: 0.4 })); b.rotation.x = Math.PI / 2; mesh.add(b); }
+      const color = item.kind === 'weapon' ? WEAPONS[WI[item.id]].color : item.kind === 'heal' ? '#ff6fb5' : item.kind === 'ammo' ? '#ffd23f' : '#3fa7ff';
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.05, 6, 24), new THREE.MeshBasicMaterial({ color }));
       ring.rotation.x = Math.PI / 2; ring.position.y = -0.45; mesh.add(ring);
       mesh.position.set(x, y + 0.3, z);
@@ -332,8 +377,31 @@ export class Battle {
     this.game.ui.log(`💥 ${who} → 나`);
     this.out.dead = by ?? -999;
     this.game.persist();
-    setTimeout(() => { if (this.game.world.runtime === this && !this.me.alive) { this.game.teleport(BATTLE_LOBBY.x + (Math.random() - 0.5) * 10, BATTLE_LOBBY.y + 0.2, BATTLE_LOBBY.z + 4, Math.PI); this.game.myAvatar.root.visible = true; } }, 2600);
+    setTimeout(() => { if (this.game.world.runtime === this && !this.me.alive && this.state === 'play') this.startSpectate(); }, 2200);
   }
+  // ───── 관전 ─────
+  startSpectate() {
+    this.spec?.dispose();
+    // 내 몸은 대기실로 (숨긴 채로)
+    this.game.teleport(BATTLE_LOBBY.x + (Math.random() - 0.5) * 10, BATTLE_LOBBY.y + 0.2, BATTLE_LOBBY.z + 4, Math.PI);
+    this.game.myAvatar.root.visible = false;
+    document.body.classList.add('spectating');
+    this.spec = new Spectate(this.game, () => {
+      const list = [];
+      this.bots.forEach((b, k) => { if (b.alive) list.push({ key: `b${k}`, name: b.name, x: b.pl.x, y: b.pl.y, z: b.pl.z, info: `❤️ ${Math.ceil(b.hp)} · 처치 ${b.kills}` }); });
+      for (const [id, s] of this.rs) { const r = this.game.remotes.get(id); if (s.alive && r && r.w === 5) list.push({ key: id, name: r.name, x: r.x, y: r.y, z: r.z, info: `❤️ ${Math.ceil(s.hp)}` }); }
+      return list;
+    }, { onLeave: () => this.stopSpectate() });
+  }
+  stopSpectate() {
+    this.spec?.dispose();
+    this.spec = null;
+    document.body.classList.remove('spectating');
+    this.game.myAvatar.root.visible = true;
+  }
+  // main.js 가 카메라를 이 사람에게 맞춘다
+  spectateTarget() { return this.spec ? this.spec.update() : null; }
+
   // 봇이 맞음 (방장/혼자만 계산)
   hurtBot(k, dmg, by) {
     const b = this.bots[k];
@@ -463,7 +531,12 @@ export class Battle {
       if (b.dodge <= 0) { b.dodge = 0.5 + b.rnd() * 0.9; b.strafe = b.rnd() < 0.5 ? 1 : -1; if (b.rnd() < 0.25 * b.skill) jump = true; }
       mx = (dx / d) * fwd + (-dz / d) * b.strafe; mz = (dz / d) * fwd + (dx / d) * b.strafe;
       // 처음 12초는 쏘지 않는다 (내려와서 블래스터를 주울 시간)
-      if (b.cool <= 0 && !b.para && this.t > 12) { this.botShoot(b, k, t); const w = WEAPONS[WI[b.weapon]]; b.cool = (1 / w.rate) * (1.12 + (1 - b.skill) * 0.9); }
+      if (b.cool <= 0 && !b.para && this.t > 12) {
+        const w = WEAPONS[WI[b.weapon]];
+        if (b.mag === undefined) b.mag = w.mag;
+        if (b.mag <= 0) { b.mag = w.mag; b.cool = w.reload * (1.25 - b.skill * 0.3); } // 봇도 재장전하는 동안은 못 쏜다
+        else { this.botShoot(b, k, t); b.mag--; b.cool = (1 / w.rate) * (1.12 + (1 - b.skill) * 0.9); }
+      }
     } else {
       const g = b.goal;
       if (out) b.goal = { x: z.x + (b.rnd() - 0.5) * z.r * 0.5, z: z.z + (b.rnd() - 0.5) * z.r * 0.5 };
@@ -495,7 +568,7 @@ export class Battle {
     for (const l of this.loot) {
       if (l.taken || Math.hypot(l.x - pl.x, l.z - pl.z) > 1.6 || Math.abs(l.y - pl.y) > 2) continue;
       const take = () => { this.takeLoot(l, 'bot'); this.out.take = (this.out.take ?? []).concat(l.i); if (b.goal?.loot === l.i) b.goal = null; };
-      if (l.kind === 'weapon' && RANK[l.id] > RANK[b.weapon]) { b.weapon = l.id; disposeObj(b.gun); b.gun = makeGun(l.id); this.attachGun(b.avatar, b.gun); take(); }
+      if (l.kind === 'weapon' && RANK[l.id] > RANK[b.weapon]) { b.weapon = l.id; b.mag = undefined; disposeObj(b.gun); b.gun = makeGun(l.id); this.attachGun(b.avatar, b.gun); take(); }
       else if (l.kind === 'heal' && b.hp < BATTLE.HP) { b.hp = Math.min(BATTLE.HP, b.hp + l.amount); take(); }
       else if (l.kind === 'shield' && b.armor < BATTLE.ARMOR) { b.armor = Math.min(BATTLE.ARMOR, b.armor + l.amount); take(); }
     }
@@ -577,6 +650,7 @@ export class Battle {
   }
 
   toLobby() {
+    this.stopSpectate();
     this.state = 'lobby';
     this.timer = BATTLE.LOBBY_WAIT;
     this.me = this.freshMe();
@@ -637,15 +711,34 @@ export class Battle {
       this.cool -= dt;
       const w = WEAPONS[WI[m.cur]];
       const wantFire = this.firing || this.fireBtn;
-      if (wantFire && this.cool <= 0 && !m.para) {
-        this.shoot();
-        this.cool = 1 / w.rate;
-        if (!w.auto) this.firing = false;
+      if (m.reloading > 0) {
+        m.reloading -= dt;
+        if (m.reloading <= 0) { m.reloading = 0; m.ammo[m.cur] = reloadAmmo(m.ammo[m.cur], m.cur); this.game.sfx('click'); }
+        this.updateAmmo();
+      } else if (wantFire && this.cool <= 0 && !m.para) {
+        const a = m.ammo[m.cur];
+        if (a.mag <= 0) { if (a.res > 0) this.startReload(); else this.noAmmo(); this.firing = false; }
+        else {
+          this.shoot();
+          a.mag--;
+          this.cool = 1 / w.rate;
+          if (!w.auto) this.firing = false;
+          if (a.mag <= 0 && a.res > 0) this.startReload();
+          this.updateAmmo();
+        }
       }
+      // 재장전할 때 블래스터를 살짝 내렸다 올린다
+      if (this.myGun) this.myGun.rotation.x = Math.PI / 2 + (m.reloading > 0 ? Math.sin((1 - m.reloading / w.reload) * Math.PI) * 0.9 : 0);
       // 줍기
       for (const l of this.loot) {
         if (l.taken || Math.hypot(l.x - pl.x, l.z - pl.z) > 1.7 || Math.abs(l.y - pl.y) > 2.2) continue;
-        if (l.kind === 'weapon' && !m.weapons.has(l.id)) { m.weapons.add(l.id); this.takeLoot(l, 'me'); this.equip(l.id); g.sfx('buy'); g.ui.toast(`${WEAPONS[WI[l.id]].icon} ${WEAPONS[WI[l.id]].name}! (${WI[l.id] + 1}번)`, 1600); }
+        if (l.kind === 'weapon' && !m.weapons.has(l.id)) { m.weapons.add(l.id); m.ammo[l.id] = freshAmmo(l.id); this.takeLoot(l, 'me'); this.equip(l.id); g.sfx('buy'); g.ui.toast(`${WEAPONS[WI[l.id]].icon} ${WEAPONS[WI[l.id]].name}! (${WI[l.id] + 1}번)`, 1600); }
+        else if (l.kind === 'weapon' && m.ammo[l.id] && m.ammo[l.id].res < 200) { const add = WEAPONS[WI[l.id]].start; m.ammo[l.id].res += add; this.takeLoot(l, 'me'); g.sfx('check'); g.ui.toast(`${WEAPONS[WI[l.id]].icon} 총알 +${add}`, 1300); this.updateAmmo(); }
+        else if (l.kind === 'ammo' && [...m.weapons].some(id => ammoBox(id) > 0)) {
+          const got = [];
+          for (const id of m.weapons) { const add = ammoBox(id); if (add > 0) { m.ammo[id].res += add; got.push(`${WEAPONS[WI[id]].icon}+${add}`); } }
+          this.takeLoot(l, 'me'); g.sfx('check'); g.ui.toast(`📦 총알 상자 ${got.join(' ')}`, 1600); this.updateAmmo();
+        }
         else if (l.kind === 'heal' && m.hp < BATTLE.HP) { m.hp = Math.min(BATTLE.HP, m.hp + l.amount); this.takeLoot(l, 'me'); g.sfx('check'); g.ui.toast(`🧃 회복 주스 +${l.amount}`, 1400); this.updateHud(); }
         else if (l.kind === 'shield' && m.armor < BATTLE.ARMOR) { m.armor = Math.min(BATTLE.ARMOR, m.armor + l.amount); this.takeLoot(l, 'me'); g.sfx('check'); g.ui.toast(`🛡️ 방패 +${l.amount}`, 1400); this.updateHud(); }
       }
@@ -707,7 +800,34 @@ export class Battle {
     if (this.nextRing.visible) { this.nextRing.scale.set(Math.max(0.5, ph.to.r), Math.max(0.5, ph.to.r), 1); this.nextRing.position.set(ph.to.x, 0.3, ph.to.z); }
 
     this.sendTick(dt);
+    this.drawMinimap(dt);
     this.info();
+  }
+
+  drawMinimap(dt) {
+    this.miniTimer -= dt;
+    if (this.miniTimer > 0 || !this.mini) return;
+    this.miniTimer = 0.15;
+    const c = this.mini, g = c.getContext('2d'), W = c.width, S = W / 2 / (BATTLE.ISLAND + 10);
+    const pl = this.spectateTarget() ?? this.game.player;
+    const X = x => W / 2 + x * S, Z = z => W / 2 + z * S;
+    g.clearRect(0, 0, W, W);
+    g.fillStyle = '#33a6ff'; g.beginPath(); g.roundRect(0, 0, W, W, 28); g.fill();
+    g.fillStyle = '#7cc95a'; g.beginPath(); g.roundRect(X(-BATTLE.ISLAND), Z(-BATTLE.ISLAND), BATTLE.ISLAND * 2 * S, BATTLE.ISLAND * 2 * S, 18); g.fill();
+    if (this.state !== 'lobby') {
+      const z = this.zone, ph = this.phases[z.phase];
+      // 구역 밖은 어둡게
+      g.save(); g.beginPath(); g.rect(0, 0, W, W); g.arc(X(z.x), Z(z.z), Math.max(1, z.r * S), 0, Math.PI * 2, true); g.fillStyle = 'rgba(40,30,120,0.45)'; g.fill('evenodd'); g.restore();
+      g.strokeStyle = '#4a8cff'; g.lineWidth = 4; g.beginPath(); g.arc(X(z.x), Z(z.z), Math.max(1, z.r * S), 0, Math.PI * 2); g.stroke();
+      if (ph && !z.shrinking) { g.setLineDash([8, 6]); g.strokeStyle = '#ffffff'; g.lineWidth = 3; g.beginPath(); g.arc(X(ph.to.x), Z(ph.to.z), Math.max(1, ph.to.r * S), 0, Math.PI * 2); g.stroke(); g.setLineDash([]); }
+      for (const [id, s] of this.rs) { const r = this.game.remotes.get(id); if (!s.alive || !r || r.w !== 5) continue; g.fillStyle = '#3fa7ff'; g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.arc(X(r.x), Z(r.z), 7, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    }
+    // 나 (보는 쪽 화살표). 지도는 위가 -z (북쪽)
+    const yaw = this.game.controls.facing;
+    g.save(); g.translate(X(pl.x), Z(pl.z)); g.rotate(Math.PI - yaw);
+    g.fillStyle = this.spec ? '#ffd23f' : '#ff5e3a'; g.strokeStyle = '#ffffff'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(0, -13); g.lineTo(9, 9); g.lineTo(0, 4); g.lineTo(-9, 9); g.closePath(); g.fill(); g.stroke();
+    g.restore();
   }
 
   info() {
@@ -732,7 +852,8 @@ export class Battle {
     const g = this.game;
     g.canvas.removeEventListener('pointerdown', this.onDown);
     removeEventListener('pointerup', this.onUp);
-    for (const el of [this.hud, this.fireEl, this.zoomEl, this.scopeEl, this.hurtEl]) el.remove();
+    for (const el of [this.hud, this.fireEl, this.zoomEl, this.reloadEl, this.scopeEl, this.hurtEl, this.mini]) el.remove();
+    this.spec?.dispose();
     document.body.classList.remove('battle');
     disposeObj(this.myGun); disposeObj(this.myChute);
     g.myAvatar.aim = false;

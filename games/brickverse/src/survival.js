@@ -5,6 +5,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { Avatar } from './avatar.js';
 import { SURVIVAL, tileIndex, tileAt, makeBox, newPlayer, stepPlayer, seeded, displayName, ADJECTIVES, ANIMALS, SKINS, COLORS, P, PHRASES } from '../core.mjs';
 import { LAYER_COLORS } from '../worlds.mjs';
+import { Spectate } from './spectate.js';
 
 const { N, TILE, LAYERS, LAVA, LOBBY, FALL_AFTER, ROUND_WAIT } = SURVIVAL;
 const HALF = (N * TILE) / 2;
@@ -221,6 +222,20 @@ export class Survival {
     this.game.persist();
   }
 
+  // 탈락하면 남은 사람 관전 (◀ ▶, Q/E)
+  startSpectate() {
+    this.spec?.dispose();
+    this.spec = new Spectate(this.game, () => {
+      const list = [];
+      this.bots.forEach((b, k) => { if (b.alive) list.push({ key: `b${k}`, name: b.name, x: b.pl.x, y: b.pl.y, z: b.pl.z }); });
+      for (const [id, alive] of this.remoteAlive) { const r = this.game.remotes.get(id); if (alive && r && r.w === 3) list.push({ key: id, name: r.name, x: r.x, y: r.y, z: r.z }); }
+      return list;
+    }, { onLeave: () => this.stopSpectate() });
+  }
+  stopSpectate() { this.spec?.dispose(); this.spec = null; }
+  spectateTarget() { return this.spec ? this.spec.update() : null; }
+  key(code) { return !!this.spec?.key(code); }
+
   countAlive() {
     let n = this.bots.filter(b => b.alive).length + (this.inRound ? 1 : 0);
     for (const v of this.remoteAlive.values()) if (v) n++;
@@ -242,6 +257,7 @@ export class Survival {
   }
 
   endRound() {
+    this.stopSpectate();
     this.state = 'end';
     this.timer = 4;
   }
@@ -314,7 +330,7 @@ export class Survival {
       const want = above ? 0.28 : 1;
       if (m.material.opacity !== want) { m.material.transparent = want < 1; m.material.opacity = want; m.material.depthWrite = want === 1; m.material.needsUpdate = true; m.castShadow = want === 1; }
     });
-    if (this.inRound && me.y < LAVA + 4) { this.out('lava'); game.burstMe(); game.teleport((Math.random() - 0.5) * 8, LOBBY + 0.2, 2 + Math.random() * 4, Math.PI); }
+    if (this.inRound && me.y < LAVA + 4) { this.out('lava'); game.burstMe(); game.teleport((Math.random() - 0.5) * 8, LOBBY + 0.2, 2 + Math.random() * 4, Math.PI); if (this.state === 'play') this.startSpectate(); }
 
     // 봇
     const boxes = game.world.boxes;
@@ -361,6 +377,7 @@ export class Survival {
   }
 
   dispose() {
+    this.spec?.dispose();
     for (const b of this.bots) b.avatar.dispose();
     for (const m of this.meshes) { m.removeFromParent(); m.dispose(); }
     this.game.ui.setInfo('');
