@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -275,4 +275,33 @@ test('머리카락: 공짜 머리는 늘 가지고, 안 산 머리는 못 쓰고
   const old = lookFromArray([1, 5, 15, 1, 0, 1]);
   assert.equal(old.hair, DEFAULT_LOOK.hair);
   assert.equal(lookToArray(DEFAULT_LOOK).length, 8);
+});
+
+test('배틀: 방패가 먼저 줄고, 체력은 0 아래로 안 간다', () => {
+  assert.deepEqual(applyDamage({ hp: 100, armor: 0 }, 30), { hp: 70, armor: 0 });
+  const a = applyDamage({ hp: 100, armor: 50 }, 20);
+  assert.ok(Math.abs(a.armor - 36) < 1e-9 && Math.abs(a.hp - 94) < 1e-9);
+  assert.equal(applyDamage({ hp: 10, armor: 0 }, 70).hp, 0);
+  assert.ok(WEAPONS.every(w => w.dmg > 0 && w.rate > 0 && w.range > 0));
+});
+
+test('배틀: 안전 구역은 점점 작아지고 다음 원은 앞 원 안에 있다', () => {
+  const ph = zonePhases(42);
+  assert.equal(ph.length, 5);
+  for (const p of ph) {
+    assert.ok(p.to.r < p.from.r);
+    assert.ok(Math.hypot(p.to.x - p.from.x, p.to.z - p.from.z) + p.to.r <= p.from.r + 1e-6);
+  }
+  const z0 = zoneAt(ph, 0), mid = zoneAt(ph, (ph[0].start + ph[0].end) / 2), last = zoneAt(ph, 1e6);
+  assert.equal(z0.r, BATTLE.R0);
+  assert.ok(mid.r < z0.r && mid.r > ph[0].to.r && mid.shrinking);
+  assert.equal(last.r, 0);
+  assert.ok(outsideZone(z0, 200, 0) && !outsideZone(z0, 0, 0));
+});
+
+test('배틀: 광선이 몸에 맞는다, 코인 계산', () => {
+  assert.ok(Math.abs(rayBody(0, 1, -10, 0, 0, 1, 0, 0, 0) - 9.5) < 1e-9);
+  assert.equal(rayBody(0, 1, -10, 0, 0, 1, 5, 0, 0), Infinity);
+  assert.equal(battleCoins(1, 3), 15 + 24 + 30);
+  assert.equal(battleCoins(12, 0), 2);
 });

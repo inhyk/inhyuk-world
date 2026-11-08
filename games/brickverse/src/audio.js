@@ -66,6 +66,9 @@ export const sfx = {
   crumble: () => noiseBurst(0.22, 0.16, 700),
   win: () => [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, 0.2, { type: 'square', vol: 0.14, delay: i * 0.1 })),
   say: () => tone(740, 0.07, { type: 'sine', vol: 0.15, slide: 120 }),
+  shoot: () => { tone(900, 0.07, { type: 'square', vol: 0.08, slide: -600 }); noiseBurst(0.04, 0.05, 2500); },
+  hit: () => tone(1500, 0.05, { type: 'triangle', vol: 0.16 }),
+  hurt: () => { tone(200, 0.12, { type: 'sawtooth', vol: 0.12, slide: -80 }); },
 };
 
 // ───── 배경 음악: 세계마다 다른 짧은 반복 ─────

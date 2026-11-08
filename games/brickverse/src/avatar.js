@@ -275,8 +275,8 @@ function hairGroup(id, color, covered) {
       break;
     case 'swoop':
       cap(); box(1.12, 0.5, 0.16, 0, 0.66, -0.48);
-      box(0.9, 0.28, 0.42, 0.12, 1.06, 0.2, 0.12, true).rotation.z = -0.25;
-      box(0.62, 0.22, 0.14, 0.2, 0.84, 0.47, 0.06).rotation.z = -0.3;
+      { const top = box(0.9, 0.28, 0.42, 0.12, 1.06, 0.2, 0.12, true); if (top) top.rotation.z = -0.25; } // 모자를 쓰면 없음 (null)
+      { const side = box(0.62, 0.22, 0.14, 0.2, 0.84, 0.47, 0.06); if (side) side.rotation.z = -0.3; }
       break;
     default: break;
   }
@@ -448,6 +448,7 @@ export class Avatar {
         default: break;
       }
     }
+    if (this.aim && !s.climb && s.emote !== 4) { la = -1.5; ra = -1.32; lz = 0.12; rz = -0.5; } // 블래스터를 두 손으로 앞으로
     lerp(this.arms[0].rotation, 'x', la); lerp(this.arms[1].rotation, 'x', ra);
     lerp(this.arms[0].rotation, 'z', lz); lerp(this.arms[1].rotation, 'z', rz);
     lerp(this.legs[0].rotation, 'x', ll); lerp(this.legs[1].rotation, 'x', rl);
