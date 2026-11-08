@@ -554,13 +554,25 @@ export const halfOf = cash => Math.max(0, Math.floor(cash / 2));
 // ───── 블록 배틀 로얄 (2026-11-08 인혁: "배그같은 총게임") ─────
 // 장난감 블래스터로 맞히면 체력이 줄고, 0 이 되면 탈락 (펑 사라짐). 안전 구역은 점점 줄어든다.
 export const WEAPONS = [
-  { id: 'pistol', name: '블래스터 권총', dmg: 14, rate: 3.2, spread: 0.014, range: 70, pellets: 1, auto: false, color: '#ff8a3d', icon: '🔫' },
-  { id: 'rifle', name: '연사 블래스터', dmg: 9, rate: 8, spread: 0.024, range: 90, pellets: 1, auto: true, color: '#3fa7ff', icon: '🏹' },
-  { id: 'shotgun', name: '샷건 블래스터', dmg: 9, rate: 1.1, spread: 0.085, range: 30, pellets: 7, auto: false, color: '#5ad16b', icon: '💥' },
-  { id: 'sniper', name: '저격 블래스터', dmg: 70, rate: 0.75, spread: 0.0015, range: 220, pellets: 1, auto: false, color: '#9b5cff', icon: '🎯', zoom: true },
+  { id: 'pistol', name: '블래스터 권총', dmg: 14, rate: 3.2, spread: 0.014, range: 70, pellets: 1, auto: false, color: '#ff8a3d', icon: '🔫', mag: 12, reload: 1.1, start: Infinity },
+  { id: 'rifle', name: '연사 블래스터', dmg: 9, rate: 8, spread: 0.024, range: 90, pellets: 1, auto: true, color: '#3fa7ff', icon: '🏹', mag: 30, reload: 1.8, start: 60 },
+  { id: 'shotgun', name: '샷건 블래스터', dmg: 9, rate: 1.1, spread: 0.085, range: 30, pellets: 7, auto: false, color: '#5ad16b', icon: '💥', mag: 6, reload: 2.2, start: 12 },
+  { id: 'sniper', name: '저격 블래스터', dmg: 70, rate: 0.75, spread: 0.0015, range: 220, pellets: 1, auto: false, color: '#9b5cff', icon: '🎯', zoom: true, mag: 5, reload: 2.4, start: 10 },
 ];
-export const LOOT = [...WEAPONS.slice(1).map(w => ({ kind: 'weapon', id: w.id })), { kind: 'heal', id: 'juice', amount: 35 }, { kind: 'shield', id: 'shield', amount: 50 }];
-export const BATTLE = Object.freeze({ HP: 100, ARMOR: 100, PLAYERS: 12, LOBBY_WAIT: 10, DROP_Y: 72, FALL: -7, ZONE_DPS: [2, 3, 5, 8, 12], R0: 96 });
+export const LOOT = [...WEAPONS.slice(1).map(w => ({ kind: 'weapon', id: w.id })), { kind: 'heal', id: 'juice', amount: 35 }, { kind: 'shield', id: 'shield', amount: 50 }, { kind: 'ammo', id: 'ammo' }];
+
+// 탄창 상태: mag(탄창에 든 것), res(남은 총알, 권총은 끝없음)
+export const freshAmmo = id => { const w = WEAPONS.find(x => x.id === id); return { mag: w.mag, res: w.start }; };
+// 재장전: 탄창을 채우고 남은 총알에서 뺀다
+export function reloadAmmo(a, id) {
+  const w = WEAPONS.find(x => x.id === id);
+  const need = Math.max(0, w.mag - a.mag), take = Math.min(need, a.res);
+  return { mag: a.mag + take, res: a.res - take };
+}
+// 총알 상자: 권총 말고 가진 블래스터마다 탄창 한 개 반만큼
+export const ammoBox = id => { const w = WEAPONS.find(x => x.id === id); return w.start === Infinity ? 0 : Math.ceil(w.mag * 1.5); };
+// 섬 지름 약 500 (2026-11-08 인혁: "맵을 엄청 더 넓혀줘"), 안전 구역 6단계로 약 5분
+export const BATTLE = Object.freeze({ HP: 100, ARMOR: 100, PLAYERS: 12, LOBBY_WAIT: 10, DROP_Y: 80, FALL: -7, ZONE_DPS: [1, 2, 3, 5, 8, 12], R0: 240, ISLAND: 250 });
 
 // 맞으면 방패가 먼저 줄고 남은 만큼 체력이 준다
 export function applyDamage(s, dmg) {
@@ -572,8 +584,8 @@ export function applyDamage(s, dmg) {
 // 안전 구역 단계: 기다렸다가(wait) 줄어든다(shrink). 다음 원은 앞 원 안쪽 어딘가.
 export function zonePhases(seed, r0 = BATTLE.R0) {
   const rnd = seeded(seed);
-  const radii = [r0, 62, 38, 20, 8, 0];
-  const waits = [25, 20, 18, 15, 12], shrinks = [22, 18, 15, 12, 10];
+  const radii = [r0, r0 * 0.7, r0 * 0.45, r0 * 0.27, r0 * 0.14, r0 * 0.06, 0];
+  const waits = [40, 32, 26, 22, 18, 15], shrinks = [38, 30, 24, 20, 15, 12];
   const out = [];
   let cx = 0, cz = 0, t = 0;
   for (let n = 0; n < radii.length - 1; n++) {

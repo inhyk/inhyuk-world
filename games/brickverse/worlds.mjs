@@ -1105,10 +1105,12 @@ function bWarehouse(out, loot, x, z, rnd) {
 export function buildBattle() {
   const parts = [], signs = [], effects = [], coins = [], loot = [];
   const rnd = seeded(5150);
-  parts.push({ x: 0, y: -3, z: 0, w: 214, h: 6, d: 214, c: '#7cc95a', m: 'grass', round: 1.5, shadow: false });
-  parts.push({ x: 0, y: -2.85, z: 0, w: 232, h: 5.2, d: 232, c: '#f5dfa6', m: 'sand', round: 2, shadow: false });
-  parts.push({ x: 0, y: -1.1, z: 0, w: 1600, h: 0.2, d: 1600, c: '#33a6ff', m: 'water', deco: true, shadow: false, round: 0 });
-  for (const [x, z, w, d] of [[0, -118, 240, 2], [0, 118, 240, 2], [-118, 0, 2, 240], [118, 0, 2, 240]]) parts.push({ x, y: 4, z, w, h: 14, d, hidden: true });
+  const R = 245; // 섬 반지름 (지름 약 500)
+  parts.push({ x: 0, y: -3, z: 0, w: R * 2 + 14, h: 6, d: R * 2 + 14, c: '#7cc95a', m: 'grass', round: 2, shadow: false });
+  parts.push({ x: 0, y: -2.85, z: 0, w: R * 2 + 40, h: 5.2, d: R * 2 + 40, c: '#f5dfa6', m: 'sand', round: 3, shadow: false });
+  parts.push({ x: 0, y: -1.1, z: 0, w: 3000, h: 0.2, d: 3000, c: '#33a6ff', m: 'water', deco: true, shadow: false, round: 0 });
+  const E = R + 22;
+  for (const [x, z, w, d] of [[0, -E, E * 2 + 4, 2], [0, E, E * 2 + 4, 2], [-E, 0, 2, E * 2 + 4], [E, 0, 2, E * 2 + 4]]) parts.push({ x, y: 4, z, w, h: 14, d, hidden: true });
   // 하늘 대기실
   const L = BATTLE_LOBBY;
   parts.push({ x: L.x, y: L.y - 0.4, z: L.z, w: 26, h: 0.8, d: 26, c: '#d9f3ff', k: 'glass' });
@@ -1119,39 +1121,57 @@ export function buildBattle() {
   effects.push({ type: 'portal', x: L.x + 9.5, y: L.y + 2, z: L.z + 9.5, w: 2.6, h: 3.4, color: '#3fa7ff', ry: -3 * Math.PI / 4 });
   signs.push({ x: L.x + 9.5, y: L.y + 4.3, z: L.z + 9.5, ry: -3 * Math.PI / 4, w: 3.4, h: 0.9, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
   const zones = [{ x0: L.x + 8.4, x1: L.x + 10.6, y0: L.y, y1: L.y + 3.5, z0: L.z + 8.4, z1: L.z + 10.6, portal: 0 }];
-  // 마을
-  const village = [[-58, -48, 's', '#ffd6a5', '#e8553f'], [-44, -52, 's', '#cdeac0', '#3f8f5a'], [-60, -30, 'e', '#bde0fe', '#3f6fbf'], [-40, -32, 'w', '#ffc8dd', '#c04f7a'], [-52, -14, 'n', '#fff3b0', '#d6a22a'], [-34, -12, 'n', '#e0d4ff', '#6c5ce7']];
-  for (const [x, z, door, c, rc] of village) bHouse(parts, loot, x, z, 9, 8, 3.8, c, rc, door);
-  // 따로 있는 집
-  const lone = [[40, -60, 's'], [70, -20, 'w'], [-78, 30, 'e'], [-20, 62, 'n'], [24, 70, 'n'], [78, 52, 'w'], [8, -80, 's'], [-70, 72, 'e']];
-  lone.forEach(([x, z, door], i) => bHouse(parts, loot, x, z, 8 + (i % 2), 7 + (i % 3), 3.6, hsl(i * 40, 60, 82), hsl(i * 40, 55, 45), door));
-  bWarehouse(parts, loot, 48, 32, rnd);
-  bWarehouse(parts, loot, -14, -78, rnd);
-  for (const [x, z, c] of [[0, 0, '#c7ccd6'], [70, -70, '#b0a8c8'], [-80, -80, '#a8c0b0'], [-6, 86, '#c8b8a8']]) bTower(parts, loot, x, z, c);
-  // 언덕 (층층이 쌓은 땅)
-  for (const [x, z, s] of [[20, -30, 1], [-20, 30, 1.2], [80, 0, 0.9], [-86, -6, 1]]) {
-    for (let k = 0; k < 4; k++) parts.push({ x, y: 0.75 + k * 1.5 - 0.75, z, w: (22 - k * 5) * s, h: 1.5, d: (18 - k * 4) * s, c: hsl(100 - k * 6, 45, 52 - k * 3), m: 'grass', round: 0.3 });
+  // 마을 7곳: 가운데 광장 둘레에 집
+  const busy = [];
+  const towns = [[0, 0], [-150, -120], [150, -110], [-145, 130], [140, 145], [10, -195], [-205, 5]];
+  const doors = ['s', 'w', 'n', 'e'];
+  towns.forEach(([tx, tz], t) => {
+    parts.push({ x: tx, y: 0.06, z: tz, w: 16, h: 0.12, d: 16, c: '#e9dfcf', m: 'stone', round: 0.05 });
+    const n = t === 0 ? 8 : 6 + (t % 2);
+    for (let h = 0; h < n; h++) {
+      const a = (h / n) * Math.PI * 2 + t * 0.4, d = 20 + (h % 2) * 6;
+      const x = tx + Math.cos(a) * d, z = tz + Math.sin(a) * d;
+      // 문은 광장 쪽으로
+      const door = Math.abs(Math.cos(a)) > Math.abs(Math.sin(a)) ? (Math.cos(a) > 0 ? 'w' : 'e') : (Math.sin(a) > 0 ? 'n' : 's');
+      const hue = (t * 50 + h * 37) % 360;
+      bHouse(parts, loot, x, z, 8 + (h % 2), 7 + (h % 3), 3.6 + (h % 3 === 0 ? 0.6 : 0), hsl(hue, 60, 84), hsl(hue, 55, 46), door);
+      busy.push([x, z, 9]);
+    }
+    busy.push([tx, tz, 12]);
+    void doors;
+  });
+  // 창고 5개
+  for (const [x, z] of [[90, 30], [-80, -40], [60, -170], [-60, 190], [200, 60]]) { bWarehouse(parts, loot, x, z, rnd); busy.push([x, z, 18]); }
+  // 저격 탑 8개
+  for (const [x, z, c] of [[0, 0 + 34, '#c7ccd6'], [110, -40, '#b0a8c8'], [-110, -60, '#a8c0b0'], [-40, 110, '#c8b8a8'], [190, -190, '#c7ccd6'], [-190, -190, '#b0a8c8'], [190, 200, '#a8c0b0'], [-190, 200, '#c8b8a8']]) { bTower(parts, loot, x, z, c); busy.push([x, z, 5]); }
+  // 언덕 10개
+  for (let k = 0; k < 10; k++) {
+    const a = k * 2.4 + 0.7, d = 70 + (k % 4) * 40;
+    const x = Math.cos(a) * d, z = Math.sin(a) * d, s = 0.9 + (k % 3) * 0.25;
+    if (busy.some(([bx, bz, br]) => Math.hypot(x - bx, z - bz) < br + 14)) continue;
+    for (let q = 0; q < 4; q++) parts.push({ x, y: q * 1.5, z, w: (22 - q * 5) * s, h: 1.5, d: (18 - q * 4) * s, c: hsl(100 - q * 6, 45, 52 - q * 3), m: 'grass', round: 0.3 });
     loot.push([x, 6.2, z]);
+    busy.push([x, z, 14]);
   }
-  // 상자 무더기와 바위
-  for (let k = 0; k < 46; k++) {
-    const x = (rnd() - 0.5) * 190, z = (rnd() - 0.5) * 190;
-    if (Math.hypot(x, z) > 100) continue;
+  // 상자 무더기, 바위
+  for (let k = 0, tries = 0; k < 150 && tries < 900; tries++) {
+    const x = (rnd() - 0.5) * R * 2, z = (rnd() - 0.5) * R * 2;
+    if (Math.hypot(x, z) > R - 6 || busy.some(([bx, bz, br]) => Math.hypot(x - bx, z - bz) < br + 3)) continue;
     const n = 1 + Math.floor(rnd() * 3);
     for (let q = 0; q < n; q++) parts.push({ x: x + (q === 2 ? 2.1 : 0), y: 1 + (q === 1 ? 2 : 0), z, w: 2, h: 2, d: 2, c: '#b9824f', m: 'wood' });
-    if (k % 3 === 0) loot.push([x + 2.6, 0.7, z]);
+    if (k % 2 === 0) loot.push([x + 2.6, 0.7, z]);
+    k++;
   }
-  for (let k = 0; k < 22; k++) {
-    const x = (rnd() - 0.5) * 200, z = (rnd() - 0.5) * 200, s = 2 + rnd() * 3;
-    if (Math.hypot(x, z) > 102) continue;
+  for (let k = 0; k < 70; k++) {
+    const x = (rnd() - 0.5) * R * 2, z = (rnd() - 0.5) * R * 2, s = 2 + rnd() * 3.5;
+    if (Math.hypot(x, z) > R - 4 || busy.some(([bx, bz, br]) => Math.hypot(x - bx, z - bz) < br + 2)) continue;
     parts.push({ x, y: s * 0.35, z, w: s * 1.4, h: s, d: s, c: '#a7a9b4', m: 'stone', ry: rnd() * 3, round: 0.5 });
   }
-  // 나무 (집과 길을 피해서)
-  const near = (x, z) => [...village, ...lone].some(([hx, hz]) => Math.abs(x - hx) < 8 && Math.abs(z - hz) < 8) || Math.hypot(x - 48, z - 32) < 18 || Math.hypot(x + 14, z + 78) < 18;
-  for (let n = 0, tries = 0; n < 70 && tries < 600; tries++) {
-    const x = (rnd() - 0.5) * 205, z = (rnd() - 0.5) * 205;
-    if (Math.hypot(x, z) > 104 || near(x, z)) continue;
+  // 나무 250그루
+  for (let n = 0, tries = 0; n < 250 && tries < 2500; tries++) {
+    const x = (rnd() - 0.5) * R * 2, z = (rnd() - 0.5) * R * 2;
+    if (Math.hypot(x, z) > R - 3 || busy.some(([bx, bz, br]) => Math.hypot(x - bx, z - bz) < br)) continue;
     tree(parts, x, z, rnd); n++;
   }
-  return { parts, signs, effects, zones, coins, loot, npcs: [], spawn: { x: L.x, y: L.y + 0.1, z: L.z + 5, yaw: Math.PI }, sky: 'hub', killY: -20 };
+  return { parts, signs, effects, zones, coins, loot, npcs: [], spawn: { x: L.x, y: L.y + 0.1, z: L.z + 5, yaw: Math.PI }, sky: 'hub', killY: -20, island: R };
 }
