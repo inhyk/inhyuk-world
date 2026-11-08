@@ -14,6 +14,7 @@ import {
 } from '../online.mjs';
 import { xbox } from './places.js';
 import { exitSpot } from './vehicle.js';
+import { poseAt, poseMode, poseNum } from '../poses.mjs';
 import { groundAt } from './world.js';
 import { sfx } from './audio.js';
 
@@ -432,7 +433,9 @@ export class Town {
           r.ch.group.position.copy(r.pos);
           r.ch.group.rotation.set(0, r.yaw, 0);
           r.ch.group.scale.setScalar(t.kid ? 0.72 : 1);
-          r.ch.update?.(dt, { speed: r.speed, mode: t.mode === 'run' ? 'run' : t.mode === 'walk' || r.speed > 0.3 ? 'walk' : 'idle' });
+          // 포즈: a friend's pose number plays the same pose here (until they walk off)
+          const pz = t.pose && r.speed < 0.5 ? poseAt(t.pose) : null;
+          r.ch.update?.(dt, { speed: pz ? 0 : r.speed, mode: pz ? poseMode(pz.id) : t.mode === 'run' ? 'run' : t.mode === 'walk' || r.speed > 0.3 ? 'walk' : 'idle' });
         }
       }
       r.tag.visible = show;
@@ -616,7 +619,7 @@ export class Town {
     let d;
     if (flight?.active || this.privateAt(at)) d = HIDDEN.slice();
     else if (driving) d = packPose({ mode: 'drive', x: vehicle.pos.x, y: vehicle.y ?? vehicle.pos.y, z: vehicle.pos.z, yaw: vehicle.yaw, kid, t: 0, seats: this.seats });
-    else d = packPose({ mode: this.riding ? 'idle' : player.speed > 5 ? 'run' : player.speed > 0.3 ? 'walk' : 'idle', x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw, kid, t: 0, ride: this.ride?.n });
+    else d = packPose({ mode: this.riding ? 'idle' : player.speed > 5 ? 'run' : player.speed > 0.3 ? 'walk' : 'idle', x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw, kid, t: 0, ride: this.ride?.n, pose: player.pose && !this.riding ? poseNum(player.pose.id) : 0 });
     this.poseIdle += POSE_EVERY;
     if (samePose(d, this.lastPose) && this.poseIdle < 1) return;
     const out = d.slice();

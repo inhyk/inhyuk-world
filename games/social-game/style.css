@@ -299,3 +299,16 @@ button.mini:hover { background: rgba(255, 250, 240, .32); }
 @keyframes alarm { 50% { opacity: .25; } }
 #job-bar { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); padding: 8px 18px; border-radius: 16px; background: rgba(255, 250, 240, .94); color: #2b2620; font-size: 18px; box-shadow: 0 6px 18px rgba(0,0,0,.3); white-space: nowrap; border: 2px solid #3a332b; }
 #job-bar b { color: #3a6fd8; font-weight: normal; } #job-bar b.warn { color: #e0332a; }
+
+/* 포즈 (B) */
+#pose-menu .mcard { width: min(660px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow: auto; }
+#pose-menu h2 small { font-size: 15px; color: #8a8070; }
+#pose-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+#pose-grid button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 6px; background: #fff; color: var(--ink); border: 2px solid #e6dccb; box-shadow: 0 3px 0 #d8cfbf; border-radius: 16px; }
+#pose-grid button:hover { border-color: #5b8ff0; background: #f3f7ff; }
+#pose-grid button.on { border-color: #f0b93a; background: #fff6dc; }
+#pose-grid .pi { font-size: 36px; line-height: 1.15; }
+#pose-grid b { font-weight: normal; font-size: 16px; }
+#pose-grid kbd { font-family: inherit; font-size: 12px; color: #8a8070; min-height: 14px; }
+body.posing #cross { display: none; }
+body.posing #prompt { top: auto; bottom: 126px; }

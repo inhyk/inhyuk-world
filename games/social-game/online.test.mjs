@@ -75,7 +75,7 @@ test('poses pack to small number arrays and back', () => {
   assert.ok(d.every((n) => typeof n === 'number'), 'numbers only (strings get filtered)');
   assert.ok(JSON.stringify(d).length < 512);
   const p = unpackPose(d);
-  assert.deepEqual(p, { mode: 'walk', x: 10.12, y: 0.26, z: -33.99, yaw: 1.235, kid: true, hidden: false, t: null, seats: null, ride: 0 });
+  assert.deepEqual(p, { mode: 'walk', x: 10.12, y: 0.26, z: -33.99, yaw: 1.235, kid: true, hidden: false, t: null, seats: null, ride: 0, pose: 0 });
   const drive = unpackPose(packPose({ mode: 'drive', x: 1, y: 2, z: 3, yaw: 7 }));
   assert.equal(drive.mode, 'drive');
   assert.ok(Math.abs(drive.yaw - (7 - Math.PI * 2)) < 0.001, 'yaw wraps to -PI..PI');
@@ -293,4 +293,35 @@ test('error texts are short Korean', () => {
   assert.equal(placeErrorText('missing'), null);
   assert.equal(TEXT.notMine('철수'), '철수 님의 블럭이에요');
   assert.equal(TEXT.notDeployed, '같이 사는 동네는 아직 준비 중이에요');
+});
+
+test('a pose (포즈) rides in the link slot as minus its number, only when standing and not riding', async () => {
+  const { POSES, poseNum } = await import('./poses.mjs');
+  const n = poseNum('dance');
+  const d = packPose({ mode: 'idle', x: 1, y: 2, z: 3, yaw: 0, kid: false, t: 0, pose: n });
+  assert.equal(d.length, 8);
+  assert.equal(d[7], -n);
+  const p = unpackPose(d);
+  assert.equal(p.pose, n);
+  assert.equal(p.ride, 0); // older games: a negative link is "not riding"
+  assert.equal(p.mode, 'idle');
+  // every pose fits and comes back
+  for (let k = 1; k <= POSES.length; k++) assert.equal(unpackPose(packPose({ mode: 'idle', pose: k, t: 0 })).pose, k);
+  // no pose, unknown numbers, walking, driving or riding: nothing is sent and nothing is read
+  assert.equal(packPose({ mode: 'idle', t: 0 }).length, 7);
+  assert.equal(packPose({ mode: 'idle', pose: 0 }).length, 6);
+  assert.equal(packPose({ mode: 'idle', pose: POSES.length + 1 }).length, 6);
+  assert.equal(packPose({ mode: 'idle', pose: 1.5 }).length, 6);
+  assert.equal(packPose({ mode: 'walk', pose: n }).length, 6);
+  assert.equal(packPose({ mode: 'idle', ride: 7, pose: n })[7], 7);
+  assert.deepEqual(packPose({ mode: 'drive', seats: [0, 0, 0], pose: n, t: 0 })[7], [0, 0, 0]);
+  assert.equal(unpackPose([0, 0, 0, 0, 0, 0, 0, -(POSES.length + 1)]).pose, 0);
+  assert.equal(unpackPose([0, 0, 0, 0, 0, 0, 0, -1.5]).pose, 0);
+  assert.equal(unpackPose([1, 0, 0, 0, 0, 0, 0, -n]).pose, 0); // walking: no pose
+  assert.equal(unpackPose([0, 0, 0, 0, 0, 0, 0, 5]).pose, 0);
+  // a changed pose is a new pose to send; the same pose is not
+  assert.equal(samePose(packPose({ mode: 'idle', pose: 1, t: 0 }), packPose({ mode: 'idle', pose: 2, t: 0 })), false);
+  assert.equal(samePose(packPose({ mode: 'idle', pose: 2, t: 0 }), packPose({ mode: 'idle', pose: 2, t: 0 })), true);
+  // small: well under the server's 512 characters
+  assert.ok(JSON.stringify(packPose({ mode: 'idle', x: -12345.67, y: 123.45, z: 9876.54, yaw: 3, kid: true, t: 999999, pose: POSES.length })).length < 80);
 });
