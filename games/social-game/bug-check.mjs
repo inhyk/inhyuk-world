@@ -1,5 +1,5 @@
 // 곤충 채집 check (인혁이 계획: "곤충을 채집할 수 있게 해줘."): insects come out by themselves around you
-// (by place and hour), every species has a model, B takes out the net (blocks are off), a left-click swing
+// (by place and hour), every species has a model, C takes out the net (blocks are off), a left-click swing
 // catches insects in front of you, the 곤충 도감 counts them, the 도감 survives a save and reload, and the
 // insects cost little frame time. Takes close-up photos of every insect and of the 도감.
 // node games/social-game/bug-check.mjs [url] [outDir]
@@ -114,11 +114,11 @@ for (const sp of models.species) {
 // ---- 5. take the net, swing, catch three species
 await G(() => { const ins = window.__game.insects; for (const b of [...ins.alive]) ins.despawn(b); ins.spawnT = 99; });
 await goTo(spot.x, spot.z, 11);
-await page.keyboard.press('b');
+await page.keyboard.press('c');
 await wait(400);
 const held = await G(() => ({ holding: window.__game.insects.holding, build: window.__game.build.enabled, held: window.__game.player._held }));
 await page.screenshot({ path: `${out}/4-net.png` });
-assert.ok(held.holding && held.held === 'net', 'B takes the net into the hand');
+assert.ok(held.holding && held.held === 'net', 'C takes the net into the hand');
 assert.equal(held.build, false, 'blocks are not broken while the net is in the hand');
 await G(() => { window.__toasts = []; new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) window.__toasts.push(n.textContent); }).observe(document.getElementById('toast'), { childList: true }); });
 const catchOne = async (id, dist, dy) => {
