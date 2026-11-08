@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, tileAt, SURVIVAL, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, tileAt, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -255,4 +255,11 @@ test('타워 블록 위로 점프해서 올라간다 (한 칸 = 2, 점프 높이
   const pl = newPlayer(0, 0, 0);
   run(pl, boxes, 1.5, t => ({ mx: 0, mz: pl.z < 3 ? 1 : 0, jump: t > 0.05 && t < 0.1 }));
   assert.ok(Math.abs(pl.y - 2) < 1e-6, `y=${pl.y}`);
+});
+
+test('타이쿤 돈 주기: 정수 금액만, 반은 내림', () => {
+  assert.ok(validGift({ amt: 1000, n: 5 }));
+  for (const bad of [{ amt: 0, n: 1 }, { amt: -5, n: 1 }, { amt: 1.5, n: 1 }, { amt: '100', n: 1 }, { amt: GIFT_MAX + 1, n: 1 }, { amt: 100 }, null]) assert.ok(!validGift(bad), JSON.stringify(bad));
+  assert.equal(halfOf(1001), 500);
+  assert.equal(halfOf(0), 0);
 });

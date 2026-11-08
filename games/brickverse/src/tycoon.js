@@ -122,7 +122,7 @@ export class Tycoon {
     const rate = tycoonIncome(this.save.items);
     const hour = rate * TYCOON_AWAY_RATE * 3600;
     const away = hour >= 100 ? money(hour) : `$${hour.toFixed(2)}`;
-    this.game.ui.setInfo(`<b>💵 ${money(this.save.cash)}</b><small>초당 ${money(rate)} · 나가 있으면 1시간에 ${away} · 지은 것 ${done}/${TYCOON.length}</small>`);
+    this.game.ui.setInfo(`<b>💵 ${money(this.save.cash)}</b><small>초당 ${money(rate)} · 나가 있으면 1시간에 ${away} · 지은 것 ${done}/${TYCOON.length}</small><button class="gift-btn" data-act="gift">💸 돈 주기</button>`);
   }
 
   buy(it) {
