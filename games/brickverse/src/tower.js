@@ -1,7 +1,8 @@
 // 하늘 타워 짓기: 내 땅(돌판)에 블록을 놓고 부수며 타워를 짓는다. 쌓은 블록을 밟고 올라가야 더 높이 놓을 수 있다.
 // 친구 방에서는 각자 다른 땅에 짓는다 (혼자면 가운데 0번 땅, 방에서는 p1 → 0번, p2 → 1번 …).
 // 친구 타워는 보이고 올라갈 수도 있지만 블록은 내 땅에만 놓고 부순다.
-// 🌈 무지개 카펫: 내 땅 앞에 있다. 올라타면 내 타워 꼭대기 블록 옆까지 날아가고, 내리면 잠시 뒤 돌아온다.
+// 🌈 무지개 카펫: 내 땅 앞에 있다. 올라타면 조종한다 (WASD 이동, Space 위, C 아래, X 내리기).
+//    내 땅 위에서만 날고, 블록에 부딪히면 멈춘다. 🏗️ 꼭대기로, 🌈 부르기 버튼도 있다.
 import { THREE, material, textSprite } from './render.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { TOWER, BLOCKS, P, cellKey, cellCenter, inTower, towerFloor, makeBox, placeBox } from '../core.mjs';
@@ -12,7 +13,7 @@ const geo = new RoundedBoxGeometry(TOWER.CELL, TOWER.CELL, TOWER.CELL, 2, 0.14);
 const ICON = { glass: '💎', neon: '✨', gold: '👑', ice: '🧊', bounce: '⤒', ladder: '🪜', wood: '🪵', stone: '🪨' };
 const matOf = b => material(b.c, b.m ?? (b.k === 'glass' ? 'glass' : b.k === 'ice' ? 'ice' : 'plastic'));
 const RAINBOW = ['#ff4d5e', '#ff8a3d', '#ffd23f', '#5ad16b', '#3fa7ff', '#4a5cff', '#9b5cff'];
-const CARPET = { W: 3.2, H: 0.3, RISE: 8, FLY: 6, WAIT: 2.5 };
+const CARPET = { W: 3.2, H: 0.3, Y: 0.16, SPEED: 7, CLIMB: 6, ACCEL: 22, AUTO: 7, MARGIN: 6, IDLE: 60 };
 
 function carpetTexture() {
   const c = document.createElement('canvas');
@@ -246,7 +247,7 @@ export class Tower {
   // ───── 🌈 무지개 카펫 ─────
   makeCarpet() {
     const [hx, , hz] = carpetHome(this.slot);
-    this.home = { x: hx, y: 0, z: hz };
+    this.home = { x: hx, y: CARPET.Y, z: hz };
     const group = new THREE.Group();
     const tex = carpetTexture();
     this.carpetMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.75, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.18 });
@@ -258,71 +259,141 @@ export class Tower {
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const t = new THREE.Mesh(tg, tassel); t.position.set(sx * CARPET.W / 2, -0.05, sz * CARPET.W / 2); group.add(t); }
     this.carpetGroup = group;
     this.game.world.group.add(group);
-    const box = makeBox({ x: hx, y: 0, z: hz, w: CARPET.W, h: CARPET.H, d: CARPET.W });
+    const box = makeBox({ x: hx, y: CARPET.Y, z: hz, w: CARPET.W, h: CARPET.H, d: CARPET.W });
     this.game.world.boxes.push(box);
-    this.carpet = { box, state: 'home', pos: { ...this.home }, path: [], idle: 0, sparkle: 0, told: false };
-    this.carpetGroup.position.set(hx, 0, hz);
+    // mode: park(떠 있음) · drive(조종) · path(자동으로 날아감)
+    this.carpet = { box, mode: 'park', pos: { ...this.home }, vel: { x: 0, y: 0, z: 0 }, path: [], idle: 0, sparkle: 0, told: false, off: 0, stuck: 0, upBtn: false, downBtn: false };
+    this.carpetGroup.position.set(hx, CARPET.Y, hz);
+    // 날 수 있는 곳: 내 땅 위 (옆으로 조금 더)
+    const [ox, oz] = this.origin();
+    const m = TOWER_HALF + CARPET.MARGIN;
+    this.bounds = { x0: ox - m, x1: ox + m, z0: oz - m, z1: hz + 1, y0: CARPET.Y, y1: (TOWER.TOP + 1) * TOWER.CELL + 6 };
+  }
+
+  get riding() { return !!this.carpet && this.game.player.ground === this.carpet.box; }
+  // main.js 가 보고 플레이어 걷기를 멈춘다 (조종하는 동안은 키가 카펫을 움직인다)
+  get driving() { return this.carpet?.mode === 'drive' && this.riding && this.carpet.off <= 0; }
+
+  // 카펫과 그 위에 탄 사람 자리가 무엇과 겹치나 (블록, 기둥, 땅)
+  blocked(x, y, z) {
+    const h = CARPET.W / 2;
+    const x0 = x - h, x1 = x + h, y0 = y - CARPET.H / 2, y1 = y + CARPET.H / 2 + P.H, z0 = z - h, z1 = z + h;
+    for (const b of this.game.world.boxes) {
+      if (b === this.carpet.box || !b.on) continue;
+      if (x1 > b.x0 && x0 < b.x1 && y1 > b.y0 && y0 < b.y1 && z1 > b.z0 && z0 < b.z1) return true;
+    }
+    return false;
   }
 
   // 내 타워 꼭대기 블록 바로 옆 (같은 높이, 비어 있는 칸)
   carpetTarget() {
     let top = null;
+    const from = this.carpet.pos;
     for (const c of this.cells.values()) {
       if (!top || c.j > top.j) top = c;
       else if (c.j === top.j) {
         const [ax, , az] = this.world(c.i, c.j, c.k), [bx, , bz] = this.world(top.i, top.j, top.k);
-        if (Math.hypot(ax - this.home.x, az - this.home.z) < Math.hypot(bx - this.home.x, bz - this.home.z)) top = c;
+        if (Math.hypot(ax - from.x, az - from.z) < Math.hypot(bx - from.x, bz - from.z)) top = c;
       }
     }
     if (!top) return null;
+    // 꼭대기 블록 옆면에 카펫 가장자리가 딱 붙는 자리 (블록과 겹치지 않는 곳 중 가까운 곳)
+    const [cx, , cz] = this.world(top.i, top.j, top.k);
+    const y = (top.j + 1) * TOWER.CELL - CARPET.H / 2, gap = TOWER.CELL / 2 + CARPET.W / 2 + 0.05;
     let best = null, bestD = Infinity;
     for (const [di, dk] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-      const i = top.i + di, k = top.k + dk;
-      if (this.cells.has(cellKey(i, top.j, k))) continue;
-      const [ox, oz] = this.origin();
-      const x = (i + 0.5) * TOWER.CELL + ox, z = (k + 0.5) * TOWER.CELL + oz;
-      const d = Math.hypot(x - this.home.x, z - this.home.z);
+      const x = cx + di * gap, z = cz + dk * gap;
+      if (this.blocked(x, y, z)) continue;
+      const d = Math.hypot(x - from.x, z - from.z);
       if (d < bestD) { bestD = d; best = { x, z }; }
     }
     if (!best) return null;
-    return { x: best.x, y: (top.j + 1) * TOWER.CELL - CARPET.H / 2, z: best.z, floor: top.j + 1 };
+    return { x: best.x, y, z: best.z, floor: top.j + 1 };
+  }
+
+  flyTop() {
+    const cp = this.carpet, tg = this.carpetTarget();
+    if (!tg) { this.game.ui.toast('블록을 쌓으면 꼭대기까지 데려다줄게!'); return; }
+    cp.path = [{ x: cp.pos.x, y: Math.max(cp.pos.y, tg.y), z: cp.pos.z }, { x: tg.x, y: Math.max(cp.pos.y, tg.y), z: tg.z }, { x: tg.x, y: tg.y, z: tg.z }];
+    cp.mode = 'path'; cp.stuck = 0;
+    this.game.sfx('portal');
+    this.game.ui.toast(`🌈 ${tg.floor}층 꼭대기로!`, 1600);
+  }
+  callCarpet() {
+    const cp = this.carpet, pl = this.game.player, b = this.bounds;
+    const yaw = this.game.controls.facing;
+    let x = pl.x + Math.sin(yaw) * 2.8, z = pl.z + Math.cos(yaw) * 2.8, y = Math.max(CARPET.Y, pl.y - CARPET.H / 2);
+    const inside = pl.x > b.x0 && pl.x < b.x1 && pl.z > b.z0 && pl.z < b.z1;
+    if (!inside || this.blocked(x, y, z)) { x = this.home.x; y = this.home.y; z = this.home.z; }
+    cp.path = [{ x, y, z }];
+    cp.mode = 'path'; cp.stuck = 0; cp.ghostPath = true;
+    this.game.sfx('portal');
+    this.game.ui.toast(inside ? '🌈 카펫이 날아와!' : '🌈 카펫이 집으로 돌아가', 1500);
+  }
+  dismount() {
+    const cp = this.carpet;
+    if (!this.riding) return;
+    cp.off = 1.4; cp.mode = 'park'; cp.vel = { x: 0, y: 0, z: 0 };
+    this.game.ui.toast('🛬 카펫이 멈췄어. 걸어서 내려!', 1600);
   }
 
   // main.js 가 플레이어를 움직이기 전에 부른다 (카펫에 탄 사람을 같이 옮기려고)
   move(dt) {
     const cp = this.carpet;
     if (!cp) return;
-    const rider = this.game.player.ground === cp.box;
-    if (cp.state === 'home') {
-      if (rider) {
-        const tg = this.carpetTarget();
-        if (!tg) {
-          if (!cp.told) { this.game.ui.toast('블록을 쌓으면 🌈 카펫이 꼭대기까지 데려다줘!'); cp.told = true; }
-        } else {
-          cp.path = [{ x: cp.pos.x, y: tg.y, z: cp.pos.z, speed: CARPET.RISE }, { x: tg.x, y: tg.y, z: tg.z, speed: CARPET.FLY }];
-          cp.state = 'up';
-          this.game.sfx('portal');
-          this.game.ui.toast(`🌈 ${tg.floor}층 꼭대기로 출발!`, 1800);
-        }
-      } else cp.told = false;
-    } else if (cp.state === 'top') {
-      cp.idle = rider ? 0 : cp.idle + dt;
-      if (cp.idle > CARPET.WAIT) { cp.path = [{ x: this.home.x, y: cp.pos.y, z: this.home.z, speed: CARPET.FLY }, { ...this.home, speed: CARPET.RISE }]; cp.state = 'down'; }
+    const c = this.game.controls, b = this.bounds;
+    const riding = this.riding;
+    cp.off = Math.max(0, cp.off - dt);
+    if (riding && cp.off <= 0 && cp.mode === 'park') {
+      cp.mode = 'drive';
+      if (!cp.told) { cp.told = true; this.game.ui.toast(matchMedia('(pointer: coarse)').matches ? '🌈 조이스틱으로 날고 ⬆⬇ 로 위아래, 🛬 로 내려' : '🌈 WASD 로 날고 Space 위 · C 아래 · X 내리기', 3600); }
     }
-    if (cp.state === 'up' || cp.state === 'down') {
-      let left = dt;
-      while (left > 0 && cp.path.length) {
-        const p = cp.path[0];
+    if (cp.mode === 'drive' && !riding) cp.mode = 'park';
+    let want = { x: 0, y: 0, z: 0 };
+    if (cp.mode === 'drive' && cp.off <= 0) {
+      const mv = c.move();
+      const up = c.keys.has('Space') || c.jumpHeld || cp.upBtn, down = c.keys.has('KeyC') || cp.downBtn;
+      want = { x: mv.x * CARPET.SPEED, y: (up ? 1 : 0) * CARPET.CLIMB - (down ? 1 : 0) * CARPET.CLIMB, z: mv.z * CARPET.SPEED };
+    } else if (cp.mode === 'path') {
+      // 조종 키를 누르면 자동 비행을 멈추고 직접 조종
+      if (riding && (Math.hypot(c.move().x, c.move().z) > 0.2 || c.keys.has('KeyC'))) { cp.mode = 'drive'; cp.path = []; }
+      const p = cp.path[0];
+      if (p) {
         const dx = p.x - cp.pos.x, dy = p.y - cp.pos.y, dz = p.z - cp.pos.z, dist = Math.hypot(dx, dy, dz);
-        const step = p.speed * left;
-        if (dist <= step) { cp.pos = { x: p.x, y: p.y, z: p.z }; left -= dist / p.speed; cp.path.shift(); }
-        else { cp.pos.x += dx / dist * step; cp.pos.y += dy / dist * step; cp.pos.z += dz / dist * step; left = 0; }
-      }
-      if (!cp.path.length) { cp.state = cp.state === 'up' ? 'top' : 'home'; cp.idle = 0; }
-      cp.sparkle -= dt;
-      if (cp.sparkle <= 0) { cp.sparkle = 0.12; this.game.effects.burst(cp.pos.x, cp.pos.y - 0.2, cp.pos.z, RAINBOW, 2, 2); }
+        if (dist < 0.15) { cp.path.shift(); if (!cp.path.length) { cp.mode = riding ? 'drive' : 'park'; cp.ghostPath = false; } }
+        else { const sp = Math.min(CARPET.AUTO, dist * 3); want = { x: dx / dist * sp, y: dy / dist * sp, z: dz / dist * sp }; }
+      } else cp.mode = 'park';
     }
+    // 부드럽게 빨라지고 멈춘다
+    const k = Math.min(1, CARPET.ACCEL * dt / Math.max(1, CARPET.SPEED));
+    cp.vel.x += (want.x - cp.vel.x) * k * 2; cp.vel.y += (want.y - cp.vel.y) * k * 2; cp.vel.z += (want.z - cp.vel.z) * k * 2;
+    if (cp.mode === 'path') { cp.vel = { ...want }; }
+    // 축마다 움직여 보고, 부딪히거나 내 땅 밖이면 그 축은 멈춘다 (부르기로 날아올 때는 안 부딪힘)
+    const before = { ...cp.pos };
+    const free = cp.ghostPath && !riding;
+    for (const ax of ['y', 'x', 'z']) {
+      const v = cp.vel[ax];
+      if (Math.abs(v) < 1e-4) continue;
+      const next = { ...cp.pos, [ax]: cp.pos[ax] + v * dt };
+      const lo = b[ax + '0'], hi = b[ax + '1'];
+      if (!free && (next[ax] < lo || next[ax] > hi || this.blocked(next.x, next.y, next.z))) { cp.vel[ax] = 0; continue; }
+      cp.pos = next;
+    }
+    if (cp.mode === 'path') {
+      cp.stuck = Math.hypot(cp.pos.x - before.x, cp.pos.y - before.y, cp.pos.z - before.z) < 1e-3 ? cp.stuck + dt : 0;
+      if (cp.stuck > 1) { cp.mode = riding ? 'drive' : 'park'; cp.path = []; cp.ghostPath = false; if (riding) this.game.ui.toast('블록에 막혀서 멈췄어. 직접 조종해 봐!', 1800); }
+    }
+    // 아무도 안 타고 오래 떠 있으면 집으로
+    const away = Math.hypot(cp.pos.x - this.home.x, cp.pos.y - this.home.y, cp.pos.z - this.home.z) > 0.5;
+    cp.idle = !riding && cp.mode === 'park' && away ? cp.idle + dt : 0;
+    if (cp.idle > CARPET.IDLE) { cp.path = [{ ...this.home }]; cp.mode = 'path'; cp.ghostPath = true; cp.idle = 0; }
+    const moving = Math.hypot(cp.vel.x, cp.vel.y, cp.vel.z) > 0.5;
+    cp.sparkle -= dt;
+    if (moving && cp.sparkle <= 0) { cp.sparkle = 0.12; this.game.effects.burst(cp.pos.x, cp.pos.y - 0.2, cp.pos.z, RAINBOW, 2, 2); }
     placeBox(cp.box, cp.pos.x, cp.pos.y, cp.pos.z);
+    // 조종 버튼 보이기
+    const show = riding;
+    if (this.carpetBar.hidden === show) this.carpetBar.hidden = !show;
   }
 
   // ───── 입력 ─────
@@ -351,6 +422,7 @@ export class Tower {
     if (code === 'KeyQ') { this.select((this.type + BLOCKS.length - 1) % BLOCKS.length); return true; }
     if (code === 'KeyE') { this.select((this.type + 1) % BLOCKS.length); return true; }
     if (code === 'KeyF') { this.setMode(this.mode === 'place' ? 'remove' : 'place'); return true; }
+    if (code === 'KeyX' && this.riding) { this.dismount(); return true; }
     return false;
   }
 
@@ -392,8 +464,28 @@ export class Tower {
       this.game.ui.toast('한 번 더 누르면 내 블록을 모두 치워');
     });
     bar.querySelector('.tip').textContent = matchMedia('(pointer: coarse)').matches ? '톡: 놓기 · 버튼으로 부수기 모드 · 🌈 카펫으로 꼭대기까지' : '클릭 놓기 · 오른쪽 클릭 부수기 · 숫자/Q E 고르기 · F 바꾸기 · 🌈 카펫으로 꼭대기까지';
+    const call = document.createElement('button');
+    call.className = 'call'; call.title = '카펫 부르기'; call.textContent = '🌈 부르기';
+    call.addEventListener('click', () => { this.game.sfx('click'); this.callCarpet(); });
+    bar.insertBefore(call, bar.querySelector('.clear'));
     document.body.append(bar);
     this.bar = bar;
+    // 카펫에 탔을 때만 보이는 조종 버튼
+    const cb = document.createElement('div');
+    cb.id = 'carpet-bar'; cb.hidden = true;
+    cb.innerHTML = '<button class="up" aria-label="위로">⬆</button><button class="down" aria-label="아래로">⬇</button><button class="top">🏗️ 꼭대기로</button><button class="off">🛬 내리기</button><p class="tip"></p>';
+    const hold = (el, key) => {
+      const on = e => { e.preventDefault(); this.carpet[key] = true; el.classList.add('on'); };
+      const offf = () => { this.carpet[key] = false; el.classList.remove('on'); };
+      el.addEventListener('pointerdown', on); el.addEventListener('pointerup', offf); el.addEventListener('pointerleave', offf); el.addEventListener('pointercancel', offf);
+    };
+    hold(cb.querySelector('.up'), 'upBtn');
+    hold(cb.querySelector('.down'), 'downBtn');
+    cb.querySelector('.top').addEventListener('click', () => { this.game.sfx('click'); this.flyTop(); });
+    cb.querySelector('.off').addEventListener('click', () => { this.game.sfx('click'); this.dismount(); });
+    cb.querySelector('.tip').textContent = matchMedia('(pointer: coarse)').matches ? '조이스틱: 날기 · ⬆⬇: 위아래' : 'WASD 날기 · Space 위 · C 아래 · X 내리기';
+    document.body.append(cb);
+    this.carpetBar = cb;
     this.select(0);
   }
 
@@ -422,10 +514,12 @@ export class Tower {
     const cp = this.carpet;
     if (cp) {
       const now = t ?? performance.now() / 1000;
-      const wave = cp.state === 'home' ? Math.sin(now * 2) * 0.05 : 0;
+      const still = Math.hypot(cp.vel.x, cp.vel.y, cp.vel.z) < 0.5;
+      const wave = still ? Math.sin(now * 2) * 0.05 : 0;
       this.carpetGroup.position.set(cp.pos.x, cp.pos.y + 0.04 + wave, cp.pos.z);
-      this.carpetGroup.rotation.z = Math.sin(now * 1.7) * (cp.state === 'home' ? 0.02 : 0.05);
-      this.carpetGroup.rotation.x = Math.cos(now * 1.3) * (cp.state === 'home' ? 0.02 : 0.05);
+      // 가는 쪽으로 살짝 기울기
+      this.carpetGroup.rotation.z = Math.sin(now * 1.7) * 0.02 - cp.vel.x * 0.012;
+      this.carpetGroup.rotation.x = Math.cos(now * 1.3) * 0.02 + cp.vel.z * 0.012;
     }
     // 미리 보기 (마우스)
     let tg = null;
@@ -451,6 +545,7 @@ export class Tower {
     c.removeEventListener('pointerup', this.onUp);
     c.removeEventListener('pointerleave', this.onLeave);
     this.bar.remove();
+    this.carpetBar.remove();
     for (const m of this.meshes) { m.removeFromParent(); m.dispose(); }
     for (const s of this.labels) { s.removeFromParent(); s.material.map.dispose(); s.material.dispose(); }
     this.ghost.removeFromParent();
