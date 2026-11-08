@@ -5,6 +5,7 @@ import {
   propKey, parsePropKey, scatterKey, cellAlive, packPose, unpackPose, samePose, HIDDEN, lerpAngle, follow,
   isPrivate, PRIVATE_SITES, lookFor, SoloBlocks, placeErrorText, TEXT,
   peerNum, assignSeats, seatOf, rideStep, PoseTrack, SEATS, SEAT_POS, RIDE_WAIT, RIDE_STALE,
+  CAR_HALF, PERSON_R, carCircles, overlap, pushOut, ghostStep, friendSolids,
 } from './online.mjs';
 
 test('town ids are valid world names', () => {
@@ -75,7 +76,7 @@ test('poses pack to small number arrays and back', () => {
   assert.ok(d.every((n) => typeof n === 'number'), 'numbers only (strings get filtered)');
   assert.ok(JSON.stringify(d).length < 512);
   const p = unpackPose(d);
-  assert.deepEqual(p, { mode: 'walk', x: 10.12, y: 0.26, z: -33.99, yaw: 1.235, kid: true, hidden: false, t: null, seats: null, ride: 0 });
+  assert.deepEqual(p, { mode: 'walk', x: 10.12, y: 0.26, z: -33.99, yaw: 1.235, kid: true, hidden: false, t: null, seats: null, ride: 0, car: null });
   const drive = unpackPose(packPose({ mode: 'drive', x: 1, y: 2, z: 3, yaw: 7 }));
   assert.equal(drive.mode, 'drive');
   assert.ok(Math.abs(drive.yaw - (7 - Math.PI * 2)) < 0.001, 'yaw wraps to -PI..PI');
@@ -293,4 +294,85 @@ test('error texts are short Korean', () => {
   assert.equal(placeErrorText('missing'), null);
   assert.equal(TEXT.notMine('철수'), '철수 님의 블럭이에요');
   assert.equal(TEXT.notDeployed, '같이 사는 동네는 아직 준비 중이에요');
+});
+
+test('a walker sends where their car is parked; drivers and riders do not', () => {
+  const car = { x: -140.7, y: 0.123, z: -17.5, yaw: Math.PI };
+  const d = packPose({ mode: 'walk', x: 1, y: 0, z: 2, t: 0, car });
+  assert.deepEqual(d, [1, 1, 0, 2, 0, 0, 0, [-140.7, 0.12, -17.5, -3.142]]);
+  assert.ok(d.length <= 8 && JSON.stringify(d).length < 512, 'older games still read it, the server takes it');
+  assert.ok(d.flat().every((n) => typeof n === 'number'));
+  const u = unpackPose(d);
+  assert.deepEqual(u.car, { x: -140.7, y: 0.12, z: -17.5, yaw: -3.142 });
+  assert.equal(u.ride, 0, 'a parked car is not a ride (the riding game before this reads 0 here too)');
+  assert.equal(u.seats, null);
+  // riding: the ride number wins (the car stays where friends last saw it); driving: the pose is the car
+  assert.deepEqual(packPose({ mode: 'idle', t: 0, ride: 7, car }).at(-1), 7);
+  assert.equal(unpackPose(packPose({ mode: 'drive', t: 5, seats: [0, 0, 0], car })).car, null);
+  assert.deepEqual(packPose({ mode: 'hidden', car }), [4], 'hidden carries nothing');
+  // bad or missing cars are left out, never trusted
+  assert.deepEqual(packPose({ mode: 'walk', t: 0, car: { x: NaN, y: 0, z: 0, yaw: 0 } }), [1, 0, 0, 0, 0, 0, 0]);
+  assert.equal(unpackPose([0, 1, 0, 2, 0, 0, 9, [1, 2, 3]]).car, null);
+  assert.equal(unpackPose([0, 1, 0, 2, 0, 0, 9, [1, 2, 3, 'x']]).car, null);
+  assert.equal(unpackPose([0, 1, 0, 2, 0, 0, 9, [1, 2, 3, 1e9]]).car, null);
+  assert.equal(unpackPose([3, 1, 0, 2, 0, 0, 9, [1, 2, 3, 4]]).car, null, 'a driver has seats, not a parked car');
+  // standing still with the car parked: same pose, so it goes out once a second only
+  assert.equal(samePose(packPose({ mode: 'idle', t: 0, car }), packPose({ mode: 'idle', t: 0, car })), true);
+});
+
+test('car circles follow the car like Vehicle.circles()', () => {
+  const c = carCircles(10, 20, 0); // yaw 0: forward is -z
+  assert.equal(c.length, 3);
+  const k = CAR_HALF.l - CAR_HALF.w;
+  assert.deepEqual(c.map((p) => [+p.x.toFixed(6), +p.z.toFixed(6), p.r]), [[10, 20 + k, CAR_HALF.w], [10, 20, CAR_HALF.w], [10, 20 - k, CAR_HALF.w]]);
+  const side = carCircles(0, 0, -Math.PI / 2); // forward +x
+  assert.ok(side[2].x > side[0].x && Math.abs(side[2].z) < 1e-9);
+  assert.ok(Math.abs(carCircles(0, 0, 0, CAR_HALF, 0.92)[0].r - CAR_HALF.w * 0.92) < 1e-12);
+});
+
+test('my car is pushed out of a friend\'s car and stops for a friend on foot', () => {
+  // two cars nose to tail along x: mine 3 m behind theirs overlaps by 4.4 - 3 = 1.4 m
+  const mine = carCircles(0, 0, -Math.PI / 2), theirs = carCircles(3, 0, -Math.PI / 2);
+  assert.ok(Math.abs(overlap(mine, theirs) - (CAR_HALF.w * 2 - (3 - 2 * (CAR_HALF.l - CAR_HALF.w)))) < 1e-9);
+  const solids = friendSolids([{ car: { x: 3, y: 0, z: 0, yaw: -Math.PI / 2 } }]);
+  const p = pushOut(mine, solids);
+  assert.equal(p.car, true); assert.equal(p.person, false);
+  assert.ok(p.x < -1, `pushed back (${p.x.toFixed(2)} m)`);
+  const after = mine.map((c) => ({ ...c, x: c.x + p.x, z: c.z + p.z }));
+  assert.ok(overlap(after, solids) < 1e-6, 'and out of it');
+  assert.equal(pushOut(carCircles(-6, 0, -Math.PI / 2), solids).car, false, 'apart: nothing');
+  // a friend standing in front of my bumper
+  const front = mine[2];
+  const q = pushOut(mine, friendSolids([{ foot: { x: front.x + 1, y: 0, z: 0, kid: false } }]));
+  assert.equal(q.person, true); assert.equal(q.car, false);
+  // exactly on top of each other: still pushed somewhere, never stuck
+  assert.ok(Math.hypot(pushOut([{ x: 0, z: 0, r: 0.3 }], [{ x: 0, z: 0, r: 1 }]).x, 0) > 1.2);
+});
+
+test('friends in a car seat or asking for a ride are never solid; driven and parked cars are', () => {
+  const car = { x: 5, y: 0.1, z: 5, yaw: 0 };
+  const s = friendSolids([
+    { car, foot: null },                                        // driving (or parked, nobody near)
+    { car: null, foot: { x: 0, y: 0, z: 0 }, seated: true },    // sits in my car (or a friend's)
+    { car: null, foot: { x: 1, y: 0, z: 0 }, ride: 7 },         // waiting at the door for a seat
+    { car: { x: 20, y: 0, z: 0, yaw: 1 }, foot: { x: 18, y: 0, z: 0, kid: true } }, // on foot next to their parked car
+    { car: null, foot: null },                                  // hidden or too far
+  ]);
+  assert.equal(s.filter((p) => !p.person).length, 6, 'two cars, three circles each');
+  const people = s.filter((p) => p.person);
+  assert.equal(people.length, 1);
+  assert.equal(people[0].r, PERSON_R * 0.75, 'a kid is a smaller circle');
+  assert.equal(s[0].y, 0.1, 'height kept, so things on another floor are skipped');
+});
+
+test('a parked car standing on another one is a ghost until they are apart', () => {
+  assert.equal(ghostStep(false, 1.9), true, 'both parked in the same spot at home');
+  assert.equal(ghostStep(false, 0.1), false, 'a touch while driving is a bump, not a ghost');
+  assert.equal(ghostStep(true, 0.1), true);
+  assert.equal(ghostStep(true, -0.3), true, 'stays a ghost while still close');
+  assert.equal(ghostStep(true, -0.6), false, 'comes back once there is room');
+  assert.equal(ghostStep(false, -Infinity), false);
+  // same spot at home: overlap is two whole widths
+  const home = carCircles(-140.7, -17.5, Math.PI);
+  assert.ok(overlap(home, home) > 1.9);
 });

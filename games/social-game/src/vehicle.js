@@ -1,6 +1,7 @@
 // Drivable car: arcade physics on the terrain, collisions with tall boxes, chase / driver cameras.
 import * as THREE from 'three';
 import { bodyFree } from './collide.js';
+import { pushOut } from '../online.mjs';
 
 const tmp = [];
 
@@ -27,6 +28,9 @@ export class Vehicle {
     this.boxes = [0, 1, 2].map(() => colliders.add({ min: [0, 0, 0], max: [0, 0, 0], tag: 'car' }));
     this.box = this.boxes[1];
     this.others = []; // other cars {pos, radius}
+    // 같이 사는 동네: friends' cars and friends on foot, solid while I drive ([{x, z, r, y, person}], town.js)
+    this.solids = [];
+    this.bump = null; // this frame: { what: 'car' | 'person', speed } when I bumped into a friend's car / a friend
     engine.scene.add(model.group);
   }
 
@@ -80,12 +84,19 @@ export class Vehicle {
     const nx = this.pos.x + f.x * this.speed * dt, nz = this.pos.z + f.z * this.speed * dt;
     const ox = this.pos.x, oz = this.pos.z;
     this.pos.x = nx; this.pos.z = nz;
+    this.friendHit = null;
     const hit = this.resolve();
+    this.bump = this.friendHit ? { what: this.friendHit, speed: Math.abs(this.speed) } : null;
     if (hit) {
       this.impact = Math.abs(this.speed);
       this.speed *= -0.25;
       if (hit === 'stuck') { this.pos.x = ox; this.pos.z = oz; }
-    } else this.impact = 0;
+    } else {
+      this.impact = 0;
+      // a friend's car: bounce back a little, no damage. a friend on foot: stop gently in front of them
+      if (this.friendHit === 'car') this.speed *= -0.25;
+      else if (this.friendHit === 'person') this.speed = 0;
+    }
     // ride height and tilt from the ground under the wheels
     const fl = this.half.l * 0.8, fw = this.half.w * 0.8;
     const s = Math.sin(this.yaw), c = Math.cos(this.yaw);
@@ -102,12 +113,19 @@ export class Vehicle {
   /** Push out of boxes taller than a curb and out of other cars. Returns false | true | 'stuck'. */
   resolve() {
     let hit = false;
+    // friends (같이 사는 동네) only stop my car while I drive: a friend's car never shoves my parked one
+    const friends = this.driving ? this.solids.filter((s) => Math.abs(s.y - this.y) < 2) : [];
     for (let iter = 0; iter < 3; iter++) {
       let moved = false;
+      if (friends.length) {
+        const p = pushOut(this.circles(), friends);
+        if (p.car || p.person) { this.pos.x += p.x; this.pos.z += p.z; moved = true; this.friendHit = p.car ? 'car' : 'person'; }
+      }
       for (const cc of this.circles()) {
         const list = this.col.query(cc.x - cc.r, cc.z - cc.r, cc.x + cc.r, cc.z + cc.r, tmp);
         for (const b of list) {
-          if (b.tag === 'car' || b.tag === 'curb' || b.max[1] < this.y + 0.45 || b.min[1] > this.y + 1.6) continue;
+          // 'friend': the boxes of friends' cars (for walking), handled above as circles
+          if (b.tag === 'car' || b.tag === 'friend' || b.tag === 'curb' || b.max[1] < this.y + 0.45 || b.min[1] > this.y + 1.6) continue;
           const px = THREE.MathUtils.clamp(cc.x, b.min[0], b.max[0]), pz = THREE.MathUtils.clamp(cc.z, b.min[2], b.max[2]);
           let dx = cc.x - px, dz = cc.z - pz;
           const d = Math.hypot(dx, dz);

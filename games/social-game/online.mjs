@@ -5,6 +5,7 @@
 //   b|<x>|<y.toFixed(2)>|<z>  → { i: blockId, r: rot }   a placed block (owner = who placed it)
 //   p|<propKey>               → 1, ttl 600 s             a broken tree / bush / shell (grows back)
 // Poses are number arrays: [mode, x, y, z, yaw, kid] (HIDDEN = [4], no position at all).
+// Slots 6 and 7 (clock, seats / ride / parked car) are explained at packPose.
 
 export const GAME = 'social-game';
 export const TOWNS = ['town-1', 'town-2', 'town-3', 'town-4'];
@@ -68,25 +69,33 @@ const r2 = (n) => Math.round(n * 100) / 100;
  * Slots 6 and 7 are read only by games that know riding (older ones read 0..5 and allow 8 numbers):
  *   [6] t     the sender's clock in centiseconds (mod 1,000,000), so others can play a car back smoothly
  *   [7] link  a driver who takes riders: [p0, p1, p2] peer numbers in the 3 seats (0 = empty)
- *             anyone else: the peer number of the driver whose car I want to ride in / ride in
+ *             a rider: the peer number of the driver whose car I want to ride in / ride in
+ *             anyone else on foot: [x, y, z, yaw] where my own car is parked, so friends see it standing
+ *             there and bump into it (games before this read only a peer number here and ignore it)
  */
-export function packPose({ mode = 'idle', x = 0, y = 0, z = 0, yaw = 0, kid = false, t, seats, ride } = {}) {
+export function packPose({ mode = 'idle', x = 0, y = 0, z = 0, yaw = 0, kid = false, t, seats, ride, car } = {}) {
   const m = typeof mode === 'number' ? mode : MODE[mode] ?? 0;
   if (m === MODE.hidden) return HIDDEN.slice();
-  const a = ((yaw % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
-  const d = [m, r2(x), r2(y), r2(z), Math.round(a * 1000) / 1000, kid ? 1 : 0];
-  const link = m === MODE.drive ? cleanSeats(seats) : peerNumOk(ride) ? ride : null;
+  const d = [m, r2(x), r2(y), r2(z), wrapYaw(yaw), kid ? 1 : 0];
+  const link = m === MODE.drive ? cleanSeats(seats) : peerNumOk(ride) ? ride : carSlot(car);
   if (t !== undefined || link !== null) d.push(Number.isFinite(t) && t > 0 ? Math.round(t) % CLOCK_WRAP : 0);
   if (link !== null) d.push(link);
   return d;
 }
 const CLOCK_WRAP = 1000000;
+const wrapYaw = (yaw) => Math.round((((yaw % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 1000) / 1000;
+const okNum = (n) => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) < LIMIT;
+/** {x, y, z, yaw} of a parked car → [x, y, z, yaw] (or null). */
+function carSlot(c) {
+  if (!c || ![c.x, c.y, c.z, c.yaw].every(okNum)) return null;
+  return [r2(c.x), r2(c.y), r2(c.z), wrapYaw(c.yaw)];
+}
 const peerNumOk = (n) => Number.isInteger(n) && n > 0 && n < 1e9;
 function cleanSeats(s) {
   if (!Array.isArray(s) || s.length !== SEATS) return null;
   return s.map((n) => (peerNumOk(n) ? n : 0));
 }
-/** Array from another player → {mode, x, y, z, yaw, kid, hidden, t, seats, ride}, or null if it is not a pose. */
+/** Array from another player → {mode, x, y, z, yaw, kid, hidden, t, seats, ride, car}, or null if it is not a pose. */
 export function unpackPose(d) {
   if (!Array.isArray(d) || d.length < 1 || d.length > 8) return null;
   const m = d[0];
@@ -100,6 +109,7 @@ export function unpackPose(d) {
     t: Number.isInteger(t) && t > 0 && t < CLOCK_WRAP ? t : null,
     seats: drive && Array.isArray(link) && link.length === SEATS && link.every((n) => n === 0 || peerNumOk(n)) ? link.slice() : null,
     ride: !drive && peerNumOk(link) ? link : 0,
+    car: !drive && Array.isArray(link) && link.length === 4 && link.every(okNum) ? { x: link[0], y: link[1], z: link[2], yaw: link[3] } : null,
   };
 }
 /** Same pose, not counting the clock (slot 6): a player standing still sends once a second only. */
@@ -184,6 +194,66 @@ export function rideStep(ride, pose, me, now, gone = false) {
   if (i >= 0) return { what: seated ? 'ride' : 'seated', seat: i };
   if (seated) return { what: 'out', seat: -1 };
   return { what: now - ride.askedAt > RIDE_WAIT ? 'full' : 'wait', seat: -1 };
+}
+
+// ------------------------------------------------------------------ cars are solid
+// 인혁: "같은 동네에서 만난 사람의 차끼리 안 붙어(그냥 통과) 붙이게 해줘". Each computer still moves only its own
+// player and car. Friends' cars (driven or parked) and friends on foot become solid circles on my computer,
+// made from the poses that come anyway: my car bumps into them (no damage), I cannot walk through a friend's
+// car, and a friend's car that drives onto me nudges me aside. Nothing new is sent to the server.
+export const CAR_HALF = { w: 0.99, l: 2.31 }; // the sedan everyone drives
+// a friend on foot: small enough that someone standing against a friend's car (its boxes are 0.91 m from the
+// middle, the walker 0.3 m wide) does not shove that car when its driver gets in: 0.99 + 0.22 <= 0.91 + 0.3
+export const PERSON_R = 0.22;
+export const GHOST_IN = 0.4;   // m: a parked car this deep inside another one is a ghost (not drawn, not solid)…
+export const GHOST_OUT = 0.5;  // m: …until there is this much room between them
+/** Three circles along a car (back, middle, front), the same as Vehicle.circles(). */
+export function carCircles(x, z, yaw, half = CAR_HALF, scale = 1) {
+  const fx = -Math.sin(yaw), fz = -Math.cos(yaw), k = half.l - half.w;
+  return [-1, 0, 1].map((s) => ({ x: x + fx * s * k, z: z + fz * s * k, r: half.w * scale }));
+}
+/** How deep two lists of circles overlap, in metres (negative: the gap between them). */
+export function overlap(a, b) {
+  let best = -Infinity;
+  for (const p of a) for (const q of b) best = Math.max(best, p.r + q.r - Math.hypot(p.x - q.x, p.z - q.z));
+  return best;
+}
+/**
+ * How far to move a group of circles (one car, or one person) out of solid circles {x, z, r, person}.
+ * → { x, z, car, person }: the push, and whether a car / a person was hit.
+ */
+export function pushOut(circles, solids) {
+  let x = 0, z = 0, car = false, person = false;
+  for (const c of circles) {
+    for (const s of solids) {
+      const dx = c.x + x - s.x, dz = c.z + z - s.z, d = Math.hypot(dx, dz), r = c.r + s.r;
+      if (d >= r) continue;
+      const nx = d > 1e-4 ? dx / d : 1, nz = d > 1e-4 ? dz / d : 0; // exactly on top: out along x
+      x += nx * (r - d); z += nz * (r - d);
+      if (s.person) person = true; else car = true;
+    }
+  }
+  return { x, z, car, person };
+}
+/**
+ * Everyone's car starts in the same parking spot at home, so a friend's PARKED car can stand right on mine.
+ * Such a car is a ghost (not drawn, not solid) until the cars are apart. was: ghost last frame; over: overlap().
+ */
+export function ghostStep(was, over) { return over > GHOST_IN || (was && over > -GHOST_OUT); }
+/**
+ * Solid things on my computer from what I see of the others, every frame. Each friend:
+ *   { car: {x, y, z, yaw} | null   their car where it is drawn (driven, or parked and not a ghost)
+ *     foot: {x, y, z, kid} | null  where they stand (newest pose) when they are drawn on foot (null when driving)
+ *     seated: bool, ride: number }   in a car seat / asking to ride: never solid (they belong inside a car)
+ * → [{ x, z, r, y, person }] (y: ground height, to skip things on another floor)
+ */
+export function friendSolids(friends, half = CAR_HALF) {
+  const out = [];
+  for (const f of friends) {
+    if (f.car) for (const c of carCircles(f.car.x, f.car.z, f.car.yaw, half)) out.push({ ...c, y: f.car.y, person: false });
+    if (f.foot && !f.seated && !f.ride) out.push({ x: f.foot.x, z: f.foot.z, r: f.foot.kid ? PERSON_R * 0.75 : PERSON_R, y: f.foot.y, person: true });
+  }
+  return out;
 }
 
 /**
@@ -329,6 +399,8 @@ export const TEXT = {
   rideOut: (nick) => `${nick} 님이 차에서 내려서 나도 내렸어요`,
   rideBye: '차에서 내렸어요',
   rideStop: '차가 멈추면 내릴 수 있어요',
+  bumpCar: (nick) => `콩! ${nick} 님 차랑 부딪혔어요 (안 다쳐요)`,
+  bumpPerson: (nick) => `앗, ${nick} 님이 앞에 있어서 멈췄어요`,
   ridePrompt: (nick) => `같이 타기 (${nick} 님 차)`,
 };
 /** Short Korean toast for a World error code on a block cell, or null to stay quiet. */
