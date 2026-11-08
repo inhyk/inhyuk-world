@@ -518,6 +518,9 @@ export function unpackBlocks(flat) {
 }
 
 // ───── 타이쿤 돈 주기 (친구 방) ─────
+// 'hi' 에 실어 보내는 게임 버전. 2 부터 돈 주기를 안다 (1 이나 없음 = 예전 게임: 돈을 받지 못한다).
+export const NET_VERSION = 2;
+export const GIFT_WAIT_MS = 12000;
 export const GIFT_AMOUNTS = [100, 1000, 10000, 100000, 1000000];
 export const GIFT_MAX = 1_000_000_000;
 // 받은 선물이 정상인가: 1 이상 GIFT_MAX 이하의 정수, 번호도 정수
