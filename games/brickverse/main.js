@@ -168,7 +168,7 @@ function loadWorld(id) {
   }
   effects.clear();
   const info = WORLD_INFO[id];
-  const def = info.build();
+  const def = info.build({ slot: game.net?.active ? game.net.slot : 0 });
   const group = new THREE.Group();
   view.scene.add(group);
   const w = { id, def, group, boxes: [], dyn: [], zones: def.zones ?? [], npcs: [], runtime: null, inZone: new Set() };
@@ -352,9 +352,9 @@ game.net = new Net({
   opened: () => {
     ui.renderFriends();
     sendHi(); sendPose(true);
-    if (game.worldId === 2) loadWorld(2); // 내 땅 번호가 바뀐다
+    if (game.worldId === 2 || game.worldId === 4) loadWorld(game.worldId); // 내 땅 번호가 바뀐다
   },
-  closed: () => { for (const id of [...game.remotes.keys()]) removeRemote(id); ui.renderFriends(); if (game.worldId === 2) loadWorld(2); },
+  closed: () => { for (const id of [...game.remotes.keys()]) removeRemote(id); ui.renderFriends(); if (game.worldId === 2 || game.worldId === 4) loadWorld(game.worldId); },
   join: id => { sendHi(id); sendPose(true); sendTower(id); },
   depart: id => { if (id) removeRemote(id); else for (const k of [...game.remotes.keys()]) removeRemote(k); ui.renderFriends(); },
   message: (data, from) => onMessage(data, from),
@@ -399,6 +399,7 @@ function getRemote(id) {
   return r;
 }
 const slotOf = id => { const n = parseInt(String(id).replace(/\D/g, ''), 10); return Number.isFinite(n) && n > 0 ? (n - 1) % PLOT_SLOTS.length : 0; };
+game.slotOf = slotOf;
 
 function removeRemote(id) {
   const r = game.remotes.get(id);
@@ -427,6 +428,7 @@ function onMessage(data, from) {
         if (items) { r.tycoon = items; if (game.worldId === 2) game.world.runtime?.remoteChanged(r.slot); }
       }
       if (first) { ui.log(`${r.name} 님이 들어왔어! 👋`); sound.pop(); }
+      if (game.worldId === 4) game.world.runtime?.remoteChanged();
       refreshRemoteVisibility();
       updatePlayerList();
       ui.renderFriends();
@@ -544,6 +546,7 @@ function updateWorld(dt) {
     if (p.flag) d.mesh.rotation.y = Math.sin(t * 3) * 0.15;
     if (p.turn) d.mesh.rotation[p.turn.ax] = (p.turn.base ?? 0) + t * p.turn.spd;
   }
+  w.runtime?.move?.(dt); // 카펫처럼 사람을 태우고 움직이는 것 (플레이어보다 먼저)
   // 재질 움직이기
   const arrow = tex('arrow'); arrow.offset.y -= dt * 1.6;
   for (const m of animated.lava) { m.map.offset.x += dt * 0.02; m.map.offset.y += dt * 0.012; m.emissiveIntensity = 1.1 + Math.sin(t * 2) * 0.15; }
