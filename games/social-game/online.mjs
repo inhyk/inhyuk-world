@@ -6,6 +6,7 @@
 //   p|<propKey>               → 1, ttl 600 s             a broken tree / bush / shell (grows back)
 // Poses are number arrays: [mode, x, y, z, yaw, kid] (HIDDEN = [4], no position at all).
 // Slots 6 and 7 (clock, seats / ride / parked car) are explained at packPose.
+import { poseAt } from './poses.mjs';
 
 export const GAME = 'social-game';
 export const TOWNS = ['town-1', 'town-2', 'town-3', 'town-4'];
@@ -70,14 +71,16 @@ const r2 = (n) => Math.round(n * 100) / 100;
  *   [6] t     the sender's clock in centiseconds (mod 1,000,000), so others can play a car back smoothly
  *   [7] link  a driver who takes riders: [p0, p1, p2] peer numbers in the 3 seats (0 = empty)
  *             a rider: the peer number of the driver whose car I want to ride in / ride in
+ *             standing still in a pose (not riding): minus the pose number (-1 = 👋, poses.mjs POSES)
  *             anyone else on foot: [x, y, z, yaw] where my own car is parked, so friends see it standing
- *             there and bump into it (games before this read only a peer number here and ignore it)
+ *             there and bump into it (games before this read only a peer number here and ignore it).
+ *             While I pose, the car is left out and friends keep it where they last saw it.
  */
-export function packPose({ mode = 'idle', x = 0, y = 0, z = 0, yaw = 0, kid = false, t, seats, ride, car } = {}) {
+export function packPose({ mode = 'idle', x = 0, y = 0, z = 0, yaw = 0, kid = false, t, seats, ride, car, pose } = {}) {
   const m = typeof mode === 'number' ? mode : MODE[mode] ?? 0;
   if (m === MODE.hidden) return HIDDEN.slice();
   const d = [m, r2(x), r2(y), r2(z), wrapYaw(yaw), kid ? 1 : 0];
-  const link = m === MODE.drive ? cleanSeats(seats) : peerNumOk(ride) ? ride : carSlot(car);
+  const link = m === MODE.drive ? cleanSeats(seats) : peerNumOk(ride) ? ride : m === MODE.idle && poseAt(pose) ? -pose : carSlot(car);
   if (t !== undefined || link !== null) d.push(Number.isFinite(t) && t > 0 ? Math.round(t) % CLOCK_WRAP : 0);
   if (link !== null) d.push(link);
   return d;
@@ -95,7 +98,7 @@ function cleanSeats(s) {
   if (!Array.isArray(s) || s.length !== SEATS) return null;
   return s.map((n) => (peerNumOk(n) ? n : 0));
 }
-/** Array from another player → {mode, x, y, z, yaw, kid, hidden, t, seats, ride, car}, or null if it is not a pose. */
+/** Array from another player → {mode, x, y, z, yaw, kid, hidden, t, seats, ride, car, pose}, or null if it is not a pose. */
 export function unpackPose(d) {
   if (!Array.isArray(d) || d.length < 1 || d.length > 8) return null;
   const m = d[0];
@@ -110,6 +113,7 @@ export function unpackPose(d) {
     seats: drive && Array.isArray(link) && link.length === SEATS && link.every((n) => n === 0 || peerNumOk(n)) ? link.slice() : null,
     ride: !drive && peerNumOk(link) ? link : 0,
     car: !drive && Array.isArray(link) && link.length === 4 && link.every(okNum) ? { x: link[0], y: link[1], z: link[2], yaw: link[3] } : null,
+    pose: m === MODE.idle && Number.isInteger(link) && poseAt(-link) ? -link : 0,
   };
 }
 /** Same pose, not counting the clock (slot 6): a player standing still sends once a second only. */

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { moveBody } from './collide.js';
 
 export const EYE = 1.62, RADIUS = 0.3, HEIGHT = 1.75;
+const PI2 = Math.PI / 2;
 
 export class Input {
   constructor(canvas) {
@@ -63,11 +64,30 @@ export class Player {
     this.camPos = new THREE.Vector3();
     this.stepTimer = 0;
     this.onStep = null;
+    this.pose = null;     // 포즈: { id, icon, name, low, prevView, camYaw, camPitch } while doing one
   }
 
   place(x, y, z, yaw = this.yaw) { this.pos.set(x, y, z); this.vel.set(0, 0, 0); this.yaw = yaw; this.pitch = 0; }
 
   setAvatar(ch) { this.avatar = ch; ch.group.visible = this.view === 'third'; this.engine.scene.add(ch.group); }
+
+  /** 포즈 (poses.mjs): the body plays it and the camera looks at me from the front, the mouse turns it around. */
+  startPose(p) {
+    this.pose = { id: p.id, icon: p.icon, name: p.name, low: !!p.low, prevView: this.pose?.prevView ?? this.view, camYaw: this.yaw + (p.id === 'lie' ? PI2 : p.low ? 0.8 : 0), camPitch: p.id === 'lie' ? 0.6 : p.low ? 0.42 : 0.1 };
+    this.vel.x = this.vel.z = 0; this.speed = 0;
+    if (this.avatar) this.avatar.group.visible = true;
+    if (this.arm) this.arm.group.visible = false;
+  }
+
+  /** End the pose and go back to the view I had before. */
+  stopPose() {
+    if (!this.pose) return;
+    this.view = this.pose.prevView;
+    this.pose = null;
+    if (this.avatar) this.avatar.group.visible = this.view === 'third';
+    if (this.arm) this.arm.group.visible = this.view === 'first';
+    this.onPoseEnd?.();
+  }
 
   toggleView() {
     this.view = this.view === 'first' ? 'third' : 'first';
@@ -87,6 +107,20 @@ export class Player {
   update(dt) {
     if (this.frozen) return;
     const i = this.input;
+    if (this.pose) {
+      // walking (WASD) or jumping ends the pose; until then the mouse turns the camera around me
+      const go = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown'].some((k) => i.down(k)) || Math.hypot(i.stick.x, i.stick.y) > 0.3 || i.hit('Space');
+      if (!go) {
+        const pz = this.pose;
+        pz.camYaw -= (i.mouse.dx + i.touchLook.dx) * 0.0035;
+        pz.camPitch = THREE.MathUtils.clamp(pz.camPitch + (i.mouse.dy + i.touchLook.dy) * 0.0025, -0.2, 1.2);
+        if (i.down('ArrowLeft')) pz.camYaw += dt * 2;
+        if (i.down('ArrowRight')) pz.camYaw -= dt * 2;
+        this.vel.set(0, 0, 0); this.speed = 0;
+        return;
+      }
+      this.stopPose();
+    }
     this.look(dt);
     let fx = 0, fz = 0;
     if (i.down('KeyW') || i.down('ArrowUp')) fz -= 1;
@@ -130,6 +164,7 @@ export class Player {
   /** Place the camera (call after update). */
   updateCamera(dt) {
     const cam = this.engine.camera;
+    if (this.pose) { this.poseCamera(dt); return; }
     const eye = new THREE.Vector3(this.pos.x, this.pos.y + (this.eye ?? EYE) + Math.sin(this.bob * 2) * 0.03 * Math.min(1, this.speed / 4), this.pos.z);
     const dir = new THREE.Vector3(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
     if (this.view === 'first') {
@@ -151,6 +186,27 @@ export class Player {
       a.group.position.copy(this.pos);
       a.group.rotation.y = this.yaw;
       a.update?.(dt, { speed: this.speed, mode: this.speed > 5 ? 'run' : this.speed > 0.3 ? 'walk' : 'idle' });
+    }
+  }
+
+  poseCamera(dt) {
+    const cam = this.engine.camera, pz = this.pose;
+    const sc = this.avatar?.group.scale.y ?? 1;
+    const pivot = new THREE.Vector3(this.pos.x, this.pos.y + (pz.low ? 0.45 : 1.02) * sc, this.pos.z);
+    const dir = new THREE.Vector3(-Math.sin(pz.camYaw) * Math.cos(pz.camPitch), Math.sin(pz.camPitch), -Math.cos(pz.camYaw) * Math.cos(pz.camPitch));
+    const want = (pz.low ? 2.7 : 2.9) * (sc < 1 ? 0.8 : 1);
+    const d = this.col.ray(pivot.toArray(), dir.toArray(), want + 0.3);
+    const at = pivot.clone().addScaledVector(dir, Math.max(0.7, Math.min(want, d - 0.3)));
+    const g = this.groundAt(at.x, at.z) + 0.2;
+    if (at.y < g) at.y = g;
+    cam.position.copy(at);
+    cam.lookAt(pivot);
+    if (this.avatar) {
+      const a = this.avatar;
+      a.group.visible = true;
+      a.group.position.copy(this.pos);
+      a.group.rotation.y = this.yaw;
+      a.update?.(dt, { speed: 0, mode: `pose:${pz.id}` });
     }
   }
 

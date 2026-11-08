@@ -1,6 +1,6 @@
 // 세계 모양(부품 목록)을 만든다. three.js 없이 숫자만 만들어서 node 로 시험할 수 있다.
 // 부품: { x, y, z (가운데), w, h, d (크기), c (색), k (종류), m (재질), shape, move, spin, cp, deco (안 부딪힘), hidden (안 그림) }
-import { OBBY_STAGES, seeded, SURVIVAL } from './core.mjs';
+import { OBBY_STAGES, seeded, SURVIVAL, TOWER } from './core.mjs';
 
 export function hsl(h, s, l) {
   s /= 100; l /= 100;
@@ -49,6 +49,7 @@ export const PORTALS = [
   { id: 'obby', world: 1, name: '무지개 점프 탑', sub: '30 스테이지 점프맵', color: '#ff5e7e', icon: '🌈' },
   { id: 'tycoon', world: 2, name: '블록 공장 타이쿤', sub: '돈 모아서 집 짓기', color: '#ffb820', icon: '🏭' },
   { id: 'survival', world: 3, name: '바닥이 사라져요', sub: '끝까지 살아남기', color: '#9b5cff', icon: '🔥' },
+  { id: 'tower', world: 4, name: '하늘 타워 짓기', sub: '블록으로 높이높이', color: '#21c7b8', icon: '🏗️' },
 ];
 
 function tree(out, x, z, rnd, scale = 1, y0 = 0) {
@@ -125,7 +126,7 @@ export function buildHub() {
   parts.push({ x: 0, y: 0.32, z: 18, w: 4.4, h: 0.06, d: 4.4, c: '#3fa7ff', m: 'neon', deco: true, shadow: false, round: 0.02 });
   // 문 (포털)
   PORTALS.forEach((p, i) => {
-    const x = (i - 1) * 22, z = -32;
+    const x = (i - (PORTALS.length - 1) / 2) * 22, z = -32;
     parts.push({ x, y: 0.3, z, w: 14, h: 0.6, d: 7, c: '#f4efe6', m: 'stone' });
     parts.push({ x, y: 0.3, z: z + 4.6, w: 10, h: 0.3, d: 2.4, c: '#f4efe6', m: 'stone' });
     for (const s of [-1, 1]) {
@@ -138,7 +139,7 @@ export function buildHub() {
     effects.push({ type: 'portal', x, y: 5.0, z, w: 9.2, h: 8.6, color: p.color });
     signs.push({ x, y: 13.2, z: z + 0.2, ry: 0, w: 12, h: 2.6, lines: [`${p.icon} ${p.name}`, p.sub], bg: '#ffffff', fg: '#222533', accent: p.color, sizes: [118, 70] });
     // 문까지 길
-    parts.push({ x: x * 0.55, y: 0.06, z: -26, w: 7, h: 0.12, d: 6, c: '#e9dfcf', m: 'stone', round: 0.05 });
+    parts.push({ x: x * 0.62, y: 0.06, z: -26, w: 7, h: 0.12, d: 6, c: '#e9dfcf', m: 'stone', round: 0.05 });
     lamp(parts, x - 7.6, z + 3);
     lamp(parts, x + 7.6, z + 3);
   });
@@ -210,7 +211,7 @@ export function buildHub() {
   for (const [x, z] of [[-21, 21], [21, 21], [-21, -21], [21, -21], [-6, 28], [6, 28], [-12, 40], [12, 40]]) lamp(parts, x, z);
   for (const [x, z, w, d] of [[-9, 9, 3, 3], [9, 9, 3, 3], [-9, -9, 3, 3], [9, -9, 3, 3], [-28, 24, 6, 3], [26, 24, 6, 3], [-50, -20, 4, 8]]) flowers(parts, x, z, w, d, rnd);
   // 나무
-  const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -42 && Math.abs(x) < 38) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
+  const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -44 && Math.abs(x) < 48) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
     || (Math.abs(x - 42) < 14 && Math.abs(z + 6) < 15) || (Math.abs(x + 42) < 8 && Math.abs(z - 40) < 8) || (Math.abs(x - 36) < 12 && Math.abs(z - 34) < 12)
     || (Math.abs(x - 30) < 4 && Math.abs(z - 8) < 6) || (Math.abs(x) < 5 && z > 20 && z < 60);
   let placed = 0;
@@ -986,4 +987,42 @@ export function buildSurvival() {
     parts.push({ x: Math.cos(a) * r, y: LAVA + h - 1, z: Math.sin(a) * r, w: h * 0.3, h: 2, d: h * 0.3, c: '#ff6a1a', m: 'neon', shape: 'cyl', deco: true, shadow: false });
   }
   return { parts, signs, effects, zones, coins, npcs: [], spawn: { x: 0, y: LOBBY, z: 4, yaw: Math.PI }, sky: 'survival', killY: LAVA - 5 };
+}
+
+// ───────────────────────── 하늘 타워 짓기 ─────────────────────────
+// 가운데 돌판(24×24칸)에 블록을 놓아 타워를 짓는다. 블록은 src/tower.js 가 만든다.
+export function buildTower() {
+  const parts = [], signs = [], effects = [], coins = [];
+  const C = TOWER.CELL, half = ((TOWER.MAX - TOWER.MIN + 1) * C) / 2;
+  // 풀밭은 돌판(윗면 0)보다 0.3 낮게: 같은 높이면 돌판이 풀에 묻혀 안 보인다
+  parts.push({ x: 0, y: -3.3, z: 0, w: 150, h: 6, d: 150, c: '#7fcf5f', m: 'grass', round: 1.2, shadow: false });
+  parts.push({ x: 0, y: -3.15, z: 0, w: 164, h: 5.2, d: 164, c: '#f5dfa6', m: 'sand', round: 2, shadow: false });
+  parts.push({ x: 0, y: -1.1, z: 0, w: 1600, h: 0.2, d: 1600, c: '#33a6ff', m: 'water', deco: true, shadow: false, round: 0 });
+  for (const [x, z, w, d] of [[0, -82, 170, 2], [0, 82, 170, 2], [-82, 0, 2, 170], [82, 0, 2, 170]]) parts.push({ x, y: 4, z, w, h: 12, d, hidden: true });
+  // 짓는 돌판: 윗면이 정확히 0 (블록 0층이 0~2)
+  parts.push({ x: 0, y: -0.24, z: 0, w: half * 2 + 1.2, h: 0.4, d: half * 2 + 1.2, c: '#21c7b8', round: 0.12, shadow: false });
+  parts.push({ x: 0, y: -0.15, z: 0, w: half * 2, h: 0.3, d: half * 2, c: '#eef3f6', m: 'grid', round: 0.02, shadow: false });
+  // 높이 재는 기둥 (10층마다 표지판)
+  const px = half + 3.5, pz = -half - 3.5;
+  parts.push({ x: px, y: (TOWER.TOP + 1) * C / 2, z: pz, w: 0.9, h: (TOWER.TOP + 1) * C, d: 0.9, c: '#ffffff', shape: 'cyl' });
+  for (let f = 10; f <= TOWER.TOP + 1; f += 10) {
+    parts.push({ x: px, y: f * C, z: pz, w: 1.6, h: 0.3, d: 1.6, c: f % 50 ? '#21c7b8' : '#ffd23f', m: 'neon', shape: 'cyl', deco: true, shadow: false });
+    signs.push({ x: px - 1.0, y: f * C + 0.9, z: pz + 1.0, ry: -Math.PI / 4, w: 2.6, h: 1.1, lines: [`${f}층`], bg: f % 50 ? '#ffffff' : '#ffd23f', fg: '#1b4d4a', sizes: [90], double: true });
+  }
+  signs.push({ x: 0, y: 3.3, z: half + 5.2, ry: 0, w: 9.5, h: 3.2, lines: ['🏗️ 하늘 타워 짓기', '클릭: 블록 놓기 · 오른쪽 클릭: 부수기', '내가 쌓은 블록을 밟고 올라가서 더 높이!'], bg: '#ffffff', fg: '#1b4d4a', accent: '#21c7b8', sizes: [76, 46, 46] });
+  parts.push({ x: 0, y: 1.6, z: half + 5.3, w: 0.5, h: 3.2, d: 0.5, c: '#8b5a3c', m: 'wood', deco: true });
+  // 광장으로
+  effects.push({ type: 'portal', x: -half - 7, y: 2.6, z: half - 2, w: 3.4, h: 4.4, color: '#3fa7ff', ry: Math.PI / 2 });
+  parts.push({ x: -half - 7, y: 0.15, z: half - 2, w: 4, h: 0.3, d: 5, c: '#ffffff' });
+  signs.push({ x: -half - 6.6, y: 5.6, z: half - 2, ry: Math.PI / 2, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
+  const zones = [{ x0: -half - 8, x1: -half - 6, y0: 0.3, y1: 5, z0: half - 4, z1: half }];
+  zones[0].portal = 0;
+  // 나무
+  const rnd = seeded(404);
+  for (let n = 0, tries = 0; n < 34 && tries < 300; tries++) {
+    const x = (rnd() - 0.5) * 140, z = (rnd() - 0.5) * 140;
+    if (Math.abs(x) < half + 8 && Math.abs(z) < half + 9) continue;
+    tree(parts, x, z, rnd); n++;
+  }
+  return { parts, signs, effects, zones, coins, npcs: [], spawn: { x: 0, y: 0.1, z: half + 8, yaw: Math.PI }, sky: 'tower', killY: -15 };
 }

@@ -812,10 +812,236 @@ function buildShoe(shoeB, skinB, side, kind, accent) {
   }
 }
 
+// ------------------------------------------------------------------------------------------ poses
+// 인혁: "여러가지 포즈도 할 수 있게 해줘". Mode 'pose:<id>' (ids in ../../poses.mjs). Hands are placed with
+// two-bone IK on targets in the chest's rest space (character metres minus the chest height), so a hand
+// lands on the chin, the hip or over the head whatever the body does.
+const ARM = {};
+for (const s of ['L', 'R']) {
+  ARM[s] = {
+    up: J['elbow' + s].clone().sub(J['shoulder' + s]).normalize(), lo: J['hand' + s].clone().sub(J['elbow' + s]).normalize(),
+    l1: J['elbow' + s].distanceTo(J['shoulder' + s]), l2: J['hand' + s].distanceTo(J['elbow' + s]),
+  };
+}
+const _pa = new THREE.Vector3(), _pb = new THREE.Vector3(), _pc = new THREE.Vector3(), _pd = new THREE.Vector3();
+const _pq = new THREE.Quaternion(), _pq2 = new THREE.Quaternion(), _pm = new THREE.Matrix4();
+/** character rest point → chest rest space */
+const C = (x, y, z) => V(x, y - J.chest.y, z);
+const LEG = J.thighL.y - J.footL.y; // hip to ankle
+
+/** Two-bone arm IK: wrist to T (chest space), elbow bending towards pole (chest space direction). */
+function reach(b, s, T, pole) {
+  const A = ARM[s], S = b['shoulder' + s].position;
+  const d = _pa.copy(T).sub(S);
+  const len = clamp(d.length(), 0.08, A.l1 + A.l2 - 0.002);
+  d.normalize();
+  const a = (A.l1 * A.l1 - A.l2 * A.l2 + len * len) / (2 * len), h = Math.sqrt(Math.max(0, A.l1 * A.l1 - a * a));
+  const p = _pb.copy(pole).addScaledVector(d, -pole.dot(d));
+  if (p.lengthSq() < 1e-6) p.set(0, 0, 1);
+  p.normalize();
+  const E = _pc.copy(S).addScaledVector(d, a).addScaledVector(p, h);
+  const qs = b['shoulder' + s].quaternion.setFromUnitVectors(A.up, _pd.copy(E).sub(S).normalize());
+  const w = _pd.copy(S).addScaledVector(d, len).sub(E).normalize().applyQuaternion(_pq.copy(qs).invert());
+  b['elbow' + s].quaternion.setFromUnitVectors(A.lo, w);
+}
+/** Point the fingers along dir (chest space), then turn the hand about the fingers by twist. */
+function aim(b, s, dir, twist = 0) {
+  _pq.copy(b['shoulder' + s].quaternion).multiply(b['elbow' + s].quaternion).invert();
+  const w = _pa.copy(dir).normalize().applyQuaternion(_pq);
+  b['hand' + s].quaternion.setFromUnitVectors(ARM[s].lo, w).premultiply(_pq2.setFromAxisAngle(w, twist));
+}
+/** A point fixed to the head (character rest coordinates) → chest space, following the neck and head. */
+function onHead(b, x, y, z) {
+  return V(x, y, z).sub(J.head).applyQuaternion(b.head.quaternion).add(b.head.position).applyQuaternion(b.neck.quaternion).add(b.neck.position);
+}
+/** A character-space point (after the hips moved) → chest space. */
+function toChest(b, x, y, z) {
+  for (const n of ['hips', 'spine', 'chest']) b[n].updateMatrix();
+  _pm.copy(b.hips.matrix).multiply(b.spine.matrix).multiply(b.chest.matrix).invert();
+  return V(x, y, z).applyMatrix4(_pm);
+}
+/** Lower the hips by d with bent knees, feet staying flat where they are. */
+function crouch(b, d) {
+  if (d <= 0) return;
+  const th = Math.acos(clamp(1 - d / LEG, -1, 1));
+  b.hips.position.y -= d;
+  for (const s of ['L', 'R']) { b['thigh' + s].rotation.x += th; b['knee' + s].rotation.x -= th * 2; b['foot' + s].rotation.x += th; }
+}
+const tri = (x) => 0.5 - 0.5 * Math.cos(x); // 0 → 1 → 0 over 2π
+
+/** Sets the bones for pose `id` at pose time pt (seconds); bones start from the idle frame. */
+function applyPose(b, id, pt, t) {
+  switch (id) {
+    case 'wave': {
+      const ph = pt * 9;
+      b.shoulderR.rotation.set(-0.15, 0, 2.55);
+      b.elbowR.rotation.set(0, 0, 0.35 + Math.sin(ph) * 0.4);
+      b.handR.rotation.set(0, 0, Math.sin(ph - 0.6) * 0.2);
+      b.head.rotation.set(0.04, 0.05, -0.08);
+      b.hips.rotation.z = Math.sin(ph * 0.5) * 0.02;
+      break;
+    }
+    case 'vsign': {
+      b.hips.position.x += 0.02; b.hips.rotation.z = -0.04; b.spine.rotation.z = 0.06;
+      b.head.rotation.set(0.04, -0.12, -0.16);
+      reach(b, 'R', onHead(b, 0.18, 1.5, -0.1), V(1, -1, 0.3));
+      aim(b, 'R', V(0.1, 1, -0.15), 0);
+      reach(b, 'L', C(-0.2, 0.99, 0.02), V(-1, 0, 0.5));
+      aim(b, 'L', V(0.4, -1, 0.2), 0);
+      break;
+    }
+    case 'heart': {
+      b.head.rotation.set(0.02, 0, Math.sin(t * 1.5) * 0.05);
+      for (const [s, sg] of [['R', 1], ['L', -1]]) {
+        const T = onHead(b, sg * 0.075, 1.775, -0.01);
+        reach(b, s, T, V(sg, 0.45, 0.1));
+        aim(b, s, V(-sg * 0.7, -0.65, 0), 0);
+      }
+      break;
+    }
+    case 'hooray': {
+      const k = tri(pt * PI * 2 * 1.4);
+      crouch(b, 0.03 * k);
+      for (const [s, sg] of [['R', 1], ['L', -1]]) {
+        reach(b, s, C(sg * 0.33, 1.83 - 0.03 * k, -0.06), V(sg, 0, 0.3));
+        aim(b, s, V(sg * 0.35, 1, -0.1), 0);
+      }
+      b.head.rotation.set(0.18, 0, 0);
+      break;
+    }
+    case 'clap': {
+      const open = Math.abs(Math.sin(pt * PI * 2.2)) ** 0.6;
+      for (const [s, sg] of [['R', 1], ['L', -1]]) {
+        reach(b, s, C(sg * (0.045 + 0.1 * open), 1.2, -0.27), V(sg, -0.7, 0.2));
+        aim(b, s, V(-sg * 0.25, 0.55, -1), -sg * PI / 2);
+      }
+      b.head.rotation.x = 0.03;
+      break;
+    }
+    case 'bow': {
+      const c = pt % 3.4; // down, hold (a photo catches the bow), up, a short pause
+      const k = sstep(0.05, 0.55, c) * (1 - sstep(2.5, 3.0, c));
+      b.hips.rotation.x = -0.8 * k;
+      b.hips.position.z += 0.07 * k;
+      for (const s of ['L', 'R']) { b['thigh' + s].rotation.x += 0.8 * k; b['shoulder' + s].rotation.x = 0.25 * k; }
+      b.head.rotation.set(-0.2 * k, b.head.rotation.y * (1 - k), 0);
+      break;
+    }
+    case 'dance': {
+      const beat = pt * 2; // 120 BPM
+      const sw = Math.sin(beat * PI);
+      crouch(b, 0.06 * tri(beat * PI * 2));
+      b.hips.rotation.y = 0.28 * sw; b.chest.rotation.y = -0.18 * sw;
+      b.hips.rotation.z = 0.05 * sw; b.spine.rotation.z = -0.09 * sw;
+      b.head.rotation.set(-0.08 * tri(beat * PI * 2) + 0.04, -0.1 * sw, 0.12 * sw);
+      const u = tri(beat * PI), mixB = tri(beat * PI / 8);
+      for (const [s, sg, k] of [['R', 1, u], ['L', -1, 1 - u]]) {
+        const a = V(sg * 0.18, 1.1, -0.26).lerp(V(sg * 0.3, 1.86, -0.08), k);
+        const bb = V(sg * 0.24 + sw * 0.16, 1.8, -0.05);
+        a.lerp(bb, mixB);
+        reach(b, s, C(a.x, a.y, a.z), V(sg, -0.3, 0.2));
+        aim(b, s, V(sg * 0.2, 1, -0.2), 0);
+      }
+      // a heel lifts on every other beat
+      const lift = Math.max(0, Math.sin(beat * PI));
+      b.footR.rotation.x += 0.35 * lift; b.footL.rotation.x += 0.35 * Math.max(0, -Math.sin(beat * PI));
+      break;
+    }
+    case 'sit': {
+      // sitting on the ground, legs out in front, leaning back on the hands
+      b.hips.position.y = 0.155; b.hips.position.z = 0.05; b.hips.position.x = 0;
+      for (const [s, sg] of [['L', -1], ['R', 1]]) {
+        b['thigh' + s].rotation.set(1.48, 0, -sg * 0.06);
+        b['knee' + s].rotation.x = -0.12;
+        b['foot' + s].rotation.x = -0.25;
+      }
+      b.spine.rotation.x = 0.2;
+      b.head.rotation.x -= 0.12;
+      for (const [s, sg] of [['R', 1], ['L', -1]]) {
+        reach(b, s, toChest(b, sg * 0.23, 0.11, 0.3), V(sg * 0.3, 0, 1));
+        aim(b, s, V(0, -1, 0.3), 0);
+      }
+      break;
+    }
+    case 'lie': {
+      // on the back, eyes closed, hands on the tummy, one knee up
+      b.hips.rotation.x = PI / 2;
+      b.hips.position.set(0, 0.125, 0.02);
+      b.thighR.rotation.x = 0.75; b.kneeR.rotation.x = -1.5; b.footR.rotation.x = 0.55;
+      b.thighL.rotation.z = 0.03;
+      b.head.rotation.set(0.05, Math.sin(t * 0.3) * 0.05, 0.05);
+      for (const [s, sg] of [['R', 1], ['L', -1]]) {
+        reach(b, s, C(sg * 0.06, 1.0, -0.2), V(sg, 0, 0.3));
+        aim(b, s, V(-sg, 0, -0.2), sg * 0.3);
+      }
+      b.eyeL.scale.y = b.eyeR.scale.y = 0.08;
+      b.chest.scale.y *= 1 + 0.02 * Math.sin(t * 1.1);
+      break;
+    }
+    case 'jump': {
+      // star jumps
+      const c = (pt % 1.1) / 1.1;
+      let up = 0, spread = 0, squat = 0;
+      if (c < 0.18) squat = Math.sin((c / 0.18) * PI) * 0.09;
+      else if (c < 0.78) { const s2 = (c - 0.18) / 0.6; up = 4 * 0.36 * s2 * (1 - s2); spread = Math.sin(s2 * PI); } else squat = Math.sin(((c - 0.78) / 0.22) * PI) * 0.11;
+      crouch(b, squat);
+      b.hips.position.y += up;
+      for (const [s, sg] of [['R', 1], ['L', -1]]) {
+        b['thigh' + s].rotation.z = sg * 0.38 * spread;
+        b['foot' + s].rotation.x += 0.6 * spread;
+        b['shoulder' + s].rotation.set(0, 0, sg * (0.12 + 2.45 * spread));
+        b['elbow' + s].rotation.set(0, 0, sg * 0.15 * spread);
+      }
+      b.head.rotation.set(0.12 * spread, 0, 0);
+      break;
+    }
+    case 'think': {
+      b.head.rotation.set(0.1 + Math.sin(t * 0.8) * 0.03, 0.12, 0.14);
+      b.spine.rotation.z = -0.03;
+      reach(b, 'R', onHead(b, 0.02, 1.36, -0.16), V(0.5, -1, -0.2));
+      aim(b, 'R', V(-0.1, 1, 0.1), 0);
+      reach(b, 'L', C(0.1, 1.07, -0.17), V(-1, -0.6, 0.2));
+      aim(b, 'L', V(1, 0, -0.1), PI / 2);
+      break;
+    }
+    case 'hero': {
+      b.hips.position.y -= 0.006;
+      for (const [s, sg] of [['L', -1], ['R', 1]]) { b['thigh' + s].rotation.z = sg * 0.13; b['foot' + s].rotation.z = -sg * 0.13; }
+      b.spine.rotation.x = 0.06; b.chest.rotation.y = 0.08;
+      reach(b, 'R', C(0.21, 1.88, -0.05), V(1, 0, 0.3));
+      aim(b, 'R', V(0.05, 1, -0.05), 0);
+      reach(b, 'L', C(-0.2, 0.99, 0.02), V(-1, 0, 0.5));
+      aim(b, 'L', V(0.4, -1, 0.2), 0);
+      b.head.rotation.set(0.22, 0.12, 0);
+      break;
+    }
+    case 'salute': {
+      b.head.rotation.set(0.03, 0, 0);
+      b.spine.rotation.x = 0.03;
+      reach(b, 'R', onHead(b, 0.17, 1.6, -0.13), V(1, 0.1, 0.1));
+      aim(b, 'R', V(-1, 0.35, -0.05), PI / 2);
+      for (const s of ['L', 'R']) b['thigh' + s].rotation.z = 0;
+      break;
+    }
+    case 'angry': {
+      const st = Math.max(0, Math.sin(pt * PI * 2 * 1.6));
+      b.spine.rotation.x = -0.08;
+      b.head.rotation.set(-0.12, 0, 0.04 * Math.sin(pt * 9));
+      for (const [s, sg] of [['R', 1], ['L', -1]]) {
+        reach(b, s, C(sg * 0.2, 0.99, 0.02), V(sg, 0, 0.5));
+        aim(b, s, V(-sg * 0.4, -1, 0.2), 0);
+      }
+      b.thighR.rotation.x += 0.35 * st; b.kneeR.rotation.x -= 0.45 * st; b.footR.rotation.x += 0.1 * st;
+      break;
+    }
+    default: break;
+  }
+}
+
 // ------------------------------------------------------------------------------------------ assembly
 /**
  * buildCharacter({skin, hair, hairColor, outfit, seed}) → {group, setOutfit(name), update(dt, state), height}
- * state = {speed (m/s), mode: 'idle'|'walk'|'run'|'sit'|'type'|'eat'|'wave'|'drive', seat?: seat height (0.46)}
+ * state = {speed (m/s), mode: 'idle'|'walk'|'run'|'sit'|'type'|'eat'|'wave'|'drive'|'pose:<id>', seat?: seat height (0.46)}
  */
 export function buildCharacter({ skin, hair = 'short', hairColor = 0x2a211c, outfit = 'casual', seed = 1 } = {}) {
   const R = rng(seed * 97 + 5);
@@ -870,8 +1096,17 @@ export function buildCharacter({ skin, hair = 'short', hairColor = 0x2a211c, out
   for (const n of BONES) rest[n] = bones[n].position.clone();
   let phase = R() * 10, t = R() * 10, blinkT = 1 + R() * 3, blink = 0, wavePh = 0, mix = { walk: 0, sit: 0 };
   const b = bones;
+  // poses: going into or out of one blends from the last frame over a quarter second
+  let lastMode = 'idle', poseT = 0, blendT = 1, vFingers = null;
+  const fromQ = BONES.map(() => new THREE.Quaternion()), fromP = BONES.map(() => new THREE.Vector3());
   function update(dt, state = {}) {
     const mode = state.mode ?? 'idle', speed = state.speed ?? 0;
+    const pose = mode.startsWith('pose:') ? mode.slice(5) : null;
+    if (mode !== lastMode) {
+      if (pose || lastMode.startsWith('pose:')) { BONES.forEach((n, i) => { fromQ[i].copy(b[n].quaternion); fromP[i].copy(b[n].position); }); blendT = 0; }
+      lastMode = mode; poseT = 0;
+    }
+    poseT += dt;
     t += dt;
     const sitting = mode === 'sit' || mode === 'type' || mode === 'eat' || mode === 'drive';
     const moving = !sitting && (mode === 'walk' || mode === 'run' || speed > 0.15);
@@ -967,6 +1202,20 @@ export function buildCharacter({ skin, hair = 'short', hairColor = 0x2a211c, out
       b.handR.rotation.z = Math.sin(wavePh - 0.6) * 0.2;
       b.head.rotation.z = -0.06;
       b.head.rotation.y = 0;
+    }
+    if (pose) applyPose(b, pose, poseT, t);
+    // ✌️ two fingers, made the first time someone does a V
+    if (pose === 'vsign' && !vFingers) {
+      const fg = [-1, 1].map((sg) => prep(limb(V(sg * 0.011, -0.075, 0.002), V(sg * 0.03, -0.165, 0.0), 0.0115, 0.0095, { seg: 10 })));
+      vFingers = new THREE.Mesh(mergeGeometries(fg), paint(tone, 0.55, 0, { sheen: 0.35 }));
+      vFingers.castShadow = true;
+      b.handR.add(vFingers);
+    }
+    if (vFingers) vFingers.visible = pose === 'vsign';
+    if (blendT < 1) {
+      blendT = Math.min(1, blendT + dt / 0.25);
+      const k = sstep(0, 1, blendT);
+      BONES.forEach((n, i) => { b[n].quaternion.slerpQuaternions(fromQ[i], b[n].quaternion.clone(), k); b[n].position.lerpVectors(fromP[i], b[n].position.clone(), k); });
     }
   }
   update(0, { mode: 'idle' });
@@ -1137,6 +1386,20 @@ export function characterModes(args = {}) {
     const c = buildCharacter({ outfit: args.outfit ?? 'office', hair: args.hair ?? 'short', seed: 3 + i });
     for (let k = 0; k < (args.steps ?? 14); k++) c.update(0.033, { mode, speed });
     c.group.position.x = (i - (modes.length - 1) / 2) * 0.9;
+    g.add(c.group);
+  });
+  return g;
+}
+/** Viewer helper: every pose (../../poses.mjs) side by side. args {outfit, hair, t: pose time in seconds, only: 'id,id'}. */
+export async function characterPoses(args = {}) {
+  const { POSES } = await import('../../poses.mjs');
+  const g = new THREE.Group();
+  const list = args.only ? POSES.filter((p) => args.only.split(',').includes(p.id)) : POSES;
+  list.forEach((p, i) => {
+    const c = buildCharacter({ outfit: args.outfit ?? 'casual', hair: args.hair ?? 'spiky', seed: 7 });
+    const steps = Math.round((args.t ?? 0.6) / 0.033);
+    for (let k = 0; k < steps; k++) c.update(0.033, { mode: 'pose:' + p.id, speed: 0 });
+    c.group.position.x = (i - (list.length - 1) / 2) * (args.gap ?? 0.95);
     g.add(c.group);
   });
   return g;
