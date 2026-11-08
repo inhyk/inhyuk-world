@@ -20,6 +20,7 @@ import { Jobs } from './src/jobs.js';
 import { JOBS } from './jobs.mjs';
 import { dressTown, dressJapan } from './src/deco.js';
 import { Flight } from './src/flight.js';
+import { Leave } from './src/leave.js';
 import { Cloud } from './src/cloud.js';
 import { Elevators } from './src/elevator.js';
 import { guide, guideText } from './src/nav.js';
@@ -31,8 +32,10 @@ import { Wildlife } from './src/wildlife.js';
 import { Insects } from './src/insects.js';
 import { prepareStatic } from './src/perf.js';
 import { texReady } from './src/tex.js';
+import { startUpdateCheck } from './src/update.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
+import { POSES, poseForKey } from './poses.mjs';
 
 const $ = (id) => document.getElementById(id);
 const T0 = performance.now();
@@ -191,6 +194,7 @@ async function boot() {
   let lifts = { prompt: () => null, update: () => {}, busy: false };
   try { lifts = new Elevators({ engine, colliders: col, places, player, hud, sfx, input }); } catch (e) { console.warn('elevators failed', e); }
   day.g.flight = flight;
+  day.g.leave = new Leave(day, { lifts }); // 휴가 내기 (인혁 계획 4)
   const album = new Album({ hud, input, sfx });
   day.g.album = album;
   places.onInterior = (site, parts) => { if (parts.frames?.length) album.fillFrames(parts.frames); };
@@ -280,8 +284,59 @@ async function boot() {
   try { townNext = Number(sessionStorage.getItem('sg-town') || 0); sessionStorage.removeItem('sg-town'); } catch { /* none */ }
   if (auto && townNext) setTimeout(() => town.join(townNext), 400);
   engine.canvas.addEventListener('click', () => { if (!day.seat && !$('start').offsetParent) input.lock(); });
-  const toggleView = () => { player.toggleView(); hud.setView(player.view); };
+  const toggleView = () => { if (player.pose) { endPose(); return; } player.toggleView(); hud.setView(player.view); };
   $('btn-view').addEventListener('click', toggleView);
+  // 포즈 (인혁: "여러가지 포즈도 할 수 있게 해줘"): B or the 🙋 button opens the menu, the body plays the pose
+  // and the camera looks at me from the front; walking, jumping or B again ends it.
+  const poseMenu = $('pose-menu');
+  $('pose-grid').innerHTML = POSES.map((p, i) => `<button data-pose="${p.id}"><span class="pi">${p.icon}</span><b>${p.name}</b><kbd>${i < 10 ? (i + 1) % 10 : ''}</kbd></button>`).join('');
+  const poseBlocked = () => {
+    if (vehicle?.driving) return '운전하는 동안에는';
+    if (town.riding) return '차에 타고 있을 때는';
+    if (flight.active) return '비행기에서는';
+    if (day.seat || day.busy || lifts.busy || day.g.jobs?.tool || player.frozen || !$('screen').classList.contains('hidden') || !$('start').classList.contains('hidden')) return '지금은';
+    return null;
+  };
+  const closePoseMenu = () => { if (poseMenu.classList.contains('hidden')) return; poseMenu.classList.add('hidden'); input.enabled = true; input.lock(); };
+  const startPose = (id) => {
+    const p = POSES.find((q) => q.id === id);
+    closePoseMenu();
+    if (!p) return false;
+    const why = poseBlocked();
+    if (why) { hud.toast(`${why} 포즈를 할 수 없어요`, 1600); return false; }
+    if (!player.onGround) { hud.toast('땅에 서서 해요', 1200); return false; }
+    player.startPose(p);
+    sfx('click');
+    hud.toast(`${p.icon} ${p.name}! 마우스로 돌려 보고 P 로 사진 찍기 · 걸으면 끝나요`, 2600);
+    return true;
+  };
+  const endPose = () => { player.stopPose(); };
+  player.onPoseEnd = () => hud.setView(player.view);
+  const openPoseMenu = () => {
+    if (player.pose) { endPose(); return; }
+    const why = poseBlocked();
+    if (why) { hud.toast(`${why} 포즈를 할 수 없어요`, 1600); return; }
+    for (const b of poseMenu.querySelectorAll('button[data-pose]')) b.classList.remove('on');
+    poseMenu.classList.remove('hidden');
+    input.enabled = false;
+    document.exitPointerLock?.();
+  };
+  poseMenu.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-pose]');
+    if (b) startPose(b.dataset.pose);
+    else if (e.target === poseMenu || e.target.id === 'pose-x') closePoseMenu();
+  });
+  addEventListener('keydown', (e) => {
+    if (poseMenu.classList.contains('hidden')) return;
+    const id = poseForKey(e.code);
+    if (!id && e.code !== 'KeyB' && e.code !== 'Escape') return;
+    e.preventDefault();
+    input.pressed.delete(e.code); // the hotbar (1~9) and B must not see this key after the menu closes
+    input.keys.delete(e.code);
+    if (id) startPose(id); else closePoseMenu();
+  });
+  $('btn-pose').addEventListener('click', openPoseMenu);
+  let posing = false;
   $('btn-help').addEventListener('click', () => $('help').classList.toggle('hidden'));
   $('btn-album').addEventListener('click', () => day.g.album?.open());
   setupTouch(input);
@@ -308,6 +363,10 @@ async function boot() {
     if (input.hit('KeyG') && !day.seat) album.open();
     if (input.hit('KeyP') && !day.seat) day.photo();
     if (insects && !day.seat) { if (input.hit('KeyC')) insects.toggleNet(); if (input.hit('KeyK')) insects.open(); }
+    if (input.hit('KeyO') && $('start').classList.contains('hidden')) day.g.leave.open();
+    if (input.hit('KeyB')) openPoseMenu();
+    if (player.pose && poseBlocked()) endPose();
+    if (posing !== !!player.pose) { posing = !!player.pose; document.body.classList.toggle('posing', posing); }
     const driving = vehicle?.driving;
     const riding = town.riding; // 같이 사는 동네: sitting in a friend's car (인혁: "차를 같이 탈 수 있게 해줘")
     flight.update(dt, input);
@@ -329,7 +388,8 @@ async function boot() {
     }
     // E: car, doors, things
     let prompt = '', action = null;
-    if (!day.seat && !day.busy && !flight.active) {
+    if (player.pose) { prompt = `${player.pose.icon} ${player.pose.name} · 사진 찍기`; }
+    else if (!day.seat && !day.busy && !flight.active) {
       if (riding) { const a = town.rideAction(); prompt = a.label; action = a.fn; }
       else if (driving) {
         if (Math.abs(vehicle.speed) < 2) { prompt = '차에서 내리기'; action = () => { vehicle.driving = false; const p = vehicle.exitPoint(); player.place(p.x, Math.max(p.y, groundAt(p.x, p.z)) + 0.05, p.z, vehicle.yaw); if (player.avatar) player.avatar.group.visible = player.view === 'third'; if (player.arm) player.arm.group.visible = player.view === 'first'; sfx('carDoor'); }; }
@@ -356,11 +416,11 @@ async function boot() {
         if (cand[0]) { prompt = cand[0].label; action = cand[0].fn; }
       }
     }
-    hud.prompt(prompt);
+    hud.prompt(prompt, player.pose ? 'P' : 'E');
     if (action && input.hit('KeyE')) action();
     // blocks (on foot, not in menus)
-    build.enabled = !driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && input.locked && !insects?.holding;
-    insects?.canSwing(!driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && input.locked);
+    build.enabled = !driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && !player.pose && input.locked && !insects?.holding;
+    insects?.canSwing(!driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && !player.pose && input.locked);
     if (blocks.length) build.update(dt, input, player.pos);
     if (player.arm) player.arm.update?.(dt, { swing: insects?.holding ? 0 : build.swing ?? 0, walk: Math.min(1, player.speed / 5) });
     build.swing = Math.max(0, (build.swing ?? 0) - dt * 3);
@@ -436,7 +496,8 @@ async function boot() {
   engine.start();
   addEventListener('beforeunload', saveLocal);
   setInterval(saveLocal, 15000);
-  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife, insects, jobs: day.g.jobs };
+  window.__update = startUpdateCheck({ save }); // 새 버전이 나오면 새로고침 버튼 (인혁이 계획 6-3)
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife, insects, jobs: day.g.jobs, poses: { open: openPoseMenu, start: startPose, stop: endPose } };
   window.__ready = true;
 }
 

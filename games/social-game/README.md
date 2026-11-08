@@ -42,6 +42,19 @@
 - 시간은 `core.mjs` 의 각 퀘스트 `at`(시각)과 `rest`(쉬는 분)로 정한다(`stepStart`, `stepReady`). 밤 11시 59분에서 멈추고 자면 다음 날이 된다.
 - 분수 공연: 금요일(`show-days.mjs` 의 `isShowDay`) 저녁 7시에 "분수 공연 보기" 퀘스트가 생긴다. 분수 광장(`plaza`)이 동네에 있을 때만 나온다.
 
+## 휴가 내기 (인혁이 계획 4, 2026-11-08)
+
+"한 달에 휴가가 3개가 생기게 해줘. 그리고 퀘스트 위에 휴가내기 버튼을 만들고 휴가내기 버튼을 누르면 오늘 퀘스트가 다 없어지게 해줘."
+
+- 한 달은 게임 30일이다(1~30일차가 첫째 달, 31~60일차가 둘째 달). 달마다 휴가 3개가 생기고, 못 쓴 휴가는 다음 달로 넘어가지 않는다.
+- 퀘스트 칸 바로 위 "🏖️ 휴가 내기 (3)" 버튼(또는 `O` 키). 아래 줄에 "이번 달 휴가 3개 남음". 누르면 게임 안 창이 "오늘 휴가를 낼까요? 이번 달 남은 휴가 3개 → 2개" 라고 묻고, 네를 누르면 오늘 퀘스트가 다 없어진다.
+- 휴가 날: 퀘스트 칸에 "🏖️ 오늘은 휴가! 마음대로 놀아요", 할 일 목록과 노란 표시 기둥이 없다. 다른 날처럼 밤 9시부터 침대에서 E로 자면(밤 11시 59분에 시계가 멈추는 것도 그대로) 다음 날은 평소 날이다.
+- 유급 휴가: 직장인과 모든 직업은 휴가 날에도 일당 150,000원을 바로 받는다. 오늘 일당을 이미 받았으면(퇴근 뒤) 휴가를 낼 수 없어서 두 번 받지 않는다.
+- 🎒 어린이는 "🏖️ 하루 쉬기 (3)", 규칙은 같고 돈은 없다. 다리 다치는 날(2일차)과 면허 따는 날은 이야기 때문에 쉴 수 없다.
+- 버튼이 꺼지는(회색) 때와 이유: 이번 달 휴가를 다 썼을 때, 이미 휴가일 때, 주말과 여행 날과 쉬는 날, 미니게임, 앉아 있을 때, 비행기, 면허 시험, 영화, 공연, 엘리베이터, 순찰차와 소방차 운전, 호스를 들고 있을 때.
+- 저장: `state.leaves` (휴가 낸 날 번호, 이번 달 것만). 클라우드 저장에도 같이 간다. 예전 저장에는 없으니 휴가 3개로 시작한다.
+- 코드: 규칙 `core.mjs` (`monthOf`, `leavesLeft`, `leaveBlock`, `takeLeave`, `planDay` 의 `leave` 날), 버튼과 묻는 창 `src/leave.js`. 검사 `leave-check.mjs`.
+
 ## 건물 더 (2026-11-05, 인혁: "건물을 더 만들어줘")
 
 - 큰길 북쪽: 세온 마트(주차장, 카트), 세온 시네마(지어낸 영화 포스터 3개), 세온 소방서(망루, 소방차), 세온 경찰서(경찰차)
@@ -130,12 +143,29 @@
 - 움직임과 나오는 규칙 `src/insects.js`(꽃잎, 잎, 나무 껍질 위에 앉도록 나무와 꽃 모델에 광선을 쏴서 자리를 찾아요), 규칙과 저장 형식 `bugs.mjs`, 시험 `bugs.test.mjs`, `bug-check.mjs`
 - 혼자 보기: `viewer.html?mod=props/insects&fn=insectLineup&args={"ids":["swallowtail"],"mode":"open"}&cam=0.2,0.75,1.1&target=0,0.08,0`
 
+## 포즈 (2026-11-08, 인혁: "여러가지 포즈도 할 수 있게 해줘")
+
+- `B` 또는 왼쪽 아래 "🙋 포즈" 버튼 → 포즈 14개 중에서 클릭하거나 숫자 키(1~9, 0)로 고른다. 메뉴가 닫혀 있을 때 1~9 는 그대로 블럭 고르기다.
+- 포즈: 👋 손 흔들기, ✌️ 브이, 🫶 하트(머리 위), 🙌 만세, 👏 박수, 🙇 인사(꾸벅), 💃 춤추기, 🧘 앉기(바닥), 😴 눕기, 🤸 점프(팔다리 벌려 뛰기), 🤔 생각하기, 🦸 슈퍼히어로, 🫡 경례, 😤 화남(발 구르기). 손 흔들기, 박수, 인사, 춤, 점프, 화남은 계속 움직이고 나머지는 그 자세로 있는다.
+- 포즈를 하면 카메라가 내 앞으로 가서 내 모습이 보인다. 마우스로 빙글 돌려 보고 `P` 로 사진을 찍으면 갤러리에 "🫶 하트 · 1일차" 처럼 들어간다. 걷기(WASD), 점프(Space), `B` 나 버튼을 다시 누르면 끝나고 원래 시점(1인칭/3인칭)으로 돌아간다.
+- 운전, 친구 차 타기, 자리에 앉아 있을 때, 미니게임, 엘리베이터, 비행기에서는 못 한다.
+- 같이 사는 동네: 다른 사람에게도 내 포즈가 보인다. 늘 보내는 위치 신호의 마지막 칸(`packPose` 8번째 칸)에 "-포즈 번호"를 싣는다(따로 보내는 메시지 없음, 서버는 그대로). 예전 게임은 음수를 "안 탐"으로 읽어서 그냥 서 있는 모습으로 보인다.
+- 코드: 목록과 번호 `poses.mjs`(`poses.test.mjs`), 움직임 `src/props/character.js` 의 `pose:<id>` 모드(손은 두 뼈 IK 로 턱, 허리, 머리 위에 놓는다), 카메라 `src/player.js` 의 `startPose`/`poseCamera`
+- 혼자 보기: `viewer.html?mod=props/character&fn=characterPoses&cam=0,1,-5.6&target=0,0.85,0` · 검사: `node games/social-game/pose-check.mjs http://127.0.0.1:5173/ /tmp/social-poses`
+
+## 새 버전 알림 (2026-11-08, 인혁이 계획 6-3)
+
+- 인혁이가 "햄찌 영화에서(다른 것도 마찬가지) 이렇게만 나와"라고 옛날 이모지 영화(🐹 🌻)를 그렸다. 사이트에는 진짜 영화만 있었으니, 업데이트 전에 열어 둔 창에서 한 것으로 봤다.
+- 그래서 게임이 3분마다, 그리고 창으로 돌아올 때 `index.html` 을 캐시 없이 다시 받아 첫 스크립트(`assets/index-XXXX.js`) 이름을 비교한다. 다르면 위쪽에 "🔄 새 버전이 나왔어요! 눌러서 새로고침" 버튼이 나오고, 누르면 저장하고 새로고침한다(`src/update.js`). 개발 서버에서는 하지 않는다.
+
 ## 조작
 
 - WASD 걷기, Shift 달리기, Space 점프, 마우스 둘러보기
 - 왼쪽 클릭 꾹 깨기, 오른쪽 클릭 놓기, 1~9 또는 휠로 블럭 고르기, R 돌리기
 - E 사용(문, 차, 침대, 세면대...), V 시점, M 큰 지도, P 사진, H 도움말
 - C 곤충 채집망(왼쪽 클릭 휘두르기), K 곤충 도감
+
+- E 사용(문, 차, 침대, 세면대...), V 시점, M 큰 지도, P 사진, B 포즈, H 도움말, O 휴가 내기
 - 차: W S 가속과 브레이크, A D 핸들, Space 급브레이크, F 경적, E 내리기
 
 ## 같이 사는 동네 (멀티플레이, 2026-11-05)
@@ -181,6 +211,7 @@
 - `src/flight.js` 비행기 타고 날아가는 장면, `src/drivetest.js` 면허 시험, `src/nav.js` 내비게이션, `src/elevator.js` 엘리베이터, `src/cloud.js` 로그인과 서버 저장
 - `src/town.js` 같이 사는 동네(연결, 다른 사람, 채팅, 차단, 신고), `online.mjs` 그 규칙(칸 이름, 위치, 숨김, 혼자 블럭 지키기), `online.test.mjs`
 - `src/wildlife.js` 숲의 반달가슴곰(숲 칸, 날마다 일정, 행동), `src/props/bear.js` 곰 모델과 움직임, `bear-check.mjs` 곰 검사
+- `src/leave.js` 휴가 내기 버튼과 묻는 창, `leave-check.mjs` 휴가 검사
 - `kid-check.mjs` 어린이 이야기 자동 검사, `job-check.mjs` 직업 6개의 하루 자동 검사, `login-check.mjs` 로그인 검사(로컬 net 서버), `online-check.mjs` 같이 사는 동네 검사(로컬 net 서버, 두 컴퓨터)
 - `src/props/*.js` 자동차, 사람, 나무와 꽃, 가로등과 벤치, 블럭
 - `src/world.js` 땅, 도로, 바다와 건물 자리, `src/deco.js` 나무와 거리 소품 배치
@@ -197,9 +228,12 @@ npm run test:social-game
 npm run social-game:dev            # 다른 터미널
 node games/social-game/browser-check.mjs http://127.0.0.1:5173/ /tmp/social-shots
 node games/social-game/kid-check.mjs http://127.0.0.1:5173/ /tmp/social-kid
+node games/social-game/leave-check.mjs http://127.0.0.1:5173/ /tmp/social-leave   # 휴가 내기
 node games/social-game/show-check.mjs http://127.0.0.1:5173/ /tmp/social-show   # 분수 광장과 공연 (약 3분)
 node games/social-game/bear-check.mjs http://127.0.0.1:5173/ /tmp/social-bear
 node games/social-game/bug-check.mjs http://127.0.0.1:5173/ /tmp/social-bugs            # 곤충 채집과 도감 (약 4분)
+
+node games/social-game/pose-check.mjs http://127.0.0.1:5173/ /tmp/social-poses    # 포즈 14개 (사진 한 장씩)
 node games/social-game/job-check.mjs http://127.0.0.1:5173/ /tmp/social-jobs            # 직업 하나만: 끝에 police,fire
 # 로그인과 같이 사는 동네는 로컬 net 서버가 있어야 한다 (저장소 AGENTS.md "시험해 보기" 1번). 계정을 2~3개 만든다.
 node games/social-game/login-check.mjs http://127.0.0.1:5173/ /tmp/social-login
