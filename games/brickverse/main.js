@@ -10,12 +10,13 @@ import { Net } from './src/net.js';
 import { Tycoon, remoteTycoonFrom } from './src/tycoon.js';
 import { Survival } from './src/survival.js';
 import { Cloud } from './src/cloud.js';
+import { Tower } from './src/tower.js';
 import {
   P, SAVE_KEY, makeBox, placeBox, newPlayer, stepPlayer, clearMotion, segmentDistance, cleanSave, defaultSave,
   HATS, FACES, EMBLEMS, PHRASES, displayName, lookToArray, lookFromArray, packPose, unpackPose,
-  OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS,
+  OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS, packBlocks, unpackBlocks, inTower, cellKey, TOWER,
 } from './core.mjs';
-import { buildHub, buildObby, buildTycoon, buildSurvival, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
+import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -24,6 +25,7 @@ const WORLD_INFO = [
   { icon: '🌈', name: '무지개 점프 탑', build: buildObby },
   { icon: '🏭', name: '블록 공장 타이쿤', build: buildTycoon },
   { icon: '🔥', name: '바닥이 사라져요', build: buildSurvival },
+  { icon: '🏗️', name: '하늘 타워 짓기', build: buildTower },
 ];
 const fmtTime = ms => { const s = ms / 1000; return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; };
 const LOOK_KEYS = { hat: HATS, face: FACES, emblem: EMBLEMS };
@@ -54,11 +56,14 @@ const effects = new Effects(view.scene);
 game.effects = effects;
 const ui = new UI(game);
 game.ui = ui;
+game.canvas = canvas;
+game.camera = view.camera;
 
 // 나
 const me = { pl: newPlayer(0, 0.3, 18), yaw: Math.PI, avatar: new Avatar(game.save.look, '', { local: true }), dead: 0, emote: 0, hurtCooldown: 0 };
 view.scene.add(me.avatar.root);
 game.player = me.pl;
+game.isDead = () => me.dead > 0;
 Object.defineProperty(me.pl, 'yaw', { get: () => me.yaw, set: v => { me.yaw = v; } });
 
 setSound(game.save.sound); setMusic(game.save.music);
@@ -181,6 +186,7 @@ function loadWorld(id) {
   }
   if (id === 2) w.runtime = new Tycoon(game);
   if (id === 3) w.runtime = new Survival(game);
+  if (id === 4) w.runtime = new Tower(game);
   view.setSky(def.sky);
   playMusic(def.sky);
   ui.setWorld(info.icon, info.name);
@@ -349,7 +355,7 @@ game.net = new Net({
     if (game.worldId === 2) loadWorld(2); // 내 땅 번호가 바뀐다
   },
   closed: () => { for (const id of [...game.remotes.keys()]) removeRemote(id); ui.renderFriends(); if (game.worldId === 2) loadWorld(2); },
-  join: id => { sendHi(id); sendPose(true); },
+  join: id => { sendHi(id); sendPose(true); sendTower(id); },
   depart: id => { if (id) removeRemote(id); else for (const k of [...game.remotes.keys()]) removeRemote(k); ui.renderFriends(); },
   message: (data, from) => onMessage(data, from),
 });
@@ -377,6 +383,13 @@ function sendPose(force) {
   game.net.send({ t: 'p', q });
 }
 
+// 내 타워 블록 전체를 친구 한 명에게 (숫자만, 250개씩 나눠서)
+function sendTower(to) {
+  const flat = packBlocks(game.save.tower.blocks);
+  const step = 1000;
+  for (let p = 0, n = 0; n < Math.max(1, flat.length); p++, n += step) game.net.sendTo(to, { t: 'tw', a: 0, p, b: flat.slice(n, n + step) });
+}
+
 function getRemote(id) {
   let r = game.remotes.get(id);
   if (!r) {
@@ -393,6 +406,7 @@ function removeRemote(id) {
   r.avatar?.dispose();
   game.remotes.delete(id);
   if (game.worldId === 2 && r.tycoon) game.world.runtime?.remoteChanged(r.slot);
+  if (game.worldId === 4 && r.tower?.size) game.world.runtime?.remoteChanged();
   ui.log(`${r.name} 님이 나갔어`);
   updatePlayerList();
 }
@@ -441,6 +455,22 @@ function onMessage(data, from) {
       if (game.worldId === 2) game.world.runtime?.remoteChanged(r.slot);
       break;
     }
+    case 'tw': {
+      if (!r.tower) r.tower = new Map();
+      const rt = game.worldId === 4 ? game.world.runtime : null;
+      if (data.a === 0 || data.a === 3) {
+        if (data.a === 3 || data.p === 0) r.tower.clear();
+        if (data.a === 0) for (const [i, j, k, t] of unpackBlocks(data.b)) if (r.tower.size < TOWER.LIMIT) r.tower.set(cellKey(i, j, k), t);
+        rt?.remoteChanged();
+      } else if (data.a === 1) {
+        const [b] = unpackBlocks(data.b);
+        if (b && r.tower.size < TOWER.LIMIT) { r.tower.set(cellKey(b[0], b[1], b[2]), b[3]); rt?.remoteAdd(from, ...b); }
+      } else if (data.a === 2 && Array.isArray(data.b)) {
+        const [i, j, k] = data.b;
+        if (inTower(i, j, k)) { r.tower.delete(cellKey(i, j, k)); rt?.remoteDel(from, i, j, k); }
+      }
+      break;
+    }
     case 'sv':
       if (game.worldId === 3 && game.world.runtime) game.world.runtime.message(data, from);
       break;
@@ -481,6 +511,7 @@ controls.onKey = (k) => {
   if (k === 'KeyT' || k === 'Slash') ui.togglePanel('chat');
   if (k === 'KeyG') ui.togglePanel('emote');
   if (k === 'KeyR' && game.worldId === 0) game.goHome();
+  if (game.worldId === 4 && game.world.runtime?.key(k)) return;
   if (k.startsWith('Digit')) { const n = Number(k.slice(5)); if (n >= 1 && n <= 4) game.emote(n); }
 };
 

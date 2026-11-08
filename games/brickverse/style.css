@@ -73,7 +73,7 @@ body.playing #hud { opacity: 1; }
   .panel-pop { bottom: auto; top: 120px; }
   #log { bottom: 170px; }
 }
-body:not(.playing) #stick, body:not(.playing) #jump, body.dressing #stick, body.dressing #jump, body.dressing .bc, body.dressing .hint { display: none; }
+body:not(.playing) #build-bar, body.dressing #build-bar, body:not(.playing) #stick, body:not(.playing) #jump, body.dressing #stick, body.dressing #jump, body.dressing .bc, body.dressing .hint { display: none; }
 @media (max-width: 560px) {
   .tr .buttons { gap: 5px; }
   .tr .buttons button { width: 38px; height: 38px; font-size: 18px; border-radius: 12px; }
@@ -186,3 +186,18 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; }
 #choose .pick b { font-weight: normal; font-size: 18px; }
 #choose .pick span { font-size: 14px; color: #5b6275; }
 @media (max-width: 560px) { .tr .buttons button { width: 34px; height: 34px; font-size: 16px; } .tr .buttons { gap: 4px; } }
+
+/* ───── 하늘 타워 짓기 ───── */
+#build-bar { position: fixed; left: 50%; bottom: 68px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 6px; background: var(--panel); border-radius: 18px; padding: 6px 8px; box-shadow: var(--shadow); max-width: calc(100vw - 24px); }
+#build-bar .blocks { display: flex; gap: 5px; overflow-x: auto; max-width: min(640px, calc(100vw - 150px)); padding: 4px 2px; scrollbar-width: thin; }
+#build-bar .blocks button { flex: none; width: 34px; height: 34px; padding: 0; border-radius: 10px; background: var(--c); border: 3px solid #fff; font-size: 16px; box-shadow: 0 3px 0 rgba(20, 30, 60, .2), inset 0 -4px 0 rgba(0, 0, 0, .12); }
+#build-bar .blocks button.glass { background: linear-gradient(135deg, rgba(191, 233, 255, .9), rgba(255, 255, 255, .6)); }
+#build-bar .blocks button.on { border-color: var(--ink); transform: translateY(-3px) scale(1.08); }
+#build-bar .mode { flex: none; font-size: 14px; padding: 8px 10px; white-space: nowrap; background: #e5f3ff; }
+#build-bar .mode.remove { background: linear-gradient(#ff7b8f, #ff4d64); color: #fff; }
+#build-bar .clear { flex: none; font-size: 14px; padding: 8px 10px; background: #f1f4fa; white-space: nowrap; }
+#build-bar .tip { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -6px); margin: 0; font-size: 13px; color: #fff; white-space: nowrap; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); pointer-events: none; }
+@media (pointer: coarse) {
+  #build-bar { bottom: max(166px, calc(env(safe-area-inset-bottom) + 166px)); max-width: calc(100vw - 16px); }
+  #build-bar .blocks { max-width: calc(100vw - 150px); }
+}
