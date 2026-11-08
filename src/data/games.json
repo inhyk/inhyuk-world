@@ -123,6 +123,31 @@
     "order": 61
   },
   {
+    "slug": "robocraft",
+    "title": "Robocraft",
+    "description": "동물 로봇들이 휴머노이드 로봇에 맞서는 온라인 RPG. 아빠가 Crabcraft에서 갈라 새로 만드는 중이에요.",
+    "longDescription": "아빠(kubony)가 Crabcraft를 바탕으로 새로 만들고 있는 게임입니다. 2050년, 자연을 되살리겠다는 에이전트가 휴머노이드 로봇을 모두 해킹해 사람들을 다스립니다. 하찮게 여겨지던 동물 로봇들은 자기들의 터전을 만들어 살아왔지만, 휴머노이드가 보급망을 조여 오고 되살아난 동물과 벌레도 공격해 옵니다. 평범하게 살던 동물 로봇이 각성해 레벨을 올리고 반발파를 키워, 터전을 조여 오던 지역 휴머노이드를 물리치는 이야기입니다. 지금은 Crabcraft와 같은 월드, 던전, 보스로 시작해서 하나씩 새 설정으로 바꾸고 있어요. Google로 로그인해 같은 세계에서 함께 싸우고, 로봇 모드에서는 진짜 로봇 정책이 브라우저에서 실시간으로 움직이는 모습을 볼 수 있습니다.",
+    "emoji": "🤖",
+    "thumbnail": "/images/games/robocraft-thumb.png",
+    "screenshots": [
+      "/images/games/robocraft-2.png",
+      "/images/games/robocraft-1.png"
+    ],
+    "techStack": [
+      "Three.js",
+      "TypeScript",
+      "Vite",
+      "Node.js",
+      "PostgreSQL",
+      "WebSocket"
+    ],
+    "category": "액션",
+    "playUrl": "https://robocraft.seonn.dev",
+    "createdAt": "2026-11",
+    "featured": false,
+    "order": 104
+  },
+  {
     "slug": "crabcraft",
     "title": "Crabcraft",
     "description": "친구와 세 섬을 탐험하는 게 로봇 RPG. 3·10·20·30레벨 보스, 코인 강화와 친구 구출의 춤추는 엔딩!",
