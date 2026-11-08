@@ -9,6 +9,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { metricUV } from '../geom.js';
 import { makeSite, solid } from '../site.js';
 import { rng } from '../noise.js';
+import { cushion, cushionZ, cushionX, throwPillow, painted, velvetMat } from '../soft.js';
 
 export const PI = Math.PI;
 const GEO = new Map();
@@ -599,16 +600,17 @@ export function sofa(parent, x, y, z, ry, o = {}) {
   const n = w > 1.8 ? 3 : 2, cw = (w - 0.36) / n;
   for (let i = 0; i < n; i++) {
     const cx = -w / 2 + 0.18 + cw * (i + 0.5);
-    put(g, RB(cw - 0.015, 0.15, 0.66, 0.06, 2), fabric, cx, 0.43, 0.08);
+    // piped seat cushions with a dip, plump backs, piped arms, velvet throw pillows (soft.js)
+    put(g, cushion(cw - 0.012, 0.16, 0.66, 0.06, 0.02, 0.014, i, 0, 0.006), fabric, cx, 0.43, 0.08);
     const b = group(g, cx, 0.66, -0.27, 0); b.rotation.x = -0.18;
-    put(b, RB(cw - 0.02, 0.44, 0.2, 0.08, 2), fabric, 0, 0, 0);
+    put(b, cushionZ(cw - 0.02, 0.44, 0.2, 0.08, 0.032, i + 4, 0, 0.006), fabric, 0, 0, 0);
   }
   put(g, RB(w, 0.62, 0.18, 0.05, 2), fabric, 0, 0.55, -0.36);
-  for (const s of [-1, 1]) put(g, RB(0.18, 0.62, 0.9, 0.06, 2), fabric, s * (w / 2 - 0.09), 0.42, 0);
+  for (const s of [-1, 1]) put(g, cushionX(0.18, 0.62, 0.9, 0.06, 0.012, 3 + s, 0.005), fabric, s * (w / 2 - 0.09), 0.42, 0);
   for (const s of [-1, 1]) for (const t of [-1, 1]) put(g, CY(0.02, 0.015, 0.12, 10), legs, s * (w / 2 - 0.12), 0.06, t * 0.35);
   pillows.slice(0, n === 3 ? 3 : 2).forEach((c, i) => {
     const px = (i - (n === 3 ? 1 : 0.5)) * (w * 0.33);
-    V(g, RB(0.42, 0.42, 0.13, 0.08, 3), c, px, 0.7, -0.14, -0.25, (i - 1) * 0.15, (i - 1) * 0.1, vcSoft());
+    put(g, painted(throwPillow(0.44, 0.44, 0.16, i), c), velvetMat(), px, 0.72, -0.13, -0.25, (i - 1) * 0.15, (i - 1) * 0.1);
   });
   return g;
 }

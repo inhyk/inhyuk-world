@@ -15,6 +15,7 @@ import { canvasTex, FONT } from '../tex.js';
 import { rng } from '../noise.js';
 import { RB, CY, SP, tint, V, D, vcMat, vcGloss, vcSoft, cached, txt, rr, pottedPlant, mug, bookshelf, staticDoor, pendant, laptop, officeChair, Atlas } from './office.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { cushion, cushionZ, cushionX, throwPillow, velvetMat, knitMat, printMat, curtain, dressBed, painted } from '../soft.js';
 
 const PI = Math.PI;
 // ------------------------------------------------------------------ layout
@@ -846,17 +847,9 @@ function cabinetRun(p, x, y, z, ry, w, h, d, n, body, front, handleM, opt = {}) 
   if (opt.kick) put(g, box(w - 0.04, opt.kick, 0.02), mat('blackPlastic'), 0, opt.kick / 2, d / 2 - 0.06);
   return g;
 }
+/** Pinch-pleated curtain panel (soft.js), two sided. */
 function curtainPanel(p, m, x, top, bottom, z, pw, seed = 1) {
-  const h = top - bottom;
-  const geo = new THREE.PlaneGeometry(pw, h, 20, 4);
-  const pp = geo.attributes.position;
-  for (let i = 0; i < pp.count; i++) { const xx = pp.getX(i), yy = pp.getY(i); pp.setZ(i, Math.sin((xx / pw) * PI * 7 + seed) * 0.035); pp.setX(i, xx * (1 - 0.15 * ((h / 2 - yy) / h))); }
-  geo.computeVertexNormals();
-  const a = prep(geo);
-  const o = put(p, a, m, x, bottom + h / 2, z);
-  o.material = m;
-  const b = a.clone(); b.rotateY(PI);
-  put(p, b, m, x, bottom + h / 2, z - 0.003);
+  put(p, curtain(pw, top - bottom, seed % 4, 7, 0.045), m, x, bottom, z);
 }
 function buildUnit(S, root, T, IM) {
   const { M } = T, A = IM.A;
@@ -1147,15 +1140,10 @@ function buildUnit(S, root, T, IM) {
   const bw = 1.6, bl = 2.1, bcx = IX - bl / 2 - 0.02, bcz = 0.8;
   const bg = group(root, bcx, F, bcz, -PI / 2);
   put(bg, RB(bw + 0.1, 0.24, bl - 0.08, 0.02, 2), IM.oak, 0, 0.2, 0.04);
-  put(bg, softBox(1.72, 1.0, 0.12, 0.05, 0.02, 0.002, 2), IM.fabBeige, 0, 0.62, -bl / 2 + 0.07);
-  put(bg, RB(bw, 0.24, bl - 0.16, 0.06, 3), IM.linen, 0, 0.44, 0.06);
-  put(bg, softBox(bw + 0.1, 0.09, 1.45, 0.04, 0.03, 0.007, 5), IM.fabGreen, 0, 0.58, 0.36);
-  for (const s2 of [-1, 1]) put(bg, softBox(0.05, 0.28, 1.42, 0.02, 0.0, 0.006, 6 + s2), IM.fabGreen, s2 * (bw / 2 + 0.06), 0.46, 0.36);
-  put(bg, softBox(bw + 0.14, 0.28, 0.05, 0.02, 0.0, 0.006, 9), IM.fabGreen, 0, 0.46, 1.09);
-  put(bg, softBox(bw + 0.06, 0.06, 0.3, 0.03, 0.01, 0.004, 3), IM.linen, 0, 0.6, -0.42);
-  put(bg, softBox(0.62, 0.15, 0.4, 0.06, 0.05, 0.005, 1), IM.linen, -0.36, 0.66, -0.78).rotation.x = -0.35;
-  put(bg, softBox(0.62, 0.15, 0.4, 0.06, 0.05, 0.005, 2), IM.linen, 0.36, 0.66, -0.78).rotation.x = -0.3;
-  V(bg, softBox(0.36, 0.3, 0.28, 0.08, 0.04, 0.004, 3), 0xc8a27a, 0.1, 0.78, -0.55, -0.6, 0.2, 0, vcSoft());
+  put(bg, cushionZ(1.72, 1.0, 0.12, 0.05, 0.022, 2, 0.012, 0.005, 0.2), IM.fabBeige, 0, 0.62, -bl / 2 + 0.07);       // tufted headboard
+  // mattress + sheet, sage duvet with quilted squares draping over the frame, turned-down cover,
+  // two pillows, a velvet accent pillow and a knitted throw folded at the foot (soft.js)
+  dressBed(bg, { bw, ml: bl - 0.16, mz: 0.06, mb: 0.32, duvet: 0x9fb495, fold: 0xf4f1ea, pillows: [{ x: -0.36, hex: 0xfbfaf6 }, { x: 0.36, hex: 0xf4f1ea }], accent: { x: 0.1, hex: 0xc8a27a }, blanket: knitMat(0xc98b4e), seed: 3 });
   box3(S, bcx - bl / 2, F, bcz - bw / 2 - 0.06, IX, F + 0.66, bcz + bw / 2 + 0.06);
   for (const s2 of [-1, 1]) {
     const nz = bcz + s2 * (bw / 2 + 0.32), ng = group(root, IX - 0.25, F, nz, -PI / 2);
@@ -1221,16 +1209,17 @@ function sofa(parent, x, y, z, ry, o = {}) {
   const g = group(parent, x, y, z, ry);
   put(g, RB(w, 0.24, 0.9, 0.04, 2), fabric, 0, 0.24, 0);
   const n = 3, cw = (w - 0.36) / n;
+  // piped seat cushions that dip where people sit, plump back cushions, piped arms, velvet throw pillows (soft.js)
   for (let i = 0; i < n; i++) {
     const cx = -w / 2 + 0.18 + cw * (i + 0.5);
-    put(g, softBox(cw - 0.015, 0.15, 0.66, 0.06, 0.03, 0.004, i), fabric, cx, 0.43, 0.08);
-    const b = group(g, cx, 0.66, -0.27, 0); b.rotation.x = -0.18;
-    put(b, softBox(cw - 0.02, 0.44, 0.2, 0.08, 0.02, 0.004, i + 4), fabric, 0, 0, 0);
+    put(g, cushion(cw - 0.012, 0.17, 0.68, 0.06, 0.022, 0.016, i, 0, 0.006), fabric, cx, 0.44, 0.08);
+    const b = group(g, cx, 0.67, -0.27, 0); b.rotation.x = -0.18;
+    put(b, cushionZ(cw - 0.02, 0.46, 0.21, 0.08, 0.035, i + 4, 0, 0.006), fabric, 0, 0, 0);
   }
   put(g, RB(w, 0.62, 0.18, 0.05, 2), fabric, 0, 0.55, -0.36);
-  for (const s of [-1, 1]) put(g, softBox(0.18, 0.62, 0.9, 0.06, 0.0, 0.003, 3 + s), fabric, s * (w / 2 - 0.09), 0.42, 0);
+  for (const s of [-1, 1]) put(g, cushionX(0.18, 0.62, 0.9, 0.06, 0.012, 3 + s, 0.005), fabric, s * (w / 2 - 0.09), 0.42, 0);
   for (const s of [-1, 1]) for (const t of [-1, 1]) put(g, CY(0.02, 0.015, 0.12, 10), legs, s * (w / 2 - 0.12), 0.06, t * 0.35);
-  pillows.forEach((c, i) => V(g, softBox(0.42, 0.42, 0.13, 0.08, 0.03, 0.004, i), c, (i - 1) * (w * 0.3), 0.72, -0.14, -0.25, (i - 1) * 0.15, (i - 1) * 0.1, vcSoft()));
+  pillows.forEach((c, i) => put(g, painted(throwPillow(0.44, 0.44, 0.16, i), c), velvetMat(), (i - 1) * (w * 0.3), 0.74, -0.13, -0.25, (i - 1) * 0.15, (i - 1) * 0.1));
   return g;
 }
 
@@ -1734,10 +1723,10 @@ export function houseRow() {
 // dining front-right, bedroom back-left (door from the hall), laundry hall in the middle, closed bathroom
 // back-right.
 const HOUSE_IN = [
-  { wall: 'plasterWarm', floor: 'oakFloor', sofa: 'fabricGray', rug: 'carpetWarm', front: 0x6f8f72, pillows: [0xd4a043, 0x5f8a6a, 0xf1ece4], duvet: 0x9db4c8, shade: 0x2f4f4f, family: 'sofa' },
+  { wall: 'plasterWarm', floor: 'oakFloor', sofa: 'fabricGray', rug: 'carpetWarm', front: 0x6f8f72, pillows: [0xd4a043, 0x5f8a6a, 0xf1ece4], duvet: 0x9db4c8, shade: 0x2f4f4f, family: 'sofa', bedPrint: () => printMat('gingham', { color: 0x7d9cc0, color2: 0xf4f1ea, count: 10 }, 0.5) },
   { wall: 'plasterSage', floor: 'darkFloor', sofa: 'fabricBeige', rug: 'carpet', front: 0xeeeae2, pillows: [0x2f6f73, 0xe0b25a, 0xc4553e], duvet: 0xe3c08f, shade: 0xc4553e, family: null },
-  { wall: 'plaster', floor: 'birch', sofa: 'fabricBlue', rug: 'carpetWarm', front: 0x4f7391, pillows: [0xf2c14e, 0xf1ece4, 0xe8546b], duvet: 0xe8b4b8, shade: 0xe0b25a, family: 'table' },
-  { wall: 'plasterBlue', floor: 'oakFloor', sofa: 'fabricGreen', rug: 'carpet', front: 0xb5654a, pillows: [0xf1ece4, 0xd4a043, 0x3d6aa8], duvet: 0xf2efe8, shade: 0x26272b, family: null },
+  { wall: 'plaster', floor: 'birch', sofa: 'fabricBlue', rug: 'carpetWarm', front: 0x4f7391, pillows: [0xf2c14e, 0xf1ece4, 0xe8546b], duvet: 0xe8b4b8, shade: 0xe0b25a, family: 'table', bedPrint: () => printMat('floral', { color: 0xf8e6e4, flowers: [0xe0708a, 0xf2c14e, 0x8fb0d8], seed: 3 }, 0.45) },
+  { wall: 'plasterBlue', floor: 'oakFloor', sofa: 'fabricGreen', rug: 'carpet', front: 0xb5654a, pillows: [0xf1ece4, 0xd4a043, 0x3d6aa8], duvet: 0xf2efe8, shade: 0x26272b, family: null, bedPrint: () => printMat('stripes', { color: 0x3d6aa8, color2: 0xf4f1ea, count: 14, ratio: 0.22 }, 1.2) },
 ];
 const houseTV = () => cached('houseTV', () => { const m = tvScreen(); m.name = 'houseTV'; m.emissiveIntensity = 1.0; return m; });
 /** Window/door casing on a wall face: local x along the wall, local +Z into the room. */
@@ -1936,12 +1925,9 @@ function houseInterior(vi) {
   const bcx = -2.5, bw = 1.5, bl = 2.05, bcz = Z0 + bl / 2;
   const bg = group(g, bcx, G, bcz, 0);
   put(bg, RB(bw + 0.1, 0.24, bl - 0.08, 0.02, 2), W.oak, 0, 0.2, 0.04);
-  put(bg, softBox(bw + 0.12, 0.95, 0.1, 0.05, 0.02, 0.002, 2 + vi), W.fab, 0, 0.6, -bl / 2 + 0.06);
-  put(bg, RB(bw, 0.22, bl - 0.16, 0.06, 3), W.linen, 0, 0.43, 0.06);
-  V(bg, softBox(bw + 0.08, 0.08, 1.4, 0.04, 0.03, 0.007, 5 + vi), hv.duvet, 0, 0.57, 0.3, 0, 0, 0, vcSoft());
-  for (const s2 of [-1, 1]) V(bg, softBox(0.05, 0.26, 1.36, 0.02, 0.0, 0.006, 6 + s2), hv.duvet, s2 * (bw / 2 + 0.05), 0.45, 0.3, 0, 0, 0, vcSoft());
-  put(bg, softBox(0.58, 0.14, 0.38, 0.06, 0.05, 0.005, 1), W.linen, -0.34, 0.64, -0.72).rotation.x = -0.35;
-  put(bg, softBox(0.58, 0.14, 0.38, 0.06, 0.05, 0.005, 2), W.linen, 0.34, 0.64, -0.72).rotation.x = -0.3;
+  // shapes are the same in every house (shared, built once); the fabrics differ per variant
+  put(bg, cushionZ(bw + 0.12, 0.95, 0.1, 0.05, 0.02, 2, 0.01, 0.005, vi % 2 ? 0.2 : 0), W.fab, 0, 0.6, -bl / 2 + 0.06);
+  dressBed(bg, { bw, ml: bl - 0.16, mz: 0.06, mb: 0.32, mh: 0.22, duvet: hv.bedPrint ? hv.bedPrint() : hv.duvet, pillows: [{ x: -0.34 }, { x: 0.34, hex: 0xf4f1ea }], seed: 5 });
   const bear = group(bg, 0.42, 0.62, -0.38, -0.4);
   const fur = [0xc8a27a, 0xe9e2d0, 0x8a6a4e, 0xe8b4b8][vi];
   V(bear, SP(0.11, 14, 10), fur, 0, 0.1, 0, 0, 0, 0, vcSoft()); V(bear, SP(0.085, 14, 10), fur, 0, 0.26, 0.02, 0, 0, 0, vcSoft());
