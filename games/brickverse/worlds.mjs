@@ -510,6 +510,7 @@ export const UPGRADE_COLOR = { up1: '#4dfffc', up2: '#ff6bf1', up3: '#ff3b3b' };
 export const COLLECTOR = { f: -12, r: 12.6 };
 export const COLLECT_PAD = { f: -7.2, r: 12.6 };
 export const BUY_SPOTS = [[15, -14], [15, -7], [15, 0], [15, 7], [15, 14]];
+export const SKY = 20; // 하늘 섬 윗면 높이 (땅 위)
 
 export function plotBuilder(out, slot) {
   const s = PLOT_SLOTS[slot];
@@ -738,6 +739,142 @@ export function tycoonItem(out, slot, id, has = () => false) {
       b.plat(-27, r, 0.08, 0.15, 6.2, { c: '#ffffff', h: 0.04, deco: true, shadow: false, round: 0 });
       break;
     }
+    // ───── 3단계: 하늘 섬 (뒷마당 위, 윗면 높이 SKY) ─────
+    case 'skyisland': {
+      const T = SKY;
+      b.plat(-34, 0, T, 36, 20, { c: '#8fe07a', m: 'grass', h: 1.2, round: 0.4 });
+      b.plat(-34, 0, T - 1.2, 34, 18, { c: '#c79a6b', m: 'stone', h: 1.6, round: 0.5, deco: true });
+      const rnd = seeded(slot * 13 + 5);
+      for (let k = 0; k < 14; k++) {
+        const f = -42 + rnd() * 16, r = -15 + rnd() * 30, h = 2 + rnd() * 4, w = 2.5 + rnd() * 4;
+        b.box(f, r, T - 2.8 - h / 2, w, h, w, { c: k % 3 ? '#a7835a' : '#8f6d4a', m: 'stone', shape: 'cone', rx: Math.PI, deco: true });
+      }
+      for (const [f, r, w, d] of [[-24.2, -9.5, 0.3, 17], [-24.2, 9.5, 0.3, 17], [-43.8, 0, 0.3, 36], [-34, -17.8, 20, 0.3], [-34, 17.8, 20, 0.3]]) b.plat(f, r, T + 1, w, d, { c: '#ffffff', h: 1.0 });
+      // 엘리베이터: 뒷마당 땅(0.5)과 섬(T) 사이를 오르내린다
+      b.plat(-22.2, -1.5, (T + 0.5) / 2, 3, 3, { c: '#ffd23f', h: 0.4, move: { ax: 'y', amp: (T - 0.5) / 2, spd: 0.35, ph: 0 } });
+      for (const r of [-3.3, 0.3]) b.box(-22.2, r, T / 2 + 1, 0.25, T + 2, 0.25, { c: '#c7ccd6', m: 'metal' });
+      b.box(-22.2, -1.5, T + 2.6, 4.0, 0.3, 0.6, { c: '#c7ccd6', m: 'metal', deco: true });
+      break;
+    }
+    case 'windmill': {
+      const f = -40, r = -13, T = SKY;
+      b.box(f, r, T + 3.6, 2.8, 7.2, 2.8, { c: '#ffffff', shape: 'cyl', w2: 3.4 });
+      b.box(f, r, T + 7.9, 3.3, 1.6, 3.3, { c: '#ff5e7e', shape: 'cone' });
+      b.box(f + 1.7, r, T + 6.0, 0.7, 0.7, 0.6, { c: '#4b5163', m: 'metal', shape: 'sphere', deco: true });
+      for (const base of [0, Math.PI / 2]) b.box(f + 2.0, r, T + 6.0, 0.6, 8.4, 0.12, { c: '#fff4d6', deco: true, turn: { ax: 'z', spd: 1.2, base } });
+      b.box(f + 1.45, r, T + 1.1, 0.1, 2.0, 1.2, { c: '#8b5a3c', m: 'wood', deco: true });
+      break;
+    }
+    case 'cloudgarden': {
+      const T = SKY;
+      for (const [f, r, sz] of [[-28, 13, 3.4], [-30, 15.5, 2.6], [-26.5, 15.8, 2.2], [-31.5, 12, 2.2]]) b.box(f, r, T + sz * 0.35, sz, sz * 0.7, sz, { c: '#ffffff', m: 'cloud', shape: 'sphere' });
+      const rnd = seeded(slot * 17 + 11);
+      const cols = ['#ff8fc7', '#b38cff', '#7fd6ff', '#ffd23f'];
+      for (let k = 0; k < 18; k++) {
+        const f = -36 + rnd() * 6, r = 6 + rnd() * 10;
+        b.box(f, r, T + 0.35, 0.08, 0.7, 0.08, { c: '#3e9a48', deco: true, shadow: false, round: 0 });
+        b.box(f, r, T + 0.75, 0.4, 0.3, 0.4, { c: cols[k % 4], shape: 'sphere', deco: true, shadow: false });
+      }
+      b.plat(-27, 9, T + 0.85, 3, 1, { c: '#c98a4b', m: 'wood', h: 0.2 });
+      break;
+    }
+    case 'skybank': {
+      const f = -40, r = 10, T = SKY;
+      b.plat(f, r, T + 0.6, 7, 6, { c: '#f4efe6', m: 'stone', h: 0.6 });
+      for (const dr of [-2.6, -0.9, 0.9, 2.6]) b.box(f + 2.4, r + dr, T + 2.8, 0.7, 4.2, 0.7, { c: '#ffffff', shape: 'cyl' });
+      b.box(f - 0.6, r, T + 2.8, 6.2, 4.2, 3.6, { c: '#e9dfcf', m: 'stone' });
+      b.box(f, r, T + 5.2, 7.2, 0.6, 6.2, { c: '#f4efe6', m: 'stone' });
+      b.box(f, r, T + 6.1, 7.4, 1.2, 6.4, { c: '#e9dfcf', m: 'stone', shape: 'cone' });
+      b.box(f + 2.8, r, T + 6.0, 1.6, 1.6, 0.2, { c: '#ffd23f', m: 'gold', shape: 'cyl', rx: Math.PI / 2, deco: true });
+      break;
+    }
+    case 'balloon': {
+      const f = -28.5, r = -13.5, T = SKY;
+      const bob = { ax: 'y', amp: 0.7, spd: 0.8, ph: slot };
+      b.box(f, r, T + 8.5, 5.4, 6.0, 5.4, { c: '#ff8a3d', shape: 'sphere', deco: true, move: bob });
+      b.box(f, r, T + 9.2, 5.5, 2.0, 5.5, { c: '#ffd23f', shape: 'cyl', deco: true, move: bob });
+      b.box(f, r, T + 5.0, 1.6, 1.4, 1.6, { c: '#ff5e7e', shape: 'cone', rx: Math.PI, deco: true, move: bob });
+      b.box(f, r, T + 3.3, 1.6, 1.0, 1.6, { c: '#a0612f', m: 'wood', deco: true, move: bob });
+      for (const [df, dr] of [[-0.7, -0.7], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7]]) b.box(f + df, r + dr, T + 4.4, 0.05, 1.4, 0.05, { c: '#4b5163', deco: true, round: 0, move: bob });
+      b.plat(f, r, T + 0.1, 3.4, 3.4, { c: '#ff5e7e', h: 0.1, round: 0.04 });
+      break;
+    }
+    case 'rainbow': {
+      const T = SKY, cols = ['#ff4d5e', '#ff8a3d', '#ffd23f', '#5ad16b', '#3fa7ff', '#4a5cff', '#9b5cff'];
+      cols.forEach((c, k) => {
+        const R = 10 - k * 0.55;
+        for (let a = 0; a <= 16; a++) {
+          const ang = Math.PI * (a / 16);
+          b.box(-43, Math.cos(ang) * R, T + Math.sin(ang) * R, 0.6, 0.55, 0.5, { c, m: 'neon', deco: true, shadow: false, round: 0.08 });
+        }
+      });
+      break;
+    }
+    case 'skyfountain': {
+      const f = -30, r = 2, T = SKY;
+      b.plat(f, r, T + 0.7, 5, 5, { c: '#e9dfcf', m: 'stone', h: 0.7, shape: 'cyl' });
+      b.plat(f, r, T + 0.75, 4.2, 4.2, { c: '#4cc3ff', m: 'water', h: 0.08, shape: 'cyl', deco: true, shadow: false });
+      b.box(f, r, T + 1.8, 0.8, 2.2, 0.8, { c: '#e9dfcf', m: 'stone', shape: 'cyl' });
+      b.box(f, r, T + 2.95, 2.4, 0.3, 2.4, { c: '#e9dfcf', m: 'stone', shape: 'cyl', deco: true });
+      b.box(f, r, T + 3.9, 0.5, 2.0, 0.5, { c: '#9fe8ff', m: 'neon', shape: 'cyl', deco: true, shadow: false });
+      b.box(f, r, T + 5.0, 1.0, 1.0, 1.0, { c: '#ffffff', m: 'neon', shape: 'sphere', deco: true, shadow: false });
+      break;
+    }
+    case 'castle': {
+      const f = -38.5, r = 0, T = SKY, c = '#d9d3ea', c2 = '#bdb3dc';
+      b.box(f - 4.6, r, T + 2.5, 11, 5, 0.8, { c, m: 'stone' });
+      b.box(f, r - 5.1, T + 2.5, 0.8, 5, 9.2, { c, m: 'stone' });
+      b.box(f, r + 5.1, T + 2.5, 0.8, 5, 9.2, { c, m: 'stone' });
+      b.box(f + 4.6, r - 3.4, T + 2.5, 4.2, 5, 0.8, { c, m: 'stone' });
+      b.box(f + 4.6, r + 3.4, T + 2.5, 4.2, 5, 0.8, { c, m: 'stone' });
+      b.box(f + 4.6, r, T + 4.4, 2.6, 1.2, 0.8, { c, m: 'stone' });
+      for (let k = -5; k <= 5; k += 1.25) b.box(f - 4.6, r + k, T + 5.35, 0.6, 0.7, 0.9, { c: c2, deco: true });
+      for (const [df, dr] of [[-4.6, -5.1], [-4.6, 5.1], [4.6, -5.1], [4.6, 5.1]]) {
+        b.box(f + df, r + dr, T + 3.6, 2.6, 7.2, 2.6, { c: c2, m: 'stone', shape: 'cyl' });
+        b.box(f + df, r + dr, T + 8.3, 3.2, 2.4, 3.2, { c: '#6c5ce7', shape: 'cone', deco: true });
+        b.box(f + df, r + dr, T + 10.3, 0.08, 1.6, 0.08, { c: '#ffffff', deco: true, round: 0 });
+        b.box(f + df, r + dr + 0.45, T + 10.7, 0.05, 0.6, 0.9, { c: '#ff5e7e', deco: true, flag: true });
+      }
+      b.plat(f, r, T + 0.06, 8.4, 9.4, { c: '#efe6d8', m: 'stone', h: 0.06, deco: true, shadow: false });
+      break;
+    }
+    case 'starfactory': {
+      const f = -29, r = 9.5, T = SKY;
+      b.box(f, r, T + 2.0, 5, 4, 4.4, { c: '#4a5cff' });
+      b.box(f, r, T + 4.25, 5.4, 0.5, 4.8, { c: '#2f3fbf' });
+      b.box(f - 1.2, r + 1.4, T + 5.5, 0.8, 2.0, 0.8, { c: '#4b5163', m: 'metal', shape: 'cyl' });
+      b.box(f + 2.22, r, T + 1.4, 0.06, 2.4, 1.6, { c: '#ffe066', m: 'neon', deco: true });
+      b.box(f, r, T + 6.6, 1.3, 1.3, 1.3, { c: '#ffd23f', m: 'gold', shape: 'sphere', deco: true, turn: { ax: 'y', spd: 1.5 } });
+      for (const [rx, rz] of [[0, 0], [Math.PI, 0], [Math.PI / 2, 0], [-Math.PI / 2, 0], [0, Math.PI / 2], [0, -Math.PI / 2]]) b.box(f, r, T + 6.6, 0.55, 2.6, 0.55, { c: '#ffd23f', m: 'gold', shape: 'cone', rx, rz, deco: true });
+      break;
+    }
+    case 'ufo': {
+      const f = -28.5, r = -4.5, T = SKY;
+      const hover = { ax: 'y', amp: 0.5, spd: 1.3, ph: 1 };
+      b.plat(f, r, T + 0.1, 6, 6, { c: '#3a3f4b', m: 'metal', h: 0.1, shape: 'cyl' });
+      b.plat(f, r, T + 0.13, 4.4, 4.4, { c: '#7dff8a', m: 'neon', h: 0.05, shape: 'cyl', deco: true, shadow: false });
+      b.box(f, r, T + 4.2, 6.4, 0.7, 6.4, { c: '#c7ccd6', m: 'metal', shape: 'cyl', w2: 4.4, deco: true, move: hover });
+      b.box(f, r, T + 4.9, 3.0, 2.2, 3.0, { c: '#9fe8ff', k: 'glass', shape: 'sphere', deco: true, move: hover });
+      b.box(f, r, T + 3.7, 2.0, 0.4, 2.0, { c: '#7dff8a', m: 'neon', shape: 'cyl', deco: true, move: hover, shadow: false });
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        b.box(f + Math.cos(a) * 2.9, r + Math.sin(a) * 2.9, T + 4.2, 0.4, 0.4, 0.4, { c: k % 2 ? '#ffe066' : '#ff6bf1', m: 'neon', shape: 'sphere', deco: true, move: hover, shadow: false });
+      }
+      break;
+    }
+    case 'crown': {
+      const f = -38.5, r = 0, T = SKY;
+      b.box(f, r, T + 4.5, 3.2, 9, 3.2, { c: '#ffd23f', m: 'gold', shape: 'cyl' });
+      b.box(f, r, T + 9.4, 4.4, 0.8, 4.4, { c: '#ffd23f', m: 'gold', shape: 'cyl' });
+      b.box(f, r, T + 10.6, 4.0, 1.6, 4.0, { c: '#ffd23f', m: 'gold', shape: 'cyl', w2: 3.4, deco: true });
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        b.box(f + Math.cos(a) * 1.8, r + Math.sin(a) * 1.8, T + 12.1, 0.6, 1.4, 0.6, { c: '#ffd23f', m: 'gold', shape: 'cone', deco: true });
+        b.box(f + Math.cos(a) * 1.85, r + Math.sin(a) * 1.85, T + 10.7, 0.45, 0.45, 0.45, { c: ['#ff3b5c', '#3fa7ff', '#5ad16b', '#9b5cff'][k % 4], m: 'neon', shape: 'sphere', deco: true, shadow: false });
+      }
+      b.box(f, r, T + 12.4, 1.0, 1.0, 1.0, { c: '#ffffff', m: 'neon', shape: 'sphere', deco: true, shadow: false, turn: { ax: 'y', spd: 2 } });
+      break;
+    }
     case 'rocket': {
       const f = -27.6, r = -1.5;
       b.plat(f, r, 0.55, 5.6, 5.6, { c: '#4b5163', m: 'metal', h: 0.5 });
@@ -797,14 +934,14 @@ export function tycoonItem(out, slot, id, has = () => false) {
 
 export function buildTycoon() {
   const parts = [], signs = [], effects = [], coins = [];
-  parts.push({ x: 0, y: -3, z: 0, w: 170, h: 6, d: 160, c: '#86cf5f', m: 'grass', round: 1.2, shadow: false });
+  parts.push({ x: 0, y: -3, z: 0, w: 170, h: 6, d: 176, c: '#86cf5f', m: 'grass', round: 1.2, shadow: false });
   parts.push({ x: 0, y: -1.1, z: 0, w: 1600, h: 0.2, d: 1600, c: '#33a6ff', m: 'water', deco: true, shadow: false, round: 0 });
-  for (const [x, z, w, d] of [[0, -81, 172, 2], [0, 81, 172, 2], [-86, 0, 2, 162], [86, 0, 2, 162]]) parts.push({ x, y: 4, z, w, h: 12, d, hidden: true });
+  for (const [x, z, w, d] of [[0, -89, 172, 2], [0, 89, 172, 2], [-86, 0, 2, 178], [86, 0, 2, 178]]) parts.push({ x, y: 4, z, w, h: 12, d, hidden: true });
   parts.push({ x: 0, y: 0.04, z: 0, w: 150, h: 0.12, d: 12, c: '#c7ccd6', m: 'stone', round: 0.05 });
   for (let x = -70; x <= 70; x += 7) parts.push({ x, y: 0.12, z: 0, w: 3, h: 0.04, d: 0.4, c: '#ffffff', deco: true, shadow: false, round: 0 });
   const rnd = seeded(77);
   for (let i = 0; i < 26; i++) {
-    const x = (rnd() - 0.5) * 160, z = (rnd() > 0.5 ? 1 : -1) * (66 + rnd() * 10);
+    const x = (rnd() - 0.5) * 160, z = (rnd() > 0.5 ? 1 : -1) * (77 + rnd() * 8);
     tree(parts, x, z, rnd);
   }
   for (const x of [-74, 74]) for (const z of [-30, 30]) tree(parts, x, z, rnd);
