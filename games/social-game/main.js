@@ -210,7 +210,7 @@ async function boot() {
   // 반달가슴곰 in the forest (인혁: "숲에 곰이 가끔씩 있게 해줘")
   let wildlife = null;
   try { wildlife = new Wildlife({ engine, colliders: col, groundAt, player, vehicle, hud, sfx, state, places, flight, trees: deco.breakables }); } catch (e) { console.warn('wildlife failed', e); }
-  // 곤충 채집 (인혁이 계획: "곤충을 채집할 수 있게 해줘."): B 채집망, K 곤충 도감
+  // 곤충 채집 (인혁이 계획: "곤충을 채집할 수 있게 해줘."): C 채집망, K 곤충 도감 (B 는 포즈)
   let insects = null;
   try { insects = new Insects({ engine, player, input, groundAt, colliders: col, places, state, hud, sfx, build, flight, vehicle, breakables: deco.breakables, scatters: deco.scatters, save: () => save() }); } catch (e) { console.warn('insects failed', e); }
   let fresh = !localStorage.getItem(SAVE_KEY);
@@ -307,7 +307,7 @@ async function boot() {
     if (input.hit('KeyL')) openLogin();
     if (input.hit('KeyG') && !day.seat) album.open();
     if (input.hit('KeyP') && !day.seat) day.photo();
-    if (insects && !day.seat) { if (input.hit('KeyB')) insects.toggleNet(); if (input.hit('KeyK')) insects.open(); }
+    if (insects && !day.seat) { if (input.hit('KeyC')) insects.toggleNet(); if (input.hit('KeyK')) insects.open(); }
     const driving = vehicle?.driving;
     const riding = town.riding; // 같이 사는 동네: sitting in a friend's car (인혁: "차를 같이 탈 수 있게 해줘")
     flight.update(dt, input);

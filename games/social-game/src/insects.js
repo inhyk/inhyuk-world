@@ -263,7 +263,7 @@ export class Insects {
     this.glowFrame();
     this.song(singer && sd < 32 ? sd : null);
     // first time an insect is close: how to catch it
-    if (near < 6 && this.book.tip < 1 && !this.holding) { this.book.tip = 1; this.hud.toast('🦋 근처에 곤충이 있어요! B 키로 채집망을 들고 왼쪽 클릭으로 휘둘러 잡아요', 4200); }
+    if (near < 6 && this.book.tip < 1 && !this.holding) { this.book.tip = 1; this.hud.toast('🦋 근처에 곤충이 있어요! C 키로 채집망을 들고 왼쪽 클릭으로 휘둘러 잡아요', 4200); }
   }
 
   behave(b, dt, d, speed, p) {
@@ -457,7 +457,7 @@ export class Insects {
 
   toggleNet(on = !this.holding) {
     this.holding = on;
-    if (on && this.book.tip < 2) { this.book.tip = 2; this.hud.toast('🥅 곤충 채집망! 살금살금 다가가서 왼쪽 클릭으로 휘둘러요. 뛰어가면 도망가요! (B 넣기 · K 도감)', 4800); }
+    if (on && this.book.tip < 2) { this.book.tip = 2; this.hud.toast('🥅 곤충 채집망! 살금살금 다가가서 왼쪽 클릭으로 휘둘러요. 뛰어가면 도망가요! (C 넣기 · K 도감)', 4800); }
     else this.hud.toast(on ? '🥅 채집망을 들었어요 (왼쪽 클릭 휘두르기)' : '채집망을 넣었어요', 1200);
     this.sfx?.('click');
     if (this.btn) this.btn.classList.toggle('on', on);
@@ -603,14 +603,14 @@ export class Insects {
     document.body.appendChild(this.modal);
     const bar = $('buttons');
     if (bar) {
-      this.btn = document.createElement('button'); this.btn.id = 'btn-net'; this.btn.title = '곤충 채집망 (B)'; this.btn.textContent = '🥅 채집망';
+      this.btn = document.createElement('button'); this.btn.id = 'btn-net'; this.btn.title = '곤충 채집망 (C)'; this.btn.textContent = '🥅 채집망';
       this.btn.addEventListener('click', () => this.toggleNet());
       const bk = document.createElement('button'); bk.id = 'btn-bugs'; bk.title = '곤충 도감 (K)'; bk.textContent = '📗 곤충 도감';
       bk.addEventListener('click', () => this.open());
       bar.insertBefore(bk, $('btn-login')); bar.insertBefore(this.btn, bk);
     }
     const tb = $('tbtns');
-    if (tb) { const t = document.createElement('button'); t.dataset.k = 'KeyB'; t.textContent = '채집망'; tb.appendChild(t); }
+    if (tb) { const t = document.createElement('button'); t.dataset.k = 'KeyC'; t.textContent = '채집망'; tb.appendChild(t); }
   }
 
   /** Pictures of every species (shown as a dark shape until it is found). */
@@ -651,7 +651,7 @@ export class Insects {
       if (!seen) return `<div class="bcard unknown"><div class="pic"><img alt="?" src="${pics[sp.id]}"></div><span class="q">?</span><b>???</b><p>${sp.where}</p></div>`;
       return `<div class="bcard" data-id="${sp.id}"><div class="pic"><img alt="${sp.name}" src="${pics[sp.id]}"></div>${n ? `<span class="n">×${n}</span>` : ''}<b>${sp.emoji} ${sp.name}${sp.rare ? '<span class="tag">드물어요</span>' : ''}</b><p>${sp.fact}</p><p>📍 ${sp.where}</p>${n ? `<button class="rel" data-id="${sp.id}">🍃 한 마리 놓아주기</button>` : '<p>모두 놓아줬어요</p>'}</div>`;
     }).join('');
-    this.modal.innerHTML = `<div class="mcard book"><h2>📗 곤충 도감 <small>찾은 곤충 ${st.kinds} / ${st.all}종 · 가지고 있는 곤충 ${st.kept}마리</small></h2><p class="small">B 키로 채집망을 들고 왼쪽 클릭으로 휘둘러요. 낮엔 꽃밭, 풀밭, 나무, 물가에서, 밤엔 숲과 물가에서 찾아봐요!</p><div class="bgrid">${cards}</div><button class="alt close" id="bugbook-x">닫기</button></div>`;
+    this.modal.innerHTML = `<div class="mcard book"><h2>📗 곤충 도감 <small>찾은 곤충 ${st.kinds} / ${st.all}종 · 가지고 있는 곤충 ${st.kept}마리</small></h2><p class="small">C 키로 채집망을 들고 왼쪽 클릭으로 휘둘러요. 낮엔 꽃밭, 풀밭, 나무, 물가에서, 밤엔 숲과 물가에서 찾아봐요!</p><div class="bgrid">${cards}</div><button class="alt close" id="bugbook-x">닫기</button></div>`;
     this.modal.classList.remove('hidden');
     this.input.enabled = false;
     document.exitPointerLock?.();
