@@ -23,6 +23,11 @@ export const TICKET = 1000000;
  * Office story: weekends are a Japan trip only when the ticket money is saved; otherwise a rest day.
  */
 export function planDay(s, { hasLicenseCenter = true, hasPlaza = false } = {}) {
+  // 휴가 (인혁 계획 4: "휴가내기 버튼을 누르면 오늘 퀘스트가 다 없어지게 해줘"): no steps at all today
+  if (onLeave(s)) {
+    const base = planDay({ ...s, leaves: [] }, { hasLicenseCenter, hasPlaza });
+    return { day: s.day, kind: 'leave', from: base.kind, ...(base.job ? { job: base.job } : {}), needLicense: false, show: false };
+  }
   // 분수 공연 (fountain show) on show days, only once the plaza is in the town
   const show = hasPlaza && isShowDay(s.day);
   if (s.mode === 'kid') {
@@ -93,6 +98,7 @@ function kidSteps(kind, { needLicense = false, hurtToday = false, drive = false,
 }
 
 export function stepsFor(kind, opts = {}) {
+  if (kind === 'leave') return []; // 휴가: today's quests are all gone
   if (kind === 'school' || kind === 'kidRest') return kidSteps(kind, opts);
   const { needLicense = false, show = false } = opts;
   const license = needLicense ? [{ id: 'license', label: '운전면허 따기', text: '운전면허가 없어요! 면허시험장(남쪽 학교길)에서 시험을 봐요', target: 'license:license' }] : [];
@@ -197,6 +203,7 @@ export function newState() {
     inventory: { stone: 12, log: 8, brick: 12, glass: 6, turf: 8, plank: 8, pot: 3, lamp: 2, flower: 4 },
     placed: [], // [{id, x, y, z, rot}]
     broken: [], // ids of world props already broken
+    leaves: [], // 휴가: day numbers taken off (this month's only)
   };
 }
 
@@ -216,6 +223,55 @@ export const fallDamage = (h) => (h <= 3.5 ? 0 : Math.round((h - 3.5) * 9));
 
 export const WAGE = 150000;
 export const SNACK_PRICE = 2000;
+
+/**
+ * 휴가 (인혁 계획 4: "한 달에 휴가가 3개가 생기게 해줘. 그리고 퀘스트 위에 휴가내기 버튼을 만들고 휴가내기 버튼을 누르면
+ * 오늘 퀘스트가 다 없어지게 해줘."). A game month is 30 game days (days 1-30 = month 1, 31-60 = month 2...).
+ * Every month gives 3 vacation days; unused ones do not carry over. s.leaves = the day numbers taken off.
+ * Paid leave: working stories still get the day's wage (once: not when today's wage is already paid).
+ */
+export const MONTH_DAYS = 30;
+export const LEAVE_PER_MONTH = 3;
+export const monthOf = (day) => Math.floor((day - 1) / MONTH_DAYS) + 1;
+export const onLeave = (s) => Array.isArray(s.leaves) && s.leaves.includes(s.day);
+export const leavesUsed = (s) => (Array.isArray(s.leaves) ? s.leaves : []).filter((d) => monthOf(d) === monthOf(s.day)).length;
+export const leavesLeft = (s) => Math.max(0, LEAVE_PER_MONTH - leavesUsed(s));
+/** Kinds of day you can take off: work days (all jobs) and school days. Weekends, trips and rest days are free anyway. */
+export const LEAVE_KINDS = ['work', 'dinner', 'visit', 'job', 'school'];
+/** The step that pays today's wage (quests.js work(), src/jobs.js out()). */
+export const wageStep = (kind) => (kind === 'work' || kind === 'dinner' ? 'work2' : kind === 'visit' ? 'work' : kind === 'job' ? 'job-out' : null);
+export function wagePaid(s, plan) {
+  const id = wageStep(plan.kind);
+  const i = id ? stepsFor(plan.kind, plan).findIndex((x) => x.id === id) : -1;
+  return i >= 0 && s.step > i;
+}
+
+/** Why the vacation button is off right now (null: you can take a vacation). busy: a reason from the game (mini game...). */
+export function leaveBlock(s, plan, busy = null) {
+  const kid = s.mode === 'kid';
+  if (onLeave(s) || plan.kind === 'leave') return kid ? '오늘은 벌써 쉬는 날이에요' : '오늘은 벌써 휴가예요';
+  if (!LEAVE_KINDS.includes(plan.kind)) {
+    if (plan.kind === 'trip' || plan.kind === 'trip2') return '여행 중에는 휴가를 못 내요';
+    return '주말은 원래 쉬는 날이에요';
+  }
+  if (leavesLeft(s) <= 0) return `이번 달 ${kid ? '쉬는 날을' : '휴가를'} 다 썼어요 (${monthOf(s.day) * MONTH_DAYS + 1}일차에 ${LEAVE_PER_MONTH}개 생겨요)`;
+  if (kid && (plan.hurtToday || plan.needLicense)) return '오늘은 이야기에서 꼭 학교에 가야 하는 날이에요';
+  if (wagePaid(s, plan)) return '오늘 일은 벌써 다 끝났어요';
+  if (busy) return busy;
+  return null;
+}
+
+/** Take today off: the quests vanish (plan becomes 'leave'), the wage is paid for working stories. */
+export function takeLeave(s, plan, busy = null) {
+  const why = leaveBlock(s, plan, busy);
+  if (why) return { ok: false, why };
+  const pay = s.mode === 'kid' ? 0 : WAGE;
+  // only this month's days are kept (older ones never count again)
+  s.leaves = [...(Array.isArray(s.leaves) ? s.leaves : []).filter((d) => monthOf(d) === monthOf(s.day)), s.day];
+  s.money = (s.money ?? 0) + pay;
+  s.step = 0; s.counts = {}; s.restFrom = null; s.plan = null;
+  return { ok: true, pay, left: leavesLeft(s) };
+}
 
 /** Snap a point to the 1 m block grid: cell centre x/z and bottom y. */
 export function snapCell(x, y, z) {
@@ -278,6 +334,7 @@ export function deserialize(str) {
     const o = JSON.parse(str);
     if (!o || o.v !== 1) return null;
     const base = newState();
-    return { ...base, ...o, inventory: { ...base.inventory, ...o.inventory } };
+    // saves from before the vacation button have no leaves: 3 fresh ones this month
+    return { ...base, ...o, inventory: { ...base.inventory, ...o.inventory }, leaves: Array.isArray(o.leaves) ? o.leaves.filter(Number.isInteger) : [] };
   } catch { return null; }
 }

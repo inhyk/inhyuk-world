@@ -20,7 +20,10 @@
     </div>
   </div>
   <div id="clock"><span id="day">1일차 · 월요일</span><b id="time">오전 7:00</b><span id="money">0원</span></div>
-  <div id="quest"><div class="q-title">퀘스트</div><div id="quest-text">회사로 가세요</div><ul id="quest-list"></ul></div>
+  <div id="quest-col">
+    <button id="leave-btn" type="button" title="휴가 내기 (O)"><span class="lb-top"><span id="leave-label">🏖️ 휴가 내기</span> <b id="leave-n">(3)</b><kbd>O</kbd></span><span class="lb-sub" id="leave-sub">이번 달 휴가 3개 남음</span></button>
+    <div id="quest"><div class="q-title">퀘스트</div><div id="quest-text">회사로 가세요</div><ul id="quest-list"></ul></div>
+  </div>
   <canvas id="minimap" width="220" height="220"></canvas>
   <div id="nav" class="hidden"><div class="arrow" id="nav-arrow">↱</div><div><div class="head" id="nav-head">300m 후</div><div class="sub" id="nav-sub">우회전</div></div></div>
   <div id="test" class="hidden"></div>
@@ -44,6 +47,7 @@
     <p><b>W A S D</b> 걷기 · <b>Shift</b> 달리기 · <b>Space</b> 점프 · <b>마우스</b> 둘러보기</p>
     <p><b>왼쪽 클릭 꾹</b> 블럭 깨기 · <b>오른쪽 클릭</b> 블럭 놓기 · <b>1~9 / 휠</b> 블럭 고르기 · <b>R</b> 돌리기</p>
     <p><b>E</b> 사용하기 (문, 차, 침대…) · <b>V</b> 1인칭/3인칭 · <b>M</b> 지도 크게 · <b>P</b> 사진 · <b>G</b> 갤러리 · <b>B</b> 포즈 · <b>H</b> 도움말</p>
+    <p><b>O</b> 휴가 내기 (한 달에 3개, 퀘스트 위 버튼)</p>
     <p>같이 하기: <b>T</b> 또는 <b>Enter</b> 채팅 · 다른 친구의 블럭은 못 부숴요</p>
     <p>차 안: <b>W S</b> 가속/브레이크 · <b>A D</b> 핸들 · <b>E</b> 내리기</p>
   </div>
@@ -92,6 +96,15 @@
     <p class="small" id="town-ask-text"></p>
     <input id="town-ask-reason" maxlength="200" placeholder="무엇이 싫었나요? (안 적어도 돼요)" autocomplete="off" />
     <div class="mrow"><button id="town-ask-ok"></button><button id="town-ask-cancel" class="alt">취소</button></div>
+  </div>
+</div>
+<div id="leave-ask" class="modal hidden">
+  <div class="mcard">
+    <h2 id="leave-ask-title">🏖️ 휴가 내기</h2>
+    <p class="big" id="leave-ask-text">오늘 휴가를 낼까요?</p>
+    <p class="leave-count" id="leave-ask-count">이번 달 남은 휴가 3개 → 2개</p>
+    <p class="small" id="leave-ask-note">오늘 퀘스트가 다 없어져요.</p>
+    <div class="mrow"><button id="leave-yes">네</button><button id="leave-no" class="alt">아니요</button></div>
   </div>
 </div>
 <div id="lift" class="modal hidden"></div>

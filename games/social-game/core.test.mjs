@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { planDay, TICKET, WAGE, dayKind, weekday, stepsFor, newState, tickBody, eat, fallDamage, snapCell, formatClock, workTask, checkWork, meatState, serialize, deserialize, tickClock, stepStart, stepReady, minutesLeft, LAST_HOUR } from './core.mjs';
+import { planDay, TICKET, WAGE, dayKind, weekday, stepsFor, newState, tickBody, eat, fallDamage, snapCell, formatClock, workTask, checkWork, meatState, serialize, deserialize, tickClock, stepStart, stepReady, minutesLeft, LAST_HOUR, MONTH_DAYS, LEAVE_PER_MONTH, monthOf, leavesLeft, leavesUsed, leaveBlock, takeLeave, wageStep, wagePaid } from './core.mjs';
 import { JOBS, JOB_KEYS, jobWork, CUSTOMERS, changeFor, changeOptions, cartTotal, REPORT, TRAFFIC, FIRE_GEAR, PATIENTS, DOC_TOOLS, DOC_MEDS, PIZZAS, TOPPINGS, STOCK, AISLES, LETTERS, SLOTS } from './jobs.mjs';
 import { isShowDay, SHOW_HOUR } from './show-days.mjs';
 
@@ -278,4 +278,128 @@ test('fountain show on Fridays at 19:00, only once the plaza exists', () => {
   const jp = planDay(job, { hasPlaza: true });
   const js = stepsFor(jp.kind, jp).map((x) => x.id);
   assert.ok(js.indexOf('show') > js.indexOf('job-out') && js.indexOf('show') < js.indexOf('gohome'));
+});
+
+// 휴가 (인혁 계획 4: "한 달에 휴가가 3개가 생기게 해줘 ... 휴가내기 버튼을 누르면 오늘 퀘스트가 다 없어지게 해줘")
+test('a month is 30 game days and gives 3 vacation days that do not carry over', () => {
+  assert.equal(MONTH_DAYS, 30);
+  assert.equal(LEAVE_PER_MONTH, 3);
+  assert.deepEqual([1, 30, 31, 60, 61].map(monthOf), [1, 1, 2, 2, 3]);
+  const s = newState();
+  assert.equal(leavesLeft(s), 3);
+  s.leaves = [1, 2];
+  assert.equal(leavesUsed(s), 2);
+  assert.equal(leavesLeft(s), 1);
+  s.day = 31; // next month: last month's days do not count, unused ones are gone too
+  assert.equal(leavesLeft(s), 3);
+  s.leaves = [1, 2, 3, 31];
+  assert.equal(leavesLeft(s), 2);
+});
+
+test('a vacation day has no quests; tomorrow is a normal day again', () => {
+  const s = newState();
+  s.license = true;
+  const plan = planDay(s);
+  assert.equal(plan.kind, 'work');
+  assert.equal(leaveBlock(s, plan), null);
+  s.step = 3;
+  const money = s.money;
+  const r = takeLeave(s, plan);
+  assert.deepEqual(r, { ok: true, pay: WAGE, left: 2 });
+  assert.equal(s.money, money + WAGE, 'paid leave: the wage is still paid');
+  assert.deepEqual(s.leaves, [1]);
+  assert.equal(s.step, 0);
+  assert.equal(s.plan, null);
+  const off = planDay(s);
+  assert.equal(off.kind, 'leave');
+  assert.equal(off.from, 'work');
+  assert.deepEqual(stepsFor(off.kind, off), []);
+  assert.equal(leaveBlock(s, off), '오늘은 벌써 휴가예요');
+  assert.equal(takeLeave(s, off).ok, false);
+  s.day = 2;
+  assert.equal(planDay(s).kind, 'work');
+  assert.ok(stepsFor('work').length > 10);
+  assert.equal(leavesLeft(s), 2);
+});
+
+test('vacation works for every job, the wage is paid once, and the plan keeps the job name', () => {
+  for (const job of JOB_KEYS) {
+    const s = { ...newState(), mode: 'job', job, license: true };
+    const plan = planDay(s);
+    assert.equal(plan.kind, 'job');
+    assert.equal(leaveBlock(s, plan), null, job);
+    // after 퇴근 (job-out) the wage is already in the pocket: no vacation for that day
+    s.step = stepsFor(plan.kind, plan).findIndex((x) => x.id === 'job-out') + 1;
+    assert.equal(leaveBlock(s, plan), '오늘 일은 벌써 다 끝났어요');
+    s.step = 2;
+    const r = takeLeave(s, plan);
+    assert.equal(r.pay, WAGE);
+    const off = planDay(s);
+    assert.equal(off.kind, 'leave');
+    assert.equal(off.job, job);
+  }
+  // the office wage steps: work2 (work and dinner days), work (business trip)
+  assert.equal(wageStep('work'), 'work2');
+  assert.equal(wageStep('dinner'), 'work2');
+  assert.equal(wageStep('visit'), 'work');
+  assert.equal(wageStep('rest'), null);
+  const s = newState();
+  s.license = true;
+  s.step = stepsFor('work').findIndex((x) => x.id === 'work2');
+  assert.equal(wagePaid(s, planDay(s)), false);
+  s.step++;
+  assert.equal(wagePaid(s, planDay(s)), true);
+});
+
+test('no vacation on weekends, trips, rest days, with none left, or while busy', () => {
+  const s = newState();
+  s.license = true;
+  s.day = 6; // Saturday without the ticket money: a rest day
+  assert.equal(planDay(s).kind, 'rest');
+  assert.equal(leaveBlock(s, planDay(s)), '주말은 원래 쉬는 날이에요');
+  s.money = TICKET;
+  assert.equal(planDay(s).kind, 'trip');
+  assert.equal(leaveBlock(s, planDay(s)), '여행 중에는 휴가를 못 내요');
+  s.day = 7; s.wakeAt = 'ryokan';
+  assert.equal(leaveBlock(s, planDay(s)), '여행 중에는 휴가를 못 내요');
+  s.day = 8; s.leaves = [1, 2, 3];
+  assert.equal(leaveBlock(s, planDay(s)), '이번 달 휴가를 다 썼어요 (31일차에 3개 생겨요)');
+  assert.equal(takeLeave(s, planDay(s)).ok, false);
+  s.day = 31;
+  assert.equal(leaveBlock(s, planDay(s)), null, 'a new month gives 3 again');
+  assert.equal(leaveBlock(s, planDay(s), '지금 하는 일을 먼저 끝내요'), '지금 하는 일을 먼저 끝내요');
+});
+
+test('the child story: 쉬는 날 with the same rules, no wage, and never on the story days', () => {
+  const s = { ...newState(), mode: 'kid', gender: 'boy', money: 10000 };
+  const p1 = planDay(s);
+  assert.equal(p1.kind, 'school');
+  const r = takeLeave(s, p1);
+  assert.equal(r.ok, true);
+  assert.equal(r.pay, 0);
+  assert.equal(s.money, 10000);
+  assert.equal(leaveBlock(s, planDay(s)), '오늘은 벌써 쉬는 날이에요');
+  s.day = 2; // PE time: the leg gets hurt
+  assert.equal(leaveBlock(s, planDay(s)), '오늘은 이야기에서 꼭 학교에 가야 하는 날이에요');
+  s.day = 3; s.hurt = true; // the licence day
+  assert.equal(leaveBlock(s, planDay(s)), '오늘은 이야기에서 꼭 학교에 가야 하는 날이에요');
+  s.license = true;
+  assert.equal(leaveBlock(s, planDay(s)), null);
+  s.day = 6;
+  assert.equal(leaveBlock(s, planDay(s)), '주말은 원래 쉬는 날이에요');
+});
+
+test('vacation days are saved; old saves without them get 3 fresh ones', () => {
+  const s = newState();
+  s.leaves = [4, 5];
+  s.day = 5;
+  const back = deserialize(serialize(s));
+  assert.deepEqual(back.leaves, [4, 5]);
+  assert.equal(planDay(back).kind, 'leave');
+  const old = JSON.parse(serialize(newState()));
+  delete old.leaves;
+  const loaded = deserialize(JSON.stringify(old));
+  assert.deepEqual(loaded.leaves, []);
+  assert.equal(leavesLeft(loaded), 3);
+  assert.deepEqual(deserialize(JSON.stringify({ ...old, leaves: 'x' })).leaves, []);
 });

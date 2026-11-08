@@ -42,6 +42,19 @@
 - 시간은 `core.mjs` 의 각 퀘스트 `at`(시각)과 `rest`(쉬는 분)로 정한다(`stepStart`, `stepReady`). 밤 11시 59분에서 멈추고 자면 다음 날이 된다.
 - 분수 공연: 금요일(`show-days.mjs` 의 `isShowDay`) 저녁 7시에 "분수 공연 보기" 퀘스트가 생긴다. 분수 광장(`plaza`)이 동네에 있을 때만 나온다.
 
+## 휴가 내기 (인혁이 계획 4, 2026-11-08)
+
+"한 달에 휴가가 3개가 생기게 해줘. 그리고 퀘스트 위에 휴가내기 버튼을 만들고 휴가내기 버튼을 누르면 오늘 퀘스트가 다 없어지게 해줘."
+
+- 한 달은 게임 30일이다(1~30일차가 첫째 달, 31~60일차가 둘째 달). 달마다 휴가 3개가 생기고, 못 쓴 휴가는 다음 달로 넘어가지 않는다.
+- 퀘스트 칸 바로 위 "🏖️ 휴가 내기 (3)" 버튼(또는 `O` 키). 아래 줄에 "이번 달 휴가 3개 남음". 누르면 게임 안 창이 "오늘 휴가를 낼까요? 이번 달 남은 휴가 3개 → 2개" 라고 묻고, 네를 누르면 오늘 퀘스트가 다 없어진다.
+- 휴가 날: 퀘스트 칸에 "🏖️ 오늘은 휴가! 마음대로 놀아요", 할 일 목록과 노란 표시 기둥이 없다. 다른 날처럼 밤 9시부터 침대에서 E로 자면(밤 11시 59분에 시계가 멈추는 것도 그대로) 다음 날은 평소 날이다.
+- 유급 휴가: 직장인과 모든 직업은 휴가 날에도 일당 150,000원을 바로 받는다. 오늘 일당을 이미 받았으면(퇴근 뒤) 휴가를 낼 수 없어서 두 번 받지 않는다.
+- 🎒 어린이는 "🏖️ 하루 쉬기 (3)", 규칙은 같고 돈은 없다. 다리 다치는 날(2일차)과 면허 따는 날은 이야기 때문에 쉴 수 없다.
+- 버튼이 꺼지는(회색) 때와 이유: 이번 달 휴가를 다 썼을 때, 이미 휴가일 때, 주말과 여행 날과 쉬는 날, 미니게임, 앉아 있을 때, 비행기, 면허 시험, 영화, 공연, 엘리베이터, 순찰차와 소방차 운전, 호스를 들고 있을 때.
+- 저장: `state.leaves` (휴가 낸 날 번호, 이번 달 것만). 클라우드 저장에도 같이 간다. 예전 저장에는 없으니 휴가 3개로 시작한다.
+- 코드: 규칙 `core.mjs` (`monthOf`, `leavesLeft`, `leaveBlock`, `takeLeave`, `planDay` 의 `leave` 날), 버튼과 묻는 창 `src/leave.js`. 검사 `leave-check.mjs`.
+
 ## 건물 더 (2026-11-05, 인혁: "건물을 더 만들어줘")
 
 - 큰길 북쪽: 세온 마트(주차장, 카트), 세온 시네마(지어낸 영화 포스터 3개), 세온 소방서(망루, 소방차), 세온 경찰서(경찰차)
@@ -124,7 +137,7 @@
 
 - WASD 걷기, Shift 달리기, Space 점프, 마우스 둘러보기
 - 왼쪽 클릭 꾹 깨기, 오른쪽 클릭 놓기, 1~9 또는 휠로 블럭 고르기, R 돌리기
-- E 사용(문, 차, 침대, 세면대...), V 시점, M 큰 지도, P 사진, B 포즈, H 도움말
+- E 사용(문, 차, 침대, 세면대...), V 시점, M 큰 지도, P 사진, B 포즈, H 도움말, O 휴가 내기
 - 차: W S 가속과 브레이크, A D 핸들, Space 급브레이크, F 경적, E 내리기
 
 ## 같이 사는 동네 (멀티플레이, 2026-11-05)
@@ -170,6 +183,7 @@
 - `src/flight.js` 비행기 타고 날아가는 장면, `src/drivetest.js` 면허 시험, `src/nav.js` 내비게이션, `src/elevator.js` 엘리베이터, `src/cloud.js` 로그인과 서버 저장
 - `src/town.js` 같이 사는 동네(연결, 다른 사람, 채팅, 차단, 신고), `online.mjs` 그 규칙(칸 이름, 위치, 숨김, 혼자 블럭 지키기), `online.test.mjs`
 - `src/wildlife.js` 숲의 반달가슴곰(숲 칸, 날마다 일정, 행동), `src/props/bear.js` 곰 모델과 움직임, `bear-check.mjs` 곰 검사
+- `src/leave.js` 휴가 내기 버튼과 묻는 창, `leave-check.mjs` 휴가 검사
 - `kid-check.mjs` 어린이 이야기 자동 검사, `job-check.mjs` 직업 6개의 하루 자동 검사, `login-check.mjs` 로그인 검사(로컬 net 서버), `online-check.mjs` 같이 사는 동네 검사(로컬 net 서버, 두 컴퓨터)
 - `src/props/*.js` 자동차, 사람, 나무와 꽃, 가로등과 벤치, 블럭
 - `src/world.js` 땅, 도로, 바다와 건물 자리, `src/deco.js` 나무와 거리 소품 배치
@@ -186,6 +200,7 @@ npm run test:social-game
 npm run social-game:dev            # 다른 터미널
 node games/social-game/browser-check.mjs http://127.0.0.1:5173/ /tmp/social-shots
 node games/social-game/kid-check.mjs http://127.0.0.1:5173/ /tmp/social-kid
+node games/social-game/leave-check.mjs http://127.0.0.1:5173/ /tmp/social-leave   # 휴가 내기
 node games/social-game/show-check.mjs http://127.0.0.1:5173/ /tmp/social-show   # 분수 광장과 공연 (약 3분)
 node games/social-game/bear-check.mjs http://127.0.0.1:5173/ /tmp/social-bear
 node games/social-game/pose-check.mjs http://127.0.0.1:5173/ /tmp/social-poses    # 포즈 14개 (사진 한 장씩)
