@@ -11,11 +11,13 @@ import {
   propKey, parsePropKey, PROP_TTL, packPose, unpackPose, samePose, HIDDEN, lerpAngle, follow, SNAP_DIST,
   isPrivate, lookFor, SoloBlocks, TEXT, placeErrorText,
   PoseTrack, peerNum, assignSeats, rideStep, seatOf, SEAT_POS, DRIVER_POS, RIDE_NEAR, RIDE_SLOW,
+  CAR_HALF, carCircles, overlap, pushOut, ghostStep, friendSolids,
 } from '../online.mjs';
 import { xbox } from './places.js';
 import { exitSpot } from './vehicle.js';
 import { poseAt, poseMode, poseNum } from '../poses.mjs';
 import { groundAt } from './world.js';
+import { moveBody } from './collide.js';
 import { sfx } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
@@ -81,6 +83,8 @@ export class Town {
     this.rideLook = { yaw: 0, pitch: 0 };
     this.rideCam = new THREE.Vector3();
     this.byNum = new Map();      // peer number → remote
+    this.solids = [];            // friends' cars and friends on foot, solid on my computer (friendSolids)
+    this.bumpT = 0;
     this.propsByKey = new Map();
     for (const e of g.breakables) if (e.key) this.propsByKey.set(e.key, e);
     const home = g.places.sites.home;
@@ -346,7 +350,7 @@ export class Town {
     tag.visible = false;
     scene.add(tag);
     const num = peerNum(pid);
-    this.remotes.set(pid, { pid, num, user, look, ch, tag, car: null, target: null, track: new PoseTrack(), lastAt: 0, pos: new THREE.Vector3(), yaw: 0, seen: false, visible: false, host: null, seat: -1 });
+    this.remotes.set(pid, { pid, num, user, look, ch, tag, car: null, target: null, track: new PoseTrack(), lastAt: 0, pos: new THREE.Vector3(), yaw: 0, seen: false, visible: false, host: null, seat: -1, parked: null, ghost: false, carAt: null, boxes: null });
     if (num) this.byNum.set(num, this.remotes.get(pid));
     this.refreshPeople();
     if (this.live && user?.nickname) this.g.hud.toast(TEXT.hello(user.nickname), 1600);
@@ -358,6 +362,7 @@ export class Town {
     const scene = this.g.engine.scene;
     if (r.ch) scene.remove(r.ch.group);
     if (r.car) scene.remove(r.car.group);
+    this.carBoxes(r, null);
     scene.remove(r.tag);
     r.tag.material.map?.dispose(); r.tag.material.dispose();
     this.remotes.delete(pid);
@@ -366,7 +371,13 @@ export class Town {
     this.refreshPeople();
     if (say && this.live && r.user?.nickname) this.g.hud.toast(TEXT.bye(r.user.nickname), 1600);
   }
-  clearRemotes() { for (const pid of [...this.remotes.keys()]) this.removeRemote(pid); this.seats = [0, 0, 0]; this.askOrder.clear(); this.refreshPeople(); }
+  clearRemotes() {
+    for (const pid of [...this.remotes.keys()]) this.removeRemote(pid);
+    this.seats = [0, 0, 0]; this.askOrder.clear();
+    this.solids = [];
+    if (this.g.vehicle) this.g.vehicle.solids = this.solids;
+    this.refreshPeople();
+  }
 
   remotePose(pid, d) {
     const r = this.remotes.get(pid);
@@ -374,6 +385,10 @@ export class Town {
     if (!r || !p) return;
     r.target = p;
     r.lastAt = performance.now();
+    // where their car is: driven (newest drive pose) or parked (sent while on foot). Older games send no
+    // parked car, so it stays where they got out. Hidden poses (home, flights) keep the last place.
+    if (p.mode === 'drive') r.parked = { x: p.x, y: p.y, z: p.z, yaw: p.yaw };
+    else if (p.car) r.parked = p.car;
     r.track.push(p, r.lastAt); // poses without a clock (older games) or hidden ones empty the track
   }
 
@@ -415,15 +430,18 @@ export class Town {
       r.seat = seatOf(d.target.seats, r.num);
       if (r.seat >= 0) r.host = { pos: d.pos, yaw: d.yaw, seats: d.target.seats, mine: false };
     }
+    this.placeCars(cam);
     for (const r of this.remotes.values()) {
       const t = r.target, show = r.visible;
       const driving = show && t.mode === 'drive';
-      if (driving && !r.car && this.g.props.car) {
+      const at = r.carAt;
+      if (at && !r.car && this.g.props.car) {
         try { r.car = this.g.props.car.buildCar({ color: r.look.carColor, style: 'sedan' }); this.g.engine.scene.add(r.car.group); } catch (e) { console.warn('remote car failed', e); r.car = null; }
       }
       if (r.car) {
-        r.car.group.visible = driving;
-        if (driving) { r.car.group.position.copy(r.pos); r.car.group.rotation.set(0, r.yaw, 0); }
+        // 인혁: "차에서 내리면 다른 사람한테 안 보여": the car stays where the friend parked it
+        r.car.group.visible = !!at;
+        if (at) { r.car.group.position.set(at.x, at.y, at.z); r.car.group.rotation.set(0, at.yaw, 0); }
       }
       if (r.ch) {
         r.ch.group.visible = show;
@@ -446,6 +464,81 @@ export class Town {
         r.tag.position.set(r.host.pos.x, r.host.pos.y + 2.0 + 0.42 * (ahead + (r.host.mine ? 0 : 1)), r.host.pos.z);
       } else r.tag.position.set(r.pos.x, r.pos.y + (driving ? 2.0 : t.kid ? 1.6 : 2.1), r.pos.z);
     }
+    // what my car bumps into (and my feet cannot walk through: the car boxes made in placeCars)
+    this.solids = friendSolids([...this.remotes.values()].map((r) => {
+      const t = r.target, onFoot = r.visible && t.mode !== 'drive';
+      return { car: r.carAt, foot: onFoot ? { x: t.x, y: t.y, z: t.z, kid: t.kid } : null, seated: !!r.host, ride: onFoot ? t.ride : 0 };
+    }), this.g.vehicle?.half ?? CAR_HALF);
+    if (this.g.vehicle) this.g.vehicle.solids = this.solids;
+  }
+
+  /**
+   * Where each friend's car is drawn (r.carAt): with them while they drive, else parked where they left it.
+   * A parked car standing on my car or on another friend's car (everyone starts at the same spot at home)
+   * is a ghost until they are apart. Drawn cars get three collider boxes, so nobody walks through them.
+   */
+  placeCars(cam) {
+    const v = this.g.vehicle, half = v?.half ?? CAR_HALF;
+    const taken = v ? carCircles(v.pos.x, v.pos.z, v.yaw, half) : [];
+    const parked = [];
+    for (const r of this.remotes.values()) {
+      const t = r.target;
+      r.carAt = null;
+      if (r.visible && t.mode === 'drive') { r.carAt = { x: r.pos.x, y: r.pos.y, z: r.pos.z, yaw: r.yaw }; r.ghost = false; taken.push(...carCircles(r.pos.x, r.pos.z, r.yaw, half)); continue; }
+      const p = r.parked;
+      if (!p || !t || this.blocked.has(r.user?.id) || Math.hypot(p.x - cam.x, p.z - cam.z) > DRAW_RANGE || this.privateAt(new THREE.Vector3(p.x, p.y, p.z))) continue;
+      parked.push(r);
+    }
+    for (const r of parked) {
+      const p = r.parked, c = carCircles(p.x, p.z, p.yaw, half);
+      r.ghost = ghostStep(r.ghost, taken.length ? overlap(c, taken) : -Infinity);
+      if (r.ghost) continue;
+      r.carAt = p;
+      taken.push(...c);
+    }
+    for (const r of this.remotes.values()) this.carBoxes(r, r.carAt);
+  }
+
+  /** Collider boxes (tag 'friend') around a friend's car at {x, y, z, yaw}, or none (at = null). */
+  carBoxes(r, at) {
+    const col = this.g.colliders;
+    if (!at) { if (r.boxes) for (const b of r.boxes) col.remove(b); r.boxes = null; return; }
+    r.boxes ??= [0, 1, 2].map(() => ({ min: [0, 0, 0], max: [0, 0, 0], tag: 'friend' }));
+    carCircles(at.x, at.z, at.yaw, this.g.vehicle?.half ?? CAR_HALF, 0.92).forEach((c, i) => {
+      const b = r.boxes[i];
+      col.remove(b);
+      b.min[0] = c.x - c.r; b.max[0] = c.x + c.r; b.min[2] = c.z - c.r; b.max[2] = c.z + c.r;
+      b.min[1] = at.y; b.max[1] = at.y + 1.4;
+      col.add(b);
+    });
+  }
+
+  /** On foot: a friend's car that came onto me (it moves on their computer) nudges me aside, through no wall. */
+  nudge() {
+    const { player, vehicle, colliders, flight } = this.g;
+    if (vehicle?.driving || this.ride || flight?.active || !this.solids.length) return;
+    const cars = [];
+    for (const s of this.solids) if (!s.person && Math.abs(s.y - player.pos.y) < 2) cars.push({ ...s, r: s.r * 0.92 });
+    const p = pushOut([{ x: player.pos.x, z: player.pos.z, r: 0.3 }], cars);
+    if (p.car) moveBody(colliders, player.pos, 0.3, 1.75, p.x, 0, p.z, groundAt);
+  }
+
+  /** Bumped into a friend's car or stopped for a friend: a sound and a short note (never any damage). */
+  bumped(dt) {
+    this.bumpT -= dt;
+    const b = this.g.vehicle?.driving ? this.g.vehicle.bump : null;
+    if (!b || b.speed < 1.5 || this.bumpT > 0) return;
+    this.bumpT = 2;
+    let who = null, bd = Infinity;
+    const v = this.g.vehicle;
+    for (const r of this.remotes.values()) {
+      const at = b.what === 'car' ? r.carAt : r.visible && r.target.mode !== 'drive' ? r.target : null;
+      const d = at ? Math.hypot(at.x - v.pos.x, at.z - v.pos.z) : Infinity;
+      if (d < bd) { bd = d; who = r; }
+    }
+    const nick = who?.user?.nickname ?? '친구';
+    sfx(b.what === 'car' ? 'hit' : 'horn');
+    this.g.hud.toast(b.what === 'car' ? TEXT.bumpCar(nick) : TEXT.bumpPerson(nick), 1600);
   }
 
   // ------------------------------------------------------------------ riding in a friend's car
@@ -619,7 +712,10 @@ export class Town {
     let d;
     if (flight?.active || this.privateAt(at)) d = HIDDEN.slice();
     else if (driving) d = packPose({ mode: 'drive', x: vehicle.pos.x, y: vehicle.y ?? vehicle.pos.y, z: vehicle.pos.z, yaw: vehicle.yaw, kid, t: 0, seats: this.seats });
-    else d = packPose({ mode: this.riding ? 'idle' : player.speed > 5 ? 'run' : player.speed > 0.3 ? 'walk' : 'idle', x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw, kid, t: 0, ride: this.ride?.n, pose: player.pose && !this.riding ? poseNum(player.pose.id) : 0 });
+    else {
+      const car = vehicle ? { x: vehicle.pos.x, y: vehicle.y, z: vehicle.pos.z, yaw: vehicle.yaw } : null; // where my car is parked
+      d = packPose({ mode: this.riding ? 'idle' : player.speed > 5 ? 'run' : player.speed > 0.3 ? 'walk' : 'idle', x: player.pos.x, y: player.pos.y, z: player.pos.z, yaw: player.yaw, kid, t: 0, ride: this.ride?.n, car, pose: player.pose && !this.riding ? poseNum(player.pose.id) : 0 });
+    }
     this.poseIdle += POSE_EVERY;
     if (samePose(d, this.lastPose) && this.poseIdle < 1) return;
     const out = d.slice();
@@ -634,6 +730,8 @@ export class Town {
     if (!this.live) return;
     this.updateSeats();
     this.updateRide(dt);
+    this.nudge();
+    this.bumped(dt);
     this.sendPose(dt);
     const inp = this.g.input;
     if (inp.hit('KeyT') || inp.hit('Enter') || inp.hit('NumpadEnter')) this.openChat();
