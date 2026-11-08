@@ -10,6 +10,7 @@ export const SKIES = {
   hub: { top: '#3d8fff', horizon: '#cdeeff', bottom: '#9fd4ff', sun: [0.45, 0.7, 0.3], fog: '#cfeaff', near: 90, far: 420, hemiSky: '#cfe8ff', hemiGround: '#7da35a', sunColor: '#fff3df', sunI: 2.6, hemiI: 1.25, exposure: 1.0 },
   obby: { top: '#6c8dff', horizon: '#ffe0f2', bottom: '#ffd6ec', sun: [0.3, 0.75, -0.4], fog: '#f5dcff', near: 120, far: 520, hemiSky: '#f1e4ff', hemiGround: '#b59ad6', sunColor: '#fff2e4', sunI: 2.5, hemiI: 1.35, exposure: 1.0 },
   tycoon: { top: '#4f9bff', horizon: '#ffeccc', bottom: '#ffe1b0', sun: [-0.5, 0.62, 0.35], fog: '#ffe9cf', near: 100, far: 460, hemiSky: '#fff0d6', hemiGround: '#8ca35f', sunColor: '#ffe8c4', sunI: 2.7, hemiI: 1.15, exposure: 1.0 },
+  tower: { top: '#2f7dff', horizon: '#d8f6ff', bottom: '#a8e4ff', sun: [0.35, 0.8, 0.35], fog: '#d6f2ff', near: 140, far: 620, hemiSky: '#e0f4ff', hemiGround: '#84b86a', sunColor: '#fff6e8', sunI: 2.6, hemiI: 1.3, exposure: 1.0 },
   survival: { top: '#2b1b5e', horizon: '#ff8f6b', bottom: '#5a1a2e', sun: [0.2, 0.32, -0.9], fog: '#7a3a5e', near: 70, far: 300, hemiSky: '#ffb4a0', hemiGround: '#5a2040', sunColor: '#ffc69a', sunI: 2.3, hemiI: 1.1, exposure: 1.05 },
 };
 
@@ -206,6 +207,10 @@ export function tex(name) {
   else if (name === 'stripes') t = canvasTex(128, 128, (g, w, h) => {
     for (let x = 0; x < w; x += 32) { g.fillStyle = (x / 32) % 2 ? '#ffffff' : '#ff5e7e'; g.fillRect(x, 0, 32, h); }
   });
+  else if (name === 'grid') t = canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(33,120,120,0.28)'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, h - 3);
+  });
   else if (name === 'checker') t = canvasTex(128, 128, g => {
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { g.fillStyle = (x + y) % 2 ? '#ffffff' : '#20232b'; g.fillRect(x * 16, y * 16, 16, 16); }
   });
@@ -244,6 +249,7 @@ export function material(color, m = 'plastic') {
     case 'conveyor': mat = new THREE.MeshStandardMaterial({ color: '#ffffff', map: tex('arrow'), roughness: 0.6 }); animated.conveyor.push(mat); break;
     case 'stripes': mat = new THREE.MeshStandardMaterial({ color: c, map: tex('stripes'), roughness: 0.6 }); break;
     case 'checker': mat = new THREE.MeshStandardMaterial({ color: c, map: tex('checker'), roughness: 0.5 }); break;
+    case 'grid': { const map = tex('grid'); mat = new THREE.MeshStandardMaterial({ color: c, map, roughness: 0.7 }); break; }
     case 'cloud': mat = new THREE.MeshStandardMaterial({ color: c, roughness: 1, emissive: c, emissiveIntensity: 0.12 }); break;
     case 'matte': mat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 }); break;
     default: mat = new THREE.MeshStandardMaterial({ color: c, map: tex('plastic'), roughness: 0.42, metalness: 0 });
@@ -282,10 +288,10 @@ function partGeometry(p) {
           uv.setXY(i, u, v);
         }
       }
-    } else if (p.m === 'grass' || p.m === 'stone' || p.m === 'sand' || p.m === 'wood') {
+    } else if (p.m === 'grass' || p.m === 'stone' || p.m === 'sand' || p.m === 'wood' || p.m === 'grid') {
       // 큰 바닥은 무늬를 4칸마다 한 번 반복
       const uv = g.attributes.uv, pos = g.attributes.position, n = g.attributes.normal;
-      const s = p.m === 'wood' ? 3 : 6;
+      const s = p.m === 'wood' ? 3 : p.m === 'grid' ? 2 : 6;
       for (let i = 0; i < uv.count; i++) {
         const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
         if (ay > 0.5) uv.setXY(i, pos.getX(i) / s, pos.getZ(i) / s);
