@@ -376,6 +376,7 @@ export function defaultSave(rand = Math.random) {
     obby: { cp: 0, top: 0, best: 0, clears: 0, paid: 0 },
     tycoon: { cash: 0, pending: 0, items: [], done: false, away: 0, bank: 0 },
     survival: { best: 0, wins: 0 },
+    tower: { blocks: [], best: 0 },
     sound: true,
     music: true,
     tutorial: false,
@@ -421,6 +422,7 @@ export function cleanSave(raw, rand = Math.random) {
   for (const it of TYCOON) if (items.includes(it.id) && (!it.need || ok.includes(it.need))) ok.push(it.id);
   s.tycoon = { cash: Math.floor(num(t.cash, 0, 1e12, 0)), pending: Math.floor(num(t.pending, 0, 1e12, 0)), items: ok, done: !!t.done && ok.includes('statue'), away: Math.floor(num(t.away, 0, 1e14, 0)), bank: num(t.bank, 0, 1, 0) };
   s.survival = { best: Math.floor(num(raw.survival?.best, 0, 3600, 0)), wins: Math.floor(num(raw.survival?.wins, 0, 99_999, 0)) };
+  s.tower = { blocks: cleanTowerBlocks(raw.tower?.blocks), best: Math.floor(num(raw.tower?.best, 0, TOWER.TOP + 1, 0)) };
   s.sound = raw.sound !== false;
   s.music = raw.music !== false;
   s.tutorial = !!raw.tutorial;
@@ -434,7 +436,7 @@ export const OBBY_CLEAR_COINS = 100;
 
 // ───────────── 네트워크 ─────────────
 // 위치는 숫자만 보낸다 (글자열 속 숫자는 서버가 가릴 수 있다).
-export const WORLDS = ['hub', 'obby', 'tycoon', 'survival'];
+export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower'];
 const r2 = v => Math.round(v * 100) / 100;
 export function packPose(pl, yaw, w, anim, emote) {
   return [w, r2(pl.x), r2(pl.y), r2(pl.z), r2(yaw), anim, emote];
@@ -460,4 +462,55 @@ export function tileAt(x, z) {
 export function seeded(seed) {
   let s = (seed >>> 0) || 1;
   return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+}
+
+// ───── 하늘 타워 짓기 ─────
+// 땅은 칸(2×2×2) 격자. i, k 는 -12~11 (가로세로 24칸), j 는 0~99 (100층).
+export const TOWER = Object.freeze({ CELL: 2, MIN: -12, MAX: 11, TOP: 99, LIMIT: 500, REACH: 20, RATE: 0.1 });
+export const BLOCKS = [
+  { id: 'red', name: '빨강', c: '#ff4d5e' },
+  { id: 'orange', name: '주황', c: '#ff8a3d' },
+  { id: 'yellow', name: '노랑', c: '#ffd23f' },
+  { id: 'green', name: '초록', c: '#5ad16b' },
+  { id: 'sky', name: '하늘', c: '#3fa7ff' },
+  { id: 'purple', name: '보라', c: '#9b5cff' },
+  { id: 'pink', name: '분홍', c: '#ff8fc7' },
+  { id: 'white', name: '하양', c: '#ffffff' },
+  { id: 'black', name: '검정', c: '#2a2d36' },
+  { id: 'wood', name: '나무', c: '#c98a4b', m: 'wood' },
+  { id: 'stone', name: '돌', c: '#b8bcc6', m: 'stone' },
+  { id: 'glass', name: '유리', c: '#bfe9ff', k: 'glass' },
+  { id: 'neon', name: '빛나는', c: '#7dfcff', m: 'neon' },
+  { id: 'gold', name: '황금', c: '#ffd23f', m: 'gold' },
+  { id: 'ice', name: '얼음', c: '#bdefff', k: 'ice' },
+  { id: 'bounce', name: '점프대', c: '#40ff8a', k: 'bounce', m: 'neon' },
+  { id: 'ladder', name: '사다리', c: '#a0612f', k: 'ladder', m: 'wood' },
+];
+export const cellKey = (i, j, k) => `${i},${j},${k}`;
+export const cellCenter = (i, j, k) => [(i + 0.5) * TOWER.CELL, (j + 0.5) * TOWER.CELL, (k + 0.5) * TOWER.CELL];
+export const inTower = (i, j, k) => [i, j, k].every(Number.isInteger) && i >= TOWER.MIN && i <= TOWER.MAX && k >= TOWER.MIN && k <= TOWER.MAX && j >= 0 && j <= TOWER.TOP;
+export const towerFloor = y => Math.max(0, Math.floor((y + 0.05) / TOWER.CELL));
+
+// 저장이나 네트워크에서 온 블록 목록 정리: 칸 안, 겹치지 않게, 500개까지
+export function cleanTowerBlocks(list, limit = TOWER.LIMIT) {
+  const out = [], seen = new Set();
+  if (!Array.isArray(list)) return out;
+  for (const b of list) {
+    if (!Array.isArray(b) || b.length < 4) continue;
+    const [i, j, k, t] = b;
+    if (!inTower(i, j, k) || !Number.isInteger(t) || t < 0 || t >= BLOCKS.length) continue;
+    const key = cellKey(i, j, k);
+    if (seen.has(key)) continue;
+    seen.add(key); out.push([i, j, k, t]);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+// 네트워크로 보낼 때는 숫자 배열 하나로 (글자열 없음)
+export const packBlocks = blocks => blocks.flat();
+export function unpackBlocks(flat) {
+  if (!Array.isArray(flat)) return [];
+  const list = [];
+  for (let n = 0; n + 3 < flat.length; n += 4) list.push(flat.slice(n, n + 4));
+  return cleanTowerBlocks(list);
 }
