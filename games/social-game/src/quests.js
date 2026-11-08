@@ -852,7 +852,8 @@ export class Day {
     d.id = 'photo';
     const atBeach = this.g.player.pos.x < LAYOUT.beachX;
     const jp = this.g.player.pos.x > 1500;
-    const caption = `${jp ? '🇯🇵 일본 여행' : atBeach ? '🌊 바다' : '📷 찰칵'} · ${this.s.day}일차`;
+    const pz = this.g.player.pose; // 포즈 사진
+    const caption = `${pz ? `${pz.icon} ${pz.name}` : jp ? '🇯🇵 일본 여행' : atBeach ? '🌊 바다' : '📷 찰칵'} · ${this.s.day}일차`;
     d.innerHTML = `<img src="${url}" alt="사진"><div>${caption}</div>`;
     this.g.album?.add(url, caption);
     document.body.appendChild(d);

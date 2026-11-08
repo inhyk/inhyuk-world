@@ -105,6 +105,16 @@
 - 움직임과 일정 `src/wildlife.js`, 소리(훅훅, 그르렁, 으르렁)는 `src/audio.js` 에서 코드로 만든다.
 - 혼자 보기: `viewer.html?mod=props/bear&fn=bearPose&args={"mode":"stand"}` (mode: idle, walk, run, sniff, stand, sit)
 
+## 포즈 (2026-11-08, 인혁: "여러가지 포즈도 할 수 있게 해줘")
+
+- `B` 또는 왼쪽 아래 "🙋 포즈" 버튼 → 포즈 14개 중에서 클릭하거나 숫자 키(1~9, 0)로 고른다. 메뉴가 닫혀 있을 때 1~9 는 그대로 블럭 고르기다.
+- 포즈: 👋 손 흔들기, ✌️ 브이, 🫶 하트(머리 위), 🙌 만세, 👏 박수, 🙇 인사(꾸벅), 💃 춤추기, 🧘 앉기(바닥), 😴 눕기, 🤸 점프(팔다리 벌려 뛰기), 🤔 생각하기, 🦸 슈퍼히어로, 🫡 경례, 😤 화남(발 구르기). 손 흔들기, 박수, 인사, 춤, 점프, 화남은 계속 움직이고 나머지는 그 자세로 있는다.
+- 포즈를 하면 카메라가 내 앞으로 가서 내 모습이 보인다. 마우스로 빙글 돌려 보고 `P` 로 사진을 찍으면 갤러리에 "🫶 하트 · 1일차" 처럼 들어간다. 걷기(WASD), 점프(Space), `B` 나 버튼을 다시 누르면 끝나고 원래 시점(1인칭/3인칭)으로 돌아간다.
+- 운전, 친구 차 타기, 자리에 앉아 있을 때, 미니게임, 엘리베이터, 비행기에서는 못 한다.
+- 같이 사는 동네: 다른 사람에게도 내 포즈가 보인다. 늘 보내는 위치 신호의 마지막 칸(`packPose` 8번째 칸)에 "-포즈 번호"를 싣는다(따로 보내는 메시지 없음, 서버는 그대로). 예전 게임은 음수를 "안 탐"으로 읽어서 그냥 서 있는 모습으로 보인다.
+- 코드: 목록과 번호 `poses.mjs`(`poses.test.mjs`), 움직임 `src/props/character.js` 의 `pose:<id>` 모드(손은 두 뼈 IK 로 턱, 허리, 머리 위에 놓는다), 카메라 `src/player.js` 의 `startPose`/`poseCamera`
+- 혼자 보기: `viewer.html?mod=props/character&fn=characterPoses&cam=0,1,-5.6&target=0,0.85,0` · 검사: `node games/social-game/pose-check.mjs http://127.0.0.1:5173/ /tmp/social-poses`
+
 ## 새 버전 알림 (2026-11-08, 인혁이 계획 6-3)
 
 - 인혁이가 "햄찌 영화에서(다른 것도 마찬가지) 이렇게만 나와"라고 옛날 이모지 영화(🐹 🌻)를 그렸다. 사이트에는 진짜 영화만 있었으니, 업데이트 전에 열어 둔 창에서 한 것으로 봤다.
@@ -114,7 +124,7 @@
 
 - WASD 걷기, Shift 달리기, Space 점프, 마우스 둘러보기
 - 왼쪽 클릭 꾹 깨기, 오른쪽 클릭 놓기, 1~9 또는 휠로 블럭 고르기, R 돌리기
-- E 사용(문, 차, 침대, 세면대...), V 시점, M 큰 지도, P 사진, H 도움말
+- E 사용(문, 차, 침대, 세면대...), V 시점, M 큰 지도, P 사진, B 포즈, H 도움말
 - 차: W S 가속과 브레이크, A D 핸들, Space 급브레이크, F 경적, E 내리기
 
 ## 같이 사는 동네 (멀티플레이, 2026-11-05)
@@ -178,6 +188,7 @@ node games/social-game/browser-check.mjs http://127.0.0.1:5173/ /tmp/social-shot
 node games/social-game/kid-check.mjs http://127.0.0.1:5173/ /tmp/social-kid
 node games/social-game/show-check.mjs http://127.0.0.1:5173/ /tmp/social-show   # 분수 광장과 공연 (약 3분)
 node games/social-game/bear-check.mjs http://127.0.0.1:5173/ /tmp/social-bear
+node games/social-game/pose-check.mjs http://127.0.0.1:5173/ /tmp/social-poses    # 포즈 14개 (사진 한 장씩)
 node games/social-game/job-check.mjs http://127.0.0.1:5173/ /tmp/social-jobs            # 직업 하나만: 끝에 police,fire
 # 로그인과 같이 사는 동네는 로컬 net 서버가 있어야 한다 (저장소 AGENTS.md "시험해 보기" 1번). 계정을 2~3개 만든다.
 node games/social-game/login-check.mjs http://127.0.0.1:5173/ /tmp/social-login
