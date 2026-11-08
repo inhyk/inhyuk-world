@@ -990,39 +990,49 @@ export function buildSurvival() {
 }
 
 // ───────────────────────── 하늘 타워 짓기 ─────────────────────────
-// 가운데 돌판(24×24칸)에 블록을 놓아 타워를 짓는다. 블록은 src/tower.js 가 만든다.
-export function buildTower() {
+// 돌판(24×24칸)이 6개. 혼자면 가운데(0번)가 내 땅, 친구 방에서는 들어온 순서(p1 → 0번)대로 각자 다른 땅에 짓는다.
+// 블록과 이름표, 무지개 카펫은 src/tower.js 가 만든다.
+export const TOWER_SLOTS = [[0, 0], [60, 0], [-60, 0], [0, -60], [60, -60], [-60, -60]];
+export const TOWER_HALF = ((TOWER.MAX - TOWER.MIN + 1) * TOWER.CELL) / 2;
+export const carpetHome = slot => { const [sx, sz] = TOWER_SLOTS[slot]; return [sx, 0, sz + TOWER_HALF + 2.6]; };
+
+export function buildTower({ slot = 0 } = {}) {
   const parts = [], signs = [], effects = [], coins = [];
-  const C = TOWER.CELL, half = ((TOWER.MAX - TOWER.MIN + 1) * C) / 2;
+  const C = TOWER.CELL, half = TOWER_HALF;
+  const [mx, mz] = TOWER_SLOTS[slot];
   // 풀밭은 돌판(윗면 0)보다 0.3 낮게: 같은 높이면 돌판이 풀에 묻혀 안 보인다
-  parts.push({ x: 0, y: -3.3, z: 0, w: 150, h: 6, d: 150, c: '#7fcf5f', m: 'grass', round: 1.2, shadow: false });
-  parts.push({ x: 0, y: -3.15, z: 0, w: 164, h: 5.2, d: 164, c: '#f5dfa6', m: 'sand', round: 2, shadow: false });
+  parts.push({ x: 0, y: -3.3, z: -26, w: 186, h: 6, d: 136, c: '#7fcf5f', m: 'grass', round: 1.2, shadow: false });
+  parts.push({ x: 0, y: -3.15, z: -26, w: 200, h: 5.2, d: 150, c: '#f5dfa6', m: 'sand', round: 2, shadow: false });
   parts.push({ x: 0, y: -1.1, z: 0, w: 1600, h: 0.2, d: 1600, c: '#33a6ff', m: 'water', deco: true, shadow: false, round: 0 });
-  for (const [x, z, w, d] of [[0, -82, 170, 2], [0, 82, 170, 2], [-82, 0, 2, 170], [82, 0, 2, 170]]) parts.push({ x, y: 4, z, w, h: 12, d, hidden: true });
-  // 짓는 돌판: 윗면이 정확히 0 (블록 0층이 0~2)
-  parts.push({ x: 0, y: -0.24, z: 0, w: half * 2 + 1.2, h: 0.4, d: half * 2 + 1.2, c: '#21c7b8', round: 0.12, shadow: false });
-  parts.push({ x: 0, y: -0.15, z: 0, w: half * 2, h: 0.3, d: half * 2, c: '#eef3f6', m: 'grid', round: 0.02, shadow: false });
-  // 높이 재는 기둥 (10층마다 표지판)
-  const px = half + 3.5, pz = -half - 3.5;
-  parts.push({ x: px, y: (TOWER.TOP + 1) * C / 2, z: pz, w: 0.9, h: (TOWER.TOP + 1) * C, d: 0.9, c: '#ffffff', shape: 'cyl' });
-  for (let f = 10; f <= TOWER.TOP + 1; f += 10) {
-    parts.push({ x: px, y: f * C, z: pz, w: 1.6, h: 0.3, d: 1.6, c: f % 50 ? '#21c7b8' : '#ffd23f', m: 'neon', shape: 'cyl', deco: true, shadow: false });
-    signs.push({ x: px - 1.0, y: f * C + 0.9, z: pz + 1.0, ry: -Math.PI / 4, w: 2.6, h: 1.1, lines: [`${f}층`], bg: f % 50 ? '#ffffff' : '#ffd23f', fg: '#1b4d4a', sizes: [90], double: true });
-  }
-  signs.push({ x: 0, y: 3.3, z: half + 5.2, ry: 0, w: 9.5, h: 3.2, lines: ['🏗️ 하늘 타워 짓기', '클릭: 블록 놓기 · 오른쪽 클릭: 부수기', '내가 쌓은 블록을 밟고 올라가서 더 높이!'], bg: '#ffffff', fg: '#1b4d4a', accent: '#21c7b8', sizes: [76, 46, 46] });
-  parts.push({ x: 0, y: 1.6, z: half + 5.3, w: 0.5, h: 3.2, d: 0.5, c: '#8b5a3c', m: 'wood', deco: true });
-  // 광장으로
-  effects.push({ type: 'portal', x: -half - 7, y: 2.6, z: half - 2, w: 3.4, h: 4.4, color: '#3fa7ff', ry: Math.PI / 2 });
-  parts.push({ x: -half - 7, y: 0.15, z: half - 2, w: 4, h: 0.3, d: 5, c: '#ffffff' });
-  signs.push({ x: -half - 6.6, y: 5.6, z: half - 2, ry: Math.PI / 2, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
-  const zones = [{ x0: -half - 8, x1: -half - 6, y0: 0.3, y1: 5, z0: half - 4, z1: half }];
-  zones[0].portal = 0;
-  // 나무
+  for (const [x, z, w, d] of [[0, -100, 206, 2], [0, 48, 206, 2], [-101, -26, 2, 150], [101, -26, 2, 150]]) parts.push({ x, y: 4, z, w, h: 12, d, hidden: true });
+  TOWER_SLOTS.forEach(([sx, sz], n) => {
+    const mine = n === slot;
+    // 짓는 돌판: 윗면이 정확히 0 (블록 0층이 0~2)
+    parts.push({ x: sx, y: -0.24, z: sz, w: half * 2 + 1.2, h: 0.4, d: half * 2 + 1.2, c: mine ? '#21c7b8' : '#9aa3b5', round: 0.12, shadow: false });
+    parts.push({ x: sx, y: -0.15, z: sz, w: half * 2, h: 0.3, d: half * 2, c: mine ? '#eef3f6' : '#e3e6ec', m: 'grid', round: 0.02, shadow: false });
+    // 높이 재는 기둥 (내 땅에만 10층마다 표지판)
+    const px = sx + half + 3.5, pz = sz - half - 3.5;
+    parts.push({ x: px, y: (TOWER.TOP + 1) * C / 2, z: pz, w: 0.9, h: (TOWER.TOP + 1) * C, d: 0.9, c: '#ffffff', shape: 'cyl' });
+    for (let f = 10; f <= TOWER.TOP + 1; f += 10) {
+      parts.push({ x: px, y: f * C, z: pz, w: 1.6, h: 0.3, d: 1.6, c: f % 50 ? '#21c7b8' : '#ffd23f', m: 'neon', shape: 'cyl', deco: true, shadow: false });
+      if (mine) signs.push({ x: px - 1.0, y: f * C + 0.9, z: pz + 1.0, ry: -Math.PI / 4, w: 2.6, h: 1.1, lines: [`${f}층`], bg: f % 50 ? '#ffffff' : '#ffd23f', fg: '#1b4d4a', sizes: [90], double: true });
+    }
+  });
+  signs.push({ x: mx + 7, y: 3.3, z: mz + half + 5.6, ry: 0, w: 9.5, h: 3.2, lines: ['🏗️ 하늘 타워 짓기', '클릭: 블록 놓기 · 오른쪽 클릭: 부수기', '🌈 무지개 카펫을 타면 꼭대기까지!'], bg: '#ffffff', fg: '#1b4d4a', accent: '#21c7b8', sizes: [76, 46, 46] });
+  parts.push({ x: mx + 7, y: 1.6, z: mz + half + 5.7, w: 0.5, h: 3.2, d: 0.5, c: '#8b5a3c', m: 'wood', deco: true });
+  // 광장으로 (내 땅 앞 왼쪽)
+  const gx = mx - 13, gz = mz + half + 6;
+  effects.push({ type: 'portal', x: gx, y: 2.4, z: gz, w: 3.4, h: 4.2, color: '#3fa7ff', ry: Math.PI / 2 });
+  parts.push({ x: gx, y: 0, z: gz, w: 4, h: 0.3, d: 5, c: '#ffffff' });
+  signs.push({ x: gx + 0.4, y: 5.4, z: gz, ry: Math.PI / 2, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
+  const zones = [{ x0: gx - 1, x1: gx + 1, y0: 0, y1: 5, z0: gz - 2.2, z1: gz + 2.2, portal: 0 }];
+  // 나무 (돌판과 그 앞은 피해서)
   const rnd = seeded(404);
-  for (let n = 0, tries = 0; n < 34 && tries < 300; tries++) {
-    const x = (rnd() - 0.5) * 140, z = (rnd() - 0.5) * 140;
-    if (Math.abs(x) < half + 8 && Math.abs(z) < half + 9) continue;
+  const busy = (x, z) => TOWER_SLOTS.some(([sx, sz]) => Math.abs(x - sx) < half + 9 && z > sz - half - 9 && z < sz + half + 12);
+  for (let n = 0, tries = 0; n < 40 && tries < 500; tries++) {
+    const x = (rnd() - 0.5) * 176, z = -26 + (rnd() - 0.5) * 126;
+    if (busy(x, z)) continue;
     tree(parts, x, z, rnd); n++;
   }
-  return { parts, signs, effects, zones, coins, npcs: [], spawn: { x: 0, y: 0.1, z: half + 8, yaw: Math.PI }, sky: 'tower', killY: -15 };
+  return { parts, signs, effects, zones, coins, npcs: [], spawn: { x: mx, y: 0.1, z: mz + half + 9, yaw: Math.PI }, sky: 'tower', killY: -15 };
 }
