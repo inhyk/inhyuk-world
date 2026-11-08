@@ -53,6 +53,7 @@ export class Battle {
     this.phases = zonePhases(1);
     this.zone = zoneAt(this.phases, 0);
     this.participants = [];
+    this.buildGrid();
     this.makeZone();
     this.makeHud();
     this.bind();
@@ -62,6 +63,28 @@ export class Battle {
     game.myAvatar.aim = true;
     this.updateHud();
   }
+
+  // 섬이 커서 블록이 많다: 16칸씩 나눠 두고 가까운 것만 살핀다 (봇 움직임, 보기, 쏘기)
+  buildGrid() {
+    const C = 16, grid = new Map(), big = [];
+    for (const b of this.game.world.boxes) {
+      const i0 = Math.floor(b.x0 / C), i1 = Math.floor(b.x1 / C), k0 = Math.floor(b.z0 / C), k1 = Math.floor(b.z1 / C);
+      if ((i1 - i0 + 1) * (k1 - k0 + 1) > 64) { big.push(b); continue; }
+      for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) { const key = i * 4096 + k; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(b); }
+    }
+    this.grid = grid; this.bigBoxes = big; this.cell = C; this.stamp = 0;
+  }
+  boxesIn(x0, z0, x1, z1) {
+    const C = this.cell, out = [...this.bigBoxes], st = ++this.stamp;
+    for (let i = Math.floor(Math.min(x0, x1) / C); i <= Math.floor(Math.max(x0, x1) / C); i++) {
+      for (let k = Math.floor(Math.min(z0, z1) / C); k <= Math.floor(Math.max(z0, z1) / C); k++) {
+        const list = this.grid.get(i * 4096 + k);
+        if (list) for (const b of list) if (b._st !== st) { b._st = st; out.push(b); }
+      }
+    }
+    return out;
+  }
+  near(x, z, r = 4) { return this.boxesIn(x - r, z - r, x + r, z + r); }
 
   freshMe() { return { hp: BATTLE.HP, armor: 0, alive: false, weapons: new Set(['pistol']), cur: 'pistol', kills: 0, para: false, outTimer: 0, place: 0 }; }
   get net() { return this.game.net; }
@@ -183,7 +206,7 @@ export class Battle {
       avatar.aim = true;
       this.game.world.group.add(avatar.root);
       const gun = makeGun('pistol'); this.attachGun(avatar, gun);
-      this.bots.push({ avatar, gun, name, pl: newPlayer(BATTLE_LOBBY.x + (rnd() - 0.5) * 16, BATTLE_LOBBY.y + 0.2, BATTLE_LOBBY.z + (rnd() - 0.5) * 16), yaw: rnd() * 6, hp: BATTLE.HP, armor: 0, alive: false, weapon: 'pistol', target: null, think: 0, cool: 0, skill: 0.45 + rnd() * 0.45, goal: null, strafe: rnd() < 0.5 ? 1 : -1, para: false, kills: 0, rnd: seeded(seed * 13 + k), stuck: 0 });
+      this.bots.push({ avatar, gun, name, pl: newPlayer(BATTLE_LOBBY.x + (rnd() - 0.5) * 16, BATTLE_LOBBY.y + 0.2, BATTLE_LOBBY.z + (rnd() - 0.5) * 16), yaw: rnd() * 6, hp: BATTLE.HP, armor: 0, alive: false, weapon: 'pistol', target: null, think: 0, cool: 0, skill: 0.68 + rnd() * 0.3, lastSeen: null, dodge: 0, goal: null, strafe: rnd() < 0.5 ? 1 : -1, para: false, kills: 0, rnd: seeded(seed * 13 + k), stuck: 0 });
     }
   }
 
@@ -228,7 +251,7 @@ export class Battle {
     this.makeBots(nBots, seed);
     const rnd = seeded(seed);
     const spots = [];
-    for (let k = 0; k < list.length + nBots; k++) { const a = rnd() * Math.PI * 2, d = 15 + rnd() * 70; spots.push([Math.cos(a) * d, BATTLE.DROP_Y + rnd() * 6, Math.sin(a) * d]); }
+    for (let k = 0; k < list.length + nBots; k++) { const a = rnd() * Math.PI * 2, d = 20 + rnd() * (BATTLE.ISLAND - 60); spots.push([Math.cos(a) * d, BATTLE.DROP_Y + rnd() * 6, Math.sin(a) * d]); }
     const mine = list.indexOf(this.myId);
     this.me = this.freshMe();
     if (mine >= 0) {
@@ -345,7 +368,7 @@ export class Battle {
       d.x += (Math.random() - 0.5) * 2 * sp; d.y += (Math.random() - 0.5) * 2 * sp; d.z += (Math.random() - 0.5) * 2 * sp;
       d.normalize();
       const so = o.clone().addScaledVector(d, tMin);
-      let best = rayBoxes(so.x, so.y, so.z, d.x, d.y, d.z, this.game.world.boxes, w.range);
+      let best = rayBoxes(so.x, so.y, so.z, d.x, d.y, d.z, this.boxesIn(so.x, so.z, so.x + d.x * w.range, so.z + d.z * w.range), w.range);
       let target = null;
       this.bots.forEach((b, k) => {
         if (!b.alive) return;
@@ -391,7 +414,7 @@ export class Battle {
     if (dist > w.range) return;
     let hits = 0;
     for (let n = 0; n < w.pellets; n++) {
-      const chance = 0.62 * b.skill * Math.max(0.05, 1 - dist / (w.range * 1.1)) * (target.moving ? 0.7 : 1) * (w.id === 'shotgun' ? 0.7 : 1);
+      const chance = 0.9 * b.skill * Math.max(0.12, 1 - dist / (w.range * 1.3)) * (target.moving ? 0.82 : 1) * (w.id === 'shotgun' ? 0.8 : 1);
       const hit = b.rnd() < chance;
       if (hit) hits++;
       const miss = hit ? new THREE.Vector3() : new THREE.Vector3((b.rnd() - 0.5) * 3, (b.rnd() - 0.5) * 2, (b.rnd() - 0.5) * 3);
@@ -407,24 +430,26 @@ export class Battle {
 
   sees(ax, ay, az, bx, by, bz) {
     const dx = bx - ax, dy = by - ay, dz = bz - az, d = Math.hypot(dx, dy, dz) || 1;
-    return rayBoxes(ax, ay, az, dx / d, dy / d, dz / d, this.game.world.boxes, d) >= d - 0.5;
+    return rayBoxes(ax, ay, az, dx / d, dy / d, dz / d, this.boxesIn(ax, az, bx, bz), d) >= d - 0.5;
   }
 
+  // 봇 (2026-11-08 인혁: "ai가 너무 못해" → 더 잘 맞히고, 쫓아오고, 피하고, 좋은 무기와 회복을 챙긴다)
   botBrain(b, k, dt) {
     const pl = b.pl;
-    b.think -= dt; b.cool -= dt;
+    const RANK = { pistol: 0, shotgun: 1, sniper: 2, rifle: 3 };
+    b.think -= dt; b.cool -= dt; b.dodge -= dt;
     // 볼 수 있는 가장 가까운 적
     if (b.think <= 0) {
-      b.think = 0.35 + b.rnd() * 0.3;
-      let best = null, bd = 46;
+      b.think = 0.25 + b.rnd() * 0.2;
+      let best = null, bd = 62;
       const consider = (t) => { const d = Math.hypot(t.x - pl.x, t.z - pl.z); if (d < bd && this.sees(pl.x, pl.y + 1.7, pl.z, t.x, t.y + 1.3, t.z)) { bd = d; best = t; } };
       const me = this.game.player;
       if (this.me.alive && !this.me.para) consider({ x: me.x, y: me.y, z: me.z, me: true, moving: Math.hypot(me.vx, me.vz) > 2 });
       this.bots.forEach((o, j) => { if (j !== k && o.alive && !o.para) consider({ x: o.pl.x, y: o.pl.y, z: o.pl.z, bot: j, moving: Math.hypot(o.pl.vx, o.pl.vz) > 2 }); });
       for (const [id, s] of this.rs) { const r = this.game.remotes.get(id); if (s.alive && r && r.w === 5) consider({ x: r.x, y: r.y, z: r.z, id, moving: r.speed > 2 }); }
-      if (best && !b.target) b.cool = Math.max(b.cool, 0.5 + (1 - b.skill) * 0.8); // 처음 봤을 때 반응 시간
+      if (best && !b.target) b.cool = Math.max(b.cool, 0.22 + (1 - b.skill) * 0.45); // 처음 봤을 때 반응 시간
+      if (best) b.lastSeen = { x: best.x, z: best.z, until: this.t + 8 };
       b.target = best;
-      if (b.rnd() < 0.08) b.strafe *= -1;
     }
     let mx = 0, mz = 0, jump = false;
     const z = this.zone;
@@ -432,36 +457,47 @@ export class Battle {
     if (b.target) {
       const t = b.target, dx = t.x - pl.x, dz = t.z - pl.z, d = Math.hypot(dx, dz) || 1;
       b.yaw = Math.atan2(dx, dz);
-      const want = { pistol: 16, rifle: 22, shotgun: 7, sniper: 40 }[b.weapon];
-      const fwd = d > want + 4 ? 1 : d < want - 4 ? -0.6 : 0;
-      mx = (dx / d) * fwd + (-dz / d) * b.strafe * 0.8; mz = (dz / d) * fwd + (dx / d) * b.strafe * 0.8;
-      // 처음 20초는 쏘지 않는다 (내려와서 블래스터를 주울 시간)
-      if (b.cool <= 0 && !b.para && this.t > 20) { this.botShoot(b, k, t); const w = WEAPONS[WI[b.weapon]]; b.cool = (1 / w.rate) * (1.7 + (1 - b.skill) * 1.6); }
+      const want = { pistol: 14, rifle: 20, shotgun: 6, sniper: 38 }[b.weapon];
+      const fwd = d > want + 3 ? 1 : d < want - 3 ? -0.7 : 0;
+      // 좌우로 자주 바꾸며 움직이고 가끔 점프해서 맞히기 어렵게
+      if (b.dodge <= 0) { b.dodge = 0.5 + b.rnd() * 0.9; b.strafe = b.rnd() < 0.5 ? 1 : -1; if (b.rnd() < 0.25 * b.skill) jump = true; }
+      mx = (dx / d) * fwd + (-dz / d) * b.strafe; mz = (dz / d) * fwd + (dx / d) * b.strafe;
+      // 처음 12초는 쏘지 않는다 (내려와서 블래스터를 주울 시간)
+      if (b.cool <= 0 && !b.para && this.t > 12) { this.botShoot(b, k, t); const w = WEAPONS[WI[b.weapon]]; b.cool = (1 / w.rate) * (1.12 + (1 - b.skill) * 0.9); }
     } else {
-      // 아이템 주우러, 구역 안으로, 아니면 돌아다니기
+      const g = b.goal;
       if (out) b.goal = { x: z.x + (b.rnd() - 0.5) * z.r * 0.5, z: z.z + (b.rnd() - 0.5) * z.r * 0.5 };
-      else if (b.weapon === 'pistol' && (!b.goal || b.goal.loot === undefined)) {
-        let near = null, nd = 35;
-        for (const l of this.loot) if (!l.taken && l.kind === 'weapon') { const d = Math.hypot(l.x - pl.x, l.z - pl.z); if (d < nd && Math.abs(l.y - pl.y) < 3) { nd = d; near = l; } }
+      else if (!g || g.loot === undefined) {
+        // 챙기기: 체력이 낮으면 회복, 방패가 없으면 방패, 더 좋은 블래스터
+        let near = null, nd = Infinity;
+        for (const l of this.loot) {
+          if (l.taken || Math.abs(l.y - pl.y) > 3) continue;
+          const d = Math.hypot(l.x - pl.x, l.z - pl.z);
+          const want = (l.kind === 'heal' && b.hp < 65 && d < 32) || (l.kind === 'shield' && b.armor < 40 && d < 32) || (l.kind === 'weapon' && RANK[l.id] > RANK[b.weapon] && d < 48);
+          if (want && d < nd) { nd = d; near = l; }
+        }
         if (near) b.goal = { x: near.x, z: near.z, loot: near.i };
+        else if (b.lastSeen && this.t < b.lastSeen.until) b.goal = { x: b.lastSeen.x, z: b.lastSeen.z, hunt: true }; // 숨은 적 쫓기
       }
-      if (!b.goal || Math.hypot(b.goal.x - pl.x, b.goal.z - pl.z) < 2) b.goal = { x: z.x + (b.rnd() - 0.5) * z.r, z: z.z + (b.rnd() - 0.5) * z.r };
+      if (b.goal?.loot !== undefined && this.loot.find(l => l.i === b.goal.loot)?.taken) b.goal = null;
+      if (!b.goal || Math.hypot(b.goal.x - pl.x, b.goal.z - pl.z) < 2) { if (b.goal?.hunt) b.lastSeen = null; b.goal = { x: z.x + (b.rnd() - 0.5) * z.r, z: z.z + (b.rnd() - 0.5) * z.r }; }
       const dx = b.goal.x - pl.x, dz = b.goal.z - pl.z, d = Math.hypot(dx, dz) || 1;
       mx = dx / d; mz = dz / d;
       if (Math.hypot(pl.vx, pl.vz) > 0.5) b.yaw = Math.atan2(pl.vx, pl.vz);
     }
-    if (b.stuck > 0.5) { jump = true; b.stuck = 0; if (b.goal && b.rnd() < 0.5) b.goal = null; }
+    if (b.stuck > 0.4) { jump = true; b.stuck = 0; if (b.goal && b.rnd() < 0.5) b.goal = null; b.strafe *= -1; }
     if (b.para) { pl.vy = Math.max(pl.vy, BATTLE.FALL); mx *= 0.6; mz *= 0.6; }
     const before = [pl.x, pl.z];
-    const ev = stepPlayer(pl, { mx, mz, jump }, this.game.world.boxes, dt);
+    const ev = stepPlayer(pl, { mx, mz, jump }, this.near(pl.x, pl.z), dt);
     if (ev.wall && Math.hypot(pl.x - before[0], pl.z - before[1]) < 0.02) b.stuck += dt; else b.stuck = Math.max(0, b.stuck - dt);
     if (b.para && pl.ground) { b.para = false; if (b.chute) b.chute.visible = false; }
-    // 줍기
+    // 줍기 (블래스터는 더 좋은 것만)
     for (const l of this.loot) {
       if (l.taken || Math.hypot(l.x - pl.x, l.z - pl.z) > 1.6 || Math.abs(l.y - pl.y) > 2) continue;
-      if (l.kind === 'weapon' && WI[l.id] !== WI[b.weapon]) { b.weapon = l.id; disposeObj(b.gun); b.gun = makeGun(l.id); this.attachGun(b.avatar, b.gun); this.takeLoot(l, 'bot'); this.out.take = (this.out.take ?? []).concat(l.i); if (b.goal?.loot === l.i) b.goal = null; }
-      else if (l.kind === 'heal' && b.hp < BATTLE.HP) { b.hp = Math.min(BATTLE.HP, b.hp + l.amount); this.takeLoot(l, 'bot'); this.out.take = (this.out.take ?? []).concat(l.i); }
-      else if (l.kind === 'shield' && b.armor < BATTLE.ARMOR) { b.armor = Math.min(BATTLE.ARMOR, b.armor + l.amount); this.takeLoot(l, 'bot'); this.out.take = (this.out.take ?? []).concat(l.i); }
+      const take = () => { this.takeLoot(l, 'bot'); this.out.take = (this.out.take ?? []).concat(l.i); if (b.goal?.loot === l.i) b.goal = null; };
+      if (l.kind === 'weapon' && RANK[l.id] > RANK[b.weapon]) { b.weapon = l.id; disposeObj(b.gun); b.gun = makeGun(l.id); this.attachGun(b.avatar, b.gun); take(); }
+      else if (l.kind === 'heal' && b.hp < BATTLE.HP) { b.hp = Math.min(BATTLE.HP, b.hp + l.amount); take(); }
+      else if (l.kind === 'shield' && b.armor < BATTLE.ARMOR) { b.armor = Math.min(BATTLE.ARMOR, b.armor + l.amount); take(); }
     }
     // 구역 밖
     if (!b.para && outsideZone(z, pl.x, pl.z)) this.hurtBot(k, z.dps * dt, -999);
@@ -656,7 +692,11 @@ export class Battle {
     this.tracers = this.tracers.filter(t => { t.life -= dt; t.line.material.opacity = Math.max(0, t.life / 0.12); if (t.life <= 0) { t.line.removeFromParent(); t.line.geometry.dispose(); t.line.material.dispose(); return false; } return true; });
     // 아이템 빙글빙글
     const now = performance.now() / 1000;
-    for (const l of this.loot) if (!l.taken) { l.mesh.rotation.y = now * 1.6 + l.i; l.mesh.position.y = l.y + 0.35 + Math.sin(now * 2.5 + l.i) * 0.12; }
+    const ppl = this.game.player;
+    for (const l of this.loot) {
+      l.mesh.visible = !l.taken && Math.abs(l.x - ppl.x) < 90 && Math.abs(l.z - ppl.z) < 90;
+      if (l.mesh.visible) { l.mesh.rotation.y = now * 1.6 + l.i; l.mesh.position.y = l.y + 0.35 + Math.sin(now * 2.5 + l.i) * 0.12; }
+    }
     // 안전 구역 모습
     const z = this.zone;
     const playing = this.state !== 'lobby';

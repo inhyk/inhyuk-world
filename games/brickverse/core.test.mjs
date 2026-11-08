@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -287,7 +287,7 @@ test('배틀: 방패가 먼저 줄고, 체력은 0 아래로 안 간다', () => 
 
 test('배틀: 안전 구역은 점점 작아지고 다음 원은 앞 원 안에 있다', () => {
   const ph = zonePhases(42);
-  assert.equal(ph.length, 5);
+  assert.equal(ph.length, 6);
   for (const p of ph) {
     assert.ok(p.to.r < p.from.r);
     assert.ok(Math.hypot(p.to.x - p.from.x, p.to.z - p.from.z) + p.to.r <= p.from.r + 1e-6);
@@ -296,7 +296,7 @@ test('배틀: 안전 구역은 점점 작아지고 다음 원은 앞 원 안에 
   assert.equal(z0.r, BATTLE.R0);
   assert.ok(mid.r < z0.r && mid.r > ph[0].to.r && mid.shrinking);
   assert.equal(last.r, 0);
-  assert.ok(outsideZone(z0, 200, 0) && !outsideZone(z0, 0, 0));
+  assert.ok(outsideZone(z0, BATTLE.R0 + 10, 0) && !outsideZone(z0, 0, 0));
 });
 
 test('배틀: 광선이 몸에 맞는다, 코인 계산', () => {
@@ -304,4 +304,14 @@ test('배틀: 광선이 몸에 맞는다, 코인 계산', () => {
   assert.equal(rayBody(0, 1, -10, 0, 0, 1, 5, 0, 0), Infinity);
   assert.equal(battleCoins(1, 3), 15 + 24 + 30);
   assert.equal(battleCoins(12, 0), 2);
+});
+
+test('배틀: 탄창과 재장전, 총알 상자', () => {
+  assert.deepEqual(freshAmmo('rifle'), { mag: 30, res: 60 });
+  assert.deepEqual(reloadAmmo({ mag: 4, res: 60 }, 'rifle'), { mag: 30, res: 34 });
+  assert.deepEqual(reloadAmmo({ mag: 0, res: 10 }, 'rifle'), { mag: 10, res: 0 });
+  assert.deepEqual(reloadAmmo({ mag: 0, res: Infinity }, 'pistol'), { mag: 12, res: Infinity });
+  assert.equal(ammoBox('pistol'), 0);
+  assert.equal(ammoBox('shotgun'), 9);
+  assert.ok(WEAPONS.every(w => w.mag > 0 && w.reload > 0));
 });
