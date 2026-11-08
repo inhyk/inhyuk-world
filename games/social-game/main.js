@@ -19,6 +19,7 @@ import { Cinema } from './src/cinema.js';
 import { Jobs } from './src/jobs.js';
 import { JOBS } from './jobs.mjs';
 import { dressTown, dressJapan } from './src/deco.js';
+import { dressEdges } from './src/land.js';
 import { Flight } from './src/flight.js';
 import { Cloud } from './src/cloud.js';
 import { Elevators } from './src/elevator.js';
@@ -97,6 +98,8 @@ async function boot() {
   try { jdeco = dressJapan({ scene: engine.scene, props, build, colliders: col, lights, quality: engine.quality, places }); } catch (e) { console.warn('japan deco failed', e); }
   deco.scatters.push(...jdeco.scatters);
   deco.breakables.push(...jdeco.breakables);
+  // fences, signs and mountain forests at the edge of the land (인혁 계획 6)
+  try { deco.edges = dressEdges({ scene: engine.scene, places }); } catch (e) { console.warn('edges failed', e); }
   pct(80, 'deco'); await frame();
 
   // player, car, people
@@ -292,6 +295,11 @@ async function boot() {
     const dmg = fallDamage(h);
     if (dmg > 0) { hurt(state, dmg); hurtT = 0.6; sfx('hit'); hud.toast(`아야! 체력 -${dmg}`, 1000); }
   };
+  // the fence at the edge of the land (인혁 계획 6)
+  let edgeT = 0;
+  const onEdge = () => { const now = performance.now(); if (now - edgeT > 4000) { edgeT = now; hud.toast('🚧 더 이상 갈 수 없어요', 1800); } };
+  player.onEdge = onEdge;
+  if (vehicle) vehicle.onEdge = onEdge;
   player.onStep = () => sfx('step', { surface: player.pos.x < LAYOUT.beachX ? 'sand' : places.inside(player.pos) ? 'wood' : 'stone' });
   let fainting = false;
   const look = { yaw: 0, pitch: 0 };

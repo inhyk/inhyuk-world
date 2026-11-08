@@ -1,6 +1,7 @@
 // First/third person walker: input, physics against colliders, camera.
 import * as THREE from 'three';
 import { moveBody } from './collide.js';
+import { keepIn } from './world.js';
 
 export const EYE = 1.62, RADIUS = 0.3, HEIGHT = 1.75;
 
@@ -63,6 +64,7 @@ export class Player {
     this.camPos = new THREE.Vector3();
     this.stepTimer = 0;
     this.onStep = null;
+    this.onEdge = null;   // () => void: walked into the fence at the edge of the land
   }
 
   place(x, y, z, yaw = this.yaw) { this.pos.set(x, y, z); this.vel.set(0, 0, 0); this.yaw = yaw; this.pitch = 0; }
@@ -111,6 +113,8 @@ export class Player {
     const r = moveBody(this.col, this.pos, RADIUS, HEIGHT, this.vel.x * dt, this.vel.y * dt, this.vel.z * dt, this.groundAt);
     if (r.hitX) this.vel.x = 0;
     if (r.hitZ) this.vel.z = 0;
+    // the fence at the edge of the land (인혁 계획 6)
+    if (keepIn(this.pos)) { this.vel.x = this.vel.z = 0; this.onEdge?.(); }
     if (r.ceiling) this.vel.y = Math.min(0, this.vel.y);
     if (r.onGround) {
       if (!wasGround && this.fallStart != null) { this.onLand?.(this.fallStart - this.pos.y); }

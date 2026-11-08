@@ -144,6 +144,18 @@
 - 동네 사람은 가까이 갈 때 한 프레임에 한 명씩 만들고, 먼 사람은 장면에서 뺀다. 머리, 손, 머리카락처럼 같은 모양은 한 번만 만든다
 - 코드로 그리는 텍스처는 웹 워커 여러 개가 동시에 만든다 (`texgen.js`, `texworker.js`)
 
+## 땅 끝 (인혁이 계획 6: "언덕 같은 데 계속 가면 나무도 없고 땅도 없어져. 나무랑 땅이 보이게 해 줘")
+
+예전에는 땅 그림이 동네 둘레 몇백 m 에서 끝나고, 나무는 언덕 숲 띠(동네에서 250 m 쯤)까지만 있었다. 그 너머로 가면 나무가 없어지고, 더 가면 땅 그림이 없어서 허공(하늘색, 동쪽은 바다 위)에 떠서 걸었다. 막는 것도 없었다.
+
+- 땅이 계속된다: 울타리 너머 언덕이 숲이 우거진 산으로 높아지고, 산 너머는 바다로 내려가는 섬이 된다. 어디에 서도 안개 끝까지 땅이 보인다 (`world.js` 의 `EDGE`, `groundAt`)
+- 땅 그림은 256 m 칸으로 만들고, 걸을 수 있는 곳은 4 m, 먼 산은 8 m, 16 m 로 성기게 만든다. 칸 사이 틈은 아래로 늘어뜨린 치마로 가리고, 512 m 덩어리로 합쳐서 화면 밖이나 안개 속 덩어리(먼 섬)는 안 그린다. 다 바다 밑인 칸은 안 만든다
+- 울타리: 동네 둘레 330 m 언덕에 나무 울타리와 "🚧 멈춰요! 더 이상 갈 수 없어요" 표지판, 바다는 400 m 쯤에 주황 부표. 걸어도 차로 가도 거기서 멈추고 "더 이상 갈 수 없어요" 알림이 뜬다 (`keepIn`). 일본 섬도 같다 (200 m, 남쪽 바다는 부표)
+- 나무: 울타리 안 언덕에 숲 덩어리와 풀밭(나무, 덤불, 바위, 꽃은 다른 것처럼 깰 수 있다), 울타리 바로 너머에 빽빽한 숲(자세한 나무, 못 깸), 그 너머 산에는 아주 싼 나무(40개쯤 삼각형) 수천 그루를 큰 덩어리로 한 번에 그린다. 매 프레임 할 일은 없다 (`land.js`)
+- 일본 섬의 후지산 배경(안개를 안 먹는다)은 38 m 낮췄다. 산자락이 울타리 너머 언덕을 덮어 허연 들판처럼 보였다
+- 곰 숲(x 400 근처)과 원래 나무 자리는 그대로다. 새 나무는 따로 정한 난수로 맨 뒤에 넣어서, 원래 나무의 이름(같이 사는 동네에서 쓰는 번호)도 그대로다
+- `edge-check.mjs` 가 네 방향과 일본 섬에서 울타리까지 달려 보고, 발밑과 둘레에 땅이 그려져 있는지, 가까이 나무가 있는지, 멀리 순간이동해도 안으로 돌아와 땅 위에 서는지, 차도 울타리 앞에서 멈추는지 본다
+
 ## 파일
 
 - `main.js` 시작, 매 프레임 흐름
@@ -157,7 +169,7 @@
 - `src/wildlife.js` 숲의 반달가슴곰(숲 칸, 날마다 일정, 행동), `src/props/bear.js` 곰 모델과 움직임, `bear-check.mjs` 곰 검사
 - `kid-check.mjs` 어린이 이야기 자동 검사, `job-check.mjs` 직업 6개의 하루 자동 검사, `login-check.mjs` 로그인 검사(로컬 net 서버), `online-check.mjs` 같이 사는 동네 검사(로컬 net 서버, 두 컴퓨터)
 - `src/props/*.js` 자동차, 사람, 나무와 꽃, 가로등과 벤치, 블럭
-- `src/world.js` 땅, 도로, 바다와 건물 자리, `src/deco.js` 나무와 거리 소품 배치
+- `src/world.js` 땅, 도로, 바다와 건물 자리, 땅 끝(`EDGE`, `keepIn`), `src/deco.js` 나무와 거리 소품 배치, `src/land.js` 언덕 숲, 울타리와 표지판, 산의 숲
 - `src/sites/plaza.js` 분수 광장, `src/fountain.js` 분수 물(물줄기, 물방울, 물결, 물속 조명), `src/show.js` 금요일 공연(사람, 조명, 분수 춤, 동전 소원), `src/show-music.js` 공연 노래
 - `src/player.js`, `src/vehicle.js`, `src/build.js`, `src/quests.js`, `src/life.js` 걷기, 운전, 블럭, 하루와 미니게임, 동네 사람과 차
 - `viewer.html` 모델 하나만 보는 개발용 화면 (빌드에는 안 들어감), `tools/shot.mjs` 화면 사진
@@ -173,6 +185,7 @@ node games/social-game/browser-check.mjs http://127.0.0.1:5173/ /tmp/social-shot
 node games/social-game/kid-check.mjs http://127.0.0.1:5173/ /tmp/social-kid
 node games/social-game/show-check.mjs http://127.0.0.1:5173/ /tmp/social-show   # 분수 광장과 공연 (약 3분)
 node games/social-game/bear-check.mjs http://127.0.0.1:5173/ /tmp/social-bear
+node games/social-game/edge-check.mjs http://127.0.0.1:5173/ /tmp/social-edge          # 땅 끝, 울타리, 숲
 node games/social-game/job-check.mjs http://127.0.0.1:5173/ /tmp/social-jobs            # 직업 하나만: 끝에 police,fire
 # 로그인과 같이 사는 동네는 로컬 net 서버가 있어야 한다 (저장소 AGENTS.md "시험해 보기" 1번). 계정을 2~3개 만든다.
 node games/social-game/login-check.mjs http://127.0.0.1:5173/ /tmp/social-login
