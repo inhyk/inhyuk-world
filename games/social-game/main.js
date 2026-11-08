@@ -28,6 +28,7 @@ import { Album } from './src/album.js';
 import { Town } from './src/town.js';
 import { Show } from './src/show.js';
 import { Wildlife } from './src/wildlife.js';
+import { Insects } from './src/insects.js';
 import { prepareStatic } from './src/perf.js';
 import { texReady } from './src/tex.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
@@ -209,6 +210,9 @@ async function boot() {
   // 반달가슴곰 in the forest (인혁: "숲에 곰이 가끔씩 있게 해줘")
   let wildlife = null;
   try { wildlife = new Wildlife({ engine, colliders: col, groundAt, player, vehicle, hud, sfx, state, places, flight, trees: deco.breakables }); } catch (e) { console.warn('wildlife failed', e); }
+  // 곤충 채집 (인혁이 계획: "곤충을 채집할 수 있게 해줘."): B 채집망, K 곤충 도감
+  let insects = null;
+  try { insects = new Insects({ engine, player, input, groundAt, colliders: col, places, state, hud, sfx, build, flight, vehicle, breakables: deco.breakables, scatters: deco.scatters, save: () => save() }); } catch (e) { console.warn('insects failed', e); }
   let fresh = !localStorage.getItem(SAVE_KEY);
   day.wakeUp();
   day.setOutfit(state.outfit);
@@ -303,6 +307,7 @@ async function boot() {
     if (input.hit('KeyL')) openLogin();
     if (input.hit('KeyG') && !day.seat) album.open();
     if (input.hit('KeyP') && !day.seat) day.photo();
+    if (insects && !day.seat) { if (input.hit('KeyB')) insects.toggleNet(); if (input.hit('KeyK')) insects.open(); }
     const driving = vehicle?.driving;
     const riding = town.riding; // 같이 사는 동네: sitting in a friend's car (인혁: "차를 같이 탈 수 있게 해줘")
     flight.update(dt, input);
@@ -354,15 +359,16 @@ async function boot() {
     hud.prompt(prompt);
     if (action && input.hit('KeyE')) action();
     // blocks (on foot, not in menus)
-    build.enabled = !driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && input.locked;
+    build.enabled = !driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && input.locked && !insects?.holding;
+    insects?.canSwing(!driving && !riding && !day.seat && !day.busy && !day.g.jobs?.tool && input.locked);
     if (blocks.length) build.update(dt, input, player.pos);
-    if (player.arm) player.arm.update?.(dt, { swing: build.swing ?? 0, walk: Math.min(1, player.speed / 5) });
+    if (player.arm) player.arm.update?.(dt, { swing: insects?.holding ? 0 : build.swing ?? 0, walk: Math.min(1, player.speed / 5) });
     build.swing = Math.max(0, (build.swing ?? 0) - dt * 3);
-    if (player.arm && build.selectedId && player.arm.hold && player._held !== build.selectedId()) {
-      player._held = build.selectedId();
-      const p = player._held ? build.proto(player._held).clone() : null;
-      if (p) p.scale.setScalar(0.1);
-      player.arm.hold(p);
+    const holdId = insects?.holding ? 'net' : build.selectedId?.();
+    if (player.arm && player.arm.hold && player._held !== holdId) {
+      player._held = holdId;
+      if (holdId === 'net') player.arm.hold(insects.holdItem(player.arm, engine.camera));
+      else { const p = holdId ? build.proto(holdId).clone() : null; if (p) p.scale.setScalar(0.1); player.arm.hold(p); }
     }
     // body, time, world
     const inside = flight.active ? 'plane' : places.inside(player.pos);
@@ -380,6 +386,7 @@ async function boot() {
     places.updateDoors(dt, [player.pos, ...life.walkers.map((w) => w.ch.group.position)], sfx);
     life.update(dt, driving ? null : player.pos, driving ? vehicle.pos : null, night);
     wildlife?.update(dt);
+    insects?.update(dt);
     if (props.nature?.windUniform) props.nature.windUniform.value = t;
     const wn = world.sea.material.normalMap; if (wn) { wn.offset.set(t * 0.004, t * 0.0025); }
     if (world.foam) { world.foam.position.x = LAYOUT.beachX - 27.2 + Math.sin(t * 0.6) * 0.9; world.foam.material.opacity = 0.35 + 0.25 * Math.sin(t * 0.6 + 1); }
@@ -429,7 +436,7 @@ async function boot() {
   engine.start();
   addEventListener('beforeunload', saveLocal);
   setInterval(saveLocal, 15000);
-  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife, jobs: day.g.jobs };
+  window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife, insects, jobs: day.g.jobs };
   window.__ready = true;
 }
 
