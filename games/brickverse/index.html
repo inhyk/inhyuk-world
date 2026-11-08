@@ -128,6 +128,19 @@
   <button id="choose-local" class="pick"><b>📱 이 기기 기록</b><span id="choose-local-text"></span></button>
   <button id="choose-server" class="pick"><b>☁️ 서버 기록</b><span id="choose-server-text"></span></button>
 </dialog>
+<section id="gift" hidden aria-label="돈 주기">
+  <div class="card">
+    <button id="gift-close" class="x" aria-label="닫기">✕</button>
+    <h2>💸 돈 주기</h2>
+    <p class="status">내 돈: <b id="gift-cash">$0</b></p>
+    <p class="small">누구에게 줄까?</p>
+    <div id="gift-people" class="gift-people"></div>
+    <p class="small">얼마나 줄까?</p>
+    <div id="gift-amounts" class="gift-amounts"></div>
+    <button id="gift-send" class="primary wide" disabled>보내기</button>
+    <p class="small">친구 방에 있는 친구에게만 줄 수 있어. 준 돈은 돌려받을 수 없어!</p>
+  </div>
+</section>
 <dialog id="menu">
   <h2>⚙️ 메뉴</h2>
   <button id="menu-sound" class="wide"></button>

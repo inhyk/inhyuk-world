@@ -516,3 +516,11 @@ export function unpackBlocks(flat) {
   for (let n = 0; n + 3 < flat.length; n += 4) list.push(flat.slice(n, n + 4));
   return cleanTowerBlocks(list);
 }
+
+// ───── 타이쿤 돈 주기 (친구 방) ─────
+export const GIFT_AMOUNTS = [100, 1000, 10000, 100000, 1000000];
+export const GIFT_MAX = 1_000_000_000;
+// 받은 선물이 정상인가: 1 이상 GIFT_MAX 이하의 정수, 번호도 정수
+export const validGift = d => Number.isInteger(d?.amt) && d.amt >= 1 && d.amt <= GIFT_MAX && Number.isInteger(d?.n) && d.n > 0;
+// 반 주기: 1달러 이상일 때만
+export const halfOf = cash => Math.max(0, Math.floor(cash / 2));

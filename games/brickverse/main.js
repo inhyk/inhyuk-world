@@ -14,7 +14,7 @@ import { Tower } from './src/tower.js';
 import {
   P, SAVE_KEY, makeBox, placeBox, newPlayer, stepPlayer, clearMotion, segmentDistance, cleanSave, defaultSave,
   HATS, FACES, EMBLEMS, PHRASES, displayName, lookToArray, lookFromArray, packPose, unpackPose,
-  OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS, packBlocks, unpackBlocks, inTower, cellKey, TOWER,
+  OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS, validGift, GIFT_MAX, packBlocks, unpackBlocks, inTower, cellKey, TOWER,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
 
@@ -392,6 +392,37 @@ function sendTower(to) {
   for (let p = 0, n = 0; n < Math.max(1, flat.length); p++, n += step) game.net.sendTo(to, { t: 'tw', a: 0, p, b: flat.slice(n, n + step) });
 }
 
+// ───── 타이쿤 돈 주기 ─────
+// 보내는 사람이 먼저 빼고, 받은 사람이 'gift-ok' 로 답한다. 6초 안에 답이 없으면 돌려받는다.
+const giftsOut = new Map(); // 번호 → { to, amt, timer }
+const giftsIn = new Set();  // "보낸 사람:번호" (같은 선물을 두 번 받지 않게)
+const cash$ = n => `$${Math.floor(n).toLocaleString('ko-KR')}`;
+game.giveMoney = (to, amt) => {
+  const t = game.save.tycoon, r = game.remotes.get(to);
+  amt = Math.floor(amt);
+  if (!r || !game.net.active) { ui.toast('친구가 방에 없어'); return false; }
+  if (!(amt >= 1) || amt > GIFT_MAX) return false;
+  if (t.cash < amt) { sound.nope(); ui.toast(`돈이 모자라! 지금 ${cash$(t.cash)} 있어`); return false; }
+  t.cash -= amt;
+  const n = 1 + Math.floor(Math.random() * 2_000_000_000);
+  const timer = setTimeout(() => {
+    if (!giftsOut.has(n)) return;
+    giftsOut.delete(n);
+    game.save.tycoon.cash += amt;
+    game.persist();
+    ui.toast(`친구에게 전하지 못해서 ${cash$(amt)} 돌려받았어`);
+    if (game.worldId === 2) game.world.runtime?.updateInfo();
+  }, 6000);
+  giftsOut.set(n, { to, amt, timer });
+  game.net.sendTo(to, { t: 'gift', amt, n });
+  sound.cash();
+  ui.toast(`💸 ${r.name} 님에게 ${cash$(amt)} 보냈어!`);
+  ui.log(`나 → ${r.name}: 💵 ${cash$(amt)}`);
+  game.persist();
+  if (game.worldId === 2) game.world.runtime?.updateInfo();
+  return true;
+};
+
 function getRemote(id) {
   let r = game.remotes.get(id);
   if (!r) {
@@ -450,6 +481,25 @@ function onMessage(data, from) {
       if (r.w === game.worldId) r.avatar?.say(PHRASES[i]);
       ui.log(`${r.name}: ${PHRASES[i]}`);
       sound.say();
+      break;
+    }
+    case 'gift': {
+      if (!validGift(data)) return;
+      const key = `${from}:${data.n}`;
+      game.net.sendTo(from, { t: 'gift-ok', n: data.n });
+      if (giftsIn.has(key)) return;
+      giftsIn.add(key);
+      game.save.tycoon.cash += data.amt;
+      game.persist();
+      sound.cash();
+      ui.big(`💵 ${r.name} 님이 ${cash$(data.amt)} 줬어!`, 2600, 'gold');
+      ui.log(`${r.name} → 나: 💵 ${cash$(data.amt)}`);
+      if (game.worldId === 2) game.world.runtime?.updateInfo();
+      break;
+    }
+    case 'gift-ok': {
+      const g = giftsOut.get(data.n);
+      if (g && g.to === from) { clearTimeout(g.timer); giftsOut.delete(data.n); }
       break;
     }
     case 'ty': {

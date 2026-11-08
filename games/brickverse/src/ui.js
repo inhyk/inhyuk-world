@@ -1,5 +1,5 @@
 // 화면 위 글자와 버튼: 코인, 세계 이름, 알림, 옷장, 친구 방, 메뉴, 말하기와 감정 표현.
-import { SKINS, COLORS, HATS, FACES, EMBLEMS, ADJECTIVES, ANIMALS, PHRASES, EMOTES, displayName } from '../core.mjs';
+import { SKINS, COLORS, HATS, FACES, EMBLEMS, ADJECTIVES, ANIMALS, PHRASES, EMOTES, displayName, GIFT_AMOUNTS, halfOf } from '../core.mjs';
 import { faceTexture, emblemTexture } from './avatar.js';
 
 const $ = id => document.getElementById(id);
@@ -28,6 +28,10 @@ export class UI {
     click('btn-emote', () => this.togglePanel('emote'));
     click('wardrobe-done', () => this.closeWardrobe());
     click('friends-close', () => this.closeFriends());
+    click('gift-close', () => this.closeGift());
+    click('gift-send', () => { if (this.giftTo && this.giftAmt && game.giveMoney(this.giftTo, this.giftAmt)) this.closeGift(); else this.renderGift(); });
+    // 타이쿤 돈 칸 안의 버튼 (돈 칸 글자는 자주 다시 그려서 여기서 받는다)
+    this.el.info.addEventListener('click', e => { if (e.target.closest('[data-act="gift"]')) { game.sfx('click'); this.openGift(); } });
     click('room-create', () => game.net.create());
     click('room-join', () => game.net.join($('room-code').value));
     click('room-leave', () => game.net.leave());
@@ -253,6 +257,50 @@ export class UI {
       $('choose-server').onclick = () => done('server');
       d.showModal();
     });
+  }
+
+  // ───── 돈 주기 ─────
+  openGift() {
+    this.game.setShiftLock(false);
+    const friends = [...this.game.remotes.values()].filter(r => r.avatar);
+    if (!this.game.net.active || !friends.length) { this.toast('👥 친구랑 같이에서 방을 만들고 친구가 들어오면 돈을 줄 수 있어', 3600); return; }
+    this.giftTo = friends.some(r => r.id === this.giftTo) ? this.giftTo : friends.length === 1 ? friends[0].id : null;
+    this.giftAmt = 0;
+    document.getElementById('gift').hidden = false;
+    this.game.controlsOff(true);
+    this.renderGift();
+  }
+  closeGift() { document.getElementById('gift').hidden = true; this.game.controlsOff(false); }
+
+  renderGift() {
+    const cash = this.game.save.tycoon.cash;
+    const fmt = n => `$${Math.floor(n).toLocaleString('ko-KR')}`;
+    document.getElementById('gift-cash').textContent = fmt(cash);
+    const people = document.getElementById('gift-people');
+    people.innerHTML = '';
+    for (const r of this.game.remotes.values()) {
+      if (!r.avatar) continue;
+      const b = document.createElement('button');
+      b.textContent = r.name;
+      b.className = r.id === this.giftTo ? 'on' : '';
+      b.addEventListener('click', () => { this.game.sfx('click'); this.giftTo = r.id; this.renderGift(); });
+      people.append(b);
+    }
+    const amounts = document.getElementById('gift-amounts');
+    amounts.innerHTML = '';
+    const list = [...GIFT_AMOUNTS.map(v => [v, fmt(v)]), [halfOf(cash), `반 (${fmt(halfOf(cash))})`]];
+    for (const [v, label] of list) {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.disabled = v < 1 || v > cash;
+      b.className = v === this.giftAmt && v > 0 ? 'on' : '';
+      b.addEventListener('click', () => { this.game.sfx('click'); this.giftAmt = v; this.renderGift(); });
+      amounts.append(b);
+    }
+    const send = document.getElementById('gift-send');
+    const who = this.game.remotes.get(this.giftTo);
+    send.disabled = !who || !(this.giftAmt >= 1) || this.giftAmt > cash;
+    send.textContent = who && this.giftAmt ? `${who.name} 님에게 ${fmt(this.giftAmt)} 보내기` : '보내기';
   }
 
   // ───── 친구 방 ─────
