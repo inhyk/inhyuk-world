@@ -559,7 +559,14 @@ export const WEAPONS = [
   { id: 'shotgun', name: '샷건 블래스터', dmg: 9, rate: 1.1, spread: 0.085, range: 30, pellets: 7, auto: false, color: '#5ad16b', icon: '💥', mag: 6, reload: 2.2, start: 12 },
   { id: 'sniper', name: '저격 블래스터', dmg: 70, rate: 0.75, spread: 0.0015, range: 220, pellets: 1, auto: false, color: '#9b5cff', icon: '🎯', zoom: true, mag: 5, reload: 2.4, start: 10 },
 ];
-export const LOOT = [...WEAPONS.slice(1).map(w => ({ kind: 'weapon', id: w.id })), { kind: 'heal', id: 'juice', amount: 35 }, { kind: 'shield', id: 'shield', amount: 50 }, { kind: 'ammo', id: 'ammo' }];
+export const LOOT = [...WEAPONS.slice(1).map(w => ({ kind: 'weapon', id: w.id })), { kind: 'heal', id: 'juice', amount: 35 }, { kind: 'shield', id: 'shield', amount: 50 }, { kind: 'ammo', id: 'ammo' }, { kind: 'helmet', id: 'helmet' }, { kind: 'vest', id: 'vest' }];
+
+// 방어구 (2026-11-08 인혁: "방어구도 나오게 해줘"): 헬멧과 조끼, 1~3단계. 맞을 때 줄어드는 비율.
+export const GEAR = { helmet: [0, 0.10, 0.18, 0.25], vest: [0, 0.15, 0.25, 0.35] };
+export const GEAR_NAMES = { helmet: '헬멧', vest: '조끼' };
+export const GEAR_ICONS = { helmet: '🪖', vest: '🦺' };
+export const GEAR_COLORS = ['#ffffff', '#9aa3b5', '#3fa7ff', '#ffcf33'];
+export const gearReduce = (helmet = 0, vest = 0) => (GEAR.helmet[helmet] ?? 0) + (GEAR.vest[vest] ?? 0);
 
 // 탄창 상태: mag(탄창에 든 것), res(남은 총알, 권총은 끝없음)
 export const freshAmmo = id => { const w = WEAPONS.find(x => x.id === id); return { mag: w.mag, res: w.start }; };
@@ -576,7 +583,7 @@ export const BATTLE = Object.freeze({ HP: 100, ARMOR: 100, PLAYERS: 12, LOBBY_WA
 
 // 맞으면 방패가 먼저 줄고 남은 만큼 체력이 준다
 export function applyDamage(s, dmg) {
-  const d = Math.max(0, dmg);
+  const d = Math.max(0, dmg) * (1 - gearReduce(s.helmet | 0, s.vest | 0)); // 헬멧과 조끼가 먼저 줄인다
   const fromArmor = Math.min(s.armor, d * 0.7);
   return { hp: Math.max(0, s.hp - (d - fromArmor)), armor: s.armor - fromArmor };
 }

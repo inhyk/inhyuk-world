@@ -4,7 +4,7 @@
 import { THREE } from './render.js';
 import { Avatar } from './avatar.js';
 import {
-  BATTLE, WEAPONS, LOOT, freshAmmo, reloadAmmo, ammoBox, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, rayBoxes, battleCoins,
+  BATTLE, WEAPONS, LOOT, freshAmmo, reloadAmmo, ammoBox, applyDamage, GEAR, GEAR_NAMES, GEAR_ICONS, GEAR_COLORS, gearReduce, zonePhases, zoneAt, outsideZone, rayBody, rayBoxes, battleCoins,
   newPlayer, stepPlayer, seeded, displayName, ADJECTIVES, ANIMALS, SKINS, COLORS, PHRASES,
 } from '../core.mjs';
 import { BATTLE_LOBBY } from '../worlds.mjs';
@@ -32,6 +32,38 @@ export function makeGun(id) {
   if (w.id === 'shotgun') add(0.18, 0.1, 0.5, 0, -0.14, len * 0.6, '#ffd23f');
   return g;
 }
+// 헬멧과 조끼 모양 (단계마다 색: 회색, 파랑, 금색)
+export function makeGear(kind, level) {
+  const g = new THREE.Group();
+  const col = GEAR_COLORS[level] ?? '#9aa3b5';
+  const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, metalness: level === 3 ? 0.6 : 0.15 });
+  const dark = new THREE.MeshStandardMaterial({ color: '#3a3f4b', roughness: 0.6 });
+  if (kind === 'helmet') {
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.6, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat);
+    dome.scale.set(1, 0.75, 1); dome.position.y = -0.1; dome.castShadow = true; g.add(dome);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.63, 0.63, 0.1, 22), dark);
+    rim.position.y = -0.1; g.add(rim);
+    for (let i = 0; i < level; i++) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.04), new THREE.MeshStandardMaterial({ color: '#ffffff' })); st.position.set(-0.14 + i * 0.14, 0.12, 0.56); g.add(st); }
+  } else {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.72, 0.72), mat);
+    body.position.y = 0.5; body.castShadow = true; g.add(body);
+    for (const x of [-0.32, 0.32]) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.28, 0.74), mat); s.position.set(x, 0.96, 0); g.add(s); }
+    for (const x of [-0.25, 0.25]) { const pk = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.06), dark); pk.position.set(x, 0.4, 0.38); g.add(pk); }
+  }
+  return g;
+}
+// 아바타에 입히기 (avatar.gear = { helmet, vest } 단계)
+function wearGear(avatar, helmet, vest) {
+  const cur = avatar.gearState ?? { helmet: 0, vest: 0 };
+  if (cur.helmet === helmet && cur.vest === vest) return;
+  for (const m of avatar.gearMeshes ?? []) disposeObj(m);
+  avatar.gearMeshes = [];
+  if (helmet > 0) { const h = makeGear('helmet', helmet); h.position.y = 0.94; avatar.head.add(h); avatar.gearMeshes.push(h); }
+  if (vest > 0) { const v = makeGear('vest', vest); avatar.torso.add(v); avatar.gearMeshes.push(v); }
+  avatar.hatSlot.visible = helmet === 0;
+  avatar.gearState = { helmet, vest };
+}
+
 function disposeObj(o) { o?.traverse(c => { if (c.isMesh) { c.geometry.dispose(); c.material.dispose(); } }); o?.removeFromParent(); }
 
 export class Battle {
@@ -87,7 +119,7 @@ export class Battle {
   }
   near(x, z, r = 4) { return this.boxesIn(x - r, z - r, x + r, z + r); }
 
-  freshMe() { return { hp: BATTLE.HP, armor: 0, alive: false, weapons: new Set(['pistol']), cur: 'pistol', kills: 0, para: false, outTimer: 0, place: 0, ammo: { pistol: freshAmmo('pistol') }, reloading: 0, emptyTold: 0 }; }
+  freshMe() { return { hp: BATTLE.HP, armor: 0, helmet: 0, vest: 0, alive: false, weapons: new Set(['pistol']), cur: 'pistol', kills: 0, para: false, outTimer: 0, place: 0, ammo: { pistol: freshAmmo('pistol') }, reloading: 0, emptyTold: 0 }; }
   get net() { return this.game.net; }
   get auth() { return !this.net.active || this.net.host; }
   get myId() { return this.net.active ? this.net.id : 'me'; }
@@ -113,7 +145,7 @@ export class Battle {
     const hud = document.createElement('div');
     hud.id = 'battle-hud';
     hud.innerHTML = `
-      <div class="bars"><div class="bar hp"><i></i><span></span></div><div class="bar ar"><i></i><span></span></div></div>
+      <div class="bars"><div class="bar hp"><i></i><span></span></div><div class="bar ar"><i></i><span></span></div><div class="gear"><span class="gh">🪖 -</span><span class="gv">🦺 -</span></div></div>
       <div class="ammo"><b class="mag">12</b><span class="res">/ ∞</span><i class="rl"><u></u></i><em class="rltext">재장전 중…</em></div>
       <div class="slots">${WEAPONS.map((w, i) => `<button data-w="${w.id}" title="${w.name} (${i + 1})"><b>${w.icon}</b><small>${i + 1}</small></button>`).join('')}</div>`;
     hud.querySelectorAll('.slots button').forEach(b => b.addEventListener('click', () => { if (this.me.weapons.has(b.dataset.w)) { this.game.sfx('click'); this.equip(b.dataset.w); } }));
@@ -153,6 +185,11 @@ export class Battle {
     ar.querySelector('i').style.width = `${m.armor}%`;
     ar.querySelector('span').textContent = `🛡️ ${Math.ceil(m.armor)}`;
     ar.style.opacity = m.armor > 0 ? 1 : 0.45;
+    const gh = this.hud.querySelector('.gh'), gv = this.hud.querySelector('.gv');
+    gh.textContent = `🪖 ${m.helmet ? `${m.helmet}단계` : '-'}`; gh.style.background = m.helmet ? GEAR_COLORS[m.helmet] : '';
+    gv.textContent = `🦺 ${m.vest ? `${m.vest}단계` : '-'}`; gv.style.background = m.vest ? GEAR_COLORS[m.vest] : '';
+    this.hud.querySelector('.gear').title = `맞을 때 ${Math.round(gearReduce(m.helmet, m.vest) * 100)}% 덜 아파`;
+    wearGear(this.game.myAvatar, m.helmet, m.vest);
     this.hud.querySelectorAll('.slots button').forEach(b => { b.classList.toggle('have', m.weapons.has(b.dataset.w)); b.classList.toggle('on', m.cur === b.dataset.w); });
     this.zoomEl.hidden = m.cur !== 'sniper';
     this.updateAmmo();
@@ -247,7 +284,7 @@ export class Battle {
       avatar.aim = true;
       this.game.world.group.add(avatar.root);
       const gun = makeGun('pistol'); this.attachGun(avatar, gun);
-      this.bots.push({ avatar, gun, name, pl: newPlayer(BATTLE_LOBBY.x + (rnd() - 0.5) * 16, BATTLE_LOBBY.y + 0.2, BATTLE_LOBBY.z + (rnd() - 0.5) * 16), yaw: rnd() * 6, hp: BATTLE.HP, armor: 0, alive: false, weapon: 'pistol', target: null, think: 0, cool: 0, skill: 0.68 + rnd() * 0.3, lastSeen: null, dodge: 0, goal: null, strafe: rnd() < 0.5 ? 1 : -1, para: false, kills: 0, rnd: seeded(seed * 13 + k), stuck: 0 });
+      this.bots.push({ avatar, gun, name, helmet: 0, vest: 0, pl: newPlayer(BATTLE_LOBBY.x + (rnd() - 0.5) * 16, BATTLE_LOBBY.y + 0.2, BATTLE_LOBBY.z + (rnd() - 0.5) * 16), yaw: rnd() * 6, hp: BATTLE.HP, armor: 0, alive: false, weapon: 'pistol', target: null, think: 0, cool: 0, skill: 0.68 + rnd() * 0.3, lastSeen: null, dodge: 0, goal: null, strafe: rnd() < 0.5 ? 1 : -1, para: false, kills: 0, rnd: seeded(seed * 13 + k), stuck: 0 });
     }
   }
 
@@ -259,16 +296,18 @@ export class Battle {
     spots.forEach(([x, y, z], i) => {
       if (rnd() < 0.18) return;
       const roll = rnd();
-      const item = roll < 0.2 ? LOOT[0] : roll < 0.36 ? LOOT[1] : roll < 0.46 ? LOOT[2] : roll < 0.64 ? LOOT[3] : roll < 0.78 ? LOOT[4] : LOOT[5];
+      const base = roll < 0.17 ? LOOT[0] : roll < 0.3 ? LOOT[1] : roll < 0.38 ? LOOT[2] : roll < 0.52 ? LOOT[3] : roll < 0.62 ? LOOT[4] : roll < 0.78 ? LOOT[5] : roll < 0.89 ? LOOT[6] : LOOT[7];
+      const lv = rnd(), item = base.kind === 'helmet' || base.kind === 'vest' ? { ...base, level: lv < 0.55 ? 1 : lv < 0.88 ? 2 : 3 } : base;
       const mesh = new THREE.Group();
       if (item.kind === 'weapon') { const g = makeGun(item.id); g.scale.setScalar(1.3); mesh.add(g); }
       else if (item.kind === 'heal') { const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.35), new THREE.MeshStandardMaterial({ color: '#ff6fb5', roughness: 0.4 })); const s = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4), new THREE.MeshStandardMaterial({ color: '#ffffff' })); s.position.set(0.12, 0.5, 0); b.add(s); mesh.add(b); }
+      else if (item.kind === 'helmet' || item.kind === 'vest') { const gm = makeGear(item.kind, item.level); if (item.kind === 'vest') gm.position.y = -0.6; gm.scale.setScalar(0.9); mesh.add(gm); }
       else if (item.kind === 'ammo') {
         const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.45, 0.55), new THREE.MeshStandardMaterial({ color: '#8a6a2f', roughness: 0.6 }));
         for (let q = 0; q < 4; q++) { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.3, 8), new THREE.MeshStandardMaterial({ color: '#ffd23f', metalness: 0.5, roughness: 0.3 })); s.position.set(-0.24 + q * 0.16, 0.36, 0); b.add(s); }
         mesh.add(b);
       } else { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.32, 0.12, 6), new THREE.MeshStandardMaterial({ color: '#3fa7ff', metalness: 0.4, roughness: 0.3, emissive: '#1f5fbf', emissiveIntensity: 0.4 })); b.rotation.x = Math.PI / 2; mesh.add(b); }
-      const color = item.kind === 'weapon' ? WEAPONS[WI[item.id]].color : item.kind === 'heal' ? '#ff6fb5' : item.kind === 'ammo' ? '#ffd23f' : '#3fa7ff';
+      const color = item.kind === 'weapon' ? WEAPONS[WI[item.id]].color : item.kind === 'heal' ? '#ff6fb5' : item.kind === 'ammo' ? '#ffd23f' : item.level ? GEAR_COLORS[item.level] : '#3fa7ff';
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.05, 6, 24), new THREE.MeshBasicMaterial({ color }));
       ring.rotation.x = Math.PI / 2; ring.position.y = -0.45; mesh.add(ring);
       mesh.position.set(x, y + 0.3, z);
@@ -546,7 +585,7 @@ export class Battle {
         for (const l of this.loot) {
           if (l.taken || Math.abs(l.y - pl.y) > 3) continue;
           const d = Math.hypot(l.x - pl.x, l.z - pl.z);
-          const want = (l.kind === 'heal' && b.hp < 65 && d < 32) || (l.kind === 'shield' && b.armor < 40 && d < 32) || (l.kind === 'weapon' && RANK[l.id] > RANK[b.weapon] && d < 48);
+          const want = ((l.kind === 'helmet' || l.kind === 'vest') && l.level > b[l.kind] && d < 32) || (l.kind === 'heal' && b.hp < 65 && d < 32) || (l.kind === 'shield' && b.armor < 40 && d < 32) || (l.kind === 'weapon' && RANK[l.id] > RANK[b.weapon] && d < 48);
           if (want && d < nd) { nd = d; near = l; }
         }
         if (near) b.goal = { x: near.x, z: near.z, loot: near.i };
@@ -571,6 +610,7 @@ export class Battle {
       if (l.kind === 'weapon' && RANK[l.id] > RANK[b.weapon]) { b.weapon = l.id; b.mag = undefined; disposeObj(b.gun); b.gun = makeGun(l.id); this.attachGun(b.avatar, b.gun); take(); }
       else if (l.kind === 'heal' && b.hp < BATTLE.HP) { b.hp = Math.min(BATTLE.HP, b.hp + l.amount); take(); }
       else if (l.kind === 'shield' && b.armor < BATTLE.ARMOR) { b.armor = Math.min(BATTLE.ARMOR, b.armor + l.amount); take(); }
+      else if ((l.kind === 'helmet' || l.kind === 'vest') && l.level > b[l.kind]) { b[l.kind] = l.level; wearGear(b.avatar, b.helmet, b.vest); take(); }
     }
     // 구역 밖
     if (!b.para && outsideZone(z, pl.x, pl.z)) this.hurtBot(k, z.dps * dt, -999);
@@ -593,6 +633,7 @@ export class Battle {
       if (Number.isFinite(d.ar)) s.armor = d.ar;
       if (d.al === 0 && s.alive) { s.alive = false; const r = this.game.remotes.get(from); if (r?.avatar) this.game.effects.burst(r.x, r.y + 1.4, r.z, ['#ffffff', '#ff5e3a'], 20, 7); if (Number.isFinite(d.by)) { this.game.ui.log(`💥 ${this.nameOf(d.by)} → ${r?.name ?? '친구'}`); if (d.by === this.myNum) { this.me.kills++; this.game.sfx('coin'); } else if (d.by < 0 && this.auth && this.bots[-d.by - 1]) this.bots[-d.by - 1].kills++; } }
       if (Number.isFinite(d.kills)) s.kills = d.kills;
+      if (Number.isInteger(d.hl) && Number.isInteger(d.vl)) { s.helmet = Math.max(0, Math.min(3, d.hl)); s.vest = Math.max(0, Math.min(3, d.vl)); const r = this.game.remotes.get(from); if (r?.avatar) wearGear(r.avatar, s.helmet, s.vest); }
     }
     if (Array.isArray(d.s)) for (const q of d.s.slice(0, 20)) if (Array.isArray(q) && q.length >= 7 && q.every(Number.isFinite)) this.tracer(new THREE.Vector3(q[0], q[1], q[2]), new THREE.Vector3(q[3], q[4], q[5]), (WEAPONS[q[6]] ?? WEAPONS[0]).color);
     if (Array.isArray(d.h)) for (const q of d.h.slice(0, 40)) {
@@ -606,7 +647,8 @@ export class Battle {
     if (Array.isArray(d.b) && from === host && !this.auth) d.b.forEach((q, k) => {
       const b = this.bots[k];
       if (!b || !Array.isArray(q) || !q.slice(0, 5).every(Number.isFinite)) return;
-      const [x, y, z, yaw, hp, al, wi, para] = q;
+      const [x, y, z, yaw, hp, al, wi, para, hl, vl] = q;
+      if (Number.isInteger(hl) && Number.isInteger(vl)) { b.helmet = Math.max(0, Math.min(3, hl)); b.vest = Math.max(0, Math.min(3, vl)); wearGear(b.avatar, b.helmet, b.vest); }
       b.net = { x, y, z, yaw };
       b.hp = hp;
       if (b.alive && !al) this.game.effects.burst(b.pl.x, b.pl.y + 1.4, b.pl.z, [COLORS[b.avatar.look.shirt], '#ffffff'], 22, 7);
@@ -621,12 +663,12 @@ export class Battle {
     o.timer -= dt;
     if (o.timer > 0 || !this.net.live || this.state === 'lobby') return;
     o.timer = 0.1;
-    const msg = { t: 'br', k: 'tick', r: this.round, hp: Math.ceil(this.me.hp), ar: Math.ceil(this.me.armor), al: this.me.alive ? 1 : 0, kills: this.me.kills };
+    const msg = { t: 'br', k: 'tick', r: this.round, hp: Math.ceil(this.me.hp), ar: Math.ceil(this.me.armor), al: this.me.alive ? 1 : 0, kills: this.me.kills, hl: this.me.helmet, vl: this.me.vest };
     if (o.dead !== undefined) { msg.by = o.dead; o.dead = undefined; }
     if (o.s.length) msg.s = o.s.splice(0, 8);
     if (o.h.length) msg.h = o.h.splice(0);
     if (o.take?.length) { msg.t = o.take; o.take = []; }
-    if (this.auth && this.bots.length) msg.b = this.bots.map(b => [r2(b.pl.x), r2(b.pl.y), r2(b.pl.z), r2(b.yaw), Math.ceil(b.hp), b.alive ? 1 : 0, WI[b.weapon], b.para ? 1 : 0]);
+    if (this.auth && this.bots.length) msg.b = this.bots.map(b => [r2(b.pl.x), r2(b.pl.y), r2(b.pl.z), r2(b.yaw), Math.ceil(b.hp), b.alive ? 1 : 0, WI[b.weapon], b.para ? 1 : 0, b.helmet, b.vest]);
     o.s.length = 0;
     this.net.send(msg);
   }
@@ -740,6 +782,7 @@ export class Battle {
           this.takeLoot(l, 'me'); g.sfx('check'); g.ui.toast(`📦 총알 상자 ${got.join(' ')}`, 1600); this.updateAmmo();
         }
         else if (l.kind === 'heal' && m.hp < BATTLE.HP) { m.hp = Math.min(BATTLE.HP, m.hp + l.amount); this.takeLoot(l, 'me'); g.sfx('check'); g.ui.toast(`🧃 회복 주스 +${l.amount}`, 1400); this.updateHud(); }
+        else if ((l.kind === 'helmet' || l.kind === 'vest') && l.level > m[l.kind]) { m[l.kind] = l.level; this.takeLoot(l, 'me'); g.sfx('buy'); g.ui.toast(`${GEAR_ICONS[l.kind]} ${GEAR_NAMES[l.kind]} ${l.level}단계! 맞을 때 ${Math.round(GEAR[l.kind][l.level] * 100)}% 덜 아파`, 1800); this.updateHud(); }
         else if (l.kind === 'shield' && m.armor < BATTLE.ARMOR) { m.armor = Math.min(BATTLE.ARMOR, m.armor + l.amount); this.takeLoot(l, 'me'); g.sfx('check'); g.ui.toast(`🛡️ 방패 +${l.amount}`, 1400); this.updateHud(); }
       }
       // 구역 밖이면 체력이 준다
@@ -857,9 +900,10 @@ export class Battle {
     document.body.classList.remove('battle');
     disposeObj(this.myGun); disposeObj(this.myChute);
     g.myAvatar.aim = false;
+    wearGear(g.myAvatar, 0, 0);
     g.myAvatar.root.visible = true;
     for (const b of this.bots) { disposeObj(b.gun); b.avatar.dispose(); }
-    for (const r of g.remotes.values()) { if (r.battleGun) { disposeObj(r.battleGun); r.battleGun = null; } if (r.avatar) r.avatar.aim = false; }
+    for (const r of g.remotes.values()) { if (r.battleGun) { disposeObj(r.battleGun); r.battleGun = null; } if (r.avatar) { r.avatar.aim = false; wearGear(r.avatar, 0, 0); } }
     for (const t of this.tracers) { t.line.removeFromParent(); t.line.geometry.dispose(); t.line.material.dispose(); }
     g.camera.fov = this.fov; g.camera.updateProjectionMatrix();
     g.setShiftLock(false);

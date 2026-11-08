@@ -304,3 +304,8 @@ body.dressing #spectate-bar, body:not(.playing) #spectate-bar { display: none; }
   #spectate-bar { top: 128px; }
 }
 body.spectating #battle-hud, body.spectating #fire-btn, body.spectating #reload-btn, body.spectating #zoom-btn { display: none !important; }
+
+/* ───── 방어구 ───── */
+#battle-hud .gear { display: flex; gap: 4px; }
+#battle-hud .gear span { height: 22px; line-height: 22px; padding: 0 8px; border-radius: 11px; background: rgba(20, 22, 30, .55); color: #fff; font-size: 13px; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); white-space: nowrap; }
+@media (pointer: coarse) { #battle-hud .bars { flex-wrap: wrap; justify-content: center; } }
