@@ -30,6 +30,7 @@ import { Show } from './src/show.js';
 import { Wildlife } from './src/wildlife.js';
 import { prepareStatic } from './src/perf.js';
 import { texReady } from './src/tex.js';
+import { startUpdateCheck } from './src/update.js';
 import { sfx, unlock, engineSound, ambience } from './src/audio.js';
 import { newState, tickBody, fallDamage, hurt, serialize, deserialize } from './core.mjs';
 
@@ -429,6 +430,7 @@ async function boot() {
   engine.start();
   addEventListener('beforeunload', saveLocal);
   setInterval(saveLocal, 15000);
+  window.__update = startUpdateCheck({ save }); // 새 버전이 나오면 새로고침 버튼 (인혁이 계획 6-3)
   window.__game = { engine, sky, player, state, places, vehicle, build, day, life, col, flight, cloud, lifts, kind: () => day.kind, driveTest, town, deco, wildlife, jobs: day.g.jobs };
   window.__ready = true;
 }
