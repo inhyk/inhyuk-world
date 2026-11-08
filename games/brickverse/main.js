@@ -116,7 +116,7 @@ game.makeParts = (parts, parent) => {
     }
     let box = null;
     if (!p.deco) { box = makeBox(p); boxes.push(box); }
-    const moving = p.move || p.k === 'fade' || p.flag;
+    const moving = p.move || p.k === 'fade' || p.flag || p.turn;
     if (moving && !p.hidden) {
       const mesh = partMesh(p);
       if (p.k === 'fade') { mesh.material = mesh.material.clone(); mesh.material.transparent = true; mesh.material.userData.own = true; }
@@ -502,7 +502,7 @@ function updateWorld(dt) {
     if (p.move) {
       const off = Math.sin(t * p.move.spd + p.move.ph) * p.move.amp;
       const x = d.base.x + (p.move.ax === 'x' ? off : 0), y = d.base.y + (p.move.ax === 'y' ? off : 0), z = d.base.z + (p.move.ax === 'z' ? off : 0);
-      placeBox(d.box, x, y, z);
+      if (d.box) placeBox(d.box, x, y, z);
       d.mesh.position.set(x, y, z);
     }
     if (d.fade) {
@@ -511,6 +511,7 @@ function updateWorld(dt) {
       else if (f.state === 2) { f.t += dt; if (f.t > 2.6) { f.state = 0; d.box.on = true; d.mesh.visible = true; d.mesh.material.opacity = 1; d.mesh.position.x = d.base.x; } }
     }
     if (p.flag) d.mesh.rotation.y = Math.sin(t * 3) * 0.15;
+    if (p.turn) d.mesh.rotation[p.turn.ax] = (p.turn.base ?? 0) + t * p.turn.spd;
   }
   // 재질 움직이기
   const arrow = tex('arrow'); arrow.offset.y -= dt * 1.6;

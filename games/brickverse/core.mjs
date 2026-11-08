@@ -280,48 +280,69 @@ export function randomName(rand = Math.random) {
 // 떨어뜨리개(dropper)가 블록을 떨어뜨리면 벨트가 녹이는 기계로 옮기고, 그 값이 쌓인다.
 // 초록 발판을 밟으면 쌓인 돈을 받는다. 사는 순서는 need 를 따라 열린다.
 export const TYCOON = [
-  { id: 'floor', name: '바닥 타일', price: 25, need: null },
-  { id: 'drop2', name: '떨어뜨리개 2', price: 60, need: 'floor', drop: { value: 8, every: 1.4 } },
-  { id: 'fence', name: '울타리', price: 90, need: 'drop2' },
-  { id: 'up1', name: '반짝 업그레이더 ×2', price: 160, need: 'drop2', mult: 2 },
-  { id: 'drop3', name: '떨어뜨리개 3', price: 280, need: 'up1', drop: { value: 15, every: 1.2 } },
-  { id: 'walls', name: '1층 벽', price: 420, need: 'fence' },
-  { id: 'door', name: '문과 창문', price: 560, need: 'walls' },
-  { id: 'lamp', name: '가로등과 꽃밭', price: 650, need: 'door' },
-  { id: 'stairs', name: '계단', price: 800, need: 'door' },
-  { id: 'floor2', name: '2층 바닥', price: 1000, need: 'stairs' },
-  { id: 'drop4', name: '떨어뜨리개 4', price: 1600, need: 'drop3', drop: { value: 40, every: 1.2 } },
-  { id: 'walls2', name: '2층 벽', price: 2200, need: 'floor2' },
-  { id: 'roof', name: '지붕', price: 3000, need: 'walls2' },
-  { id: 'garden', name: '나무 정원', price: 3600, need: 'roof' },
-  { id: 'pool', name: '수영장', price: 4500, need: 'garden' },
-  { id: 'up2', name: '무지개 업그레이더 ×3', price: 6000, need: 'drop4', mult: 3 },
-  { id: 'slide', name: '미끄럼틀', price: 7000, need: 'pool' },
-  { id: 'gold', name: '황금 떨어뜨리개', price: 11000, need: 'up2', drop: { value: 120, every: 1.0 } },
-  { id: 'tower', name: '깃발 탑', price: 16000, need: 'slide' },
-  { id: 'statue', name: '황금 트로피 동상', price: 28000, need: 'tower', finale: true, reward: 200 },
+  { id: 'floor', name: '바닥 타일', price: 50, need: null },
+  { id: 'drop2', name: '떨어뜨리개 2', price: 120, need: 'floor', drop: { value: 8, every: 1.4 } },
+  { id: 'fence', name: '울타리', price: 180, need: 'drop2' },
+  { id: 'up1', name: '반짝 업그레이더 ×2', price: 320, need: 'drop2', mult: 2 },
+  { id: 'drop3', name: '떨어뜨리개 3', price: 560, need: 'up1', drop: { value: 15, every: 1.2 } },
+  { id: 'walls', name: '1층 벽', price: 840, need: 'fence' },
+  { id: 'door', name: '문과 창문', price: 1120, need: 'walls' },
+  { id: 'lamp', name: '가로등과 꽃밭', price: 1300, need: 'door' },
+  { id: 'stairs', name: '계단', price: 1600, need: 'door' },
+  { id: 'floor2', name: '2층 바닥', price: 2000, need: 'stairs' },
+  { id: 'drop4', name: '떨어뜨리개 4', price: 3200, need: 'drop3', drop: { value: 40, every: 1.2 } },
+  { id: 'walls2', name: '2층 벽', price: 4400, need: 'floor2' },
+  { id: 'roof', name: '지붕', price: 6000, need: 'walls2' },
+  { id: 'garden', name: '나무 정원', price: 7200, need: 'roof' },
+  { id: 'pool', name: '수영장', price: 9000, need: 'garden' },
+  { id: 'up2', name: '무지개 업그레이더 ×3', price: 12000, need: 'drop4', mult: 3 },
+  { id: 'slide', name: '미끄럼틀', price: 14000, need: 'pool' },
+  { id: 'gold', name: '황금 떨어뜨리개', price: 22000, need: 'up2', drop: { value: 120, every: 1.0 } },
+  { id: 'tower', name: '깃발 탑', price: 32000, need: 'slide' },
+  { id: 'statue', name: '황금 트로피 동상', price: 56000, need: 'tower', finale: true, reward: 200 },
   // 더 지을 것 (2026-11-06 추가). 먼저 사야 하는 것(need)은 언제나 이 목록에서 앞에 있다.
-  { id: 'mailbox', name: '우체통', price: 120, need: 'fence' },
-  { id: 'bench', name: '벤치와 화분', price: 380, need: 'walls' },
-  { id: 'balcony', name: '2층 발코니', price: 2600, need: 'walls2' },
-  { id: 'drop5', name: '다이아 떨어뜨리개', price: 30000, need: 'gold', drop: { value: 400, every: 1.0 } },
-  { id: 'up3', name: '레이저 업그레이더 ×2', price: 120000, need: 'drop5', mult: 2 },
-  { id: 'yard', name: '뒷마당 넓히기', price: 40000, need: 'statue' },
-  { id: 'garage', name: '차고와 자동차', price: 55000, need: 'yard' },
-  { id: 'trampoline', name: '트램펄린', price: 70000, need: 'yard' },
-  { id: 'swing', name: '그네', price: 85000, need: 'yard' },
-  { id: 'pond', name: '오리 연못', price: 100000, need: 'trampoline' },
-  { id: 'greenhouse', name: '유리 온실', price: 130000, need: 'swing' },
-  { id: 'soccer', name: '축구 골대', price: 160000, need: 'pond' },
-  { id: 'walls3', name: '3층 집', price: 200000, need: 'greenhouse' },
-  { id: 'rocket', name: '로켓 발사대', price: 300000, need: 'walls3', finale: true, reward: 300 },
+  // 2026-11-08 인혁: "더 만들고 더 비싸게" → 위 가격은 모두 2배, 하늘 섬 11개 추가.
+  { id: 'mailbox', name: '우체통', price: 240, need: 'fence' },
+  { id: 'bench', name: '벤치와 화분', price: 760, need: 'walls' },
+  { id: 'balcony', name: '2층 발코니', price: 5200, need: 'walls2' },
+  { id: 'drop5', name: '다이아 떨어뜨리개', price: 60000, need: 'gold', drop: { value: 400, every: 1.0 } },
+  { id: 'up3', name: '레이저 업그레이더 ×2', price: 240000, need: 'drop5', mult: 2 },
+  { id: 'yard', name: '뒷마당 넓히기', price: 80000, need: 'statue' },
+  { id: 'garage', name: '차고와 자동차', price: 110000, need: 'yard' },
+  { id: 'trampoline', name: '트램펄린', price: 140000, need: 'yard' },
+  { id: 'swing', name: '그네', price: 170000, need: 'yard' },
+  { id: 'pond', name: '오리 연못', price: 200000, need: 'trampoline' },
+  { id: 'greenhouse', name: '유리 온실', price: 260000, need: 'swing' },
+  { id: 'soccer', name: '축구 골대', price: 320000, need: 'pond' },
+  { id: 'walls3', name: '3층 집', price: 400000, need: 'greenhouse' },
+  { id: 'rocket', name: '로켓 발사대', price: 600000, need: 'walls3', finale: true, reward: 300 },
+  // 3단계: 하늘 섬 (로켓 다음). boost 는 벨트 밖에서 모든 돈을 몇 배로 (구름 은행, 별 공장)
+  { id: 'skyisland', name: '하늘 섬과 엘리베이터', price: 1200000, need: 'rocket' },
+  { id: 'windmill', name: '하늘 풍차', price: 1600000, need: 'skyisland' },
+  { id: 'cloudgarden', name: '구름 정원', price: 2000000, need: 'skyisland' },
+  { id: 'skybank', name: '구름 은행 (돈 ×2)', price: 1400000, need: 'skyisland', boost: 2 },
+  { id: 'balloon', name: '열기구', price: 3000000, need: 'windmill' },
+  { id: 'rainbow', name: '무지개 다리', price: 3600000, need: 'cloudgarden' },
+  { id: 'skyfountain', name: '하늘 분수', price: 4500000, need: 'skybank' },
+  { id: 'castle', name: '하늘 성', price: 6000000, need: 'rainbow' },
+  { id: 'starfactory', name: '별 공장 (돈 ×3)', price: 5000000, need: 'skyfountain', boost: 3 },
+  { id: 'ufo', name: 'UFO 착륙장 (돈 ×2)', price: 10000000, need: 'castle', boost: 2 },
+  { id: 'crown', name: '황금 왕관 탑', price: 20000000, need: 'ufo', finale: true, reward: 500 },
 ];
 export const TYCOON_START_DROP = { value: 5, every: 1.5 };
 export const TYCOON_REWARD = 200;
 
+// 벨트 밖에서 모든 돈에 곱하는 배수 (구름 은행, 별 공장)
+export function tycoonBoost(owned) {
+  const has = new Set(owned);
+  let boost = 1;
+  for (const it of TYCOON) if (it.boost && has.has(it.id)) boost *= it.boost;
+  return boost;
+}
+
 export function tycoonIncome(owned) {
   const has = new Set(owned);
-  let mult = 1;
+  let mult = tycoonBoost(owned);
   for (const it of TYCOON) if (it.mult && has.has(it.id)) mult *= it.mult;
   let rate = TYCOON_START_DROP.value / TYCOON_START_DROP.every;
   for (const it of TYCOON) if (it.drop && has.has(it.id)) rate += it.drop.value / it.drop.every;
