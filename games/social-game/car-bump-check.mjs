@@ -149,7 +149,7 @@ const walkInto = async (label) => {
   await hold(A, 'w', 1800);
   const p = await posOf(A);
   const carZ = await G(A, (nick) => [...window.__game.town.remotes.values()].find((r) => r.user?.nickname === nick).carAt.z, B.nick);
-  console.log(`3. A walks into B's car (${label}): z ${p[2].toFixed(2)} (car side at ${(carZ - 0.91).toFixed(2)})`);
+  console.log(`3. A walks into B's car (${label}): z ${p[2].toFixed(2)} (car side at ${(carZ - 0.91).toFixed(2)}), x ${p[0].toFixed(2)} (car x ${BX})`);
   assert.ok(p[2] < carZ - 1.15, `A stops at the side of B's car (${label})`);
   assert.ok(Math.abs(p[0] - BX) < 0.5, 'and does not slide around it');
 };
