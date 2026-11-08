@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, tileAt, SURVIVAL,
+  OBBY_STAGES, HATS, tileAt, SURVIVAL, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -119,7 +119,7 @@ test('저장 정리: 이상한 값은 기본값, 안 산 모자는 못 쓴다', 
   assert.deepEqual(cleanSave(JSON.parse(JSON.stringify(defaultSave(() => 0.5)))).name, defaultSave(() => 0.5).name);
 });
 
-test('타이쿤: 모두 사면 10~35분 걸린다 (발판 왕복 시간 포함 추정)', () => {
+test('타이쿤: 모두 사면 40~80분 걸린다 (발판 왕복 시간 포함 추정)', () => {
   const owned = [];
   let cash = 0, time = 0;
   while (owned.length < TYCOON.length) {
@@ -130,7 +130,7 @@ test('타이쿤: 모두 사면 10~35분 걸린다 (발판 왕복 시간 포함 �
     cash += rate * (wait + 6) - next.price;
     owned.push(next.id);
   }
-  assert.ok(time > 10 * 60 && time < 35 * 60, `${Math.round(time / 60)}분`);
+  assert.ok(time > 40 * 60 && time < 80 * 60, `${Math.round(time / 60)}분`);
   assert.ok(tycoonIncome([]) === TYCOON_START_DROP.value / TYCOON_START_DROP.every);
 });
 
@@ -225,8 +225,34 @@ test('타이쿤 밖에 있으면 0.001%로 쌓인다 (소수점 그대로)', () 
 test('타이쿤 목록: 먼저 사야 하는 것은 앞에 있고, 끝판은 둘', () => {
   const seen = new Set();
   for (const it of TYCOON) { assert.ok(!it.need || seen.has(it.need), it.id); seen.add(it.id); }
-  assert.equal(TYCOON.length, 34);
-  assert.deepEqual(TYCOON.filter(it => it.finale).map(it => [it.id, it.reward]), [['statue', 200], ['rocket', 300]]);
+  assert.equal(TYCOON.length, 45);
+  assert.deepEqual(TYCOON.filter(it => it.finale).map(it => [it.id, it.reward]), [['statue', 200], ['rocket', 300], ['crown', 500]]);
+  assert.equal(TYCOON.find(it => it.id === 'floor').price, 50);
+  assert.equal(TYCOON.find(it => it.id === 'crown').price, 20_000_000);
   const all = TYCOON.map(it => it.id);
   assert.deepEqual(cleanSave({ tycoon: { items: all } }).tycoon.items, all);
+});
+
+test('타워 블록 정리: 칸 밖, 겹침, 이상한 종류는 빼고 500개까지', () => {
+  const list = cleanTowerBlocks([[0, 0, 0, 1], [0, 0, 0, 2], [12, 0, 0, 1], [0, 100, 0, 1], [0, 1, 0, BLOCKS.length], [0, 1, 0, 3], ['a', 0, 0, 1], [1.5, 0, 0, 1]]);
+  assert.deepEqual(list, [[0, 0, 0, 1], [0, 1, 0, 3]]);
+  const many = [];
+  for (let j = 0; j < 100; j++) for (let i = 0; i < 6; i++) many.push([i, j, 0, 0]);
+  assert.equal(cleanTowerBlocks(many).length, TOWER.LIMIT);
+  assert.deepEqual(unpackBlocks(packBlocks(list)), list);
+  assert.ok(packBlocks(list).every(v => typeof v === 'number'));
+  assert.deepEqual(unpackBlocks([1, 2, 3]), []);
+  assert.equal(towerFloor(0), 0);
+  assert.equal(towerFloor(20), 10);
+  assert.ok(inTower(-12, 0, 11) && !inTower(-13, 0, 0) && !inTower(0, -1, 0));
+  const s = cleanSave({ tower: { blocks: [[0, 0, 0, 1], [0, 0, 0, 1]], best: 1000 } });
+  assert.deepEqual(s.tower.blocks, [[0, 0, 0, 1]]);
+  assert.equal(s.tower.best, TOWER.TOP + 1);
+});
+
+test('타워 블록 위로 점프해서 올라간다 (한 칸 = 2, 점프 높이 2.45)', () => {
+  const boxes = [makeBox({ x: 0, y: -0.5, z: 0, w: 20, h: 1, d: 20 }), makeBox({ x: 0, y: 1, z: 3, w: 2, h: 2, d: 2 })];
+  const pl = newPlayer(0, 0, 0);
+  run(pl, boxes, 1.5, t => ({ mx: 0, mz: pl.z < 3 ? 1 : 0, jump: t > 0.05 && t < 0.1 }));
+  assert.ok(Math.abs(pl.y - 2) < 1e-6, `y=${pl.y}`);
 });

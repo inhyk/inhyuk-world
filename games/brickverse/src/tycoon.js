@@ -1,6 +1,6 @@
 // 블록 공장 타이쿤: 떨어뜨리개 → 벨트 → 녹이는 기계 → 돈 받는 발판 → 물건 사기 → 집이 생긴다.
 import { THREE, textSprite, signMesh } from './render.js';
-import { TYCOON, TYCOON_START_DROP, TYCOON_REWARD, TYCOON_AWAY_RATE, tycoonAvailable, tycoonIncome, tycoonAwayEarnings, displayName } from '../core.mjs';
+import { TYCOON, TYCOON_START_DROP, TYCOON_REWARD, TYCOON_AWAY_RATE, tycoonAvailable, tycoonIncome, tycoonBoost, tycoonAwayEarnings, displayName } from '../core.mjs';
 import {
   PLOT_SLOTS, tycoonBase, tycoonItem, plotBuilder, DROPPERS, DROP_COLOR, BELT, UPGRADERS, UPGRADE_COLOR, COLLECTOR, BUY_SPOTS,
 } from '../worlds.mjs';
@@ -145,7 +145,9 @@ export class Tycoon {
       this.game.addCoins(reward);
       this.game.effects.confetti(x, y + 4, z, it.id === 'rocket' ? 380 : 220);
       this.game.sfx('win');
-      this.game.ui.big(it.id === 'rocket' ? `🚀 로켓 발사대 완성! +${reward} 코인` : `🏆 공장 완성! +${reward} 코인`, 3600, 'gold');
+      const title = { rocket: '🚀 로켓 발사대 완성!', crown: '👑 하늘 왕국 완성!' }[it.id] ?? '🏆 공장 완성!';
+      this.game.ui.big(`${title} +${reward} 코인`, 3600, 'gold');
+      if (it.id === 'rocket') setTimeout(() => this.game.ui.toast('뒷마당의 노란 엘리베이터 자리에 하늘 섬을 지을 수 있어! ☁️', 4200), 3800);
       if (it.id === 'statue') setTimeout(() => this.game.ui.toast('뒤에 뒷마당을 넓혀서 더 지을 수 있어! 🏡', 4200), 3800);
     }
     this.game.persist();
@@ -202,6 +204,7 @@ export class Tycoon {
     this.dropMesh.instanceMatrix.needsUpdate = true;
     if (this.dropMesh.instanceColor) this.dropMesh.instanceColor.needsUpdate = true;
     if (earned) {
+      earned *= tycoonBoost(this.save.items);
       this.save.pending += earned;
       const [x, y, z] = b.world(COLLECTOR.f, COLLECTOR.r, 4.4);
       if (Math.random() < 0.5) this.game.effects.burst(x, y, z, ['#ff9a3d', '#ffd23f'], 4, 3);

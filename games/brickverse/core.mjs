@@ -280,48 +280,69 @@ export function randomName(rand = Math.random) {
 // 떨어뜨리개(dropper)가 블록을 떨어뜨리면 벨트가 녹이는 기계로 옮기고, 그 값이 쌓인다.
 // 초록 발판을 밟으면 쌓인 돈을 받는다. 사는 순서는 need 를 따라 열린다.
 export const TYCOON = [
-  { id: 'floor', name: '바닥 타일', price: 25, need: null },
-  { id: 'drop2', name: '떨어뜨리개 2', price: 60, need: 'floor', drop: { value: 8, every: 1.4 } },
-  { id: 'fence', name: '울타리', price: 90, need: 'drop2' },
-  { id: 'up1', name: '반짝 업그레이더 ×2', price: 160, need: 'drop2', mult: 2 },
-  { id: 'drop3', name: '떨어뜨리개 3', price: 280, need: 'up1', drop: { value: 15, every: 1.2 } },
-  { id: 'walls', name: '1층 벽', price: 420, need: 'fence' },
-  { id: 'door', name: '문과 창문', price: 560, need: 'walls' },
-  { id: 'lamp', name: '가로등과 꽃밭', price: 650, need: 'door' },
-  { id: 'stairs', name: '계단', price: 800, need: 'door' },
-  { id: 'floor2', name: '2층 바닥', price: 1000, need: 'stairs' },
-  { id: 'drop4', name: '떨어뜨리개 4', price: 1600, need: 'drop3', drop: { value: 40, every: 1.2 } },
-  { id: 'walls2', name: '2층 벽', price: 2200, need: 'floor2' },
-  { id: 'roof', name: '지붕', price: 3000, need: 'walls2' },
-  { id: 'garden', name: '나무 정원', price: 3600, need: 'roof' },
-  { id: 'pool', name: '수영장', price: 4500, need: 'garden' },
-  { id: 'up2', name: '무지개 업그레이더 ×3', price: 6000, need: 'drop4', mult: 3 },
-  { id: 'slide', name: '미끄럼틀', price: 7000, need: 'pool' },
-  { id: 'gold', name: '황금 떨어뜨리개', price: 11000, need: 'up2', drop: { value: 120, every: 1.0 } },
-  { id: 'tower', name: '깃발 탑', price: 16000, need: 'slide' },
-  { id: 'statue', name: '황금 트로피 동상', price: 28000, need: 'tower', finale: true, reward: 200 },
+  { id: 'floor', name: '바닥 타일', price: 50, need: null },
+  { id: 'drop2', name: '떨어뜨리개 2', price: 120, need: 'floor', drop: { value: 8, every: 1.4 } },
+  { id: 'fence', name: '울타리', price: 180, need: 'drop2' },
+  { id: 'up1', name: '반짝 업그레이더 ×2', price: 320, need: 'drop2', mult: 2 },
+  { id: 'drop3', name: '떨어뜨리개 3', price: 560, need: 'up1', drop: { value: 15, every: 1.2 } },
+  { id: 'walls', name: '1층 벽', price: 840, need: 'fence' },
+  { id: 'door', name: '문과 창문', price: 1120, need: 'walls' },
+  { id: 'lamp', name: '가로등과 꽃밭', price: 1300, need: 'door' },
+  { id: 'stairs', name: '계단', price: 1600, need: 'door' },
+  { id: 'floor2', name: '2층 바닥', price: 2000, need: 'stairs' },
+  { id: 'drop4', name: '떨어뜨리개 4', price: 3200, need: 'drop3', drop: { value: 40, every: 1.2 } },
+  { id: 'walls2', name: '2층 벽', price: 4400, need: 'floor2' },
+  { id: 'roof', name: '지붕', price: 6000, need: 'walls2' },
+  { id: 'garden', name: '나무 정원', price: 7200, need: 'roof' },
+  { id: 'pool', name: '수영장', price: 9000, need: 'garden' },
+  { id: 'up2', name: '무지개 업그레이더 ×3', price: 12000, need: 'drop4', mult: 3 },
+  { id: 'slide', name: '미끄럼틀', price: 14000, need: 'pool' },
+  { id: 'gold', name: '황금 떨어뜨리개', price: 22000, need: 'up2', drop: { value: 120, every: 1.0 } },
+  { id: 'tower', name: '깃발 탑', price: 32000, need: 'slide' },
+  { id: 'statue', name: '황금 트로피 동상', price: 56000, need: 'tower', finale: true, reward: 200 },
   // 더 지을 것 (2026-11-06 추가). 먼저 사야 하는 것(need)은 언제나 이 목록에서 앞에 있다.
-  { id: 'mailbox', name: '우체통', price: 120, need: 'fence' },
-  { id: 'bench', name: '벤치와 화분', price: 380, need: 'walls' },
-  { id: 'balcony', name: '2층 발코니', price: 2600, need: 'walls2' },
-  { id: 'drop5', name: '다이아 떨어뜨리개', price: 30000, need: 'gold', drop: { value: 400, every: 1.0 } },
-  { id: 'up3', name: '레이저 업그레이더 ×2', price: 120000, need: 'drop5', mult: 2 },
-  { id: 'yard', name: '뒷마당 넓히기', price: 40000, need: 'statue' },
-  { id: 'garage', name: '차고와 자동차', price: 55000, need: 'yard' },
-  { id: 'trampoline', name: '트램펄린', price: 70000, need: 'yard' },
-  { id: 'swing', name: '그네', price: 85000, need: 'yard' },
-  { id: 'pond', name: '오리 연못', price: 100000, need: 'trampoline' },
-  { id: 'greenhouse', name: '유리 온실', price: 130000, need: 'swing' },
-  { id: 'soccer', name: '축구 골대', price: 160000, need: 'pond' },
-  { id: 'walls3', name: '3층 집', price: 200000, need: 'greenhouse' },
-  { id: 'rocket', name: '로켓 발사대', price: 300000, need: 'walls3', finale: true, reward: 300 },
+  // 2026-11-08 인혁: "더 만들고 더 비싸게" → 위 가격은 모두 2배, 하늘 섬 11개 추가.
+  { id: 'mailbox', name: '우체통', price: 240, need: 'fence' },
+  { id: 'bench', name: '벤치와 화분', price: 760, need: 'walls' },
+  { id: 'balcony', name: '2층 발코니', price: 5200, need: 'walls2' },
+  { id: 'drop5', name: '다이아 떨어뜨리개', price: 60000, need: 'gold', drop: { value: 400, every: 1.0 } },
+  { id: 'up3', name: '레이저 업그레이더 ×2', price: 240000, need: 'drop5', mult: 2 },
+  { id: 'yard', name: '뒷마당 넓히기', price: 80000, need: 'statue' },
+  { id: 'garage', name: '차고와 자동차', price: 110000, need: 'yard' },
+  { id: 'trampoline', name: '트램펄린', price: 140000, need: 'yard' },
+  { id: 'swing', name: '그네', price: 170000, need: 'yard' },
+  { id: 'pond', name: '오리 연못', price: 200000, need: 'trampoline' },
+  { id: 'greenhouse', name: '유리 온실', price: 260000, need: 'swing' },
+  { id: 'soccer', name: '축구 골대', price: 320000, need: 'pond' },
+  { id: 'walls3', name: '3층 집', price: 400000, need: 'greenhouse' },
+  { id: 'rocket', name: '로켓 발사대', price: 600000, need: 'walls3', finale: true, reward: 300 },
+  // 3단계: 하늘 섬 (로켓 다음). boost 는 벨트 밖에서 모든 돈을 몇 배로 (구름 은행, 별 공장)
+  { id: 'skyisland', name: '하늘 섬과 엘리베이터', price: 1200000, need: 'rocket' },
+  { id: 'windmill', name: '하늘 풍차', price: 1600000, need: 'skyisland' },
+  { id: 'cloudgarden', name: '구름 정원', price: 2000000, need: 'skyisland' },
+  { id: 'skybank', name: '구름 은행 (돈 ×2)', price: 1400000, need: 'skyisland', boost: 2 },
+  { id: 'balloon', name: '열기구', price: 3000000, need: 'windmill' },
+  { id: 'rainbow', name: '무지개 다리', price: 3600000, need: 'cloudgarden' },
+  { id: 'skyfountain', name: '하늘 분수', price: 4500000, need: 'skybank' },
+  { id: 'castle', name: '하늘 성', price: 6000000, need: 'rainbow' },
+  { id: 'starfactory', name: '별 공장 (돈 ×3)', price: 5000000, need: 'skyfountain', boost: 3 },
+  { id: 'ufo', name: 'UFO 착륙장 (돈 ×2)', price: 10000000, need: 'castle', boost: 2 },
+  { id: 'crown', name: '황금 왕관 탑', price: 20000000, need: 'ufo', finale: true, reward: 500 },
 ];
 export const TYCOON_START_DROP = { value: 5, every: 1.5 };
 export const TYCOON_REWARD = 200;
 
+// 벨트 밖에서 모든 돈에 곱하는 배수 (구름 은행, 별 공장)
+export function tycoonBoost(owned) {
+  const has = new Set(owned);
+  let boost = 1;
+  for (const it of TYCOON) if (it.boost && has.has(it.id)) boost *= it.boost;
+  return boost;
+}
+
 export function tycoonIncome(owned) {
   const has = new Set(owned);
-  let mult = 1;
+  let mult = tycoonBoost(owned);
   for (const it of TYCOON) if (it.mult && has.has(it.id)) mult *= it.mult;
   let rate = TYCOON_START_DROP.value / TYCOON_START_DROP.every;
   for (const it of TYCOON) if (it.drop && has.has(it.id)) rate += it.drop.value / it.drop.every;
@@ -355,6 +376,7 @@ export function defaultSave(rand = Math.random) {
     obby: { cp: 0, top: 0, best: 0, clears: 0, paid: 0 },
     tycoon: { cash: 0, pending: 0, items: [], done: false, away: 0, bank: 0 },
     survival: { best: 0, wins: 0 },
+    tower: { blocks: [], best: 0 },
     sound: true,
     music: true,
     tutorial: false,
@@ -400,6 +422,7 @@ export function cleanSave(raw, rand = Math.random) {
   for (const it of TYCOON) if (items.includes(it.id) && (!it.need || ok.includes(it.need))) ok.push(it.id);
   s.tycoon = { cash: Math.floor(num(t.cash, 0, 1e12, 0)), pending: Math.floor(num(t.pending, 0, 1e12, 0)), items: ok, done: !!t.done && ok.includes('statue'), away: Math.floor(num(t.away, 0, 1e14, 0)), bank: num(t.bank, 0, 1, 0) };
   s.survival = { best: Math.floor(num(raw.survival?.best, 0, 3600, 0)), wins: Math.floor(num(raw.survival?.wins, 0, 99_999, 0)) };
+  s.tower = { blocks: cleanTowerBlocks(raw.tower?.blocks), best: Math.floor(num(raw.tower?.best, 0, TOWER.TOP + 1, 0)) };
   s.sound = raw.sound !== false;
   s.music = raw.music !== false;
   s.tutorial = !!raw.tutorial;
@@ -413,7 +436,7 @@ export const OBBY_CLEAR_COINS = 100;
 
 // ───────────── 네트워크 ─────────────
 // 위치는 숫자만 보낸다 (글자열 속 숫자는 서버가 가릴 수 있다).
-export const WORLDS = ['hub', 'obby', 'tycoon', 'survival'];
+export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower'];
 const r2 = v => Math.round(v * 100) / 100;
 export function packPose(pl, yaw, w, anim, emote) {
   return [w, r2(pl.x), r2(pl.y), r2(pl.z), r2(yaw), anim, emote];
@@ -439,4 +462,55 @@ export function tileAt(x, z) {
 export function seeded(seed) {
   let s = (seed >>> 0) || 1;
   return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+}
+
+// ───── 하늘 타워 짓기 ─────
+// 땅은 칸(2×2×2) 격자. i, k 는 -12~11 (가로세로 24칸), j 는 0~99 (100층).
+export const TOWER = Object.freeze({ CELL: 2, MIN: -12, MAX: 11, TOP: 99, LIMIT: 500, REACH: 20, RATE: 0.1 });
+export const BLOCKS = [
+  { id: 'red', name: '빨강', c: '#ff4d5e' },
+  { id: 'orange', name: '주황', c: '#ff8a3d' },
+  { id: 'yellow', name: '노랑', c: '#ffd23f' },
+  { id: 'green', name: '초록', c: '#5ad16b' },
+  { id: 'sky', name: '하늘', c: '#3fa7ff' },
+  { id: 'purple', name: '보라', c: '#9b5cff' },
+  { id: 'pink', name: '분홍', c: '#ff8fc7' },
+  { id: 'white', name: '하양', c: '#ffffff' },
+  { id: 'black', name: '검정', c: '#2a2d36' },
+  { id: 'wood', name: '나무', c: '#c98a4b', m: 'wood' },
+  { id: 'stone', name: '돌', c: '#b8bcc6', m: 'stone' },
+  { id: 'glass', name: '유리', c: '#bfe9ff', k: 'glass' },
+  { id: 'neon', name: '빛나는', c: '#7dfcff', m: 'neon' },
+  { id: 'gold', name: '황금', c: '#ffd23f', m: 'gold' },
+  { id: 'ice', name: '얼음', c: '#bdefff', k: 'ice' },
+  { id: 'bounce', name: '점프대', c: '#40ff8a', k: 'bounce', m: 'neon' },
+  { id: 'ladder', name: '사다리', c: '#a0612f', k: 'ladder', m: 'wood' },
+];
+export const cellKey = (i, j, k) => `${i},${j},${k}`;
+export const cellCenter = (i, j, k) => [(i + 0.5) * TOWER.CELL, (j + 0.5) * TOWER.CELL, (k + 0.5) * TOWER.CELL];
+export const inTower = (i, j, k) => [i, j, k].every(Number.isInteger) && i >= TOWER.MIN && i <= TOWER.MAX && k >= TOWER.MIN && k <= TOWER.MAX && j >= 0 && j <= TOWER.TOP;
+export const towerFloor = y => Math.max(0, Math.floor((y + 0.05) / TOWER.CELL));
+
+// 저장이나 네트워크에서 온 블록 목록 정리: 칸 안, 겹치지 않게, 500개까지
+export function cleanTowerBlocks(list, limit = TOWER.LIMIT) {
+  const out = [], seen = new Set();
+  if (!Array.isArray(list)) return out;
+  for (const b of list) {
+    if (!Array.isArray(b) || b.length < 4) continue;
+    const [i, j, k, t] = b;
+    if (!inTower(i, j, k) || !Number.isInteger(t) || t < 0 || t >= BLOCKS.length) continue;
+    const key = cellKey(i, j, k);
+    if (seen.has(key)) continue;
+    seen.add(key); out.push([i, j, k, t]);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+// 네트워크로 보낼 때는 숫자 배열 하나로 (글자열 없음)
+export const packBlocks = blocks => blocks.flat();
+export function unpackBlocks(flat) {
+  if (!Array.isArray(flat)) return [];
+  const list = [];
+  for (let n = 0; n + 3 < flat.length; n += 4) list.push(flat.slice(n, n + 4));
+  return cleanTowerBlocks(list);
 }

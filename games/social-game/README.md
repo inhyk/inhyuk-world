@@ -115,6 +115,11 @@
 - 코드: 목록과 번호 `poses.mjs`(`poses.test.mjs`), 움직임 `src/props/character.js` 의 `pose:<id>` 모드(손은 두 뼈 IK 로 턱, 허리, 머리 위에 놓는다), 카메라 `src/player.js` 의 `startPose`/`poseCamera`
 - 혼자 보기: `viewer.html?mod=props/character&fn=characterPoses&cam=0,1,-5.6&target=0,0.85,0` · 검사: `node games/social-game/pose-check.mjs http://127.0.0.1:5173/ /tmp/social-poses`
 
+## 새 버전 알림 (2026-11-08, 인혁이 계획 6-3)
+
+- 인혁이가 "햄찌 영화에서(다른 것도 마찬가지) 이렇게만 나와"라고 옛날 이모지 영화(🐹 🌻)를 그렸다. 사이트에는 진짜 영화만 있었으니, 업데이트 전에 열어 둔 창에서 한 것으로 봤다.
+- 그래서 게임이 3분마다, 그리고 창으로 돌아올 때 `index.html` 을 캐시 없이 다시 받아 첫 스크립트(`assets/index-XXXX.js`) 이름을 비교한다. 다르면 위쪽에 "🔄 새 버전이 나왔어요! 눌러서 새로고침" 버튼이 나오고, 누르면 저장하고 새로고침한다(`src/update.js`). 개발 서버에서는 하지 않는다.
+
 ## 조작
 
 - WASD 걷기, Shift 달리기, Space 점프, 마우스 둘러보기

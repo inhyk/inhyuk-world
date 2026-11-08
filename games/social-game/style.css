@@ -312,3 +312,6 @@ button.mini:hover { background: rgba(255, 250, 240, .32); }
 #pose-grid kbd { font-family: inherit; font-size: 12px; color: #8a8070; min-height: 14px; }
 body.posing #cross { display: none; }
 body.posing #prompt { top: auto; bottom: 126px; }
+/* 새 버전 알림 (src/update.js) */
+#update-banner { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 60; padding: 12px 26px; border: 0; border-radius: 18px; background: #ffcf3f; color: #2b1a0c; font: 22px Jua, sans-serif; box-shadow: 0 6px 18px rgba(0,0,0,.35); cursor: pointer; animation: pop .3s ease-out; }
+#update-banner:hover { background: #ffd95e; }
