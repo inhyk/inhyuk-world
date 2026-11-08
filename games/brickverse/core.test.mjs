@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -314,4 +314,14 @@ test('배틀: 탄창과 재장전, 총알 상자', () => {
   assert.equal(ammoBox('pistol'), 0);
   assert.equal(ammoBox('shotgun'), 9);
   assert.ok(WEAPONS.every(w => w.mag > 0 && w.reload > 0));
+});
+
+test('배틀: 헬멧과 조끼가 맞는 아픔을 줄인다', () => {
+  assert.equal(gearReduce(0, 0), 0);
+  assert.ok(Math.abs(gearReduce(3, 3) - 0.6) < 1e-9);
+  assert.deepEqual(applyDamage({ hp: 100, armor: 0, helmet: 0, vest: 0 }, 40), { hp: 60, armor: 0 });
+  const r = applyDamage({ hp: 100, armor: 0, helmet: 3, vest: 3 }, 40);
+  assert.ok(Math.abs(r.hp - 84) < 1e-9);
+  const r2 = applyDamage({ hp: 100, armor: 0, helmet: 1, vest: 2 }, 100);
+  assert.ok(Math.abs(r2.hp - 35) < 1e-9);
 });
