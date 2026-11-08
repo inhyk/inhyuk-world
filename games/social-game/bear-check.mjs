@@ -30,12 +30,15 @@ const plan = await G(() => {
   const w = window.__game.wildlife, m = window.__wl;
   const days = Array.from({ length: 28 }, (_, i) => m.dayPlan(i + 1, w.cells));
   const again = Array.from({ length: 28 }, (_, i) => m.dayPlan(i + 1, w.cells));
-  return { cells: w.cells.length, withBears: days.filter((d) => d.length).length, same: JSON.stringify(days) === JSON.stringify(again), first: days.findIndex((d) => d.length) + 1, wildCells: w.cells.every((c) => m.wildLand(c.x, c.z) || true) };
+  const wood = days.filter((d) => d[0]?.wood && d[0].from <= 6 && d[0].to >= 20 && Math.hypot(d[0].home.x - m.BEAR_WOOD.x, d[0].home.z - m.BEAR_WOOD.z) < 90).length;
+  return { cells: w.cells.length, wood, extra: days.filter((d) => d.length > 1).length, same: JSON.stringify(days) === JSON.stringify(again), first: 1, sign: !!w.sign?.parent };
 });
-console.log('forest cells', plan.cells, '| days with bears in 28:', plan.withBears, '| first bear day', plan.first);
+console.log('forest cells', plan.cells, '| 곰 숲 bear days in 28:', plan.wood, '| days with an extra bear:', plan.extra);
 assert.ok(plan.cells >= 10, 'forest cells found from the trees on the hills');
 assert.ok(plan.same, 'day plan is the same every time (stable on reload)');
-assert.ok(plan.withBears >= 6 && plan.withBears <= 22, 'bears come only some days');
+assert.equal(plan.wood, 28, 'the 곰 숲 bear is out every day from 6:00 to 20:30 (인혁: "곰이 숲에서 안보여")');
+assert.ok(plan.extra >= 6 && plan.extra <= 22, 'another bear somewhere else only some days');
+assert.ok(plan.sign, 'the 곰 숲 sign stands at the forest edge');
 
 // ---- 2. a planned bear comes out (player far away) and goes home after its hours
 const sched = await G((day) => {

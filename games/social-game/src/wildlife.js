@@ -1,7 +1,9 @@
 // 숲의 반달가슴곰 (인혁: "숲에 곰이 가끔씩 있게 해줘"). The forest is where the trees stand thick on the
 // hills around town (40 m cells with 3+ trees, outside the town and the airport). Every game day is
-// rolled from the day number, so a reload gives the same answer: about half the days one or two bears
-// roam one patch of that forest for a few hours. They wander, sniff the ground, sit, and stand up to
+// rolled from the day number, so a reload gives the same answer. 인혁 then said "곰이 숲에서 안보여":
+// so one bear now lives in the 곰 숲 (BEAR_WOOD, the thick wood just past the east end of the main
+// avenue, with a sign) from 6:00 to 20:30 every day, and about half the days one more roams another
+// patch of the hills for a few hours. They wander, sniff the ground, sit, and stand up to
 // look around. Within ~15 m a bear notices you, stands up and huffs, then ambles away. Run at it or
 // crowd it and it bluff-charges, stopping short with a slam and a roar; touch it and it shoves you.
 // Bears are local to this computer (not shared in the online town).
@@ -17,6 +19,20 @@ const NOTICE = 15;          // metres: the bear sees / smells you
 const TOO_CLOSE = 5;        // metres: it feels cornered and charges
 const WALK = 0.8, HURRY = 1.6, CHARGE = 7.5;
 const PI = Math.PI;
+/** 곰 숲: the thickest forest, just past the east end of the main avenue (x 300). */
+export const BEAR_WOOD = { x: 400, z: 0, sign: [328, 9] };
+
+/** The forest cell the 곰 숲 bear calls home: the thickest cell near BEAR_WOOD. */
+export function woodHome(cells) {
+  let best = null, bs = -Infinity;
+  for (const c of cells) {
+    const d = Math.hypot(c.x - BEAR_WOOD.x, c.z - BEAR_WOOD.z);
+    if (d > 90) continue;
+    const sc = c.n - d / 20;
+    if (sc > bs) { bs = sc; best = c; }
+  }
+  return best;
+}
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 /** Land that belongs to the forest, not the town: hills outside the town rectangle, not the airport or beach. */
@@ -49,17 +65,46 @@ export function forestCells(breakables) {
 /** Which bears come out on a day (deterministic): [{id, home, from, to, seed}] */
 export function dayPlan(day, cells) {
   const R = rng(9001 + day * 7919);
-  if (!cells.length || R() > 0.5) return [];
-  const total = cells.reduce((s, c) => s + c.n, 0);
-  let t = R() * total, home = cells[cells.length - 1];
-  for (const c of cells) if ((t -= c.n) <= 0) { home = c; break; }
-  const n = R() < 0.3 ? 2 : 1;
   const out = [];
-  for (let i = 0; i < n; i++) {
-    const from = 6.5 + R() * 7, len = 4 + R() * 5;
-    out.push({ id: `${day}-${i}`, home, from, to: Math.min(20.5, from + len), seed: Math.floor(R() * 1e6) });
-  }
+  // every day: the bear of the 곰 숲, out all day (인혁: "곰이 숲에서 안보여 고쳐줘")
+  const wood = woodHome(cells);
+  if (wood) out.push({ id: `${day}-wood`, home: wood, from: 6, to: 20.5, seed: Math.floor(R() * 1e6), wood: true });
+  // about half the days one more bear somewhere else on the hills for a few hours
+  if (!cells.length || R() > 0.5) return out;
+  const others = cells.filter((c) => c !== wood);
+  const total = others.reduce((s, c) => s + c.n, 0);
+  let t = R() * total, home = others[others.length - 1] ?? wood;
+  for (const c of others) if ((t -= c.n) <= 0) { home = c; break; }
+  const from = 6.5 + R() * 7, len = 4 + R() * 5;
+  out.push({ id: `${day}-0`, home, from, to: Math.min(20.5, from + len), seed: Math.floor(R() * 1e6) });
   return out;
+}
+
+/** Wooden sign at the edge of the 곰 숲, facing the town (west). */
+function woodSign(groundAt) {
+  const g = new THREE.Group();
+  const [x, z] = BEAR_WOOD.sign;
+  g.position.set(x, groundAt(x, z), z);
+  g.rotation.y = -PI / 2; // the board faces -x, toward the town
+  g.scale.setScalar(1.5); // big enough to read from the road
+  const wood = new THREE.MeshStandardMaterial({ color: 0x7a5232, roughness: 0.85 });
+  for (const sx of [-0.85, 0.85]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 2.4, 10), wood);
+    post.position.set(sx, 1.2, 0); post.castShadow = true; g.add(post);
+  }
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const x2 = c.getContext('2d');
+  x2.fillStyle = '#c99a62'; x2.fillRect(0, 0, 512, 256);
+  for (let i = 0; i < 9; i++) { x2.fillStyle = `rgba(90,55,25,${0.08 + (i % 3) * 0.04})`; x2.fillRect(0, 12 + i * 28, 512, 3); }
+  x2.strokeStyle = '#5a3a1c'; x2.lineWidth = 12; x2.strokeRect(6, 6, 500, 244);
+  x2.textAlign = 'center'; x2.textBaseline = 'middle'; x2.fillStyle = '#2b1a0c';
+  x2.font = '700 64px Jua, "Apple SD Gothic Neo", sans-serif'; x2.fillText('🐻 곰 숲', 256, 88);
+  x2.font = '700 34px Jua, "Apple SD Gothic Neo", sans-serif'; x2.fillText('반달가슴곰이 살아요', 256, 158);
+  x2.font = '700 28px Jua, "Apple SD Gothic Neo", sans-serif'; x2.fillStyle = '#8a2a1a'; x2.fillText('만나면 천천히 뒤로 물러나요!', 256, 206);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const board = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.0, 0.08), [wood, wood, wood, wood, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }), wood]);
+  board.position.set(0, 1.85, 0.06); board.castShadow = true; g.add(board);
+  return g;
 }
 
 export class Wildlife {
@@ -89,12 +134,14 @@ export class Wildlife {
     }
     this._lateHooked = false;
     this.t = 0;
+    this.woodToast = false;
+    try { this.sign = woodSign(groundAt); engine.scene.add(this.sign); } catch (e) { console.warn('bear sign failed', e); }
   }
 
   /** Bears for the minimap (only the ones close enough to have been seen). */
   dots() {
     const p = this.player.pos, out = [];
-    for (const b of this.bears) if (Math.hypot(b.x - p.x, b.z - p.z) < 70) out.push({ x: b.x, z: b.z, color: '#2a1c14' });
+    for (const b of this.bears) if (Math.hypot(b.x - p.x, b.z - p.z) < 150) out.push({ x: b.x, z: b.z, color: '#2a1c14' });
     return out;
   }
 
@@ -191,6 +238,11 @@ export class Wildlife {
     // today's plan
     if (this.planDay !== s.day) { this.planDay = s.day; this.plan = dayPlan(s.day, this.cells); this.done.clear(); }
     const away = this.player.pos.x > 1500 || this.flight?.active;
+    // first time near the 곰 숲 in this session: say so
+    if (!this.woodToast && !away) {
+      const q = this.vehicle?.driving ? this.vehicle.pos : this.player.pos;
+      if (Math.hypot(q.x - BEAR_WOOD.x, q.z - BEAR_WOOD.z) < 110) { this.woodToast = true; this.toast('🐻 여기는 곰 숲! 반달가슴곰을 찾아봐요. 천천히 다가가요', 3600, true); }
+    }
     for (const pl of this.plan) {
       if (away || this.done.has(pl.id) || this.bears.some((b) => b.plan.id === pl.id)) continue;
       if (s.hour < pl.from || s.hour > pl.to) continue;
