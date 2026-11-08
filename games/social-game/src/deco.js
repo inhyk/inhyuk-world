@@ -4,9 +4,10 @@ import * as THREE from 'three';
 import { mat, paint } from './mat.js';
 import { box, rbox, cyl, put, bake, displace } from './geom.js';
 import { Scatter } from './scatter.js';
-import { LAYOUT, SITES, ROADS2, groundAt } from './world.js';
+import { LAYOUT, SITES, ROADS2, EDGE, groundAt } from './world.js';
 import { rng } from './noise.js';
 import { scatterKey } from '../online.mjs';
+import { landTrees } from './land.js';
 
 const LOTS = [
   { x0: -168, x1: -132, z0: -24.5, z1: -11.2, label: 'home' },
@@ -111,7 +112,7 @@ export function dressTown({ scene, props, build, colliders, lights, quality }) {
   const cap = { round: 140, round2: 100, cherry: 60, pine: 120, palm: 24, bush: 240, bush2: 200, flower: 160, flower2: 160, rock: 80, rock2: 50, shell: 30, shell2: 30 };
   const FAR = { round: farTree('round', 7), round2: farTree('maple', 7.5), cherry: farTree('cherry', 6), pine: farTree('pine', 9) };
   const RANGE = { round: 70, round2: 70, cherry: 70, pine: 70, palm: 400, bush: 45, bush2: 45, flower: 30, flower2: 30, rock: 70, rock2: 70, shell: 40, shell2: 40 };
-  for (const [k, p] of Object.entries(protos)) sc[k] = new Scatter(root, p, cap[k] * 4, { far: FAR[k] ?? null, range: RANGE[k], maxRange: FAR[k] ? 900 : RANGE[k] });
+  for (const [k, p] of Object.entries(protos)) sc[k] = new Scatter(root, p, cap[k] * 4 + 3000, { far: FAR[k] ?? null, range: RANGE[k], maxRange: FAR[k] ? 900 : RANGE[k] });
   const BREAK = {
     round: { item: 'log', count: 3, hardness: 2.4, color: 0x6a4a30, h: 3.2, r: 0.35, name: '나무' },
     round2: { item: 'log', count: 3, hardness: 2.4, color: 0x6a4a30, h: 3.2, r: 0.35, name: '나무' },
@@ -185,6 +186,12 @@ export function dressTown({ scene, props, build, colliders, lights, quality }) {
     plant(R() < 0.5 ? 'shell' : 'shell2', x, z);
   }
   for (let i = 0; i < 10; i++) plant(R() < 0.5 ? 'rock' : 'rock2', LAYOUT.beachX - 20 - R() * 12, -80 + R() * 160);
+  // 인혁 계획 6: trees, bushes and rocks on the hills out to the fence, a thick wood just past it (land.js).
+  // Added last with their own random numbers, so everything above keeps its place and its name.
+  for (const t of landTrees(EDGE.home, (x, z) => freeGround(x, z, 1.5))) {
+    if (t.solid) plant(t.kind, t.x, t.z, t.ry, t.s);
+    else sc[t.kind].add(t.x, groundAt(t.x, t.z) - 0.05, t.z, t.ry, t.s);
+  }
   for (const s of Object.values(sc)) s.finish();
   const scatters = Object.values(sc);
 
@@ -307,7 +314,7 @@ export function dressJapan({ scene, props, build, colliders, lights, quality, pl
   }
   if (J?.fujiBackdrop) {
     const f = J.fujiBackdrop();
-    f.group.position.set(JX + 60, -2, -760);
+    f.group.position.set(JX + 60, -40, -760); // its unfogged foot stays under the hills past the fence (인혁 계획 6)
     f.material.fog = false;
     f.material.needsUpdate = true;
     f.group.traverse((o) => { o.castShadow = false; o.receiveShadow = false; });
@@ -328,8 +335,8 @@ export function dressJapan({ scene, props, build, colliders, lights, quality, pl
   };
   if (N) {
     const cherry = new Scatter(root, N.tree({ kind: 'cherry', seed: 11, height: 6 }), 400, { range: 80, maxRange: 80 });
-    const pine = new Scatter(root, N.tree({ kind: 'pine', seed: 12, height: 9 }), 600, { far: farTree('pine', 9), range: 80, maxRange: 900 });
-    const maple = new Scatter(root, N.tree({ kind: 'maple', seed: 13, height: 7 }), 300, { far: farTree('maple', 7), range: 80, maxRange: 900 });
+    const pine = new Scatter(root, N.tree({ kind: 'pine', seed: 12, height: 9 }), 3000, { far: farTree('pine', 9), range: 80, maxRange: 900 });
+    const maple = new Scatter(root, N.tree({ kind: 'maple', seed: 13, height: 7 }), 2000, { far: farTree('maple', 7), range: 80, maxRange: 900 });
     const bush = new Scatter(root, N.bush({ seed: 14 }), 300, { range: 45, maxRange: 45 });
     // cherry trees just behind the sidewalks
     for (let x = L.jMin[0] + 8; x < L.jMax[0] - 6; x += 9) for (const s of [-1, 1]) {
@@ -347,6 +354,8 @@ export function dressJapan({ scene, props, build, colliders, lights, quality, pl
       else if (k < 0.3) cherry.add(x, groundAt(x, z), z, R() * 6.28, 0.8 + R() * 0.3);
       else if (k < 0.7) bush.add(x, groundAt(x, z), z, R() * 6.28, 0.8);
     }
+    // the wood just past the island's fence (인혁 계획 6, land.js)
+    for (const t of landTrees(EDGE.japan)) (t.kind === 'pine' ? pine : maple).add(t.x, groundAt(t.x, t.z) - 0.05, t.z, t.ry, t.s);
     for (const sc of [cherry, pine, maple, bush]) { sc.finish(); out.scatters.push(sc); }
     if (N.grassTuft) {
       const { geometry, material } = N.grassTuft();

@@ -1,6 +1,7 @@
 // Drivable car: arcade physics on the terrain, collisions with tall boxes, chase / driver cameras.
 import * as THREE from 'three';
 import { bodyFree } from './collide.js';
+import { keepIn } from './world.js';
 
 const tmp = [];
 
@@ -80,7 +81,9 @@ export class Vehicle {
     const nx = this.pos.x + f.x * this.speed * dt, nz = this.pos.z + f.z * this.speed * dt;
     const ox = this.pos.x, oz = this.pos.z;
     this.pos.x = nx; this.pos.z = nz;
-    const hit = this.resolve();
+    let hit = this.resolve();
+    // the fence at the edge of the land (인혁 계획 6): the car stops short of it
+    if (keepIn(this.pos, this.half.l + 0.4)) { hit = hit || true; if (this.driving) this.onEdge?.(); }
     if (hit) {
       this.impact = Math.abs(this.speed);
       this.speed *= -0.25;
