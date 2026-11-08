@@ -11,6 +11,7 @@ import { mat, paint, textured, glow } from '../mat.js';
 import { rbox, cyl, sphere, capsule, torus, lathe, tube, prep, displace, put, group, bake } from '../geom.js';
 import { canvasTex, FONT } from '../tex.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { pillow, dressBed, knitMat } from '../soft.js';
 
 // ------------------------------------------------------------------ layout constants
 const FL = 0.45;            // finished floor top
@@ -633,8 +634,7 @@ function slipper(parent, M, x, y, z, ry, color) {
   return g;
 }
 function cushion(parent, M, m, x, y, z, w, h, ry, rx = 0, seed = 1) {
-  const g = softBox(w, 0.13, h, 0.05, 0.035, 0.004, seed);
-  return put(parent, g, m, x, y, z, rx + Math.PI / 2, ry, 0);
+  return put(parent, pillow(w, 0.15, h, seed, 0), m, x, y, z, rx + Math.PI / 2, ry, 0);   // sewn pillow (soft.js)
 }
 
 // ------------------------------------------------------------------ the shell: walls, floors, roof
@@ -1078,19 +1078,9 @@ function buildBedroom(site, root, M) {
   rb(bg, M.oak, bw + 0.1, 0.24, bl - 0.08, 0, 0.2, 0.04, 0.02, 2);
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) rb(bg, M.oak, 0.06, 0.1, 0.06, sx * (bw / 2 - 0.02), 0.05, sz * (bl / 2 - 0.08), 0.01, 1);
   put(bg, softBox(1.68, 1.0, 0.12, 0.05, 0.02, 0.002, 2), M.fabBeige, 0, 0.62, -bl / 2 + 0.07);
-  rb(bg, M.linen, bw, 0.24, bl - 0.16, 0, 0.44, 0.06, 0.06, 3);            // mattress (sheet)
-  // duvet: top + hanging sides + turned-down edge
-  const dg = softBox(bw + 0.1, 0.09, 1.45, 0.04, 0.03, 0.007, 5);
-  put(bg, dg, M.fabGreen, 0, 0.58, 0.36);
-  for (const s of [-1, 1]) put(bg, softBox(0.05, 0.28, 1.42, 0.02, 0.0, 0.006, 6 + s), M.fabGreen, s * (bw / 2 + 0.06), 0.46, 0.36);
-  put(bg, softBox(bw + 0.14, 0.28, 0.05, 0.02, 0.0, 0.006, 9), M.fabGreen, 0, 0.46, 0.36 + 0.73);
-  put(bg, softBox(bw + 0.06, 0.06, 0.3, 0.03, 0.01, 0.004, 3), M.linen, 0, 0.6, -0.42);
-  // pillows
-  put(bg, softBox(0.62, 0.15, 0.4, 0.06, 0.05, 0.005, 1), M.linen, -0.36, 0.66, -0.78, 0.25, 0, 0).rotation.x = -0.35;
-  put(bg, softBox(0.62, 0.15, 0.4, 0.06, 0.05, 0.005, 2), M.linen, 0.36, 0.66, -0.78).rotation.x = -0.3;
+  // mattress + sheet, draped duvet with a turned-down cover, two pillows (soft.js)
+  dressBed(bg, { bw, ml: bl - 0.16, mz: 0.06, mb: 0.32, duvet: M.fabGreen, pillows: [{ x: -0.36 }, { x: 0.36, hex: 0xf4f1ea }], blanket: knitMat(0xd9a74a), seed: 2 });
   put(bg, softBox(0.4, 0.12, 0.3, 0.05, 0.04, 0.004, 3), M.mustard, 0.1, 0.72, -0.56).rotation.set(-0.9, 0.2, 0);
-  // folded blanket at the foot
-  for (let i = 0; i < 3; i++) put(bg, softBox(1.25, 0.035, 0.42, 0.017, 0.004, 0.002, 7 + i), M.mustard, 0.02, 0.645 + i * 0.033, 0.68 + i * 0.006);
   box3(S, bx - bw / 2 - 0.06, FL, bz0, bx + bw / 2 + 0.06, FL + 0.66, bz1);
   // nightstands with clock, lamp, books, phone
   for (const s of [-1, 1]) {

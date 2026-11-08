@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { mat, paint, textured, glow } from '../mat.js';
 import { box, sphere, cyl, capsule, torus, lathe, tube, plane, quad, prep, put, group, bake, aabb } from '../geom.js';
 import { makeSite, solid } from '../site.js';
+import { dressBed, throwPillow, painted, velvetMat, foldedBlanket, towelMat } from '../soft.js';
 import { rng } from '../noise.js';
 import {
   PI, RB, CY, SP, V, D, tint, cached, vcMat, vcGloss, vcSoft, vcLeaf, Atlas, txt, rr, leafGeo, pottedPlant,
@@ -461,17 +462,16 @@ export function buildPension() {
   put(bed, RB(1.74, 1.08, 0.07, 0.015, 2), oak, 0, 0.54, -1.04);
   put(bed, RB(1.6, 0.6, 0.02, 0.01, 2), M.seafoam, 0, 0.68, -1.0);
   put(bed, RB(1.82, 0.05, 0.1, 0.012, 1), oak, 0, 1.1, -1.04);
-  put(bed, RB(1.56, 0.22, 2.0, 0.06, 2), mat('linen'), 0, 0.42, 0.0);
-  V(bed, RB(1.64, 0.09, 1.38, 0.045, 2), 0xd6e6ee, 0, 0.57, 0.33, 0, 0, 0, vcSoft());
-  V(bed, RB(1.64, 0.11, 0.28, 0.05, 2), 0xf6f3ec, 0, 0.6, -0.38, 0, 0, 0, vcSoft());
-  for (const s of [-1, 1]) V(bed, RB(0.64, 0.15, 0.42, 0.07, 3), 0xfbf9f4, s * 0.37, 0.62, -0.74, -0.35, 0, s * 0.03, vcSoft());
-  V(bed, RB(0.42, 0.3, 0.12, 0.06, 2), 0x3f8f96, -0.12, 0.72, -0.5, -0.3, 0.1, 0, vcSoft());
-  V(bed, RB(0.34, 0.26, 0.11, 0.05, 2), 0xe8735a, 0.22, 0.7, -0.47, -0.25, -0.15, 0.05, vcSoft());
+  // sea-blue quilted duvet over the footboard, turned-down cover, two pillows, teal + coral velvet cushions (soft.js)
+  dressBed(bed, { bw: 1.56, ml: 2.0, mz: 0, mb: 0.31, mh: 0.22, duvet: 0xc9dde6, out: 0.08, hang: 0.15, pillows: [{ x: -0.37 }, { x: 0.37, hex: 0xf6f3ec }], seed: 11 });
+  put(bed, painted(throwPillow(0.42, 0.32, 0.15, 2), 0x3f8f96), velvetMat(), -0.12, 0.75, -0.5, -0.3, 0.1, 0);
+  put(bed, painted(throwPillow(0.36, 0.28, 0.14, 3), 0xe8735a), velvetMat(), 0.22, 0.73, -0.45, -0.25, -0.15, 0.05);
   // folded towel set + welcome shell on the duvet
-  V(bed, RB(0.42, 0.07, 0.32, 0.025, 2), 0xffffff, 0.3, 0.655, 0.72, 0, 0.12, 0, vcSoft());
-  V(bed, RB(0.38, 0.06, 0.28, 0.022, 2), 0x9cd0cf, 0.3, 0.72, 0.72, 0, 0.1, 0, vcSoft());
-  V(bed, RB(0.3, 0.05, 0.2, 0.02, 2), 0xffffff, 0.3, 0.775, 0.72, 0, 0.16, 0, vcSoft());
-  V(bed, sphere(0.05, 12, 8).scale(1, 0.45, 0.8), 0xf3d9c4, 0.3, 0.81, 0.72, 0, 0.4, 0, vcGloss());
+  // folded terry towels for the guests
+  put(bed, painted(foldedBlanket(0.42, 0.3, 2, 0.032, 4), 0xffffff), towelMat(), 0.3, 0.585, 0.72, 0, 0.12, 0);
+  put(bed, painted(foldedBlanket(0.36, 0.26, 2, 0.028, 5), 0x9cd0cf), towelMat(), 0.3, 0.65, 0.72, 0, 0.1, 0);
+  put(bed, painted(foldedBlanket(0.28, 0.19, 1, 0.03, 6), 0xffffff), towelMat(), 0.3, 0.708, 0.72, 0, 0.16, 0);
+  V(bed, sphere(0.05, 12, 8).scale(1, 0.45, 0.8), 0xf3d9c4, 0.3, 0.76, 0.72, 0, 0.4, 0, vcGloss());
   for (const s of [-1, 1]) for (const t of [-1, 1]) put(bed, RB(0.06, 0.12, 0.06, 0.01, 1), oak, s * 0.8, 0.06, t * 1.0);
   solid(site, -2.8, FY + 0.3, -3.25, 1.76, 0.6, 2.12);
   site.interactables.push({ id: 'hotelBed', label: '펜션에서 자기', pos: [-2.8, 1.25, -2.05], radius: 1.6, seat: { pos: [-2.8, 1.55, -3.62], yaw: PI, pitch: -0.1 } });

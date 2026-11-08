@@ -6,6 +6,7 @@ import { mat, paint, glow } from '../mat.js';
 import { box, cyl, sphere, torus, lathe, extrude, tube, plane, quad, prep, put, group, bake, aabb } from '../geom.js';
 import { canvasTex } from '../tex.js';
 import { makeSite, solid } from '../site.js';
+import { cushion, drape, bolster, painted, clothMat, printMat } from '../soft.js';
 import { rng } from '../noise.js';
 import { RB, CY, SP, V, D, tint, vcMat, vcGloss, vcSoft, vcLeaf, cached, leafGeo } from './office.js';
 import { JM, JFONT, jtxt, vtxt, rrect, grime, rsec, sweep, polyLathe, stoneLantern, paperLantern, bambooFence, signBoard, bicycle, vendingMachine } from '../props/japan.js';
@@ -254,7 +255,8 @@ function stool(g, M, x, y, z, h = 0.62) {
   V(s, CY(0.18, 0.17, 0.07, 22), 0x8a2a22, 0, h - 0.03, 0, 0, 0, 0, vcSoft());
   V(s, torus(0.12, 0.012, 6, 18), 0x5a5d62, 0, 0.26, 0, PI / 2, 0, 0, vcGloss());
 }
-function cushion(g, x, y, z, col, ry = 0) { V(g, RB(0.56, 0.08, 0.6, 0.04, 2), col, x, y + 0.04, z, 0, ry, 0, vcSoft()); }
+/** Zabuton: a plump square floor cushion, piped, with a button tuft in the middle (soft.js). */
+function zabuton(g, x, y, z, col, ry = 0, seed = 1) { put(g, painted(cushion(0.56, 0.085, 0.6, 0.04, 0.028, 0, seed, 0.022, 0.004), col), clothMat(), x, y + 0.045, z, 0, ry, 0); }
 function teaSet(g, x, y, z) {
   V(g, lathe([[0, 0], [0.05, 0], [0.065, 0.04], [0.06, 0.08], [0.03, 0.095], [0, 0.1]], 16), 0x5a3b2a, x, y, z, 0, 0, 0, vcGloss());
   V(g, cyl(0.007, 0.007, 0.07, 6), 0x5a3b2a, x + 0.07, y + 0.05, z, 0, 0, -0.9, vcGloss());
@@ -672,14 +674,17 @@ export function buildRyokan() {
   put(g, RB(1.5, 0.06, 0.9, 0.02, 2), M.walnut, TX, FY + 0.33, TZ);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) put(g, RB(0.08, 0.3, 0.08, 0.01, 1), M.walnut, TX + sx * 0.65, FY + 0.15, TZ + sz * 0.35);
   solid(site, TX, FY + 0.18, TZ, 1.5, 0.36, 0.9);
-  for (const [dx, dz] of [[0, 0.8], [0, -0.8], [-1.1, 0], [1.1, 0]]) cushion(g, TX + dx, FY, TZ + dz, 0x7a3a3e);
+  for (const [i, [dx, dz]] of [[0, 0.8], [0, -0.8], [-1.1, 0], [1.1, 0]].entries()) zabuton(g, TX + dx, FY, TZ + dz, 0x7a3a3e, (i % 2) * PI / 2 + i * 0.05, i);
   teaSet(g, TX, FY + 0.36, TZ);
   // futon laid out (head towards -X), andon lamp beside it
   const FX = -8.0, FZ = -5.3;
-  V(g, RB(2.1, 0.12, 1.05, 0.05, 2), 0xf4f0e8, FX, FY + 0.06, FZ, 0, 0, 0, vcSoft());
-  V(g, RB(1.5, 0.08, 1.1, 0.04, 3), 0x8aa0c8, FX + 0.25, FY + 0.15, FZ, 0, 0, 0.02, vcSoft());
-  V(g, RB(1.52, 0.02, 1.12, 0.01, 1), 0xf2eee6, FX - 0.48, FY + 0.17, FZ, 0, 0, 0, vcSoft());
-  V(g, capsule(0.09, 0.42).rotateX(PI / 2), 0xf6f2ea, FX - 0.82, FY + 0.18, FZ, 0, 0, 0, vcSoft());
+  // shikibuton (piped, a little tufted), indigo kakebuton with a flower print falling to the tatami,
+  // white cover turned down at the head, round buckwheat pillow (soft.js). Local +Z of fg = world +X.
+  const fg = group(g, FX, FY, FZ, PI / 2);
+  put(fg, painted(cushion(1.05, 0.12, 2.1, 0.05, 0.016, 0.004, 2, 0.008, 0.005), 0xf4f0e8), clothMat(), 0, 0.06, 0);
+  put(fg, drape({ w: 1.12, len: 1.5, drop: 0.07, z0: -0.47, r: 0.05, th: 0.04, foot: true, footDrop: 0.07, quilt: 0.36, puff: 0.024, seed: 4 }), printMat('floral', { color: 0x2f3f6e, flowers: [0xf2a7c0, 0xfbf6ec, 0xe8c24a], leaf: 0x6f9a7a, count: 5, seed: 8 }, 0.5), 0, 0.14, 0);
+  put(fg, painted(drape({ w: 1.16, len: 0.26, drop: 0.05, z0: -0.5, r: 0.06, th: 0.03, foot: false, seed: 6, nx: 28, nz: 5 }), 0xf2eee6), clothMat(), 0, 0.176, 0);
+  put(fg, painted(bolster(0.48, 0.085, 3), 0xf6f2ea), clothMat(), 0, 0.2, -0.84, 0.1, 0, 0);
   V(g, RB(0.4, 0.03, 0.3, 0.01, 1), 0x2d3b6a, FX + 1.25, FY + 0.016, FZ - 0.6, 0, 0.2, 0, vcSoft());
   solid(site, FX, FY + 0.1, FZ, 2.1, 0.2, 1.05);
   const an = group(g, FX - 1.1, FY, FZ + 0.9, 0.3);

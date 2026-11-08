@@ -140,6 +140,80 @@ const GEN = {
       o.h = 0.5 + w * 0.1; o.ro = 0.9;
     };
   },
+  /** Cotton weave for bedding and cushions: fine plain weave, slub threads, a little fuzz. */
+  cotton(p) {
+    const base = hex(p.color ?? 0xffffff), n = p.weave ?? 128;
+    return (u, v, o) => {
+      const a = Math.sin(u * n * Math.PI * 2), b = Math.sin(v * n * Math.PI * 2);
+      const w = a * b > 0 ? Math.abs(a) : Math.abs(b);
+      const slub = fbm2(u, v, 6, 96, 3, p.seed ?? 17), fuzz = fbm(u, v, 64, 2, (p.seed ?? 17) + 3);
+      setCol(o, base, 0.86 + 0.07 * w + 0.08 * slub + 0.05 * fuzz);
+      o.h = w * 0.55 + slub * 0.25 + fuzz * 0.15; o.ro = 0.92;
+    };
+  },
+  /** Gingham check (bedding, picnic): two crossing stripe sets, darker where they cross. */
+  gingham(p) {
+    const a = hex(p.color ?? 0x5f86b8), b = hex(p.color2 ?? 0xf6f3ec), n = p.count ?? 8, wv = p.weave ?? 160;
+    return (u, v, o) => {
+      const su = ((u * n) % 1) < 0.5 ? 1 : 0, sv = ((v * n) % 1) < 0.5 ? 1 : 0, k = (su + sv) / 2;
+      const ta = Math.sin(u * wv * Math.PI * 2), tb = Math.sin(v * wv * Math.PI * 2), w = ta * tb > 0 ? Math.abs(ta) : Math.abs(tb);
+      const f = 0.9 + 0.07 * w + 0.05 * fbm(u, v, 16, 2, 9);
+      o.r = mix(b[0], a[0], k) * f; o.g = mix(b[1], a[1], k) * f; o.b = mix(b[2], a[2], k) * f;
+      o.h = w * 0.5; o.ro = 0.9;
+    };
+  },
+  /** Small flower print on cotton: jittered five-petal flowers with a centre dot and two leaves. */
+  floral(p) {
+    const base = hex(p.color ?? 0xf6efe4), cols = (p.flowers ?? [0xe58a9a, 0xf2c14e, 0x8fb0d8]).map(hex), leaf = hex(p.leaf ?? 0x7fa36a);
+    const n = p.count ?? 6, wv = p.weave ?? 140, seed = p.seed ?? 5;
+    const h1 = (x, y, s) => { const t = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return t - Math.floor(t); };
+    return (u, v, o) => {
+      let col = base, hgt = 0;
+      const cu = u * n, cv = v * n, ix = Math.floor(cu), iy = Math.floor(cv);
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const gx = ix + dx, gy = iy + dy, mx = ((gx % n) + n) % n, my = ((gy % n) + n) % n;
+        const fx = gx + 0.2 + 0.6 * h1(mx, my, seed), fy = gy + 0.2 + 0.6 * h1(my, mx, seed + 1);
+        const ex = cu - fx, ey = cv - fy, r = Math.hypot(ex, ey), ang = Math.atan2(ey, ex) + h1(mx, my, seed + 2) * 6.28;
+        const R = 0.2 + 0.06 * h1(mx, my, seed + 3);
+        // leaves first (under the petals)
+        for (const la of [0.9, 3.6]) {
+          const lx = ex, ly = ey;
+          const ca = Math.cos(la + h1(mx, my, seed + 4) * 3), sa = Math.sin(la + h1(mx, my, seed + 4) * 3);
+          const px = (lx * ca + ly * sa) - R * 1.25, py = -lx * sa + ly * ca;
+          if ((px / (R * 0.75)) ** 2 + (py / (R * 0.32)) ** 2 < 1) { col = leaf; hgt = 0.4; }
+        }
+        if (r < R * (0.55 + 0.45 * Math.abs(Math.cos(2.5 * ang)))) { col = cols[Math.floor(h1(mx, my, seed + 5) * cols.length)]; hgt = 0.7; }
+        if (r < R * 0.22) { col = [1, 0.93, 0.62]; hgt = 0.8; }
+      }
+      const ta = Math.sin(u * wv * Math.PI * 2), tb = Math.sin(v * wv * Math.PI * 2), w = ta * tb > 0 ? Math.abs(ta) : Math.abs(tb);
+      setCol(o, col, 0.9 + 0.07 * w + 0.05 * fbm(u, v, 16, 2, 4));
+      o.h = w * 0.45 + hgt * 0.15; o.ro = 0.9;
+    };
+  },
+  /** Terry towel: dense cotton loops (noisy height) and a woven band across. */
+  terry(p) {
+    const base = hex(p.color ?? 0xffffff), band = p.band;
+    return (u, v, o) => {
+      const loops = vnoise(u * 180, v * 180, 180, 180, 7), f = fbm(u, v, 24, 3, 8);
+      const inBand = band != null && Math.abs(((v * 2) % 1) - 0.5) < band;
+      const k = inBand ? 0.8 + 0.1 * Math.abs(Math.sin(u * 220 * Math.PI)) : 0.8 + 0.18 * loops + 0.08 * f;
+      setCol(o, base, k);
+      o.h = inBand ? 0.35 : loops * 0.8 + f * 0.2; o.ro = 0.97;
+    };
+  },
+  /** Chunky knit for throws: columns of V stitches. */
+  knit(p) {
+    const base = hex(p.color ?? 0xd8c7a8), cols = p.cols ?? 10, rows = p.rows ?? 14;
+    return (u, v, o) => {
+      const cu = (u * cols) % 1, cv = (v * rows) % 1;
+      const x = (cu < 0.5 ? cu : 1 - cu) * 2;          // 0 at the column edge, 1 at the middle: mirrored halves make the V
+      const lob = 1 - Math.min(1, Math.hypot((x - 0.55) * 1.6, ((cv + x * 0.45) % 1 - 0.5) * 1.3));
+      const hgt = Math.max(0, lob) ** 0.7;
+      const f = fbm(u, v, 32, 2, 12);
+      setCol(o, base, 0.7 + 0.32 * hgt + 0.06 * f);
+      o.h = hgt * 0.9 + f * 0.1; o.ro = 0.95;
+    };
+  },
   /** Painted plaster wall. */
   plaster(p) {
     const base = hex(p.color ?? 0xefe9df);
