@@ -163,6 +163,7 @@ void PlayingState::enter() {
     updateLevelCompleteTextTexture();
     Mix_HaltMusic();
     m_Player.reset();
+    m_Player.setPlatformer(Config::isTowerFloor(m_Level));
     m_LevelManager.reset(m_Level);
     m_InitialBackground = m_LevelManager.getInitialBackground();
     m_InitialGround = m_LevelManager.getInitialGround();
@@ -191,6 +192,8 @@ void PlayingState::enter() {
     m_IsPaused = false;
     m_ShouldEndLevel = false;
     m_LevelEndBlocksX = m_LevelManager.getFurthestX() - 7*Config::TILE_SIZE/2 + m_Game->getWidth();
+    // a tower floor ends a little past its last object (the cube walks there)
+    if (m_Player.isPlatformer()) m_LevelEndBlocksX = m_LevelManager.getFurthestX() + 2*Config::TILE_SIZE;
     m_TimeEndingLevel = 0;
     m_IsLevelComplete = false;
     m_JustSetNewBest = false;
@@ -232,7 +235,8 @@ bool PlayingState::prepareSong() {
 
 void PlayingState::startSong() {
     if (m_Song != nullptr) {
-        Mix_PlayMusic(m_Song, 0);
+        // a tower floor takes as long as the player likes: its song loops
+        Mix_PlayMusic(m_Song, m_Player.isPlatformer() ? -1 : 0);
     }
 }
 
@@ -615,8 +619,20 @@ int PlayingState::simLoad(int level) {
     m_Level = level;
     m_IsInPractice = false;
     m_Player.reset();
+    m_Player.setPlatformer(Config::isTowerFloor(level) || level == SIM_PLATFORMER_SLOT);
     m_LevelManager.reset(level);
     return static_cast<int>(m_LevelManager.getObjects().size());
+}
+
+int PlayingState::simStepButtons(int buttons, float deltaTime) {
+    m_Player.simUpdateButtons(buttons, deltaTime);
+    if (m_Player.isDead()) {
+        return 1;
+    }
+    if (m_Player.getPosition().x > m_LevelManager.getFurthestX() + 2*Config::TILE_SIZE) {
+        return 2;
+    }
+    return 0;
 }
 
 int PlayingState::simStep(bool held, float deltaTime) {

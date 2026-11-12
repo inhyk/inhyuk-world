@@ -480,6 +480,36 @@ window.addEventListener('blur', () => {
   releaseTouch();
 });
 
+// Tower floors walk: on a touch screen, buttons send the arrow keys and the jump key.
+const walkPad = document.getElementById('walk-pad');
+function walkKey(type, key) {
+  const codes = {ArrowLeft: ['ArrowLeft', 37], ArrowRight: ['ArrowRight', 39], ' ': ['Space', 32]};
+  const [code, keyCode] = codes[key];
+  window.dispatchEvent(new KeyboardEvent(type, {key, code, keyCode, which: keyCode, bubbles: true, cancelable: true}));
+}
+for (const button of walkPad.querySelectorAll('button')) {
+  const key = button.dataset.key;
+  let held = false;
+  const down = event => {
+    event.preventDefault();
+    if (held) return;
+    held = true;
+    button.classList.add('held');
+    walkKey('keydown', key);
+  };
+  const up = event => {
+    event.preventDefault();
+    if (!held) return;
+    held = false;
+    button.classList.remove('held');
+    walkKey('keyup', key);
+  };
+  button.addEventListener('pointerdown', down);
+  button.addEventListener('pointerup', up);
+  button.addEventListener('pointercancel', up);
+  button.addEventListener('pointerleave', up);
+}
+
 // Header shows the level being played; my level is worked out again after each run.
 let wasPlaying = false;
 setInterval(() => {
@@ -497,6 +527,7 @@ setInterval(() => {
   }
   wasPlaying = playing && !finished;
   const level = Module._classic_level();
+  document.body.classList.toggle('walking', playing && isTowerFloor(level));
   if (playing && level < CLASSIC_LEVELS.length) {
     nowPlaying.textContent = `${String(level + 1).padStart(2, '0')} / ${CLASSIC_LEVELS[level][0].toUpperCase()}`;
   } else if (playing) {

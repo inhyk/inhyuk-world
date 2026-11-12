@@ -258,7 +258,7 @@ function towerFloors() {
     const hue = (24 + floor * 28) % 360;
     return {
       name: `DASH TOWER ${floor + 1}F`, song: TOWER_SONG, bpm: song.bpm, seconds: song.durationSeconds, tune,
-      difficulty: difficultyOf(tune), tower: floor, key: true,
+      difficulty: difficultyOf(tune), tower: floor, key: true, platformer: true,
       seed: EXTRA_SEEDS[TOWER_FIRST + floor + 1] ?? 12000 + floor * 37,
       colors: [[hsl(hue, 0.7, 0.5), hsl(hue, 0.75, 0.3)], [hsl(hue + 180, 0.7, 0.5), hsl(hue + 180, 0.75, 0.3)], [hsl(45, 0.9, 0.55), hsl(30, 0.85, 0.35)]],
       plan: towerPlan(song, floor),
@@ -1548,6 +1548,8 @@ const report = existsSync(REPORT) ? JSON.parse(readFileSync(REPORT, 'utf8')) : {
 mkdirSync(OUT, {recursive: true});
 for (let index = 0; index < LEVELS.length; index++) {
   if (wanted.length && !wanted.includes(index + 1)) continue;
+  // the tower's walking floors are built by levels/tower.mjs
+  if (LEVELS[index].platformer) continue;
   const started = Date.now();
   const {builder, text, entry, parsed} = buildLevel(index, songs);
   writeFileSync(new URL(`${index}.level`, OUT), text);

@@ -162,6 +162,15 @@ CLASSIC_EXPORT int sim_load(int level) {
 }
 
 // 0 running, 1 dead, 2 reached the end
+// tower floors: buttons 1 jump, 2 left, 4 right
+CLASSIC_EXPORT int sim_step_buttons(int buttons, float deltaTime) {
+    return PlayingState::get().simStepButtons(buttons, deltaTime);
+}
+
+CLASSIC_EXPORT int sim_coins() {
+    return PlayingState::get().getPlayer().getCoins();
+}
+
 CLASSIC_EXPORT int sim_step(int held, float deltaTime) {
     return PlayingState::get().simStep(held != 0, deltaTime);
 }

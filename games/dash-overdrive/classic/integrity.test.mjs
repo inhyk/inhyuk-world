@@ -33,11 +33,13 @@ test('a hundred built levels and ten tower floors use only objects the engine kn
   for (let index = 0; index < LEVELS.length; index++) {
     const text = readFileSync(new URL(`leveldata/${index}.level`, res), 'utf8');
     const ids = text.split(';').slice(1).filter(Boolean).map(row => Number(row.split(',')[1]));
-    assert.ok(ids.length > 100, `level ${index + 1} has objects`);
+    assert.ok(ids.length > (LEVELS[index].platformer ? 40 : 100), `level ${index + 1} has objects`);
     assert.equal(ids.filter(id => id === (LEVELS[index].key ? 204 : 201)).length, 3, `level ${index + 1} has three coins (keys in the tower)`);
     for (const id of ids) assert.ok(OBJECTS[id], `level ${index + 1} object ${id}`);
     const level = parseLevel(text);
     // the end of the level lines up with its song
+    // the tower's walking floors take as long as the player likes
+    if (LEVELS[index].platformer) continue;
     const seconds = levelSeconds(level);
     assert.ok(seconds < LEVELS[index].seconds - 2 && seconds > LEVELS[index].seconds - 8, `level ${index + 1} length ${seconds}`);
   }
@@ -45,6 +47,7 @@ test('a hundred built levels and ten tower floors use only objects the engine kn
 
 test('the wave appears in every level, from level 1 on', () => {
   for (let index = 0; index < LEVELS.length; index++) {
+    if (LEVELS[index].platformer) continue; // the tower's floors are walked
     const text = readFileSync(new URL(`leveldata/${index}.level`, res), 'utf8');
     const ids = text.split(';').slice(1).filter(Boolean).map(row => Number(row.split(',')[1]));
     assert.ok(ids.includes(212), `level ${index + 1} has a wave portal`);
@@ -57,7 +60,14 @@ test('the checker played every level to the end at 60, 120 and 144 fps', () => {
   for (let index = 0; index < LEVELS.length; index++) {
     const entry = report[index + 1];
     assert.equal(entry.name, LEVELS[index].name);
-    assert.deepEqual(Object.keys(entry.inputs).sort(), ['60', '120', '144', '60 uneven', '120 uneven'].sort());
+    if (LEVELS[index].platformer) {
+      // walked by the robot of levels/tower.mjs in the real engine
+      assert.equal(entry.platformer, true);
+      assert.deepEqual(entry.tracks, ['60', '120', '144', '60Hz', '90Hz', '144Hz']);
+      assert.ok(entry.steps.length > 5);
+    } else {
+      assert.deepEqual(Object.keys(entry.inputs).sort(), ['60', '120', '144', '60 uneven', '120 uneven'].sort());
+    }
     assert.equal(hash(readFileSync(new URL(`leveldata/${index}.level`, res))), provenance.levels[index].sha256);
   }
 });

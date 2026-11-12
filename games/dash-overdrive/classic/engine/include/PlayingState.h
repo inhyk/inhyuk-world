@@ -41,6 +41,9 @@ public:
     // Level checker: runs the real physics without drawing or sound.
     int simLoad(int level);
     int simStep(bool held, float deltaTime);
+    int simStepButtons(int buttons, float deltaTime);
+    // the level checker loads tower floors it is building into this slot
+    static constexpr int SIM_PLATFORMER_SLOT = 91;
     inline Player &getPlayer() { return m_Player; }
 
 private:
