@@ -19,6 +19,8 @@ for (let index = EXTRA_FIRST; index < LEVELS.length; index++) {
   const number = index + 1;
   if (wanted.length && !wanted.includes(number)) continue;
   const spec = LEVELS[index];
+  // the tower's walking floors are built by levels/tower.mjs
+  if (spec.platformer) continue;
   const first = seeds[number] ?? 7000 + number * 31;
   let kept = null;
   for (let attempt = 0; attempt < ATTEMPTS && !kept; attempt++) {

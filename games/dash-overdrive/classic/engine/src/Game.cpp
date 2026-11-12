@@ -180,7 +180,16 @@ void Game::handleEvents() {
                 m_IsSpaceHeld = true;
                 break;
             case SDLK_UP:
+            case SDLK_w:
                 m_IsUpHeld = true;
+                break;
+            case SDLK_LEFT:
+            case SDLK_a:
+                m_IsLeftHeld = true;
+                break;
+            case SDLK_RIGHT:
+            case SDLK_d:
+                m_IsRightHeld = true;
                 break;
             case SDLK_x:
                 m_IsXHeld = true;
@@ -199,7 +208,16 @@ void Game::handleEvents() {
                 m_IsSpaceHeld = false;
                 break;
             case SDLK_UP:
+            case SDLK_w:
                 m_IsUpHeld = false;
+                break;
+            case SDLK_LEFT:
+            case SDLK_a:
+                m_IsLeftHeld = false;
+                break;
+            case SDLK_RIGHT:
+            case SDLK_d:
+                m_IsRightHeld = false;
                 break;
             case SDLK_x:
                 m_IsXHeld = false;
@@ -260,6 +278,7 @@ void Game::popToRoot() {
 bool Game::isSkinUnlocked(int skin) const {
     if (m_CreatorMode || skin < Config::FREE_SKINS) return true;
     if (skin < Config::SHOP_FIRST) return LevelSelect::get().isCleared(skin - Config::FREE_SKINS);
+    if (skin == Config::TOWER_SKIN) return LevelSelect::get().isCleared(Config::TOWER_FIRST + Config::TOWER_FLOORS - 1);
     return ((m_BoughtSkins >> (skin - Config::SHOP_FIRST)) & 1) != 0;
 }
 

@@ -79,6 +79,14 @@ public:
     void reset();
     void update(float deltaTime);
     void simUpdate(bool held, float deltaTime);
+    // tower floors: buttons 1 jump, 2 left, 4 right
+    void simUpdateButtons(int buttons, float deltaTime);
+    // Tower floors walk: no running on its own, left and right as the player
+    // presses, blocks are walls and ceilings instead of deadly sides.
+    inline void setPlatformer(bool on) { m_Platformer = on; }
+    inline bool isPlatformer() const { return m_Platformer; }
+    // the designer asked for faster walking ("더 빨리 걷게 해줘"): as fast as running
+    static constexpr float PLATFORM_SPEED = DEFAULT_X_VELOCITY;
     PlayerSimState saveSimState() const;
     void restoreSimState(const PlayerSimState &state);
     inline void moveX(float dist) { m_Position.x += dist; }
@@ -155,6 +163,10 @@ private:
     bool m_HasBufferedOrb;
     bool m_HasBounds = false;
     bool m_SimInput = false;
+    bool m_Platformer = false;
+    int m_WalkDirection = 0;  // -1 left, 0 still, 1 right
+    bool m_FacingLeft = false;
+    int m_SimButtons = 0;
     bool m_SimHeld = false;
     float m_DeadTimer;
     SDL_FPoint m_DeathPosition = { 0, 0 };
@@ -169,6 +181,7 @@ private:
     void collideWithGround();
     void collideWithObject(const Object &object);
     void collideCubeWithBlock(const SDL_FRect &block);
+    void collidePlatformerWithBlock(const SDL_FRect &block);
     void collideShipWithBlock(const SDL_FRect &block);
     void collideWaveWithBlock(const SDL_FRect &block);
     void setBounds(const Object &portal);

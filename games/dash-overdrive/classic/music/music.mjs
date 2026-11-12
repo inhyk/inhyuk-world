@@ -10,7 +10,7 @@
 //   node games/dash-overdrive/classic/music/music.mjs --check        verify the existing files only
 //
 // Outputs (paths relative to the repo root):
-//   public/play/dash-overdrive/classic/music/0.ogg … 20.ogg      level songs (file index = level - 1)
+//   public/play/dash-overdrive/classic/music/0.ogg … 21.ogg      level songs (21 = DASH TOWER) (file index = level - 1)
 //   games/dash-overdrive/classic/res/sfx/menuLoop.ogg, practice.ogg   seamless loops
 //   games/dash-overdrive/classic/res/sfx/deathSound.ogg, levelComplete.ogg, playSound.ogg, coin.ogg
 //   games/dash-overdrive/classic/music/timeline.json             song sections in beats (beat 0 = 0 s)
@@ -1826,6 +1826,45 @@ SONGS[20] = {
       arpSec(ctx, sec, ctx.S.arp.patch, ctx.S.arp, { bars });
     }
     if (sec.n === 4) for (let b = 4; b < bars; b += 4) hit(ctx, 'x', ctx.t(sec.bar0 + b), 0.8);
+  },
+};
+
+// ------------------------------------------------------------------ DASH TOWER (file 21)
+// The tower's own song (written for this game): arpeggios that climb, a short break before the top.
+SONGS[21] = {
+  index: 21, name: 'DASH TOWER', bpm: 178.05, dur: 56, difficulty: 'tower', style: 'climbing anthem: rising arpeggios, square lead, a short break before the top', keyName: 'E minor',
+  key: 'E', mode: 'minor', seed: 121, hookTonic: 64, q: 2, maxBytes: 900000, mix: { lead: 1.2, fx: 0.7 },
+  form: [['intro', 4, 0.45], ['build', 4, 0.7], ['drop', 8, 0.9], ['break', 4, 0.5], ['build', 4, 0.85], ['drop', 12, 1], ['outro', 0, 0.4]],
+  prog: ['Em C G D', 'Am C D B'],
+  hooks: ["1:2 3:2 5:2 1':2 5:2 3:2 5:4 | 6:2 1':2 3':2 1':2 5':4 3':4 | 3:2 5:2 7:2 3':2 2':4 7:4 | 2':3 1':3 7:2 6:4 7:4",
+    "4:2 6:2 1':2 4':2 3':4 1':4 | 3':2 1':2 6:2 3:2 5:4 6:4 | 2':2 7:2 4:2 2:2 4:4 6:4 | 5:4 #7:4 2':4 5':4"],
+  kick: { f0: 230, f1: 54, dec: 0.17, drive: 2.6, click: 0.5 },
+  kit: { c: { ...KIT.c, g: 0.46, rev: 0.2 } },
+  drums: {
+    intro: { k: 'x...x...x...x...', h: '..g...g...g...g.' },
+    build: { k: 'x...x...x...x...', h: 'xgxgxgxgxgxgxgxg' },
+    drop: { k: 'x...x...x...x...', c: '....X.......X...', H: '..x...x...x...x.', h: 'gxgxgxgxgxgxgxgx' },
+    break: { h: 'g.g.g.g.g.g.g.g.' },
+    outro: { k: 'x...x...x...x...', c: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+  },
+  bassPatch: { osc: [{ w: 'saw', uni: 2, spr: 14 }, { w: 'sin', oct: -1, g: 0.75 }], a: 0.003, d: 0.1, s: 0.55, r: 0.04, drive: 1.8, flt: { t: 'lp', f: 480, q: 1.3, env: 2.4, fd: 0.08 }, gain: 0.21, gate: 0.82 },
+  bassPat: { drop: 'R.R.ROR.R.R.ROR.', build: 'R.R.R.R.R.R.R.R.', outro: '..R-..R-..R-..R-' },
+  padPatch: SUPERSAW({ a: 0.25, d: 0.6, s: 0.8, r: 0.6, gain: 0.045, flt: { t: 'lp', f: 3800, q: 0.6 } }),
+  stab: { patch: SUPERSAW({ a: 0.002, d: 0.14, s: 0.25, r: 0.08, gain: 0.05 }), pat: 'x...x.x...x...x.', gate: 0.6, lo: 59, hi: 79 },
+  arp: { patch: { ...PT.pluck, gain: 0.1 }, pat: '01230123', rate: 4, lo: 64, hi: 88 },
+  lead: { osc: [{ w: 'sq', pw: 0.3, g: 0.75 }, { w: 'saw', uni: 3, spr: 12, g: 0.55 }], a: 0.004, d: 0.2, s: 0.65, r: 0.14, vib: { r: 6, d: 0.12, dl: 0.2 },
+    flt: { t: 'lp', f: 3200, q: 0.9, env: 1.4, fd: 0.18, kt: 0.5 }, gain: 0.1, rev: 0.28, dly: 0.25, mono: true, glide: 0.03, legato: true },
+  softLead: { ...PT.bell, gain: 0.12 }, teaseLead: { ...PT.pluck, gain: 0.1 },
+  layers: { build: { lead: 'tease', arp: 1 }, drop: { stab: 0 } },
+  sc: { depth: 0.5, rel: 0.5 }, rt: 2.4, revWet: 0.45, dlyBeats: 0.75, dlyFb: 0.35, riserG: 0.09, impactG: 0.32,
+  extra(ctx, sec, L, bars) {
+    if (sec.type !== 'drop') return;
+    // the arpeggio climbs through both drops; the last one adds stabs and a ride
+    arpSec(ctx, sec, ctx.S.arp.patch, ctx.S.arp, { bars });
+    if (sec.n < 2) return;
+    padSec(ctx, sec, ctx.S.stab.patch, { bars, ...ctx.S.stab, stem: 'stab' });
+    drumsSec(ctx, sec, { r: 'x.x.x.x.x.x.x.x.' }, bars);
+    for (let b = 4; b < bars; b += 4) hit(ctx, 'x', ctx.t(sec.bar0 + b), 0.8);
   },
 };
 

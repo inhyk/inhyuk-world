@@ -52,7 +52,9 @@ LEVELS.forEach(([name], index) => {
 levelSelect.add(new Option('🛠️ 내가 만든 맵', 'custom'));
 
 function raceable(level) {
-  return level >= 0 && level < LEVELS.length && LEVELS[level][1] !== 'secret';
+  // secret levels and the tower's floors stay single player
+  const tower = window.CLASSIC_TOWER?.first ?? LEVELS.length;
+  return level >= 0 && level < tower && LEVELS[level][1] !== 'secret';
 }
 
 const engineReady = () => Boolean(window.Module?._classic_state) && window.render_classic_status && JSON.parse(window.render_classic_status()).ready;

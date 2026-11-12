@@ -70,6 +70,8 @@ export const OBJECTS = {
   203: {type: 'block', hitbox: [0, 0, 120, 54], w: 120, h: 54},
   // coins are picked up but never change the movement
   201: {type: 'coin', hitbox: [20, 20, 80, 80], w: 120, h: 120},
+  // a key on the tower's floors: collected like a coin
+  204: {type: 'coin', hitbox: [20, 20, 80, 80], w: 120, h: 120},
   210: {type: 'ballPortal', hitbox: [-4, -4, 136, 344], w: 132, h: 335},
   211: {type: 'ufoPortal', hitbox: [-4, -4, 136, 344], w: 132, h: 335},
   212: {type: 'wavePortal', hitbox: [-4, -4, 136, 344], w: 132, h: 335},

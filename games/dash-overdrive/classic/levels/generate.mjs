@@ -219,6 +219,54 @@ function extraLevels() {
 }
 LEVELS.push(...extraLevels());
 
+// ---------------------------------------------------------------------------
+// DASH TOWER (the designer picked "Dash 안에 우리만의 탑"): ten floors on the
+// tower's own song, each one harder than the floor below (1F Hard ... 10F past
+// Endless Dash). Floors open one by one; key doors before 4F, 7F and 10F need
+// keys, and the three collectibles of a floor are keys (object 204).
+export const TOWER_FIRST = LEVELS.length;
+export const TOWER_FLOORS = 10;
+export const TOWER_DOORS = [[3, 4], [6, 10], [9, 18]]; // [floor index, keys needed]
+export const TOWER_SONG = 21;
+export const TOWER_SKIN = 31;
+const TOWER_TUNES = [6, 9, 11, 13, 15, 16, 17, 19, 21, 22];
+
+function towerPlan(song, floor) {
+  let turn = floor * 3 + 1;
+  const next = () => MODE_TURN[turn++ % MODE_TURN.length];
+  const drop = floor < 2 ? 1 : floor < 4 ? 2 : 3;
+  const build = floor < 3 ? 1 : floor < 6 ? 2 : 3;
+  const other = floor < 5 ? 1 : 2;
+  const plan = song.sections.map(section => {
+    const beats = section.endBeat - section.startBeat;
+    if (/^outro/.test(section.name)) return {type: 'cube', speed: other};
+    if (/^intro/.test(section.name)) return floor >= 4 ? {modes: [[next(), 40]], speed: other} : {type: 'cube', speed: 1};
+    if (/^break/.test(section.name)) return {type: floor >= 2 ? 'blue' : 'cube', speed: other};
+    if (/^build/.test(section.name)) return {modes: [[next(), 44]], speed: build};
+    if (/^drop/.test(section.name)) return {modes: beats >= 48 && floor >= 6 ? [[next(), 56], [next(), 52], [next(), 48]] : [[next(), 56], [next(), 52]], speed: drop};
+    return {type: 'cube', speed: other};
+  });
+  if (!plan.some(step => step.modes?.some(([mode]) => mode === 'wave'))) plan.find(step => step.modes).modes[0][0] = 'wave';
+  return plan;
+}
+
+function towerFloors() {
+  const song = SONG_LIST.find(entry => entry.index === TOWER_SONG);
+  if (!song) return [];
+  return TOWER_TUNES.map((tune, floor) => {
+    // warm evening at the bottom, deep night with gold at the top
+    const hue = (24 + floor * 28) % 360;
+    return {
+      name: `DASH TOWER ${floor + 1}F`, song: TOWER_SONG, bpm: song.bpm, seconds: song.durationSeconds, tune,
+      difficulty: difficultyOf(tune), tower: floor, key: true, platformer: true,
+      seed: EXTRA_SEEDS[TOWER_FIRST + floor + 1] ?? 12000 + floor * 37,
+      colors: [[hsl(hue, 0.7, 0.5), hsl(hue, 0.75, 0.3)], [hsl(hue + 180, 0.7, 0.5), hsl(hue + 180, 0.75, 0.3)], [hsl(45, 0.9, 0.55), hsl(30, 0.85, 0.35)]],
+      plan: towerPlan(song, floor),
+    };
+  });
+}
+LEVELS.push(...towerFloors());
+
 // levels built with the black blocks (the designer's sketch: like the black blocks of a fifth level)
 const BLACK_BLOCK_LEVELS = new Set([4, 13, 18, 19]);
 
@@ -1307,7 +1355,8 @@ export class LevelBuilder {
       if (i === undefined) continue;
       const centerX = frames[i].x + 60;
       const centerY = frames[i].y + 60;
-      this.extra.push({id: 201, x: Math.round(centerX / 4 * 4) / 4, y: Math.round((FLOOR - centerY) / 4 * 4) / 4});
+      // the tower's floors hide keys instead of coins
+      this.extra.push({id: this.spec.key ? 204 : 201, x: Math.round(centerX / 4 * 4) / 4, y: Math.round((FLOOR - centerY) / 4 * 4) / 4});
     }
   }
 
@@ -1483,7 +1532,7 @@ export function buildLevel(index, songs = loadSongs()) {
     ...(builder.spec.plan ? {modes: ['ball', 'ufo', 'wave', 'bluePad', 'blueOrb'].map(name => `${name} ${builder.pieces.filter(p => p.name === name || p.name === `${name}Portal`).length}`).join(', ')} : {}),
     upside: builder.pieces.filter(p => p.name === 'upsidePortal').length,
     narrowestWindow: builder.minMargin === Infinity ? null : builder.minMargin * 2 + 1,
-    coins: parsed.objects.filter(o => o.id === 201).length,
+    coins: parsed.objects.filter(o => o.id === 201 || o.id === 204).length,
     shipPaths: builder.shipPaths || [],
     ...(builder.flights.length ? {flights: builder.flights} : {}),
     ...(builder.marks.length > 1 ? {speeds: builder.marks.slice(1).map(mark => mark.speed)} : {}),
@@ -1499,6 +1548,8 @@ const report = existsSync(REPORT) ? JSON.parse(readFileSync(REPORT, 'utf8')) : {
 mkdirSync(OUT, {recursive: true});
 for (let index = 0; index < LEVELS.length; index++) {
   if (wanted.length && !wanted.includes(index + 1)) continue;
+  // the tower's walking floors are built by levels/tower.mjs
+  if (LEVELS[index].platformer) continue;
   const started = Date.now();
   const {builder, text, entry, parsed} = buildLevel(index, songs);
   writeFileSync(new URL(`${index}.level`, OUT), text);

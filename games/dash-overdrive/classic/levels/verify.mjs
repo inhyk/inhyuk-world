@@ -81,6 +81,8 @@ let failures = 0;
 const engine = useEngine ? await (await import('./engine-harness.mjs')).openEngine(new URL('../../../../public/play/dash-overdrive/classic/engine/', import.meta.url).pathname) : null;
 for (const [number, entry] of Object.entries(report)) {
   if (wanted.length && !wanted.includes(Number(number))) continue;
+  // the tower's walking floors are checked by levels/tower.mjs --check
+  if (entry.platformer) continue;
   const text = levelText(Number(number) - 1);
   const level = parseLevel(text);
   const lines = [];

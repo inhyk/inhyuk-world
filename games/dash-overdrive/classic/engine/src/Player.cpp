@@ -106,6 +106,7 @@ Player::~Player() {
 
 void Player::update(float deltaTime) {
     m_SimInput = false;
+    m_WalkDirection = (m_Game->isRightHeld() ? 1 : 0) - (m_Game->isLeftHeld() ? 1 : 0);
     bool mouseClicked = (!m_IsMouseHeld && m_Game->isSpaceHeld()) ||
                         (!m_IsMouseHeld && m_Game->isUpHeld());
     bool mouseReleased = (m_IsMouseHeld && !m_Game->isMouseHeld()) &&
@@ -122,8 +123,19 @@ void Player::update(float deltaTime) {
     step(deltaTime, mouseClicked, mouseReleased);
 }
 
+void Player::simUpdateButtons(int buttons, float deltaTime) {
+    m_SimInput = true;
+    m_WalkDirection = ((buttons & 4) ? 1 : 0) - ((buttons & 2) ? 1 : 0);
+    const bool held = (buttons & 1) != 0;
+    const bool mouseClicked = !m_IsMouseHeld && held;
+    const bool mouseReleased = m_IsMouseHeld && !held;
+    m_IsMouseHeld = held;
+    step(deltaTime, mouseClicked, mouseReleased);
+}
+
 void Player::simUpdate(bool held, float deltaTime) {
     m_SimInput = true;
+    m_WalkDirection = 0;
     const bool mouseClicked = !m_IsMouseHeld && held;
     const bool mouseReleased = m_IsMouseHeld && !held;
     m_IsMouseHeld = held;
@@ -151,7 +163,12 @@ void Player::step(float deltaTime, bool mouseClicked, bool mouseReleased) {
 
     switch (m_Gamemode) {
     case Gamemode::CUBE:
-        updateCubeRotation(deltaTime);
+        if (m_Platformer) {
+            m_Rotation = 0;
+            m_TargetRotation = 0;
+        } else {
+            updateCubeRotation(deltaTime);
+        }
         break;
     case Gamemode::SHIP:
         updateShipRotation(deltaTime);
@@ -394,8 +411,14 @@ void Player::updatePhysics(float deltaTime, bool mouseClicked, bool mouseRelease
         break;
     }
     }
+    if (m_Platformer) {
+        m_XVelocity = PLATFORM_SPEED * static_cast<float>(m_WalkDirection);
+        if (m_WalkDirection != 0) m_FacingLeft = m_WalkDirection < 0;
+    }
     m_Hitbox.x += m_XVelocity * deltaTime;
     m_Hitbox.y += m_YVelocity * deltaTime * 0.9f; // why the fuck does gd multiply by 0.9?
+    // the tower's floors start at the left wall
+    if (m_Platformer && m_Hitbox.x < -TILE) m_Hitbox.x = -TILE;
 }
 
 SDL_FRect Player::innerHitbox() const {
@@ -450,7 +473,8 @@ void Player::collideWithObject(const Object &object) {
         switch (m_Gamemode) {
         case Gamemode::CUBE:
         case Gamemode::BALL:
-            collideCubeWithBlock(hitbox);
+            if (m_Platformer) collidePlatformerWithBlock(hitbox);
+            else collideCubeWithBlock(hitbox);
             break;
         case Gamemode::WAVE:
             collideWaveWithBlock(hitbox);
@@ -632,6 +656,43 @@ void Player::collideCubeWithBlock(const SDL_FRect &block) {
     }
     if (overlaps(inner, block)) {
         die();
+    }
+}
+
+// Tower floors: land on top, bump a ceiling from below, and stop at a side
+// instead of breaking. Spikes still break the cube.
+void Player::collidePlatformerWithBlock(const SDL_FRect &block) {
+    const float blockBottom = block.y + block.h;
+    const bool wasAbove = m_PreviousPosition.y + TILE <= block.y + CONTACT_REACH;
+    const bool wasBelow = m_PreviousPosition.y >= blockBottom - CONTACT_REACH;
+    const bool sideways = m_PreviousPosition.x + TILE <= block.x + CONTACT_REACH || m_PreviousPosition.x >= block.x + block.w - CONTACT_REACH;
+    if (m_YVelocity >= 0 && wasAbove && !(sideways && m_PreviousPosition.y + TILE > block.y)) {
+        m_Hitbox.y = block.y - TILE;
+        m_YVelocity = 0;
+        m_IsGrounded = true;
+        return;
+    }
+    if (!overlaps(m_Hitbox, block)) {
+        return;
+    }
+    if (m_YVelocity < 0 && wasBelow && !sideways) {
+        m_Hitbox.y = blockBottom;
+        m_YVelocity = 0;
+        return;
+    }
+    // a wall: back out the way the cube came
+    if (m_PreviousPosition.x + TILE <= block.x + CONTACT_REACH) {
+        m_Hitbox.x = block.x - TILE;
+    } else if (m_PreviousPosition.x >= block.x + block.w - CONTACT_REACH) {
+        m_Hitbox.x = block.x + block.w;
+    } else if (m_Hitbox.y + TILE / 2 < block.y + block.h / 2) {
+        // came in from a corner: stand on it
+        m_Hitbox.y = block.y - TILE;
+        m_YVelocity = 0;
+        m_IsGrounded = true;
+    } else {
+        m_Hitbox.y = blockBottom;
+        if (m_YVelocity < 0) m_YVelocity = 0;
     }
 }
 
@@ -897,7 +958,11 @@ void Player::scrollCamera() {
 
     const SDL_FPoint cameraPosition = m_Game->getCameraPosition();
 
-    if (m_Position.x - cameraPosition.x > CAMERA_SCROLL) {
+    if (m_Platformer) {
+        // keep the cube a little left of the middle, both ways
+        const float target = m_Position.x - m_Game->getWidth() * 0.42f;
+        m_Game->setCameraX(std::max(-static_cast<float>(TILE), target));
+    } else if (m_Position.x - cameraPosition.x > CAMERA_SCROLL) {
         m_Game->setCameraX(m_Position.x - CAMERA_SCROLL);
     }
 
@@ -972,7 +1037,7 @@ void Player::renderBody(Gamemode mode, int skinIndex, float x, float y, float ro
     switch (mode) {
     case Gamemode::CUBE: {
         const SDL_FRect cube = { x, y, TILE, TILE };
-        SDL_RenderCopyExF(m_Renderer, skin, NULL, &cube, rotation, NULL, SDL_FLIP_NONE);
+        SDL_RenderCopyExF(m_Renderer, skin, NULL, &cube, rotation, NULL, (m_Platformer && m_FacingLeft && alpha == 255) ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
         break;
     }
     case Gamemode::SHIP:

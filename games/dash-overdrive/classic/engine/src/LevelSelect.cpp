@@ -15,6 +15,8 @@ void LevelSelect::init(Game *game) {
     m_Renderer = m_Game->getRenderer();
     m_CoinTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinIcon.png");
     m_CoinEmptyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinEmpty.png");
+    m_KeyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/keyIcon.png");
+    m_KeyEmptyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/keyEmpty.png");
     m_LockTexture = IMG_LoadTexture(m_Renderer, "res/gfx/lock.png");
     m_CornerTexture = IMG_LoadTexture(m_Renderer, "res/gfx/selectCorner.png");
     if (m_CornerTexture == nullptr) {
@@ -107,6 +109,8 @@ void LevelSelect::init(Game *game) {
 void LevelSelect::destroy() {
     SDL_DestroyTexture(m_CornerTexture);
     SDL_DestroyTexture(m_CoinTexture);
+    SDL_DestroyTexture(m_KeyTexture);
+    SDL_DestroyTexture(m_KeyEmptyTexture);
     SDL_DestroyTexture(m_CoinEmptyTexture);
     SDL_DestroyTexture(m_LockTexture);
     SDL_DestroyTexture(m_LockTextTexture);
@@ -170,7 +174,7 @@ void LevelSelect::update(float /*deltaTime*/) {
         moveSelection(1);
     }
     m_EnterLevel.update();
-    if ((m_EnterLevel.isPressed() || spaceReleased) && coinsNeeded(m_LevelSelected) == 0) {
+    if ((m_EnterLevel.isPressed() || spaceReleased) && !isLocked(m_LevelSelected)) {
         Mix_PlayChannel(0, m_PlaySound, 0);
         m_Game->pushState(PlayingState::get());
     }
@@ -206,7 +210,7 @@ void LevelSelect::render() const {
     const SDL_Rect totalCoin = { coinsX - 76, 40, 64, 64 };
     SDL_RenderCopy(m_Renderer, m_CoinTexture, NULL, &totalCoin);
     Text::renderTexture(m_Renderer, m_TotalCoinsTexture, coinsX, 38, false, false, 0.45f);
-    if (coinsNeeded(m_LevelSelected) > 0) {
+    if (isLocked(m_LevelSelected)) {
         // a locked secret level: padlock and how many coins it takes
         int lockWidth = 0;
         int lockHeight = 0;
@@ -229,7 +233,8 @@ void LevelSelect::render() const {
         const int left = m_Game->getWidth()/2 - (3*COIN_SIZE + 2*COIN_GAP)/2;
         for (int i = 0; i < 3; i++) {
             const SDL_Rect coin = { left + i*(COIN_SIZE + COIN_GAP), bestPercentY + 4*MARGIN, COIN_SIZE, COIN_SIZE };
-            SDL_RenderCopy(m_Renderer, (m_Coins[m_LevelSelected] >> i) & 1 ? m_CoinTexture : m_CoinEmptyTexture, NULL, &coin);
+            const bool key = Config::isTowerFloor(m_LevelSelected);
+            SDL_RenderCopy(m_Renderer, (m_Coins[m_LevelSelected] >> i) & 1 ? (key ? m_KeyTexture : m_CoinTexture) : (key ? m_KeyEmptyTexture : m_CoinEmptyTexture), NULL, &coin);
         }
     }
 }
@@ -256,12 +261,41 @@ void LevelSelect::saveCoins(int coins) {
 
 int LevelSelect::getTotalCoins() const {
     int total = 0;
-    for (int i = 0; i < Config::LEVEL_COUNT; i++) {
+    for (int i = 0; i < Config::TOWER_FIRST; i++) {
         for (int bit = 0; bit < 3; bit++) {
             total += (m_Coins[i] >> bit) & 1;
         }
     }
     return total;
+}
+
+int LevelSelect::getTowerKeys() const {
+    int total = 0;
+    for (int i = Config::TOWER_FIRST; i < Config::TOWER_FIRST + Config::TOWER_FLOORS; i++) {
+        for (int bit = 0; bit < 3; bit++) {
+            total += (m_Coins[i] >> bit) & 1;
+        }
+    }
+    return total;
+}
+
+int LevelSelect::keysNeeded(int level) const {
+    if (m_Game->isCreatorMode() || !Config::isTowerFloor(level)) return 0;
+    for (int door = 0; door < 3; door++) {
+        if (Config::TOWER_DOOR_FLOORS[door] == level - Config::TOWER_FIRST) {
+            const int needed = Config::TOWER_DOOR_KEYS[door] - getTowerKeys();
+            return needed > 0 ? needed : 0;
+        }
+    }
+    return 0;
+}
+
+bool LevelSelect::isLocked(int level) const {
+    if (m_Game->isCreatorMode()) return false;
+    if (Config::isTowerFloor(level)) {
+        return (level > Config::TOWER_FIRST && !isCleared(level - 1)) || keysNeeded(level) > 0;
+    }
+    return coinsNeeded(level) > 0;
 }
 
 int LevelSelect::coinsNeeded(int level) const {
@@ -282,7 +316,12 @@ void LevelSelect::updateCoinTextures() {
     SDL_DestroyTexture(m_TotalCoinsTexture);
     m_TotalCoinsTexture = Text::createTexture(m_Renderer, std::to_string(getTotalCoins()));
     SDL_DestroyTexture(m_LockTextTexture);
-    m_LockTextTexture = Text::createTexture(m_Renderer, "Collect " + std::to_string(coinsNeeded(m_LevelSelected)) + " more coins");
+    std::string lock = "Collect " + std::to_string(coinsNeeded(m_LevelSelected)) + " more coins";
+    if (Config::isTowerFloor(m_LevelSelected)) {
+        const int floor = m_LevelSelected - Config::TOWER_FIRST;
+        lock = floor > 0 && !isCleared(m_LevelSelected - 1) ? "Clear " + std::to_string(floor) + "F first" : "Find " + std::to_string(keysNeeded(m_LevelSelected)) + " more keys";
+    }
+    m_LockTextTexture = Text::createTexture(m_Renderer, lock);
 }
 
 int LevelSelect::getBestPracticePercentage() const {

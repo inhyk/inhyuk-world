@@ -47,6 +47,9 @@ public:
     inline bool isEscapeHeld() const { return m_IsEscapeHeld; }
     inline bool isSpaceHeld() const { return m_IsSpaceHeld; }
     inline bool isUpHeld() const { return m_IsUpHeld; }
+    // tower floors: walk left and right
+    inline bool isLeftHeld() const { return m_IsLeftHeld; }
+    inline bool isRightHeld() const { return m_IsRightHeld; }
     inline bool isZHeld() const { return m_IsZHeld; }
     inline bool isXHeld() const { return m_IsXHeld; }
     inline int getWidth() const { return m_Width; }
@@ -91,6 +94,8 @@ private:
     bool m_IsEscapeHeld = false;
     bool m_IsSpaceHeld = false;
     bool m_IsUpHeld = false;
+    bool m_IsLeftHeld = false;
+    bool m_IsRightHeld = false;
     bool m_IsZHeld = false;
     bool m_IsXHeld = false;
     int m_Width;
