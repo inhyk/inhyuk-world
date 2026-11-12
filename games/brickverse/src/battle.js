@@ -521,7 +521,9 @@ export class Battle {
     if (dist > w.range) return;
     let hits = 0;
     for (let n = 0; n < w.pellets; n++) {
-      const chance = 0.9 * b.skill * Math.max(0.12, 1 - dist / (w.range * 1.3)) * (target.moving ? 0.82 : 1) * (w.id === 'shotgun' ? 0.8 : 1);
+      // 2026-11-11 인혁: "에임이 너무 좋아 좀 않좋게" → 명중률을 낮추고, 처음 본 뒤 2초 동안은 점점 정확해진다
+      const warm = Math.min(1, 0.35 + (b.track ?? 0) / 2);
+      const chance = 0.6 * b.skill * warm * Math.max(0.08, 1 - dist / (w.range * 1.1)) * (target.moving ? 0.62 : 1) * (w.id === 'shotgun' ? 0.8 : 1);
       const hit = b.rnd() < chance;
       if (hit) hits++;
       const miss = hit ? new THREE.Vector3() : new THREE.Vector3((b.rnd() - 0.5) * 3, (b.rnd() - 0.5) * 2, (b.rnd() - 0.5) * 3);
@@ -545,6 +547,7 @@ export class Battle {
     const pl = b.pl;
     const RANK = { pistol: 0, shotgun: 1, sniper: 2, rifle: 3 };
     b.think -= dt; b.cool -= dt; b.dodge -= dt;
+    b.track = b.target ? (b.track ?? 0) + dt : 0;
     // 볼 수 있는 가장 가까운 적
     if (b.think <= 0) {
       b.think = 0.25 + b.rnd() * 0.2;
@@ -554,7 +557,7 @@ export class Battle {
       if (this.me.alive && !this.me.para) consider({ x: me.x, y: me.y, z: me.z, me: true, moving: Math.hypot(me.vx, me.vz) > 2 });
       this.bots.forEach((o, j) => { if (j !== k && o.alive && !o.para) consider({ x: o.pl.x, y: o.pl.y, z: o.pl.z, bot: j, moving: Math.hypot(o.pl.vx, o.pl.vz) > 2 }); });
       for (const [id, s] of this.rs) { const r = this.game.remotes.get(id); if (s.alive && r && r.w === 5) consider({ x: r.x, y: r.y, z: r.z, id, moving: r.speed > 2 }); }
-      if (best && !b.target) b.cool = Math.max(b.cool, 0.22 + (1 - b.skill) * 0.45); // 처음 봤을 때 반응 시간
+      if (best && !b.target) { b.cool = Math.max(b.cool, 0.4 + (1 - b.skill) * 0.6); b.track = 0; } // 처음 봤을 때 반응 시간
       if (best) b.lastSeen = { x: best.x, z: best.z, until: this.t + 8 };
       b.target = best;
     }
@@ -574,7 +577,7 @@ export class Battle {
         const w = WEAPONS[WI[b.weapon]];
         if (b.mag === undefined) b.mag = w.mag;
         if (b.mag <= 0) { b.mag = w.mag; b.cool = w.reload * (1.25 - b.skill * 0.3); } // 봇도 재장전하는 동안은 못 쏜다
-        else { this.botShoot(b, k, t); b.mag--; b.cool = (1 / w.rate) * (1.12 + (1 - b.skill) * 0.9); }
+        else { this.botShoot(b, k, t); b.mag--; b.cool = (1 / w.rate) * (1.3 + (1 - b.skill) * 1.1); }
       }
     } else {
       const g = b.goal;
