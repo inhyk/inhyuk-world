@@ -1,4 +1,5 @@
 #include "Ground.h"
+#include <cmath>
 #include "Game.h"
 #include <iostream>
 #include <SDL_image.h>
@@ -98,16 +99,17 @@ void Ground::update(float delta) {
 void Ground::renderStrip(float surfaceY, bool ceiling) const {
     const SDL_FPoint cameraPosition = m_Game->getCameraPosition();
     const float screenY = surfaceY - cameraPosition.y;
+    // the first square starts at or left of the screen edge, also when the camera
+    // is left of the start (the tower floors let the cube walk back to it)
+    float first = std::fmod(m_Position.x - cameraPosition.x, static_cast<float>(m_GroundSize));
+    if (first > 0) first -= m_GroundSize;
     for (int i = 0; i < m_SquareCount; i++) {
         SDL_FRect dst = {
-            m_Position.x + i * m_GroundSize - cameraPosition.x,
+            first + i * m_GroundSize,
             ceiling ? screenY - m_GroundSize : screenY,
             static_cast<float>(m_GroundSize),
             static_cast<float>(m_GroundSize)
         };
-        while (dst.x + m_GroundSize < 0) {
-            dst.x += m_SquareCount * m_GroundSize;
-        }
         SDL_RenderCopyExF(m_Renderer, m_GroundTexture, NULL, &dst, 0.0, NULL, ceiling ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE);
     }
     // The glowing edge marks exactly where the player stands.

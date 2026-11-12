@@ -48,7 +48,7 @@ function frameTimes(hz, count) {
 }
 const TRACKS = [['60', [1]], ['120', [0.5]], ['144', [Math.fround(5 / 12)]], ['60Hz', frameTimes(60, 3)], ['90Hz', frameTimes(90, 9)], ['144Hz', frameTimes(144, 18)]];
 
-class Floor {
+export class Floor {
   constructor(floor, random) {
     this.floor = floor;
     this.random = random;
@@ -181,10 +181,126 @@ class Floor {
         this.steps.push({dir: odd ? -1 : 1, until: {launched: top}});
       } else {
         if (withKey) this.key(S + 10, top);
-        this.steps.push({dir: 1, until: {x: S + 15, grounded: true, h: base}});
+        // off the end of the walkway, then straight down (a long fall drifts far)
+        this.steps.push({dir: 1, until: {x: S + 14.05}});
+        this.steps.push({dir: 0, until: {grounded: true, h: base}});
       }
     }
-    this.col = S + 16;
+    this.surface(S + 16, S + 18);
+    this.col = S + 18;
+  }
+
+  // ---- more patterns (the designer: "너무 다 똑같은 패턴이야 다른패턴도 넣고")
+
+  // two or three steps in a row, up or down, each two tiles wide
+  stairs(n, up) {
+    for (let i = 0; i < n; i++) {
+      if (up && this.h < 4) {
+        const s = this.col + 2;
+        this.surface(this.col, s);
+        this.h++;
+        this.surface(s, s + 2);
+        this.steps.push({dir: 1, jumpAt: s - 1.5, until: {x: s + 0.3, grounded: true, h: this.h}});
+        this.col = s + 2;
+      } else if (!up && this.h > 0) {
+        this.surface(this.col, this.col + 2);
+        this.col += 2;
+        this.h--;
+        this.surface(this.col, this.col + 2);
+        this.steps.push({dir: 1, until: {x: this.col + 0.3, grounded: true, h: this.h}});
+        this.col += 2;
+      }
+    }
+    this.surface(this.col, this.col + 2);
+    this.col += 2;
+  }
+
+  // floating two-wide steps over a sea of spikes, one tile higher each, then
+  // back down the same way; a key waits on the top step
+  skyStairs(n, withKey = false) {
+    const base = this.h;
+    const tops = [];
+    for (let i = 0; i < n; i++) tops.push(base + 1 + i);
+    for (let i = n - 2; i >= 0; i--) tops.push(base + 1 + i);
+    let p = this.col + 3;
+    this.surface(this.col, p);
+    const start = p - 1;
+    let prevTop = base;
+    let prevP = p;
+    for (const [i, top] of tops.entries()) {
+      // a walking jump goes further when it comes down a step
+      if (i > 0) p = prevP + (top >= prevTop ? 4 : 5);
+      for (let c = p; c < p + 2; c++) this.solid(c, top - 1);
+      if (withKey && i === n - 1) this.key(p, top);
+      const jumpAt = i === 0 ? p - 2.9 : prevP + (top >= prevTop ? 1.0 : 0.5);
+      this.steps.push({dir: 1, jumpAt, until: {x: p + 0.2, grounded: true, h: top}});
+      prevP = p;
+      prevTop = top;
+    }
+    // down to the floor past the spikes
+    const landing = prevP + 5;
+    for (let c = start; c < landing; c++) {
+      this.surface(c, c + 1);
+      if (!this.cells.has(`${c},${base}`)) this.spike(c, base);
+    }
+    this.surface(landing, landing + 3);
+    this.steps.push({dir: 1, jumpAt: prevP + 0.5, until: {x: landing + 0.3, grounded: true, h: base}});
+    this.col = landing + 3;
+  }
+
+  // a wall three tiles high that no jump clears: a jump pad flies over it
+  padWall() {
+    const w = this.col + 5;
+    this.surface(this.col, w + 6);
+    this.extra.push({id: 35, x: gx(w - 2), y: 2 + 30 * this.h});
+    for (let c = w; c < w + 2; c++) for (let r = this.h; r < this.h + 3; r++) this.solid(c, r);
+    this.steps.push({dir: 1, until: {x: w + 2.5, grounded: true, h: this.h}});
+    this.col = w + 6;
+  }
+
+  // a low tunnel with spikes hanging from its roof: jumping in here hurts
+  spikeTunnel(len) {
+    const s = this.col + 1;
+    this.surface(this.col, s + len + 1);
+    for (let c = s; c < s + len; c++) {
+      this.put(c, this.h + 1, {id: 8, x: gx(c), y: gy(this.h + 1), flipY: true});
+      this.solid(c, this.h + 2);
+    }
+    this.steps.push({dir: 1, until: {x: s + len + 0.2, grounded: true, h: this.h}});
+    this.col = s + len + 1;
+  }
+
+  // a longer sea of spikes with two or three rings: press at every ring
+  ringChain(n, rise = [0, 1, 1], gap = 4) {
+    const s = this.col + 1;
+    const len = 4 + gap * (n - 1);
+    this.surface(this.col, s + len + 3);
+    for (let c = s; c < s + len; c++) this.spike(c, this.h);
+    const rings = [];
+    // the second ring sends the cube higher, so the next rings sit a tile higher (measured)
+    for (let i = 0; i < n; i++) {
+      this.extra.push({id: 36, x: gx(s + 1 + gap * i), y: gy(this.h + 2 + rise[i])});
+      rings.push(s + 0.9 + gap * i);
+    }
+    this.steps.push({dir: 1, jumpAt: s - 1.15, rings, until: {x: s + len + 0.6, grounded: true, h: this.h}});
+    this.col = s + len + 3;
+  }
+
+  // a key up on a ledge behind: a pad lifts the cube, it turns back left for the
+  // key, drops off the far end of the ledge and walks on over the pad again
+  backtrackKey() {
+    const base = this.h;
+    const p = this.col + 9;
+    this.surface(this.col, p + 6);
+    this.extra.push({id: 35, x: gx(p), y: 2 + 30 * base});
+    const top = base + 3;
+    for (let c = p - 6; c < p - 1; c++) this.solid(c, top - 1);
+    this.key(p - 5, top);
+    this.steps.push({dir: 1, until: {launched: base}});
+    this.steps.push({dir: -1, rise: top + 0.3, until: {grounded: true, h: top}});
+    this.steps.push({dir: -1, until: {x: p - 8, grounded: true, h: base}});
+    this.steps.push({dir: 1, until: {x: p + 3, grounded: true, h: base}});
+    this.col = p + 6;
   }
 
   text() {
@@ -199,49 +315,93 @@ class Floor {
   }
 }
 
-// What a floor is made of: more and harder pieces higher up the tower.
+// What a floor is made of. Every floor mixes many patterns (never the same one
+// twice in a row), more and longer ones higher up, with the pad climb in the
+// middle. Keys: the climb's walkway, and two of the key ledge behind, the top
+// of the sky stairs, a ring and a spike jump.
+const PATTERNS = [
+  // name, weight, first floor (0 = 1F)
+  ['spikes', 3, 0], ['pillars', 2, 0], ['stairs', 2, 0], ['ring', 2, 1], ['tunnel', 2, 1],
+  ['padWall', 2, 1], ['skyStairs', 2, 2], ['backtrack', 1, 2], ['ringChain', 2, 3],
+];
 export function buildFloor(floor, seed) {
   const random = mulberry32(seed);
   const f = new Floor(floor, random);
+  const pool = PATTERNS.filter(([, , from]) => floor >= from);
+  const count = 6 + floor;
   const pieces = [];
-  const spikeCount = 2 + Math.floor(floor / 2);
-  for (let i = 0; i < spikeCount; i++) pieces.push('spikes');
-  for (let i = 0; i < 1 + Math.floor(floor / 3); i++) pieces.push('pillars');
-  if (floor >= 1) for (let i = 0; i < 1 + Math.floor(floor / 4); i++) pieces.push('ring');
-  for (let i = 0; i < 1 + Math.floor(floor / 4); i++) pieces.push('up');
+  // the floor shows at least four different patterns (or all it has)
+  const kinds = pool.map(([name]) => name);
+  for (let i = kinds.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [kinds[i], kinds[j]] = [kinds[j], kinds[i]];
+  }
+  pieces.push(...kinds.slice(0, Math.min(kinds.length, 4 + Math.floor(floor / 3))));
+  while (pieces.length < count) {
+    const options = pool.filter(([name]) => name !== pieces.at(-1) && !(name === 'backtrack' && pieces.includes('backtrack')));
+    let total = 0;
+    for (const [, weight] of options) total += weight;
+    let roll = random() * total;
+    for (const [name, weight] of options) {
+      roll -= weight;
+      if (roll < 0) {
+        pieces.push(name);
+        break;
+      }
+    }
+  }
+  // shuffle again, then split any pattern that ended up twice in a row
   for (let i = pieces.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
     [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
   }
-  // the climb sits in the middle; keys: the climb's walkway, one spike jump, one ring
-  const middle = Math.floor(pieces.length / 2);
-  pieces.splice(middle, 0, 'climb');
+  for (let i = 1; i < pieces.length; i++) {
+    if (pieces[i] !== pieces[i - 1]) continue;
+    const j = pieces.findIndex((name, k) => k > i && name !== pieces[i] && name !== pieces[i - 1]);
+    if (j > 0) [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+  }
+  pieces.splice(Math.floor(pieces.length / 2), 0, 'climb');
+  // which two pieces hold keys besides the climb
+  const keyed = new Set();
+  for (const name of ['backtrack', 'skyStairs', 'ring', 'ringChain', 'spikes']) {
+    const index = pieces.indexOf(name);
+    if (index >= 0 && keyed.size < 2 && name !== 'ringChain') keyed.add(index);
+  }
   const climbLevels = floor < 2 ? 2 : floor < 6 ? 4 : 6;
-  const run = Math.max(1, 4 - Math.floor(floor / 3));
-  let spikeKey = false;
-  let ringKey = false;
+  const run = Math.max(1, 3 - Math.floor(floor / 4));
   f.walk(4);
-  for (const piece of pieces) {
+  f.stepOwner = [];
+  for (const [index, piece] of pieces.entries()) {
+    const key = keyed.has(index);
     if (piece === 'climb') {
       while (f.h > 0) f.stepDown();
       f.climb(climbLevels);
     } else if (piece === 'spikes') {
-      const w = floor < 3 ? 1 : f.range(1, 2);
-      f.spikes(w, !spikeKey && (spikeKey = true));
+      f.spikes(floor < 3 ? 1 : f.range(1, 2), key);
     } else if (piece === 'pillars') {
-      f.pillars(2 + Math.floor(floor / 2) + f.range(0, 1));
+      f.pillars(2 + Math.floor(floor / 3) + f.range(0, 1));
     } else if (piece === 'ring') {
-      f.ringBridge(floor < 5 ? 4 : 5, !ringKey && (ringKey = true));
-    } else if (piece === 'up') {
-      if (f.h < 2) f.stepUp();
-      else f.stepDown();
+      f.ringBridge(floor < 5 ? 4 : 5, key);
+    } else if (piece === 'stairs') {
+      f.stairs(f.range(2, 3), f.h < 2);
+    } else if (piece === 'tunnel') {
+      f.spikeTunnel(4 + Math.floor(floor / 2));
+    } else if (piece === 'padWall') {
+      f.padWall();
+    } else if (piece === 'skyStairs') {
+      f.skyStairs(floor < 6 ? 3 : 4, key);
+    } else if (piece === 'backtrack') {
+      f.backtrackKey();
+    } else if (piece === 'ringChain') {
+      f.ringChain(floor < 7 ? 2 : 3);
     }
     f.walk(run);
+    while (f.stepOwner.length < f.steps.length) f.stepOwner.push(piece);
   }
-  if (!ringKey) f.ringBridge(4, true);
-  if (!spikeKey) f.spikes(1, true);
+  while (f.keys < 3) f.ringBridge(4, true);
   while (f.h > 0) f.stepDown();
   f.walk(5);
+  f.pieces = pieces;
   return f;
 }
 
@@ -259,6 +419,7 @@ async function play(engine, text, steps, slot, write = true) {
       let press = 0;
       let jumped = false;
       let ringed = false;
+      let ring = 0;
       let status = 0;
       let frames = 0;
       const crossed = (x, at, dir) => (dir >= 0 ? x >= at : x <= at);
@@ -280,6 +441,7 @@ async function play(engine, text, steps, slot, write = true) {
           k++;
           jumped = false;
           ringed = false;
+          ring = 0;
         }
         const s = steps[Math.min(k, steps.length - 1)];
         let buttons = 0;
@@ -290,6 +452,10 @@ async function play(engine, text, steps, slot, write = true) {
         }
         if (s.ringAt !== undefined && jumped && !ringed && !grounded && crossed(x, s.ringAt, s.dir)) {
           ringed = true;
+          press = 4;
+        }
+        if (s.rings && jumped && !grounded && ring < s.rings.length && crossed(x, s.rings[ring], s.dir)) {
+          ring++;
           press = 4;
         }
         if (press > 0) {
@@ -303,6 +469,8 @@ async function play(engine, text, steps, slot, write = true) {
     return results;
   }, {text, steps, slot, write, tracks: TRACKS});
 }
+
+export const playFloor = (engine, text, steps) => play(engine, text, steps, SIM_SLOT);
 
 const passed = results => results.every(result => result.ok && result.keys === 7);
 

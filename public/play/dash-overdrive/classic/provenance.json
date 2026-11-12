@@ -19,9 +19,9 @@
   "levels": "games/dash-overdrive/classic/levels/generate.mjs",
   "check": "games/dash-overdrive/classic/levels/verify.mjs"
  },
- "packageBytes": 8759031,
- "packageSha256": "f85ef9bb1e932739b5fa89684d418cc035cf527b11b7b9a3ae0189adc6f369a5",
- "wasmSha256": "0e9a68aa08b7c4b75c2cdfef787409ad90875f49b5ebb323cfd1ad653444606e",
+ "packageBytes": 8791310,
+ "packageSha256": "dee0a43b9fdc7b466a9765683b1455e8b43ebe700d50eb62ca3c6950b2166b4c",
+ "wasmSha256": "dd96f77f1153d28ffc33ac5477b472dded0fdf4fb3d3b4cb5cf3a66e5988ee07",
  "levels": [
   {
    "level": 1,
@@ -828,80 +828,80 @@
    "name": "DASH TOWER 1F",
    "bpm": 178.05,
    "songSeconds": 56,
-   "objects": 54,
-   "sha256": "a796b312c4cf9d7c4fd88f4052fdff30fd49535f421459ab7101d31b38efa6ff"
+   "objects": 323,
+   "sha256": "a76358b8a6501ee2a35584970be75232a73730eb694e9655b062f83bd519482f"
   },
   {
    "level": 102,
    "name": "DASH TOWER 2F",
    "bpm": 178.05,
    "songSeconds": 56,
-   "objects": 49,
-   "sha256": "589905961d653e96619fecca70a727e4f8e6edeefe7f2c83370266c2106a71cf"
+   "objects": 133,
+   "sha256": "9fc40d3d69e45a22369468050401cc5308205ef3da890f438a2513e4209a8f9b"
   },
   {
    "level": 103,
    "name": "DASH TOWER 3F",
    "bpm": 178.05,
    "songSeconds": 56,
-   "objects": 94,
-   "sha256": "8d3e8e187f9713f4abab4a099c73c017ec67851fa72d5a18c974c96a8f5e3588"
+   "objects": 358,
+   "sha256": "41d733cc45e5bdd240a7faa0f71f2da51cf9dcaadd8a9f13386b9f6284fcd40d"
   },
   {
    "level": 104,
    "name": "DASH TOWER 4F",
    "bpm": 178.05,
    "songSeconds": 56,
-   "objects": 112,
-   "sha256": "603a161d472e1873db32a42c75d6c880be59fbd2f083a8eeb0ab7fc2af791cd4"
+   "objects": 402,
+   "sha256": "f66f6b1881f674913d2f4ab0ca2ac443c9d4d53378b1799188bc572de3ea0ba3"
   },
   {
    "level": 105,
    "name": "DASH TOWER 5F",
    "bpm": 178.05,
    "songSeconds": 56,
-   "objects": 221,
-   "sha256": "ddd905c6c1432d82d14f3f0749187365c01a1d1a2f50b6c47780ada09e1c72f6"
+   "objects": 153,
+   "sha256": "81959c0b8cc38230f6a02f4fff4263e28c05b397f02e2a2dd85a39f1387252b8"
   },
   {
    "level": 106,
    "name": "DASH TOWER 6F",
    "bpm": 178.05,
    "songSeconds": 56,
-   "objects": 140,
-   "sha256": "726eeed58d14bd90a9b13a759718082fc2d08de8232a1139101080d345228a0b"
+   "objects": 228,
+   "sha256": "546a4f20ea4455a931f57998d2db5f2dc77f705237d96115fa87c63fce8f3033"
   },
   {
    "level": 107,
    "name": "DASH TOWER 7F",
    "bpm": 178.05,
    "songSeconds": 56,
-   "objects": 270,
-   "sha256": "9e36e23fc6d0b69f664524378b0045eddfd272feef9972b33b277162ec799f37"
+   "objects": 289,
+   "sha256": "8fb0360876c5eedb8a8547bc08ed7dd00231e05a7a90d530022e8df22b90134d"
   },
   {
    "level": 108,
    "name": "DASH TOWER 8F",
    "bpm": 178.05,
    "songSeconds": 56,
-   "objects": 261,
-   "sha256": "c6a527760e28efb556aca8f9e2ef1c6a4b88c673554596fe82d76455a7a52223"
+   "objects": 736,
+   "sha256": "b1c643c5c3c8b0c461329575cb55ad7822c6214e6828f6b5a5110558ebed8886"
   },
   {
    "level": 109,
    "name": "DASH TOWER 9F",
    "bpm": 178.05,
    "songSeconds": 56,
-   "objects": 443,
-   "sha256": "6b1f2ae1b3271d73df4dc3bc42c94553ca3473eb548c550c49346ce4f41a8d8b"
+   "objects": 428,
+   "sha256": "77360013e19a8ab9500c8d5509ab56e1335318b833a09f2ee62e251e3e9c2240"
   },
   {
    "level": 110,
    "name": "DASH TOWER 10F",
    "bpm": 178.05,
    "songSeconds": 56,
-   "objects": 331,
-   "sha256": "88ec04abe3aab7cfc8da3960f7b1e1554351ee968815988dc65c61a44b5374ec"
+   "objects": 906,
+   "sha256": "774dc2c216ac830b54bb4ab0ec1de1bc673fccde45fd9ae0fec3c6589ec22ae6"
   }
  ]
 }
