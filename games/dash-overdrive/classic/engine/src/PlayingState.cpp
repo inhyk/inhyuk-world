@@ -65,6 +65,8 @@ void PlayingState::init(Game *game) {
     m_LoadingTexture = Text::createTexture(m_Renderer, "Loading music...");
     m_CoinTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinIcon.png");
     m_CoinEmptyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinEmpty.png");
+    m_KeyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/keyIcon.png");
+    m_KeyEmptyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/keyEmpty.png");
     m_SpectatingTexture = Text::createTexture(m_Renderer, "Watching your friend");
     m_NewSkinTexture = Text::createTexture(m_Renderer, "New skin unlocked!");
     m_LevelCompleteSound = Mix_LoadWAV("res/sfx/levelComplete.ogg");
@@ -141,6 +143,8 @@ void PlayingState::destroy() {
     SDL_DestroyTexture(m_LevelCompleteTextTexture);
     SDL_DestroyTexture(m_LoadingTexture);
     SDL_DestroyTexture(m_CoinTexture);
+    SDL_DestroyTexture(m_KeyTexture);
+    SDL_DestroyTexture(m_KeyEmptyTexture);
     SDL_DestroyTexture(m_CoinEmptyTexture);
     SDL_DestroyTexture(m_SpectatingTexture);
     SDL_DestroyTexture(m_NewSkinTexture);
@@ -399,7 +403,7 @@ void PlayingState::updateEndLevel(float deltaTime) {
             LevelSelect::get().setBestPercentage(100);
             // coins only count when the level is finished without practice
             LevelSelect::get().saveCoins(m_Player.getCoins());
-            m_UnlockedSkin = firstClear && m_Level < Config::LEVEL_SKINS;
+            m_UnlockedSkin = firstClear && (m_Level < Config::LEVEL_SKINS || m_Level == Config::TOWER_FIRST + Config::TOWER_FLOORS - 1);
         }
     }
 }
@@ -526,17 +530,20 @@ void PlayingState::renderCoins() const {
     // top left: coins of this run, faint ones were kept from earlier runs
     const int count = m_LevelManager.getCoinCount();
     const int saved = m_Level < Config::LEVEL_COUNT ? LevelSelect::get().getSavedCoins() : 0;
+    // the tower's floors show keys
+    SDL_Texture *full = Config::isTowerFloor(m_Level) ? m_KeyTexture : m_CoinTexture;
+    SDL_Texture *empty = Config::isTowerFloor(m_Level) ? m_KeyEmptyTexture : m_CoinEmptyTexture;
     for (int i = 0; i < count; i++) {
         const SDL_Rect coin = { 24 + i * 70, 20, 60, 60 };
         if (m_Player.hasCoin(i)) {
-            SDL_SetTextureAlphaMod(m_CoinTexture, 255);
-            SDL_RenderCopy(m_Renderer, m_CoinTexture, NULL, &coin);
+            SDL_SetTextureAlphaMod(full, 255);
+            SDL_RenderCopy(m_Renderer, full, NULL, &coin);
         } else if ((saved >> i) & 1) {
-            SDL_SetTextureAlphaMod(m_CoinTexture, 110);
-            SDL_RenderCopy(m_Renderer, m_CoinTexture, NULL, &coin);
-            SDL_SetTextureAlphaMod(m_CoinTexture, 255);
+            SDL_SetTextureAlphaMod(full, 110);
+            SDL_RenderCopy(m_Renderer, full, NULL, &coin);
+            SDL_SetTextureAlphaMod(full, 255);
         } else {
-            SDL_RenderCopy(m_Renderer, m_CoinEmptyTexture, NULL, &coin);
+            SDL_RenderCopy(m_Renderer, empty, NULL, &coin);
         }
     }
 }
@@ -545,7 +552,7 @@ void PlayingState::renderLevelCompleteMenu() const {
     Text::renderTexture(m_Renderer, m_LevelCompleteTextTexture, m_Game->getWidth()/2, m_Game->getHeight()/4, true, true);
     if (m_UnlockedSkin) {
         // the new skin, under the title
-        const int skin = Config::FREE_SKINS + m_Level;
+        const int skin = m_Level < Config::LEVEL_SKINS ? Config::FREE_SKINS + m_Level : Config::TOWER_SKIN;
         const SDL_Rect box = { m_Game->getWidth()/2 - 60, m_Game->getHeight()/4 + 70, 120, 120 };
         SDL_RenderCopy(m_Renderer, m_Game->getSkinTexture(skin), NULL, &box);
         Text::renderTexture(m_Renderer, m_NewSkinTexture, m_Game->getWidth()/2, m_Game->getHeight()/4 + 200, true, false, 0.5f);

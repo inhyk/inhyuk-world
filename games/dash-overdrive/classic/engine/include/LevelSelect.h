@@ -30,6 +30,12 @@ public:
     int getTotalCoins() const;
     // Coins still needed to open a level; 0 when it is open.
     int coinsNeeded(int level) const;
+    // keys found on the tower's floors (they do not count as coins)
+    int getTowerKeys() const;
+    // keys still needed for the key door in front of a tower floor
+    int keysNeeded(int level) const;
+    // a secret level without enough coins, or a tower floor not reached yet
+    bool isLocked(int level) const;
     void setBestPracticePercentage(int value);
     inline SDL_Texture *getLevelNameTexture() const { return m_LevelNameTexture; }
     inline static LevelSelect &get() { return m_LevelSelect; }
@@ -46,6 +52,8 @@ private:
     SDL_Rect m_TopRect;
     SDL_Texture *m_CornerTexture;
     SDL_Texture *m_CoinTexture;
+    SDL_Texture *m_KeyTexture;
+    SDL_Texture *m_KeyEmptyTexture;
     SDL_Texture *m_CoinEmptyTexture;
     SDL_Texture *m_LockTexture;
     SDL_Texture *m_LockTextTexture = nullptr;

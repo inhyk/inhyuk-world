@@ -780,6 +780,43 @@ function coinIcon() {
 }
 
 // empty slot with the coin's silhouette, for coins not collected yet
+// a gold key with a round bow and a star hole: the tower's collectible (object 204)
+function keyParts(scale, { glow = false } = {}) {
+  const k = scale;
+  const v = (n) => n2(n * k);
+  const defs =
+    (glow ? rad("kglow", 60 * k, 60 * k, 60 * k, [[0.55, GOLD, 0.5], [0.8, GOLD, 0.15], [1, GOLD, 0]]) : "") +
+    lin("kgold", 0, 12 * k, 0, 108 * k, [[0, "#fff3a8"], [0.45, GOLD], [1, "#e08a14"]]);
+  // bow (a ring), shaft and two teeth; outlines first, then the gold on top so the parts join
+  const parts = (paint) =>
+    `<circle cx="${v(60)}" cy="${v(36)}" r="${v(24)}" ${paint}/>` +
+    `<rect x="${v(54)}" y="${v(52)}" width="${v(12)}" height="${v(56)}" rx="${v(4)}" ${paint}/>` +
+    `<rect x="${v(64)}" y="${v(84)}" width="${v(16)}" height="${v(9)}" rx="${v(2.5)}" ${paint}/>` +
+    `<rect x="${v(64)}" y="${v(97)}" width="${v(12)}" height="${v(9)}" rx="${v(2.5)}" ${paint}/>`;
+  const outline = Math.max(10 * k, 4.6);
+  const body =
+    (glow ? `<circle cx="${v(60)}" cy="${v(60)}" r="${v(60)}" fill="url(#kglow)"/>` : "") +
+    parts(`fill="${NAVY}" stroke="${NAVY}" stroke-width="${n2(outline)}" stroke-linejoin="round"`) +
+    parts('fill="url(#kgold)"') +
+    `<path d="${starPath(60 * k, 37 * k, 12 * k, 5.4 * k)}" fill="${NAVY}" fill-opacity=".9"/>` +
+    `<path d="M${v(44)} ${v(26)} Q${v(50)} ${v(16)} ${v(60)} ${v(15)}" fill="none" stroke="${WHITE}" stroke-opacity=".85" stroke-width="${n2(Math.max(3.5 * k, 1.6))}" stroke-linecap="round"/>` +
+    `<path d="M${v(57)} ${v(60)} V${v(100)}" stroke="${WHITE}" stroke-opacity=".45" stroke-width="${n2(Math.max(2.5 * k, 1.2))}" stroke-linecap="round"/>`;
+  return { defs, body };
+}
+function key() {
+  const { defs, body } = keyParts(1, { glow: true });
+  return svg(120, 120, defs, body + `<path d="${sparkle(98, 22, 8)}" fill="${WHITE}"/>`);
+}
+function keyIcon() {
+  const { defs, body } = keyParts(64 / 120);
+  return svg(64, 64, defs, body);
+}
+function keyEmpty() {
+  const k = 64 / 120;
+  const { body } = keyParts(k);
+  return svg(64, 64, '', `<g opacity=".38" fill="none">${body.replace(/fill="url\(#kgold\)"/g, 'fill="#0b1030" fill-opacity=".5"').replace(/stroke="#0b1030"/g, 'stroke="#ffffff"')}</g>`);
+}
+
 function coinEmpty() {
   return svg(
     64,
@@ -1107,7 +1144,7 @@ const SKINS_2 = [
         `<path d="M27 46 Q14 39 3 43 L5 52 Q16 49 26 54 Z M27 56 Q15 62 5 72 L11 77 Q20 66 29 61 Z" fill="url(#sweat)" stroke="${NAVY}" stroke-width="3" stroke-linejoin="round"/>` +
         `<rect x="22" y="43" width="16" height="16" rx="5" fill="url(#sweat)" stroke="${NAVY}" stroke-width="3"/>`,
     }),
-  // ---- shop skins 25-30, bought with diamonds on the page
+  // ---- shop skins 25-30, bought with diamonds on the page (31, the tower's reward, is last)
   // 25: crystal with cut faces and sparkles
   () =>
     cube({
@@ -1194,6 +1231,7 @@ const SKINS_2 = [
     return skinShape({
       shape: edge + 'Z',
       colors: ['#f5d39a', '#d99a52', '#a8662a'],
+      // (cookie)
       pattern: [[50, 54, 9], [130, 48, 8], [44, 120, 8], [138, 126, 10], [92, 152, 7], [100, 40, 6]].map(([x, y, r]) => `<path d="M${x - r} ${y} Q${x - r * 0.6} ${y - r} ${x} ${y - r * 0.8} Q${x + r} ${y - r * 0.5} ${x + r * 0.8} ${y + r * 0.4} Q${x} ${y + r} ${x - r} ${y} Z" fill="#5a3418"/>`).join(''),
       face:
         eyesRound(68, 117, 92, 11, 13) +
@@ -1201,6 +1239,25 @@ const SKINS_2 = [
         blush(116, '#ff8f7a', 0.55),
     });
   },
+  // 31: tower top with battlements and a flag, the reward for clearing DASH TOWER 10F
+  () =>
+    cube({
+      colors: ['#d9e2f5', '#9aa9cc', '#5d6a93'],
+      defs: lin('flag', 0, 4, 0, 30, [[0, '#ff8fb0'], [1, PINK]]),
+      frame:
+        `<path d="M150 46 V8" stroke="${NAVY}" stroke-width="8" stroke-linecap="round"/><path d="M152 9 L178 17 L152 26 Z" fill="url(#flag)" stroke="${NAVY}" stroke-width="4" stroke-linejoin="round"/>` +
+        `<path d="M6 60 V34 H38 V48 H62 V34 H94 V48 H118 V34 H150 V48 H179 V179 H6 Z" fill="${NAVY}" stroke="${NAVY}" stroke-width="10" stroke-linejoin="round"/>` +
+        `<path d="M17 62 V45 H28 V58 H72 V45 H84 V58 H128 V45 H140 V58 H168 V168 H17 Z" fill="url(#body)"/>`,
+      inner: [17, 58, 151, 110],
+      gloss: false,
+      pattern:
+        [72, 96, 120, 144].map((y, row) => [0, 1, 2, 3, 4].map((i) => `<rect x="${n2(12 + i * 36 + (row % 2) * 18)}" y="${y}" width="34" height="22" rx="4" fill="none" stroke="${NAVY}" stroke-opacity=".18" stroke-width="2.5"/>`).join('')).join(''),
+      face:
+        eyesRound(66, 119, 100, 11, 13) +
+        `<path d="M70 126 Q92.5 146 115 126" fill="none" stroke="${NAVY}" stroke-width="6" stroke-linecap="round"/>` +
+        `<path d="M80 128 H105" stroke="${WHITE}" stroke-width="3" stroke-linecap="round"/>` +
+        blush(124, '#ff8fc8', 0.5),
+    }),
 ];
 
 // small diamond for the shop prices in the skin picker
@@ -1992,6 +2049,9 @@ const SPRITES = [
   ...SKINS_2.map((make, i) => ({ file: `skins/${12 + i}.png`, w: 185, h: 185, svg: make })),
   { file: 'skinLock.png', w: 180, h: 180, svg: skinLock },
   { file: 'diamond.png', w: 64, h: 64, svg: diamond },
+  { file: 'objects/204.png', w: 120, h: 120, svg: key },
+  { file: 'keyIcon.png', w: 64, h: 64, svg: keyIcon },
+  { file: 'keyEmpty.png', w: 64, h: 64, svg: keyEmpty },
   { file: 'ship.png', w: 149, h: 88, svg: ship },
   { file: 'checkpoint.png', w: 100, h: 100, svg: checkpoint },
   { file: 'background.png', w: 2048, h: 2048, raw: backgroundTexture },

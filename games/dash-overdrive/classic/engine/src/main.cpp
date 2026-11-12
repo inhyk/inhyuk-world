@@ -56,8 +56,8 @@ CLASSIC_EXPORT void classic_start_level(int level) {
     LevelSelect::get().selectLevel(level);
     if (level < Config::LEVEL_COUNT) {
         game.pushState(LevelSelect::get());
-        // a locked secret level stays on level select, showing its padlock
-        if (LevelSelect::get().coinsNeeded(level) > 0) {
+        // a locked secret level or tower floor stays on level select, showing its padlock
+        if (LevelSelect::get().isLocked(level)) {
             return;
         }
     }
@@ -123,6 +123,10 @@ CLASSIC_EXPORT int classic_ghost_count() {
 
 CLASSIC_EXPORT int classic_total_coins() {
     return LevelSelect::get().getTotalCoins();
+}
+
+CLASSIC_EXPORT int classic_tower_keys() {
+    return LevelSelect::get().getTowerKeys();
 }
 
 CLASSIC_EXPORT void classic_set_custom_song(int song) {

@@ -26,6 +26,7 @@ void SkinSelect::init(Game *game) {
         // a locked slot says which level opens it, or what it costs in the shop
         if (i < Config::FREE_SKINS) m_LevelTextures[i] = nullptr;
         else if (i < Config::SHOP_FIRST) m_LevelTextures[i] = Text::createTexture(m_Renderer, "Lv " + std::to_string(i - Config::FREE_SKINS + 1));
+        else if (i == Config::TOWER_SKIN) m_LevelTextures[i] = Text::createTexture(m_Renderer, "Tower");
         else m_LevelTextures[i] = Text::createTexture(m_Renderer, std::to_string(Config::SHOP_PRICE));
     }
     int backWidth = 0;
@@ -121,7 +122,7 @@ void SkinSelect::render() const {
             // locked: dark cover with a padlock and the level that opens it
             const SDL_Rect cover = { slot.getX(), slot.getY(), SLOT_SIZE, SLOT_SIZE };
             SDL_RenderCopy(m_Renderer, m_LockTexture, NULL, &cover);
-            if (i >= Config::SHOP_FIRST) {
+            if (i >= Config::SHOP_FIRST && i < Config::TOWER_SKIN) {
                 // shop skin: a diamond and its price
                 const SDL_Rect diamond = { slot.getX() + SLOT_SIZE / 2 - 40, slot.getY() + SLOT_SIZE - 44, 34, 34 };
                 SDL_RenderCopy(m_Renderer, m_DiamondTexture, NULL, &diamond);

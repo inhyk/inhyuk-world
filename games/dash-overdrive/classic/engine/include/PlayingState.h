@@ -60,6 +60,8 @@ private:
     SDL_Texture *m_LevelCompleteTextTexture;
     SDL_Texture *m_LoadingTexture;
     SDL_Texture *m_CoinTexture;
+    SDL_Texture *m_KeyTexture;
+    SDL_Texture *m_KeyEmptyTexture;
     SDL_Texture *m_CoinEmptyTexture;
     struct Ghost {
         bool visible = false;

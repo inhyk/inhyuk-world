@@ -2,7 +2,7 @@
 'use strict';
 // The page around the WebAssembly engine: level picker, song downloads,
 // touch input and the hooks the engine calls (Module.classic*).
-const VERSION = 'classic-original-11';
+const VERSION = 'classic-original-12';
 // [name, difficulty, song] for levels 1-100, written by levels/level-list.mjs
 const CLASSIC_LEVELS = window.CLASSIC_LEVEL_LIST;
 // groups in the level picker
@@ -32,6 +32,9 @@ function levelKey(base, index) {
   return index < 21 ? base + index : base * 10 + index;
 }
 const songOf = index => CLASSIC_LEVELS[index]?.[2] ?? index;
+// DASH TOWER: {first, floors, doors: [[floor, keys]], skin} from level-list.js
+const TOWER = window.CLASSIC_TOWER;
+const isTowerFloor = index => index >= TOWER.first && index < TOWER.first + TOWER.floors;
 
 function storedNumber(key) {
   try {
@@ -44,10 +47,28 @@ function storedNumber(key) {
 
 function totalCoins() {
   let total = 0;
-  for (let index = 0; index < CLASSIC_LEVELS.length; index++) {
+  // the tower's keys are not coins
+  for (let index = 0; index < TOWER.first; index++) {
     total += coinCount(index);
   }
   return total;
+}
+
+function towerKeys() {
+  let total = 0;
+  for (let floor = 0; floor < TOWER.floors; floor++) total += coinCount(TOWER.first + floor);
+  return total;
+}
+
+const cleared = index => storedNumber(levelKey(100, index)) >= 100;
+
+// why a tower floor is still shut ('' when it is open)
+function towerLock(floor) {
+  if (creator) return '';
+  if (floor > 0 && !cleared(TOWER.first + floor - 1)) return `${floor}층을 먼저 깨야 열려`;
+  const door = TOWER.doors.find(([at]) => at === floor);
+  if (door && towerKeys() < door[1]) return `열쇠 문: 열쇠 ${door[1] - towerKeys()}개 더 필요해`;
+  return '';
 }
 
 function coinCount(index) {
@@ -236,7 +257,14 @@ function bestText(index) {
 
 function buildChoices() {
   choices.textContent = '';
+  const towerCard = document.createElement('button');
+  towerCard.type = 'button';
+  towerCard.className = 'tower-card-open';
+  towerCard.innerHTML = '<b>🗼 DASH TOWER</b><span>10층 탑을 꼭대기까지 올라가 봐! 층마다 열쇠 3개.</span>';
+  towerCard.addEventListener('click', () => openTower(true));
+  choices.append(towerCard);
   CLASSIC_LEVELS.forEach(([name, difficulty], index) => {
+    if (isTowerFloor(index)) return;
     const group = GROUPS.find(([first]) => first === index);
     if (group) {
       const heading = document.createElement('h3');
@@ -319,7 +347,7 @@ function prepareSong(index) {
 }
 
 function panelOpen() {
-  return !launcher.hidden || !shop.hidden || Boolean(window.classicEditor?.isOpen()) || Boolean(window.classicOnline?.isOpen()) || Boolean(window.classicSocial?.isOpen());
+  return !launcher.hidden || !shop.hidden || !tower.hidden || Boolean(window.classicEditor?.isOpen()) || Boolean(window.classicOnline?.isOpen()) || Boolean(window.classicSocial?.isOpen());
 }
 
 const isField = target => target instanceof HTMLElement && target.matches('input, select, textarea');
@@ -331,7 +359,9 @@ for (const type of ['keydown', 'keyup']) {
     // a text box keeps its keys; it stops them from reaching the game itself
     if (isField(event.target)) return;
     event.stopImmediatePropagation();
-    if (!shop.hidden) {
+    if (!tower.hidden) {
+      if (type === 'keydown' && event.key === 'Escape') openTower(false);
+    } else if (!shop.hidden) {
       if (type === 'keydown' && event.key === 'Escape') openShop(false);
     } else if (window.classicSocial?.isOpen()) {
       if (type === 'keydown' && event.key === 'Escape') window.classicSocial.close();
@@ -358,6 +388,9 @@ function showLauncher(show) {
 function startLevel(level) {
   if (!ready) return;
   if (level < CLASSIC_LEVELS.length && coinsNeeded(level) > 0) return;
+  if (isTowerFloor(level) && towerLock(level - TOWER.first)) return;
+  if (isTowerFloor(level)) towerRun = level;
+  openTower(false, false);
   if (level < CLASSIC_LEVELS.length) prepareSong(songOf(level));
   showLauncher(false);
   window.classicEditor?.close();
@@ -454,6 +487,14 @@ setInterval(() => {
   const playing = Module._classic_state() === STATE_PLAYING;
   const finished = playing && Module._classic_percent() >= 10000;
   if ((wasPlaying && !playing) || (finished && !wasPlaying)) updateMyLevel(true);
+  // back from a tower floor: the tower again, showing what opened
+  if (wasPlaying && !playing && towerRun >= 0) {
+    const floor = towerRun - TOWER.first;
+    towerRun = -1;
+    openTower(true);
+    if (cleared(TOWER.first + floor) && floor + 1 < TOWER.floors && !towerLock(floor + 1)) showToast(`🗼 ${floor + 2}층이 열렸어!`);
+    else if (cleared(TOWER.first + floor) && floor + 1 === TOWER.floors) showToast('👑 DASH TOWER 꼭대기까지 올라갔어! 탑 스킨을 받았어!');
+  }
   wasPlaying = playing && !finished;
   const level = Module._classic_level();
   if (playing && level < CLASSIC_LEVELS.length) {
@@ -475,6 +516,68 @@ window.render_classic_status = () => JSON.stringify({
   launcher: !launcher.hidden,
   editor: Boolean(window.classicEditor?.isOpen()),
 });
+
+// ---- DASH TOWER screen: floors stacked from 1F at the bottom to 10F at the top
+const tower = document.getElementById('tower');
+const towerFloors = document.getElementById('tower-floors');
+let towerRun = -1; // tower floor being played, to come back to the tower after it
+function buildTower() {
+  document.getElementById('tower-keys').textContent = `🔑 열쇠 ${towerKeys()}개`;
+  const reward = document.getElementById('tower-reward');
+  if (ready && !reward.src) reward.src = skinPicture(TOWER.skin);
+  const wearing = ready ? Module._classic_player_skin() : 0;
+  // the player stands on the highest floor that is open
+  let here = 0;
+  for (let floor = 0; floor < TOWER.floors; floor++) if (!towerLock(floor)) here = floor;
+  towerFloors.textContent = '';
+  for (let floor = TOWER.floors - 1; floor >= 0; floor--) {
+    const index = TOWER.first + floor;
+    const [, difficulty] = CLASSIC_LEVELS[index];
+    const lock = towerLock(floor);
+    const done = cleared(index);
+    const row = document.createElement('li');
+    row.className = `floor ${done ? 'done' : lock ? 'locked' : 'open'}${floor === here ? ' here' : ''}`;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.floor = String(floor + 1);
+    button.disabled = Boolean(lock);
+    const keys = coinCount(index);
+    const best = storedNumber(levelKey(100, index));
+    button.innerHTML = `<span class="floor-number">${floor + 1}F</span><span class="floor-info"><small class="${difficulty}">${DIFFICULTY_NAMES[difficulty]}</small><b>${done ? '깼어! ✓' : lock ? '🔒 ' + lock : best > 0 ? '최고 ' + best + '%' : '도전해 봐!'}</b></span><span class="floor-keys">${'🔑'.repeat(keys)}<i>${'·'.repeat(3 - keys)}</i></span>`;
+    if (floor === here && ready) {
+      const me = document.createElement('img');
+      me.className = 'floor-me';
+      me.alt = '';
+      me.src = skinPicture(wearing);
+      button.prepend(me);
+    }
+    button.addEventListener('click', () => startLevel(index));
+    row.append(button);
+    towerFloors.append(row);
+    const door = TOWER.doors.find(([at]) => at === floor);
+    if (door) {
+      const gate = document.createElement('li');
+      const open = creator || towerKeys() >= door[1];
+      gate.className = `door${open ? ' open' : ''}`;
+      gate.textContent = open ? `🚪 열쇠 문 열림 (열쇠 ${door[1]}개)` : `🚪 열쇠 문 · 열쇠 ${door[1]}개 필요 (지금 ${towerKeys()}개)`;
+      towerFloors.append(gate);
+    }
+  }
+}
+function openTower(open, focus = true) {
+  tower.hidden = !open;
+  if (open) {
+    showLauncher(false);
+    buildTower();
+    // show the floor the player stands on
+    tower.querySelector('.floor.here')?.scrollIntoView({block: 'center'});
+  } else if (focus) {
+    canvas.focus();
+  }
+}
+document.getElementById('tower-open').addEventListener('click', () => openTower(tower.hidden));
+document.getElementById('tower-close').addEventListener('click', () => openTower(false));
+window.classicTower = {open: () => openTower(true), close: () => openTower(false), isOpen: () => !tower.hidden};
 
 buildChoices();
 updateMyLevel();

@@ -1776,6 +1776,83 @@
           "type": "end"
         }
       ]
+    },
+    {
+      "index": 21,
+      "name": "DASH TOWER",
+      "bpm": 178.05,
+      "durationSeconds": 56,
+      "beatSeconds": 0.336984,
+      "totalBeats": 166.18,
+      "difficulty": "tower",
+      "style": "climbing anthem: rising arpeggios, square lead, a short break before the top",
+      "key": "E minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.45
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.7
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.9
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 80,
+          "endBeat": 96,
+          "energy": 0.85
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 96,
+          "endBeat": 144,
+          "energy": 1
+        },
+        {
+          "name": "outro",
+          "startBeat": 144,
+          "endBeat": 166.18,
+          "energy": 0.4
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 95.5,
+          "type": "stop"
+        },
+        {
+          "beat": 96,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "end"
+        }
+      ]
     }
   ]
 }

@@ -260,3 +260,41 @@ header button{padding:6px 8px;word-break:keep-all}
 .launch-controls{position:sticky;bottom:0;z-index:3;background:linear-gradient(0deg,#0b1030 70%,#0b1030e6);margin:0 -2%;padding-left:2%;padding-right:2%}
 @media(min-width:901px){.intro{max-height:100%;overflow:auto}.my-level-box{margin:0 0 14px}}
 @media(max-width:600px){header strong#now-playing{display:none}}
+
+/* DASH TOWER: a stone tower, 1F at the bottom and the reward on the roof */
+.tower-open{font-weight:700;border-color:#ffb35a80!important;background:#ffb35a14!important}
+.tower{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 0%,#3a2a7acc,#05081cf0 70%);padding:12px}
+.tower[hidden]{display:none}
+.tower-panel{width:min(560px,100%);max-height:100%;overflow:auto;padding:14px 14px 18px;border-radius:14px;background:#0b1030e6;border:2px solid #ffb35a}
+.tower-head{display:flex;align-items:center;gap:10px}
+.tower-head h2{margin:0;font-size:20px;flex:1}
+.tower-keys{margin:0;color:#ffd23d;font-weight:800}
+.tower-head button{border:1px solid #ffffff40;background:#ffffff10;color:var(--ink);border-radius:8px;padding:6px 12px}
+.tower-building{margin:14px auto 0;width:min(400px,100%)}
+.tower-roof{position:relative;margin:0 auto;width:86%;padding:34px 10px 12px;text-align:center;background:linear-gradient(180deg,#5d3a9a,#3b2670);clip-path:polygon(50% 0,100% 62%,100% 100%,0 100%,0 62%);color:#fff}
+.tower-roof img{width:58px;height:58px;display:block;margin:4px auto 0;filter:drop-shadow(0 0 10px #ffd23d)}
+.tower-roof p{margin:4px 0 0;font-size:11px;color:#ffe9a8}
+.tower-flag{position:absolute;left:50%;top:2px;width:22px;height:14px;background:#ff3d7f;clip-path:polygon(0 0,100% 50%,0 100%)}
+.tower-floors{list-style:none;margin:0;padding:8px 10px;background:repeating-linear-gradient(0deg,#6b7393 0 2px,transparent 2px 26px),repeating-linear-gradient(90deg,#6b7393 0 2px,transparent 2px 46px),linear-gradient(90deg,#4b5272,#5d6585 50%,#4b5272);border-left:6px solid #2e3350;border-right:6px solid #2e3350;display:flex;flex-direction:column;gap:6px}
+.floor button{width:100%;display:flex;align-items:center;gap:10px;min-height:52px;padding:6px 10px;border-radius:12px 12px 4px 4px;border:2px solid #1c2140;background:#141a3ae6;color:var(--ink);text-align:left;position:relative}
+.floor.open button{border-color:#bfff59;box-shadow:0 0 0 2px #bfff5940 inset}
+.floor.done button{border-color:#ffd23d;background:#2a2a1ee6}
+.floor.locked button{opacity:.62}
+.floor.here button{box-shadow:0 0 14px #bfff5999}
+.floor-number{font-size:22px;font-weight:900;width:46px;color:#ffd23d}
+.floor-info{flex:1;display:flex;flex-direction:column;line-height:1.2}
+.floor-info small{font-size:10px;color:var(--muted)}
+.floor-info small.extreme{color:#ff3d3d;font-weight:800}
+.floor-info small.demon,.floor-info small.insane{color:#ff6b9a}
+.floor-info b{font-size:13px}
+.floor-keys{font-size:14px;letter-spacing:1px}
+.floor-keys i{color:#ffffff50;font-style:normal;margin-left:2px}
+.floor-me{width:34px;height:34px;position:absolute;left:-20px;top:-14px;filter:drop-shadow(0 2px 3px #0008)}
+.door{margin:0 18px;padding:5px 8px;border-radius:6px;background:#3a2410;border:2px dashed #ffb35a;color:#ffd9a8;font-size:12px;text-align:center}
+.door.open{border-style:solid;background:#24301a;color:#d9ffb0;border-color:#8fd65a}
+.tower-gate{margin:0 auto;width:40%;padding:6px 0 8px;text-align:center;font-size:11px;color:#ffe9a8;background:#2e3350;border-radius:0 0 10px 10px}
+.tower-help{color:var(--muted);font-size:12px;margin:12px 0 0}
+.tower-card-open{grid-column:1/-1;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 18px;border-radius:12px;border:2px solid #ffb35a;background:linear-gradient(90deg,#3b2670,#141a3a);color:var(--ink);text-align:left}
+.tower-card-open b{font-size:18px}
+.tower-card-open span{font-size:12px;color:#ffd9a8}
+@media(max-width:600px){.tower-open .tower-label{display:none}}

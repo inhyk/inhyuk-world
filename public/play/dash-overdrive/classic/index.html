@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1030">
 <title>DASH / OVERDRIVE · CLASSIC</title>
-<link rel="stylesheet" href="style.css?v=classic-original-11">
+<link rel="stylesheet" href="style.css?v=classic-original-12">
 </head>
 <body>
 <header>
@@ -14,6 +14,7 @@
   <div>
     <button id="my-level" type="button" class="my-level" aria-label="나의 레벨과 다이아몬드, 스킨 상점 열기"><small>나의 레벨</small><b id="my-level-value">1레벨</b><span id="my-diamonds" class="my-diamonds">💎 0</span></button>
     <button id="social-open" type="button" class="social-open" aria-label="로그인"><span aria-hidden="true">👤</span><span id="social-label" class="social-label">로그인</span><i id="social-badge" class="social-badge" hidden></i></button>
+    <button id="tower-open" type="button" class="tower-open" aria-label="DASH TOWER 열기">🗼<span class="tower-label"> 타워</span></button>
     <button id="online-open" type="button">👥 같이 하기</button>
     <button id="select" type="button">단계 선택</button>
     <button id="full" type="button" aria-label="전체 화면">⛶</button>
@@ -169,6 +170,17 @@
 </div>
 <div id="race" class="race" hidden aria-label="같이 달리는 친구들"></div>
 <div id="watch" class="watch" hidden><b id="watch-name">관전 중</b><button id="watch-retry" type="button">다시 달리기 ▶</button></div>
+<section id="tower" class="tower" hidden aria-label="DASH TOWER">
+  <div class="tower-panel">
+    <div class="tower-head"><h2>🗼 DASH TOWER</h2><p id="tower-keys" class="tower-keys">🔑 열쇠 0개</p><button id="tower-close" type="button">닫기</button></div>
+    <div class="tower-building">
+      <div class="tower-roof"><span class="tower-flag"></span><img id="tower-reward" alt=""><p>꼭대기 10층을 깨면 이 스킨을 받아!</p></div>
+      <ol id="tower-floors" class="tower-floors"></ol>
+      <div class="tower-gate">입구</div>
+    </div>
+    <p class="tower-help">아래층을 깨야 위층이 열려. 올라갈수록 어려워져서 꼭대기는 익스트림 데몬이야. 층마다 열쇠 3개가 숨어 있고(끝까지 깨야 모여), 4층, 7층, 10층 앞 열쇠 문은 열쇠를 모아야 열려.</p>
+  </div>
+</section>
 <section id="shop" class="shop" hidden aria-label="스킨 상점">
   <div class="shop-card">
     <div class="shop-head"><h2>💎 스킨 상점</h2><button id="shop-close" type="button">닫기</button></div>
@@ -183,11 +195,11 @@
   <span><kbd>ESC</kbd> 일시정지 · 연습 모드에서 <kbd>Z</kbd> 체크포인트 / <kbd>X</kbd> 삭제</span>
   <span class="rotate">휴대폰은 가로 화면이 좋아 ↻</span>
 </footer>
-<script src="level-list.js?v=classic-original-11"></script>
-<script src="launcher.js?v=classic-original-11"></script>
-<script src="editor.js?v=classic-original-11"></script>
-<script type="module" src="online.mjs?v=classic-original-11"></script>
-<script type="module" src="social-ui.mjs?v=classic-original-11"></script>
-<script src="engine/DashClassic.js?v=classic-original-11"></script>
+<script src="level-list.js?v=classic-original-12"></script>
+<script src="launcher.js?v=classic-original-12"></script>
+<script src="editor.js?v=classic-original-12"></script>
+<script type="module" src="online.mjs?v=classic-original-12"></script>
+<script type="module" src="social-ui.mjs?v=classic-original-12"></script>
+<script src="engine/DashClassic.js?v=classic-original-12"></script>
 </body>
 </html>

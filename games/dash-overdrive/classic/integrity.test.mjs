@@ -28,13 +28,13 @@ function levelSeconds(level) {
   return seconds + (level.furthestX - x) / (20.772 * 60 * SPEED_MULTIPLIERS[speed]);
 }
 
-test('a hundred built levels use only objects the engine knows', () => {
-  assert.equal(LEVELS.length, 100);
+test('a hundred built levels and ten tower floors use only objects the engine knows', () => {
+  assert.equal(LEVELS.length, 110);
   for (let index = 0; index < LEVELS.length; index++) {
     const text = readFileSync(new URL(`leveldata/${index}.level`, res), 'utf8');
     const ids = text.split(';').slice(1).filter(Boolean).map(row => Number(row.split(',')[1]));
     assert.ok(ids.length > 100, `level ${index + 1} has objects`);
-    assert.equal(ids.filter(id => id === 201).length, 3, `level ${index + 1} has three coins`);
+    assert.equal(ids.filter(id => id === (LEVELS[index].key ? 204 : 201)).length, 3, `level ${index + 1} has three coins (keys in the tower)`);
     for (const id of ids) assert.ok(OBJECTS[id], `level ${index + 1} object ${id}`);
     const level = parseLevel(text);
     // the end of the level lines up with its song

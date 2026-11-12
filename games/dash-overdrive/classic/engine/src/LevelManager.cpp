@@ -86,6 +86,8 @@ void LevelManager::initBlocks() {
         ObjectType::COIN,
         SDL_FRect { 20, 20, 80, 80 },
     };
+    // key on the tower's floors: a coin with its own picture
+    m_IDToObjectData[204] = m_IDToObjectData[201];
     // ball, UFO and wave portals: same size as the cube and ship portals
     m_IDToObjectData[210] = m_IDToObjectData[12];
     m_IDToObjectData[210].type = ObjectType::BALL_PORTAL;
