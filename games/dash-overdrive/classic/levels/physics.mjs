@@ -433,22 +433,22 @@ function collideWithObject(player, object) {
       break;
     case 'upsidePortal':
       if (player.gravity === -1) break;
-      player.vy = f(player.vy / 2);
+      player.vy = 0; // a portal starts the new mode fresh
       setGravity(player, -1, object);
       break;
     case 'normalPortal':
       if (player.gravity === 1) break;
-      player.vy = f(player.vy / 2);
+      player.vy = 0; // a portal starts the new mode fresh
       setGravity(player, 1, object);
       break;
     case 'shipPortal':
-      if (player.mode !== 'ship') player.vy = f(player.vy / 2);
+      if (player.mode !== 'ship') player.vy = 0; // a portal starts the new mode fresh
       player.mode = 'ship';
       setBounds(player, object);
       break;
     case 'ballPortal':
       if (player.mode !== 'ball') {
-        player.vy = f(player.vy / 2);
+        player.vy = 0; // a portal starts the new mode fresh
         player.mode = 'ball';
         player.grounded = false;
         player.buffered = false;
@@ -457,7 +457,7 @@ function collideWithObject(player, object) {
       break;
     case 'ufoPortal':
       if (player.mode !== 'ufo') {
-        player.vy = f(player.vy / 2);
+        player.vy = 0; // a portal starts the new mode fresh
         player.mode = 'ufo';
       }
       setBounds(player, object);
@@ -468,7 +468,7 @@ function collideWithObject(player, object) {
       break;
     case 'cubePortal':
       if (player.mode !== 'cube') {
-        player.vy = f(player.vy / 2);
+        player.vy = 0; // a portal starts the new mode fresh
         player.mode = 'cube';
         player.hasBounds = player.gravity === -1;
       }

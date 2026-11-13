@@ -18,6 +18,8 @@
     {id: 203, name: '검은 반 블록'},
     {id: 8, name: '가시'},
     {id: 39, name: '작은 가시'},
+    {id: 1008, name: '천장 가시'},
+    {id: 1039, name: '천장 작은 가시'},
     {id: 35, name: '점프 패드'},
     {id: 222, name: '분홍 패드'},
     {id: 223, name: '파랑 패드'},
@@ -100,6 +102,9 @@
     203: r => 23.25 + 30 * r,
     8: r => 30 * r + 15,
     39: r => 6.75 + 30 * r,
+    // ceiling spikes: the spike turned over; the small one hangs from its cell's roof
+    1008: r => 30 * r + 15,
+    1039: r => 23.25 + 30 * r,
     35: r => 2 + 30 * r,
     222: r => 2 + 30 * r,
     223: r => 2 + 30 * r,
@@ -130,7 +135,8 @@
     for (const [key, id] of source.cells) {
       const [c, r] = key.split(',').map(Number);
       if (!yFor[id]) continue;
-      objects.push(`1,${id},2,${gx(c)},3,${yFor[id](r)}`);
+      const flipped = id >= 1000;
+      objects.push(`1,${flipped ? id - 1000 : id},2,${gx(c)},3,${yFor[id](r)}${flipped ? ',5,1' : ''}`);
       last = Math.max(last, c);
     }
     // a little room after the last object, and never shorter than 30 tiles
@@ -230,7 +236,7 @@
     for (const {id} of TOOLS) {
       if (!id) continue;
       try {
-        const bytes = FS.readFile(`/res/gfx/objects/${id}.png`);
+        const bytes = FS.readFile(`/res/gfx/objects/${id % 1000}.png`);
         const image = new Image();
         image.src = URL.createObjectURL(new Blob([bytes], {type: 'image/png'}));
         image.onload = draw;
@@ -274,6 +280,7 @@
     switch (id) {
       case 40: case 203: return [x, bottom - size, size, size * 0.45];
       case 39: return [x, bottom - size * 0.45, size, size * 0.45];
+      case 1039: return [x, bottom - size, size, size * 0.45];
       case 35: case 222: case 223: return [x + size * 0.08, bottom - size * 0.14, size * 0.84, size * 0.14];
       case 13: case 12: case 210: case 211: case 212: return [x - size * 0.05, bottom - size * 2.8, size * 1.1, size * 2.8];
       case 213: case 214: case 215: case 216: return [x + size * 0.04, bottom - size * 1.25, size * 0.92, size * 1.25];
@@ -339,11 +346,17 @@
       const sprite = sprites.get(id);
       if (sprite?.complete && sprite.naturalWidth) {
         context.save();
-        context.translate(x, y);
+        // ceiling spikes are drawn upside down
+        if (id >= 1000) {
+          context.translate(x, y + h);
+          context.scale(1, -1);
+        } else {
+          context.translate(x, y);
+        }
         context.drawImage(sprite, 0, 0, w, h);
         context.restore();
       } else {
-        context.fillStyle = id === 8 || id === 39 ? '#ff3d7f' : '#4f63ff';
+        context.fillStyle = id % 1000 === 8 || id % 1000 === 39 ? '#ff3d7f' : '#4f63ff';
         context.fillRect(x, y, w, h);
       }
     }
@@ -439,6 +452,7 @@
         const image = document.createElement('img');
         image.src = sprite.src;
         image.alt = '';
+        if (item.id >= 1000) image.style.transform = 'scaleY(-1)';
         button.append(image);
       } else {
         const icon = document.createElement('span');
