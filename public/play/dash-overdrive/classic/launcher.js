@@ -2,7 +2,7 @@
 'use strict';
 // The page around the WebAssembly engine: level picker, song downloads,
 // touch input and the hooks the engine calls (Module.classic*).
-const VERSION = 'classic-original-12';
+const VERSION = 'classic-original-13';
 // [name, difficulty, song] for levels 1-100, written by levels/level-list.mjs
 const CLASSIC_LEVELS = window.CLASSIC_LEVEL_LIST;
 // groups in the level picker
@@ -347,7 +347,7 @@ function prepareSong(index) {
 }
 
 function panelOpen() {
-  return !launcher.hidden || !shop.hidden || !tower.hidden || Boolean(window.classicEditor?.isOpen()) || Boolean(window.classicOnline?.isOpen()) || Boolean(window.classicSocial?.isOpen());
+  return !launcher.hidden || !shop.hidden || !tower.hidden || !document.getElementById('shared-map').hidden || Boolean(window.classicEditor?.isOpen()) || Boolean(window.classicOnline?.isOpen()) || Boolean(window.classicSocial?.isOpen());
 }
 
 const isField = target => target instanceof HTMLElement && target.matches('input, select, textarea');
@@ -359,7 +359,9 @@ for (const type of ['keydown', 'keyup']) {
     // a text box keeps its keys; it stops them from reaching the game itself
     if (isField(event.target)) return;
     event.stopImmediatePropagation();
-    if (!tower.hidden) {
+    if (!document.getElementById('shared-map').hidden) {
+      if (type === 'keydown' && event.key === 'Escape') document.getElementById('shared-map').hidden = true;
+    } else if (!tower.hidden) {
       if (type === 'keydown' && event.key === 'Escape') openTower(false);
     } else if (!shop.hidden) {
       if (type === 'keydown' && event.key === 'Escape') openShop(false);
@@ -425,6 +427,7 @@ const Module = window.Module = {
     updateMyLevel();
     const start = Number(params.get('start'));
     if (Number.isInteger(start) && start >= 1 && start <= CLASSIC_LEVELS.length) startLevel(start - 1);
+    if (params.get('map')) openShared(params.get('map'));
   },
   classicPrepareSong(index) {
     prepareSong(index);
@@ -433,6 +436,11 @@ const Module = window.Module = {
     window.classicEditor?.open();
   },
   classicOnLevelExit(level) {
+    // back from a friend's map: its box again, to play once more or keep it
+    if (level === CUSTOM_LEVEL && window.classicEditor?.endSharedPlay() && sharedMap) {
+      document.getElementById('shared-map').hidden = false;
+      return;
+    }
     if (level === CUSTOM_LEVEL) window.classicEditor?.reopenAfterTest();
   },
 };
@@ -546,6 +554,39 @@ window.render_classic_status = () => JSON.stringify({
   paused: ready ? Boolean(Module._classic_is_paused()) : false,
   launcher: !launcher.hidden,
   editor: Boolean(window.classicEditor?.isOpen()),
+});
+
+// ---- a map from a link (the designer: "내 레벨을 다른사람이 할 수 있게 해줘") ----
+// The link holds the whole map (a DOC1. code), so no server is needed. The map
+// is checked like a pasted code; nothing a person typed is shown.
+let sharedMap = null;
+const sharedBox = document.getElementById('shared-map');
+async function openShared(code) {
+  try {
+    sharedMap = await window.classicEditor.importCode(code);
+  } catch {
+    showToast('링크 속 맵을 읽지 못했어. 링크를 끝까지 다 복사했는지 친구한테 물어봐.');
+    return;
+  }
+  if (!sharedMap.cells.size) return;
+  document.getElementById('shared-info').textContent = `블록과 물건 ${sharedMap.cells.size}개 · 노래 ${window.classicEditor.songName(sharedMap.song)}`;
+  document.getElementById('shared-note').textContent = '링크로 받은 맵은 로그인 없이 바로 할 수 있어. 저장하면 맵 만들기의 빈 칸에 들어가.';
+  showLauncher(false);
+  sharedBox.hidden = false;
+}
+document.getElementById('shared-play').addEventListener('click', () => {
+  if (!sharedMap) return;
+  sharedBox.hidden = true;
+  window.classicEditor.playShared(sharedMap);
+});
+document.getElementById('shared-save').addEventListener('click', () => {
+  if (!sharedMap) return;
+  const number = window.classicEditor.saveShared(sharedMap);
+  document.getElementById('shared-note').textContent = number ? `맵 만들기의 맵 ${number}에 저장했어!` : '빈 맵 칸이 없어. 맵 만들기에서 맵 하나를 지우고 다시 눌러 줘.';
+});
+document.getElementById('shared-close').addEventListener('click', () => {
+  sharedBox.hidden = true;
+  canvas.focus();
 });
 
 // ---- DASH TOWER screen: floors stacked from 1F at the bottom to 10F at the top

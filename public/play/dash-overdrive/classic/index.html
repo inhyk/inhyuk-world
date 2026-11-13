@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b1030">
 <title>DASH / OVERDRIVE · CLASSIC</title>
-<link rel="stylesheet" href="style.css?v=classic-original-12">
+<link rel="stylesheet" href="style.css?v=classic-original-13">
 </head>
 <body>
 <header>
@@ -50,11 +50,13 @@
 <section id="editor" class="editor" hidden aria-label="맵 만들기">
   <div class="editor-bar">
     <strong>맵 만들기</strong>
+    <label>맵 <select id="editor-slot" aria-label="맵 10개 중 고르기"></select></label>
     <label>노래 <select id="editor-song"></select></label>
     <label>색 <select id="editor-colors"></select></label>
     <span id="editor-saved" class="editor-saved">저장됨</span>
     <span class="editor-height"><button id="editor-down" type="button" aria-label="아래로">▼</button><span id="editor-height">바닥</span><button id="editor-up" type="button" aria-label="위로">▲</button></span>
     <div class="editor-actions">
+      <button id="editor-link" type="button">🔗 링크 복사</button>
       <button id="editor-copy" type="button">맵 코드 복사</button>
       <button id="editor-paste" type="button">코드로 불러오기</button>
       <button id="editor-clear" type="button">모두 지우기</button>
@@ -186,6 +188,17 @@
     <p class="tower-help"><b>탑에서는 마음대로 움직여!</b> ← → (또는 A, D)로 걷고, 스페이스나 ↑로 점프해. 휴대폰은 화면 아래 ◀ ▶ 점프 단추. 블록 옆은 벽이라 부딪혀도 괜찮고, 가시만 조심해. 끝까지 가면 그 층을 깬 거야. 점프 패드를 밟고 위 발판 쪽으로 방향을 틀면 위로 올라가.<br>아래층을 깨야 위층이 열려. 올라갈수록 어려워져서 꼭대기는 익스트림 데몬이야. 층마다 열쇠 3개가 숨어 있고(끝까지 깨야 모여), 4층, 7층, 10층 앞 열쇠 문은 열쇠를 모아야 열려.</p>
   </div>
 </section>
+<section id="shared-map" class="shop" hidden aria-label="친구가 만든 맵">
+  <div class="shop-card shared-card">
+    <div class="shop-head"><h2>🎁 친구가 만든 맵이 왔어!</h2><button id="shared-close" type="button">닫기</button></div>
+    <p id="shared-info" class="shop-diamonds"></p>
+    <div class="shared-actions">
+      <button id="shared-play" type="button" class="buy">▶ 해 보기</button>
+      <button id="shared-save" type="button">📥 내 맵 칸에 저장</button>
+    </div>
+    <p id="shared-note" class="shop-help">링크로 받은 맵은 로그인 없이 바로 할 수 있어. 저장하면 맵 만들기의 빈 칸에 들어가.</p>
+  </div>
+</section>
 <section id="shop" class="shop" hidden aria-label="스킨 상점">
   <div class="shop-card">
     <div class="shop-head"><h2>💎 스킨 상점</h2><button id="shop-close" type="button">닫기</button></div>
@@ -200,11 +213,11 @@
   <span><kbd>ESC</kbd> 일시정지 · 연습 모드에서 <kbd>Z</kbd> 체크포인트 / <kbd>X</kbd> 삭제</span>
   <span class="rotate">휴대폰은 가로 화면이 좋아 ↻</span>
 </footer>
-<script src="level-list.js?v=classic-original-12"></script>
-<script src="launcher.js?v=classic-original-12"></script>
-<script src="editor.js?v=classic-original-12"></script>
-<script type="module" src="online.mjs?v=classic-original-12"></script>
-<script type="module" src="social-ui.mjs?v=classic-original-12"></script>
-<script src="engine/DashClassic.js?v=classic-original-12"></script>
+<script src="level-list.js?v=classic-original-13"></script>
+<script src="launcher.js?v=classic-original-13"></script>
+<script src="editor.js?v=classic-original-13"></script>
+<script type="module" src="online.mjs?v=classic-original-13"></script>
+<script type="module" src="social-ui.mjs?v=classic-original-13"></script>
+<script src="engine/DashClassic.js?v=classic-original-13"></script>
 </body>
 </html>

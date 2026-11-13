@@ -9,6 +9,17 @@
   const ROWS = 11;
   const VIEW_ROWS = 12; // rows plus a strip of floor
   const STORAGE_KEY = 'dash-classic:editor';
+  // ten maps (the designer: "맵은 10개를 만들 수 있게 해줘"); map 1 keeps the old key
+  const SLOTS = 10;
+  const SLOT_KEY = 'dash-classic:editor-slot';
+  const keyFor = slot => (slot === 0 ? STORAGE_KEY : `${STORAGE_KEY}-${slot + 1}`);
+  let slot = 0;
+  try {
+    const saved = Number(localStorage.getItem(SLOT_KEY));
+    if (Number.isInteger(saved) && saved >= 0 && saved < SLOTS) slot = saved;
+  } catch {
+    // map 1
+  }
   const CUSTOM_LEVEL = window.CLASSIC_LEVEL_LIST.length; // the map maker slot after levels 1-100
   const CODE_PREFIX = 'DOC1.';
   const TOOLS = [
@@ -71,9 +82,9 @@
   let testing = false;
   const sprites = new Map();
 
-  function load() {
+  function load(which = slot) {
     try {
-      const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      const data = JSON.parse(localStorage.getItem(keyFor(which)));
       if (data && Array.isArray(data.cells)) {
         return {cells: new Map(data.cells.map(([c, r, id]) => [`${c},${r}`, id])), song: data.song | 0, colors: data.colors | 0};
       }
@@ -86,8 +97,9 @@
   function save() {
     const cells = [...map.cells].map(([key, id]) => [...key.split(',').map(Number), id]);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({cells, song: map.song, colors: map.colors}));
+      localStorage.setItem(keyFor(slot), JSON.stringify({cells, song: map.song, colors: map.colors}));
       savedLabel.textContent = '저장됨';
+      updateSlots();
     } catch {
       savedLabel.textContent = '저장 못 함';
     }
@@ -181,6 +193,22 @@
   const shareText = document.getElementById('editor-share-text');
   const shareNote = document.getElementById('editor-share-note');
   for (const type of ['keydown', 'keyup', 'keypress']) shareText.addEventListener(type, event => event.stopPropagation());
+  document.getElementById('editor-link').addEventListener('click', async () => {
+    const code = await exportCode();
+    const url = `${location.origin}/play/dash-overdrive/classic/index.html?map=${encodeURIComponent(code)}`;
+    shareBox.hidden = false;
+    shareBox.dataset.mode = 'copy';
+    shareText.value = url;
+    shareText.readOnly = true;
+    document.getElementById('editor-share-load').hidden = true;
+    try {
+      await navigator.clipboard.writeText(url);
+      shareNote.textContent = '링크를 복사했어! 친구한테 보내면 친구가 열자마자 이 맵을 할 수 있어.';
+    } catch {
+      shareNote.textContent = '이 링크를 복사해서 친구한테 보내 줘. 열면 바로 이 맵을 할 수 있어.';
+      shareText.select();
+    }
+  });
   document.getElementById('editor-copy').addEventListener('click', async () => {
     shareBox.hidden = false;
     shareBox.dataset.mode = 'copy';
@@ -497,10 +525,46 @@
     draw();
   });
 
+  // ---- the ten maps ------------------------------------------------------
+  function updateSlots() {
+    // looked up here: save() can run before this part of the file has run
+    const slotSelect = document.getElementById('editor-slot');
+    if (!slotSelect) return;
+    if (slotSelect.options.length !== SLOTS) {
+      slotSelect.textContent = '';
+      for (let i = 0; i < SLOTS; i++) slotSelect.add(new Option(`맵 ${i + 1}`, String(i)));
+    }
+    for (let i = 0; i < SLOTS; i++) {
+      const count = i === slot ? map.cells.size : load(i).cells.size;
+      slotSelect.options[i].textContent = count ? `맵 ${i + 1} (${count}개)` : `맵 ${i + 1} (빈 맵)`;
+    }
+    slotSelect.value = String(slot);
+  }
+  function switchSlot(next) {
+    if (next === slot || next < 0 || next >= SLOTS) return;
+    save();
+    slot = next;
+    try {
+      localStorage.setItem(SLOT_KEY, String(slot));
+    } catch {
+      // the choice is only for now
+    }
+    map = load(slot);
+    songSelect.value = String(map.song);
+    colorSelect.value = String(map.colors);
+    scroll = -2;
+    rowScroll = 0;
+    confirmBox.hidden = true;
+    updateSlots();
+    draw();
+  }
+  document.getElementById('editor-slot')?.addEventListener('change', event => switchSlot(Number(event.target.value)));
+
   function open() {
     if (!window.FS) return;
     loadSprites();
     buildTools();
+    updateSlots();
     songSelect.value = String(map.song);
     colorSelect.value = String(map.colors);
     panel.hidden = false;
@@ -518,9 +582,39 @@
     if (!panel.hidden) resize();
   });
 
+  // a map from a link: play it without touching the player's own maps, or keep it in an empty map
+  let sharedPlaying = false;
+  function playShared(data) {
+    if (!window.FS || !window.classicStartLevel) return;
+    FS.writeFile(`/res/leveldata/${CUSTOM_LEVEL}.level`, levelText(data));
+    Module._classic_set_custom_song(data.song);
+    sharedPlaying = true;
+    window.classicStartLevel(CUSTOM_LEVEL);
+  }
+  function saveShared(data) {
+    let empty = -1;
+    for (let i = 0; i < SLOTS && empty < 0; i++) if ((i === slot ? map.cells.size : load(i).cells.size) === 0) empty = i;
+    if (empty < 0) return 0;
+    if (empty !== slot) switchSlot(empty);
+    map = {cells: new Map(data.cells), song: data.song, colors: data.colors};
+    save();
+    songSelect.value = String(map.song);
+    colorSelect.value = String(map.colors);
+    return empty + 1;
+  }
+
   window.classicEditor = {
     open,
     close,
+    importCode,
+    playShared,
+    saveShared,
+    songName: index => SONGS[index] ?? SONGS[0],
+    endSharedPlay() {
+      const was = sharedPlaying;
+      sharedPlaying = false;
+      return was;
+    },
     isOpen: () => !panel.hidden,
     reopenAfterTest() {
       if (!testing) return;
@@ -538,6 +632,8 @@
     levelText,
     // for the online race: the saved map, and turning a received one into a level
     map: () => ({cells: [...map.cells].map(([key, id]) => [...key.split(',').map(Number), id]), song: map.song, colors: map.colors}),
+    slot: () => slot + 1,
+    switchSlot: number => switchSlot(number - 1),
     levelTextFor: data => levelText(fromData(data)),
   };
 })();
