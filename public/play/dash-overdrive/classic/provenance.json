@@ -19,9 +19,9 @@
   "levels": "games/dash-overdrive/classic/levels/generate.mjs",
   "check": "games/dash-overdrive/classic/levels/verify.mjs"
  },
- "packageBytes": 8796028,
- "packageSha256": "26be22d9cf2e02141216b1990f88946d59837d5afa0b85b822847380f0b07d8e",
- "wasmSha256": "a2390e363cbf3aa7740d0aa9660050486e24cb8b9ef38dd28adc96a6c8ed552d",
+ "packageBytes": 8799294,
+ "packageSha256": "c34af127511392e861f5a1d697881a83cf6cb6a01e5cd9384dbec121b65f7f37",
+ "wasmSha256": "d9d5e25eb82ffaad0ca28066e1db34c28a4492244b25a387e297fc4295280bbb",
  "levels": [
   {
    "level": 1,
@@ -220,8 +220,8 @@
    "name": "Neon Road",
    "bpm": 178.05,
    "songSeconds": 100,
-   "objects": 2850,
-   "sha256": "2f38793b24ece7c606fc0672e904219e8ff2540da6505bc1b47795fe2f20b083"
+   "objects": 3154,
+   "sha256": "1886b7687c1a1b81371b8609ea52133d5df37b8dfea906ff20b9582781e2d6fd"
   },
   {
    "level": 26,
@@ -620,8 +620,8 @@
    "name": "Rocket River",
    "bpm": 155.79,
    "songSeconds": 112,
-   "objects": 3948,
-   "sha256": "c87ce2c316df202559ffbb528bd06476af7d385fd3caf756a85d8f755b62adfe"
+   "objects": 3843,
+   "sha256": "f0df48474c5e052098de728d8bca2d6d033e5a8d2922adcba4ef8e1d4fa626ee"
   },
   {
    "level": 76,

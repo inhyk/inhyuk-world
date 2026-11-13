@@ -543,19 +543,19 @@ void Player::collideWithObject(const Object &object) {
         if (m_GravityMultiplier == -1) {
             break;
         }
-        m_YVelocity /= 2;
+        m_YVelocity = 0; // a portal starts the new mode fresh
         setGravity(-1, object);
         break;
     case ObjectType::NORMAL_PORTAL:
         if (m_GravityMultiplier == 1) {
             break;
         }
-        m_YVelocity /= 2;
+        m_YVelocity = 0; // a portal starts the new mode fresh
         setGravity(1, object);
         break;
     case ObjectType::SHIP_PORTAL:
         if (m_Gamemode != Gamemode::SHIP) {
-            m_YVelocity /= 2;
+            m_YVelocity = 0; // a portal starts the new mode fresh (the designer: the old movement should not carry on)
             m_Rotation = 0;
         }
         m_Gamemode = Gamemode::SHIP;
@@ -563,7 +563,7 @@ void Player::collideWithObject(const Object &object) {
         break;
     case ObjectType::BALL_PORTAL:
         if (m_Gamemode != Gamemode::BALL) {
-            m_YVelocity /= 2;
+            m_YVelocity = 0; // a portal starts the new mode fresh (the designer: the old movement should not carry on)
             m_Gamemode = Gamemode::BALL;
             m_IsGrounded = false;
             // a press held from a cube jump is not a flip
@@ -573,7 +573,7 @@ void Player::collideWithObject(const Object &object) {
         break;
     case ObjectType::UFO_PORTAL:
         if (m_Gamemode != Gamemode::UFO) {
-            m_YVelocity /= 2;
+            m_YVelocity = 0; // a portal starts the new mode fresh (the designer: the old movement should not carry on)
             m_Rotation = 0;
             m_Gamemode = Gamemode::UFO;
         }
@@ -594,7 +594,7 @@ void Player::collideWithObject(const Object &object) {
                 m_Rotation = std::round(m_Rotation / 90) * 90;
                 m_TargetRotation = m_Rotation;
             }
-            m_YVelocity /= 2;
+            m_YVelocity = 0; // a portal starts the new mode fresh (the designer: the old movement should not carry on)
             m_Gamemode = Gamemode::CUBE;
             m_HasBounds = m_GravityMultiplier == -1;
         }
