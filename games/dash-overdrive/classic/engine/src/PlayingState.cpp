@@ -64,6 +64,7 @@ void PlayingState::init(Game *game) {
     m_LevelCompleteTextTexture = Text::createTexture(m_Renderer, "Level Complete!");
     m_LoadingTexture = Text::createTexture(m_Renderer, "Loading music...");
     m_CoinTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinIcon.png");
+    m_AttemptWordTexture = IMG_LoadTexture(m_Renderer, "res/gfx/attempt.png");
     m_CoinEmptyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/coinEmpty.png");
     m_KeyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/keyIcon.png");
     m_KeyEmptyTexture = IMG_LoadTexture(m_Renderer, "res/gfx/keyEmpty.png");
@@ -143,6 +144,8 @@ void PlayingState::destroy() {
     SDL_DestroyTexture(m_LevelCompleteTextTexture);
     SDL_DestroyTexture(m_LoadingTexture);
     SDL_DestroyTexture(m_CoinTexture);
+    SDL_DestroyTexture(m_AttemptWordTexture);
+    SDL_DestroyTexture(m_AttemptNumberTexture);
     SDL_DestroyTexture(m_KeyTexture);
     SDL_DestroyTexture(m_KeyEmptyTexture);
     SDL_DestroyTexture(m_CoinEmptyTexture);
@@ -162,6 +165,8 @@ void PlayingState::enter() {
     m_IsInPractice = false;
     updateLevelCompleteTextTexture();
     Mix_HaltMusic();
+    m_Attempt = 0;
+    countAttempt();
     m_Player.reset();
     m_Player.setPlatformer(Config::isTowerFloor(m_Level));
     m_LevelManager.reset(m_Level);
@@ -442,8 +447,30 @@ void PlayingState::updateNewBest() {
     }
 }
 
+void PlayingState::countAttempt() {
+    m_Attempt++;
+    SDL_DestroyTexture(m_AttemptNumberTexture);
+    m_AttemptNumberTexture = Text::createTexture(m_Renderer, std::to_string(m_Attempt));
+}
+
+// 시도 N stands in the level a little after the start and scrolls away with it.
+void PlayingState::renderAttempt() const {
+    if (m_AttemptWordTexture == nullptr || m_AttemptNumberTexture == nullptr) return;
+    const SDL_FPoint camera = m_Game->getCameraPosition();
+    const float x = 2.0f * Config::TILE_SIZE - camera.x;
+    const float y = Config::FLOOR_Y - 4.4f * Config::TILE_SIZE - camera.y;
+    if (x > m_Game->getWidth() || x < -900) return;
+    int numberWidth = 0;
+    int numberHeight = 0;
+    SDL_QueryTexture(m_AttemptNumberTexture, NULL, NULL, &numberWidth, &numberHeight);
+    const SDL_FRect word = { x, y, 222.0f, 122.0f };
+    SDL_RenderCopyF(m_Renderer, m_AttemptWordTexture, NULL, &word);
+    Text::renderTexture(m_Renderer, m_AttemptNumberTexture, static_cast<int>(x + 222.0f + 30.0f), static_cast<int>(y + 61.0f), false, true, 1.0f);
+}
+
 void PlayingState::render() const {
     m_LevelManager.render();
+    renderAttempt();
     renderGhosts();
     // Keep the player in front of blocks and decorations. Drawing it first makes
     // the cube look like it slides behind obstacles while running into them.

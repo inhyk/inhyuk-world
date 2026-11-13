@@ -277,6 +277,9 @@ void Player::removeCheckpoint() {
 }
 
 void Player::respawn() {
+    if (!m_SimInput) {
+        PlayingState::get().countAttempt();
+    }
     m_Gamemode = Gamemode::CUBE;
     m_Trail.clear();
     m_PressedOrbs.clear();

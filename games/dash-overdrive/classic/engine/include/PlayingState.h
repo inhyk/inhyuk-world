@@ -42,6 +42,8 @@ public:
     int simLoad(int level);
     int simStep(bool held, float deltaTime);
     int simStepButtons(int buttons, float deltaTime);
+    // 시도 N at the start of the level: 1 when the level starts, one more each time the cube comes back
+    void countAttempt();
     // the level checker loads tower floors it is building into this slot
     static constexpr int SIM_PLATFORMER_SLOT = 91;
     inline Player &getPlayer() { return m_Player; }
@@ -63,6 +65,10 @@ private:
     SDL_Texture *m_LevelCompleteTextTexture;
     SDL_Texture *m_LoadingTexture;
     SDL_Texture *m_CoinTexture;
+    SDL_Texture *m_AttemptWordTexture = nullptr;
+    SDL_Texture *m_AttemptNumberTexture = nullptr;
+    int m_Attempt = 1;
+    void renderAttempt() const;
     SDL_Texture *m_KeyTexture;
     SDL_Texture *m_KeyEmptyTexture;
     SDL_Texture *m_CoinEmptyTexture;
