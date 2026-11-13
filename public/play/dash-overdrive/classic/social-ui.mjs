@@ -12,6 +12,11 @@
 //   at once, then one a second. The friend's name on screen comes from the server (friend list, invite, opponent.nickname),
 //   never from a message, and every text goes onto the page with textContent. The chat screen has
 //   block and report buttons. Nothing asks for real names, age, school or phone numbers.
+// - Messages that wait (the designer: "친구가 나가있어도 채팅을 할 수 있게 해줘"): 💬 채팅 opens the
+//   friend's messages kept on the server (social.history / social.sendDm, friends only). A friend
+//   who is away reads them later; when both are here they arrive at once (live 'dm'). The server
+//   filters every message (swear words, phone numbers, links) and keeps the last 50 for a report
+//   (context kind 'dm'); what is shown is the filtered text the server sends back.
 // - 같이 달리기: inside the friend room, make a room-code race (online.mjs) and send its code as numbers
 //   ({t:'race', c:[...]}: strings in a friend room are filtered by the server). The friend presses
 //   들어가기 to join, then it is the usual race (the host picks a level and starts).
@@ -27,6 +32,9 @@ const LINES_KEEP = 50;     // lines kept on screen; a report sends the typed one
 const INVITE_MS = 60000;   // an invite lasts a minute on the server
 const WAIT_MS = 20000;     // after accepting, the friend should be in the room by then
 const NICK_RE = /^[가-힣A-Za-z0-9_]{2,10}$/;
+// the server takes 20 messages a minute: 4 at once, then one every 3 seconds
+const DM_BURST = 4;
+const DM_GAP_MS = 3000;
 
 const $ = id => document.getElementById(id);
 const panel = $('social');
@@ -76,6 +84,8 @@ let incoming = [];
 let outgoing = [];
 let chat = null;      // {friend: {id, nickname}, state, room, code, lines, sent, unread, race, until, ended}
 let invite = null;    // an invite from a friend, waiting for my answer
+let dm = null;        // messages with one friend: {friend, lines, seq, tokens, filled, loading}
+let unread = new Map(); // friend id -> messages not read yet
 let inviteTimer = 0;
 let callTimer = 0;
 let answerAsk = null;
@@ -147,12 +157,14 @@ function paint() {
     if (!social) view = 'login';
     else if (view === 'login') view = 'home';
     if (view === 'chat' && !chat) view = 'home';
+    if (view === 'dm' && !dm) view = 'home';
     $('social-login').hidden = view !== 'login';
     $('social-home').hidden = view !== 'home';
-    $('social-chat').hidden = view !== 'chat';
-    $('social-title').textContent = view === 'chat' ? '💬 친구랑 채팅' : view === 'home' ? '👤 내 계정과 친구' : mode === 'signup' ? '👤 새 계정 만들기' : '👤 로그인';
+    $('social-chat').hidden = view !== 'chat' && view !== 'dm';
+    $('social-title').textContent = view === 'chat' || view === 'dm' ? '💬 친구랑 채팅' : view === 'home' ? '👤 내 계정과 친구' : mode === 'signup' ? '👤 새 계정 만들기' : '👤 로그인';
     if (view === 'login') paintLogin();
     else if (view === 'home') paintHome();
+    else if (view === 'dm') paintDm();
     else paintChat();
   }
   paintHeader();
@@ -163,7 +175,9 @@ function paintHeader() {
   $('social-label').textContent = name || '로그인';
   openButton.setAttribute('aria-label', name ? `내 계정과 친구, ${name}` : '로그인');
   openButton.classList.toggle('in', Boolean(name));
-  const count = incoming.length + (chat?.unread || 0) + (invite ? 1 : 0);
+  let waiting = 0;
+  for (const count of unread.values()) waiting += count;
+  const count = incoming.length + (chat?.unread || 0) + waiting + (invite ? 1 : 0);
   const badge = $('social-badge');
   badge.hidden = !count;
   badge.textContent = count > 9 ? '9+' : String(count);
@@ -216,10 +230,11 @@ function friendRow(friend) {
   dot.setAttribute('aria-hidden', 'true');
   row.append(dot, who(friend.nickname, talking ? '채팅 중' : friend.online ? '접속 중' : '접속 안 함'));
   const reachable = friend.online || talking;
-  const talk = button(talking ? '💬 채팅 보기' : '💬 채팅', reachable ? 'primary' : '', () => startChat(friend));
+  // messages wait on the server, so chat works when the friend is away too
+  const waiting = unread.get(friend.id) || 0;
+  const talk = button(waiting ? `💬 채팅 (${waiting})` : '💬 채팅', 'primary', () => openDm(friend));
   talk.dataset.action = 'chat';
-  talk.disabled = !reachable;
-  const race = button('🏁 같이 달리기', '', () => startChat(friend, true));
+  const race = button(talking ? '🏁 같이 달리기 보기' : '🏁 같이 달리기', '', () => startChat(friend, true));
   race.dataset.action = 'race';
   race.disabled = !reachable;
   row.append(talk, race);
@@ -273,6 +288,123 @@ function paintChat() {
   mine.unread = 0;
 }
 
+// ---------- messages that wait (DM) ----------
+
+function paintDm() {
+  const mine = dm;
+  const friend = friends.find(item => item.id === mine.friend.id);
+  const name = mine.friend.nickname;
+  $('social-with').textContent = name;
+  $('social-chat-state').textContent = mine.loading ? '메시지를 불러오는 중…'
+    : friend?.online ? `${josa(name, '은', '는')} 지금 접속 중이야. 바로 볼 수 있어.`
+      : `${josa(name, '은', '는')} 지금 접속 안 했어. 보낸 말은 저장돼서 나중에 들어오면 볼 수 있어.`;
+  const lines = $('social-lines');
+  const drawn = `dm${mine.friend.id}:${mine.seq}`;
+  if (lines.dataset.drawn !== drawn) {
+    lines.dataset.drawn = drawn;
+    lines.replaceChildren(...mine.lines.map((line, index) => lineNode(line, name, mine.lines[index - 1]?.who !== line.who)));
+    if (!mine.lines.length && !mine.loading) lines.append(el('p', 'social-note', '아직 주고받은 말이 없어. 먼저 인사해 봐!'));
+    lines.scrollTop = lines.scrollHeight;
+  }
+  $('social-say').disabled = mine.loading;
+  $('social-send').disabled = mine.loading;
+  $('social-race').disabled = !friend?.online;
+  $('social-report').disabled = false;
+  $('social-hangup').textContent = '← 친구 목록';
+}
+
+async function openDm(friend) {
+  const s = social;
+  if (!s || !friend?.id) return;
+  const mine = dm = {friend: {id: Number(friend.id), nickname: String(friend.nickname || '친구')}, lines: [], seq: 0, tokens: DM_BURST, filled: Date.now(), loading: true};
+  show('dm');
+  try {
+    const {messages} = await call(() => s.history(mine.friend.id));
+    if (dm !== mine) return;
+    const me = account.user?.id;
+    mine.lines = (messages || []).slice(-LINES_KEEP).map(message => ({who: message.from === me ? 'me' : 'them', text: String(message.body || ''), id: message.id}));
+    mine.loading = false;
+    mine.seq++;
+    unread.delete(mine.friend.id);
+    s.markRead(mine.friend.id).catch(() => {});
+  } catch (error) {
+    if (dm !== mine) return;
+    mine.loading = false;
+    setStatus(error?.message || '메시지를 불러오지 못했어.');
+  }
+  paint();
+}
+
+async function sendDm(event) {
+  event.preventDefault();
+  const mine = dm;
+  const s = social;
+  const input = $('social-say');
+  const text = input.value.trim().slice(0, CHAT_MAX);
+  if (!mine || !s || !text || mine.loading) return;
+  const now = Date.now();
+  mine.tokens = Math.min(DM_BURST, mine.tokens + (now - mine.filled) / DM_GAP_MS);
+  mine.filled = now;
+  if (mine.tokens < 1) {
+    setStatus('천천히! 3초에 한 마디씩 보낼 수 있어.');
+    return;
+  }
+  mine.tokens -= 1;
+  input.value = '';
+  setStatus('');
+  try {
+    // the server filters the words and sends back what the friend will see
+    const message = await call(() => s.sendDm(mine.friend.id, text));
+    if (dm !== mine) return;
+    mine.lines.push({who: 'me', text: String(message?.body ?? text), id: message?.id});
+    if (mine.lines.length > LINES_KEEP) mine.lines.shift();
+    mine.seq++;
+  } catch (error) {
+    if (dm === mine) input.value = text;
+    setStatus(error?.message || '보내지 못했어. 다시 해 볼래?');
+  }
+  paint();
+}
+
+// a message arrived (live): show it in the open chat, or count it and say who wrote
+function receivedDm(event) {
+  const message = event?.message;
+  const me = account.user?.id;
+  const fromId = Number(message?.from ?? event?.from?.id ?? event?.from);
+  if (!message || !fromId || fromId === me) return;
+  const friend = friends.find(item => item.id === fromId);
+  const name = friend?.nickname || String(event?.from?.nickname || '친구');
+  const text = String(message.body || '');
+  if (dm && dm.friend.id === fromId && !dm.loading) {
+    dm.lines.push({who: 'them', text, id: message.id});
+    if (dm.lines.length > LINES_KEEP) dm.lines.shift();
+    dm.seq++;
+    if (!panel.hidden && view === 'dm') social?.markRead(fromId).catch(() => {});
+    else {
+      unread.set(fromId, (unread.get(fromId) || 0) + 1);
+      toast(`💬 ${name}: ${text.slice(0, 40)}`);
+    }
+  } else {
+    unread.set(fromId, (unread.get(fromId) || 0) + 1);
+    toast(`💬 ${name}: ${text.slice(0, 40)} · 위의 👤 단추에서 볼 수 있어.`);
+  }
+  paint();
+}
+
+async function loadUnread() {
+  const s = social;
+  if (!s) return;
+  try {
+    const list = await call(() => s.unread());
+    if (s !== social) return;
+    unread = new Map((list || []).map(item => [Number(item.id), Number(item.count) || 0]));
+    if (dm && !panel.hidden && view === 'dm') unread.delete(dm.friend.id);
+  } catch {
+    // the counts come back on the next list
+  }
+  paint();
+}
+
 // ---------- panel ----------
 
 function show(next) {
@@ -284,7 +416,7 @@ function show(next) {
   paint();
   // a mouse and keyboard player can type right away; a phone keeps its keyboard down
   if (matchMedia('(pointer: fine)').matches) {
-    const field = view === 'login' ? $('social-nick') : view === 'chat' ? $('social-say') : null;
+    const field = view === 'login' ? $('social-nick') : view === 'chat' || view === 'dm' ? $('social-say') : null;
     if (field && !field.disabled) field.focus({preventScroll: true});
   }
 }
@@ -325,6 +457,8 @@ function startSocial() {
 
 function stopSocial() {
   endChat();
+  dm = null;
+  unread = new Map();
   hideInvite();
   social?.close();
   social = null;
@@ -401,6 +535,7 @@ async function loadLists() {
     friends = list;
     incoming = requests.incoming ?? [];
     outgoing = requests.outgoing ?? [];
+    loadUnread();
   } catch (error) {
     if (s === social && view === 'home' && !panel.hidden) setStatus(error?.message || '친구 목록을 불러오지 못했어.');
   }
@@ -702,7 +837,7 @@ function sendLine(event) {
 }
 
 async function blockFriend() {
-  const mine = chat;
+  const mine = view === 'dm' ? dm : chat;
   const s = social;
   if (!mine || !s) return;
   const friend = mine.friend;
@@ -717,7 +852,9 @@ async function blockFriend() {
     setStatus(error?.message || '차단하지 못했어.');
     return;
   }
-  if (chat === mine) endChat();
+  if (chat === mine || chat?.friend.id === friend.id) endChat();
+  if (dm?.friend.id === friend.id) dm = null;
+  unread.delete(friend.id);
   friends = friends.filter(item => item.id !== friend.id);
   view = 'home';
   paint();
@@ -726,6 +863,7 @@ async function blockFriend() {
 }
 
 async function reportFriend() {
+  if (view === 'dm') return reportDm();
   const mine = chat;
   const s = social;
   if (!mine?.code || !s) return;
@@ -741,6 +879,27 @@ async function reportFriend() {
     .map(line => ({text: `${line.who === 'me' ? '나' : '상대'}: ${line.text}`}));
   try {
     await call(() => s.report({target: friend.id, context: {kind: 'room', game: GAME, room: mine.code}, reason: answer.reason, messages}));
+    setStatus('🚨 신고했어. 알려 줘서 고마워!');
+  } catch (error) {
+    setStatus(error?.message || '신고하지 못했어.');
+  }
+}
+
+async function reportDm() {
+  const mine = dm;
+  const s = social;
+  if (!mine || !s) return;
+  const friend = mine.friend;
+  const answer = await confirmBox({
+    text: `🚨 ${josa(friend.nickname, '을', '를')} 신고할까? 어른이 주고받은 메시지를 보고 확인해.`,
+    ok: '신고하기',
+    reason: true,
+  });
+  if (!answer.ok || social !== s) return;
+  // the server collects the last 50 messages between us itself; these are what I saw
+  const messages = mine.lines.map(line => ({text: `${line.who === 'me' ? '나' : '상대'}: ${line.text}`}));
+  try {
+    await call(() => s.report({target: friend.id, context: {kind: 'dm', game: GAME}, reason: answer.reason, messages}));
     setStatus('🚨 신고했어. 알려 줘서 고마워!');
   } catch (error) {
     setStatus(error?.message || '신고하지 못했어.');
@@ -868,13 +1027,14 @@ const socialHooks = {
     }
   },
   kicked: reason => lostLogin(reason),
+  dm: receivedDm,
 };
 
 // ---------- buttons and keys ----------
 
 openButton.addEventListener('click', () => {
   if (!panel.hidden) close();
-  else show(!social ? 'login' : chat ? 'chat' : 'home');
+  else show(!social ? 'login' : chat ? 'chat' : dm ? 'dm' : 'home');
 });
 $('social-close').addEventListener('click', () => close());
 $('social-mode-login').addEventListener('click', () => setMode('login'));
@@ -882,11 +1042,12 @@ $('social-mode-signup').addEventListener('click', () => setMode('signup'));
 $('social-login-form').addEventListener('submit', submitLogin);
 $('social-logout').addEventListener('click', logout);
 $('social-search').addEventListener('submit', search);
-$('social-say-form').addEventListener('submit', sendLine);
-$('social-race').addEventListener('click', offerRace);
+$('social-say-form').addEventListener('submit', event => (view === 'dm' ? sendDm(event) : sendLine(event)));
+$('social-race').addEventListener('click', () => (view === 'dm' ? startChat(dm.friend, true) : offerRace()));
 $('social-block').addEventListener('click', blockFriend);
 $('social-report').addEventListener('click', reportFriend);
 $('social-back').addEventListener('click', () => {
+  if (view === 'dm') dm = null;
   if (chat?.state === 'ended') endChat();
   view = 'home';
   setStatus('');
@@ -894,6 +1055,14 @@ $('social-back').addEventListener('click', () => {
   loadLists();
 });
 $('social-hangup').addEventListener('click', () => {
+  if (view === 'dm') {
+    dm = null;
+    view = 'home';
+    setStatus('');
+    paint();
+    loadLists();
+    return;
+  }
   const mine = chat;
   if (!mine) return;
   endChat();
@@ -946,6 +1115,8 @@ window.classicSocial = {
     outgoing: outgoing.map(request => request.nickname),
     invite: invite?.from?.nickname ?? '',
     chat: chat ? {with: chat.friend.nickname, state: chat.state, lines: chat.lines.map(line => ({who: line.who, text: line.text}))} : null,
+    dm: dm ? {with: dm.friend.nickname, loading: dm.loading, lines: dm.lines.map(line => ({who: line.who, text: line.text}))} : null,
+    unread: Object.fromEntries([...unread].map(([id, count]) => [friends.find(item => item.id === id)?.nickname ?? String(id), count])),
   }),
 };
 
