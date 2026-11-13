@@ -7,6 +7,7 @@ import { makeFood, mat, part } from './src/foods.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildWorld, LAYOUT, LIMIT, redrawLabels, makeLabel } from './src/world.js';
 import { Net } from './src/net.js';
+import { Cloud } from './src/cloud.js';
 import { sfx, unlock, setSound, setMusic, setTune } from './src/audio.js';
 
 const $ = (id) => document.getElementById(id);
@@ -16,7 +17,8 @@ const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; };
 // ── 저장 ──
 function load() { try { return C.fixSave(JSON.parse(localStorage.getItem(C.SAVE_KEY))); } catch { return C.newSave(); } }
 let save = load();
-function persist() { try { localStorage.setItem(C.SAVE_KEY, JSON.stringify(save)); } catch { /* 저장을 못 해도 게임은 계속 */ } }
+function persist() { try { localStorage.setItem(C.SAVE_KEY, JSON.stringify(save)); } catch { /* 저장을 못 해도 게임은 계속 */ } cloud?.queue(); }
+let cloud = null;
 const today = () => C.dayKey();
 const yesterday = () => C.dayKey(new Date(Date.now() - 864e5));
 
@@ -154,6 +156,20 @@ function confetti(n = 70) {
   for (let i = 0; i < n; i += 1) { const c = document.createElement('i'); c.style.left = `${Math.random() * 100}%`; c.style.background = ['#ff5e7e', '#ffd43b', '#3fd0ff', '#7bff8a', '#b197fc', '#ff9f43'][i % 6]; c.style.animationDuration = `${1.6 + Math.random() * 1.8}s`; c.style.animationDelay = `${Math.random() * 0.5}s`; box.appendChild(c); setTimeout(() => c.remove(), 4200); }
 }
 
+// ── 로그인과 클라우드 저장 ──
+let chooseDone = null, loginMsg = '', loginBad = false;
+cloud = new Cloud({
+  getState: () => save,
+  applyState: (data) => { save = C.fixSave(data); try { localStorage.setItem(C.SAVE_KEY, JSON.stringify(save)); } catch { /* 계속 */ } handId = null; hero.setFood(null); enterWorld(C.canEnterWorld(save, save.world) ? save.world : 1); setSound(save.sound); setMusic(save.music); },
+  toast: (t) => toast(t),
+  choose: (local, server) => new Promise((resolve) => { chooseDone = { local, server, resolve }; panelKind = 'choose'; $('panel').hidden = false; drawPanel(); }),
+});
+cloud.onStatus = () => { refreshLogin(); if (panelKind === 'login') drawPanel(); };
+function refreshLogin() {
+  document.querySelectorAll('#b-login .dot, #m-login .dot').forEach((d) => { d.hidden = !cloud.loggedIn; });
+  setText($('m-login-txt'), cloud.loggedIn ? cloud.nickname : '로그인');
+}
+
 // ── 발전과제 ──
 const advQueue = []; let advT = 0;
 function checkAdv() {
@@ -274,12 +290,13 @@ function interact() {
 }
 
 // ── 창: 보상, 스킨, 이야기, 인증서 ──
+function openPanelGuard() { return panelKind === 'choose'; }
 const overlayOpen = () => !$('panel').hidden || !$('story').hidden || !$('cert').hidden;
 let panelKind = null;
-function openPanel(kind) { unlock(); sfx.click(); panelKind = kind; $('panel').hidden = false; drawPanel(); }
-function closePanel() { $('panel').hidden = true; panelKind = null; }
+function openPanel(kind) { if (openPanelGuard()) return; unlock(); sfx.click(); panelKind = kind; $('panel').hidden = false; drawPanel(); }
+function closePanel() { if (panelKind === 'choose') return; $('panel').hidden = true; panelKind = null; }
 function drawPanel() {
-  const body = $('panel-body'); body.innerHTML = '';
+  const body = $('panel-body'); body.innerHTML = ''; $('panel-close').hidden = panelKind === 'choose';
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   if (panelKind === 'daily') {
     $('panel-title').textContent = '🎁 일일 보상'; $('panel-sub').textContent = '하루에 한 번 받아요. 매일 오면 더 많이 줘요!';
@@ -323,6 +340,35 @@ function drawPanel() {
       row.append(left, btn); rows.append(row);
     });
     body.append(rows);
+  } else if (panelKind === 'choose' && chooseDone) {
+    $('panel-title').textContent = '☁️ 어느 기록으로 할까?'; $('panel-sub').textContent = '이 기기와 서버의 기록이 달라요. 하나를 고르면 다른 하나는 없어져요.';
+    const box = el('div', 'pick'), done = (pick) => { const d = chooseDone; chooseDone = null; panelKind = null; $('panel').hidden = true; sfx.click(); d.resolve(pick); };
+    [['local', '📱 이 기기 기록', chooseDone.local], ['server', '☁️ 서버 기록', chooseDone.server]].forEach(([k, name, text]) => {
+      const row = el('div', 'row'), left = el('div'); left.append(el('b', '', name), el('small', '', text));
+      const btn = el('button', 'primary', '이걸로 하기'); btn.onclick = () => done(k); row.append(left, btn); box.append(row);
+    });
+    body.append(box);
+  } else if (panelKind === 'login') {
+    $('panel-title').textContent = '👤 로그인'; $('panel-sub').textContent = '로그인하면 기록이 서버에 저장돼서 다른 기기에서도 이어 할 수 있어요.';
+    const box = el('div', 'login'), msg = el('div', `msg${loginBad ? ' bad' : ''}`, loginMsg || cloud.statusText || (cloud.loggedIn ? '서버에 저장됨 ☁️' : 'seonn.dev 게임은 모두 같은 계정을 써요.'));
+    if (cloud.loggedIn) {
+      const out = el('button', 'primary', '로그아웃'); out.onclick = async () => { sfx.click(); await cloud.logout(); loginMsg = '로그아웃했어. 기록은 이 기기에 그대로 있어.'; loginBad = false; refreshLogin(); drawPanel(); };
+      const now = el('button', 'primary', '지금 서버에 저장'); now.onclick = () => { sfx.click(); loginMsg = ''; cloud.upload(); };
+      box.append(el('div', 'who', cloud.nickname), msg, now, out);
+    } else {
+      const nl = el('label', '', '닉네임 (2~10글자)'), ni = el('input'), pl = el('label', '', '비밀번호 (4~16글자)'), pi = el('input'), two = el('div', 'two'), a = el('button', 'primary', '로그인'), b = el('button', 'primary', '계정 만들기');
+      ni.maxLength = 10; ni.autocomplete = 'username'; ni.spellcheck = false; pi.type = 'password'; pi.maxLength = 16; pi.autocomplete = 'current-password';
+      const go = async (make) => {
+        sfx.click(); a.disabled = b.disabled = true; loginMsg = make ? '계정을 만드는 중…' : '로그인하는 중…'; loginBad = false; msg.textContent = loginMsg; msg.className = 'msg';
+        try { await (make ? cloud.signup(ni.value, pi.value) : cloud.login(ni.value, pi.value)); loginMsg = ''; sfx.buy(); }
+        catch (e) { loginMsg = e?.message || '잘 안 됐어. 다시 해 볼래?'; loginBad = true; sfx.deny(); }
+        refreshLogin(); if (panelKind === 'login') drawPanel();
+      };
+      a.onclick = () => go(false); b.onclick = () => go(true); pi.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(false); });
+      nl.append(ni); pl.append(pi); two.append(a, b);
+      box.append(msg, nl, pl, two, el('small', '', '진짜 이름 말고 별명을 써요. 이메일은 안 받아서, 비밀번호를 잊으면 되찾을 수 없어요.'));
+    }
+    body.append(box);
   } else if (panelKind === 'adv') {
     const done = save.adv.length, all = C.ADVANCEMENTS.length;
     $('panel-title').textContent = '🏆 발전과제'; $('panel-sub').textContent = `${all}개 중에 ${done}개를 이뤘어요. 이루면 코인을 받아요!`;
@@ -388,6 +434,7 @@ $('m-daily').onclick = $('b-daily').onclick = () => openPanel('daily');
 $('m-time').onclick = $('b-time').onclick = () => openPanel('time');
 $('m-skin').onclick = $('b-skin').onclick = () => openPanel('skin');
 $('m-adv').onclick = $('b-adv').onclick = () => openPanel('adv');
+$('m-login').onclick = $('b-login').onclick = () => { loginMsg = ''; loginBad = false; openPanel('login'); };
 $('m-friends').onclick = $('b-friends').onclick = () => openPanel('friends');
 $('panel-close').onclick = () => { sfx.click(); closePanel(); };
 $('panel').addEventListener('pointerdown', (e) => { if (e.target === $('panel')) closePanel(); });
@@ -534,8 +581,9 @@ function frame(now) {
 
 enterWorld(C.canEnterWorld(save, save.world) ? save.world : 1);
 setMode('menu');
+refreshLogin(); cloud.sync();
 document.fonts?.ready.then(() => { redrawLabels(); });
 addEventListener('pagehide', () => { persist(); net.leave(); });
-document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); last = performance.now(); });
-if (new URLSearchParams(location.search).has('debug')) window.__fat = { C, hero, pos, get save() { return save; }, set save(v) { save = C.fixSave(v); refresh(); }, refresh, interact, doBite, enterWorld, net, remotes, start: startPlay, cam(y, p, z) { camYaw = y; camPitch = p; zoom = z; } };
+document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); cloud.upload(); } last = performance.now(); });
+if (new URLSearchParams(location.search).has('debug')) window.__fat = { C, hero, pos, get save() { return save; }, set save(v) { save = C.fixSave(v); refresh(); }, refresh, interact, doBite, enterWorld, net, remotes, cloud, start: startPlay, cam(y, p, z) { camYaw = y; camPitch = p; zoom = z; } };
 requestAnimationFrame(frame);
