@@ -154,3 +154,17 @@ body.touch #toast { bottom: 232px; }
 .net .msg { background: #fff1a8; border-radius: 12px; padding: 8px 12px; }
 @media (max-width: 720px) { #adv-pop { top: 104px; } }
 @media (max-height: 520px) { .side { top: 20vh; } .side button { min-height: 44px; } .side .txt br { display: none; } }
+
+.login { display: grid; gap: 10px; font-size: 18px; }
+.login label { display: grid; gap: 4px; font-size: 15px; }
+.login input { border: var(--line); border-radius: 14px; padding: 9px 12px; font: inherit; font-size: 20px; background: #fff; color: var(--ink); -webkit-user-select: text; user-select: text; }
+.login .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.login .msg { background: #fff1a8; border-radius: 12px; padding: 8px 12px; text-align: center; min-height: 1.4em; }
+.login .msg.bad { background: #ffd0d0; }
+.login .who { text-align: center; font: 400 34px 'Black Han Sans', Jua, sans-serif; color: #ff5a3c; }
+.login small { opacity: .7; font-size: 14px; line-height: 1.4; }
+.pick { display: grid; gap: 10px; }
+.pick .row { grid-template-columns: 1fr; }
+.pick .row b { font-weight: 400; font-size: 19px; }
+.side .txt#m-login-txt { font-size: 18px; padding: 0 4px; word-break: break-all; }
+@media (max-height: 640px) { .side { top: 17vh; } .side button { min-height: 50px; } .side .txt br { display: none; } .side .ico { font-size: 24px; } }

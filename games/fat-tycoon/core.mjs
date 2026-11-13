@@ -335,3 +335,15 @@ export function cleanPeer(d) {
   };
 }
 export const peerNumber = (id) => { const n = parseInt(String(id).replace(/\D/g, ''), 10); return Number.isFinite(n) && n > 0 ? n : 0; };
+
+// ── 로그인과 클라우드 저장 ──
+// 아직 아무것도 안 한 저장인가 (그러면 묻지 않고 서버 기록을 불러온다)
+export const cloudFresh = (s) => !s || (s.stage === 0 && s.bites < 20 && s.coins < 50 && UPGRADES.every((u) => !s.up?.[u.id]) && (s.skins?.length ?? 1) <= 1);
+// 사람이 신경 쓰는 진행이 같은가
+export const cloudSame = (a, b) => { const pick = (s) => JSON.stringify([s?.stage, Math.round(s?.weight ?? 0), s?.coins, s?.up, s?.skins, s?.skin, s?.adv?.length, s?.cleared]); return pick(a) === pick(b); };
+export function cloudSummary(s, updated) {
+  const f = fixSave(s), t = updated ? new Date(updated) : null;
+  const when = t && !Number.isNaN(t.getTime()) ? ` · ${t.getMonth() + 1}/${t.getDate()} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')} 저장` : '';
+  const st = stageOf(f);
+  return `몸무게 ${fmtKg(f.weight)} · ${allDone(f) ? '우주 기록 달성' : `월드 ${st.world} ${st.level}레벨`} · ${fmtNum(f.coins)}코인 · 발전과제 ${f.adv.length}개${when}`;
+}

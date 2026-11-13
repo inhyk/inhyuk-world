@@ -125,3 +125,13 @@ test('친구가 보낸 상태는 숫자만 받는다', () => {
   assert.equal(p.food, 3); assert.equal(p.stage, 0); assert.equal(p.name, undefined);
   assert.equal(C.peerNumber('p3'), 3);
 });
+
+test('클라우드 저장: 새 저장인지, 진행이 같은지', () => {
+  const a = C.newSave(), b = C.newSave();
+  assert.ok(C.cloudFresh(a)); assert.ok(C.cloudSame(a, b));
+  b.stage = 3; b.weight = 500; b.coins = 900;
+  assert.equal(C.cloudFresh(b), false); assert.equal(C.cloudSame(a, b), false);
+  assert.match(C.cloudSummary(b), /월드 1 4레벨/);
+  assert.match(C.cloudSummary({ junk: 1 }), /30\.0kg/);
+  assert.ok(JSON.stringify(b).length < 30000);
+});
