@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#ffb84d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2258%22 r=%2238%22 fill=%22%23ff7a59%22/%3E%3Ccircle cx=%2250%22 cy=%2222%22 r=%2218%22 fill=%22%23ffd2a8%22/%3E%3C/svg%3E">
+<title>뚱뚱해지기 · 먹방 타이쿤</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&display=swap" rel="stylesheet">
+</head>
+<body>
+<canvas id="game" tabindex="0" aria-label="뚱뚱해지기 게임 화면. WASD로 움직이고, 클릭하면 먹고, E로 상호작용합니다."></canvas>
+
+<div id="hud" hidden>
+  <div class="tl">
+    <div class="card">
+      <div class="stage"><span id="h-world">월드 1</span><b id="h-stage">1레벨 🍬 마쮸</b></div>
+      <div class="weight"><span>몸무게</span><b id="h-weight">30.0kg</b></div>
+      <div class="bar"><i id="h-bar"></i><em id="h-need"></em></div>
+    </div>
+    <div class="chip" id="h-plate">🍽️ 쟁반이 비었어요</div>
+  </div>
+  <div class="tr">
+    <div class="chip coin"><span class="coin-ico"></span><b id="h-coins">0</b></div>
+    <div class="buttons">
+      <button id="b-daily" title="일일 보상" aria-label="일일 보상">🎁<i class="dot" hidden></i></button>
+      <button id="b-time" title="시간 보상" aria-label="시간 보상">⏰<i class="dot" hidden></i></button>
+      <button id="b-skin" title="스킨" aria-label="스킨">👕</button>
+      <button id="b-adv" title="발전과제" aria-label="발전과제">🏆</button>
+      <button id="b-friends" title="같이 하기" aria-label="같이 하기">👥<i class="dot on" hidden></i></button>
+      <button id="b-sound" title="소리" aria-label="소리 켜고 끄기">🔊</button>
+      <button id="b-home" title="메인화면" aria-label="메인화면">🏠</button>
+    </div>
+  </div>
+  <div id="goal" aria-live="polite"></div>
+  <div id="prompt" hidden><kbd>E</kbd><span id="prompt-text"></span></div>
+  <div id="toast" aria-live="polite"></div>
+  <div id="big" aria-live="polite"></div>
+  <p class="hint">WASD 이동 · 클릭 먹기 · E 상호작용 · 끌어서 시점 돌리기</p>
+</div>
+<div id="floats" aria-hidden="true"></div>
+<div id="adv-pop" aria-live="polite"><span id="adv-ico"></span><div><small>발전과제 달성!</small><b id="adv-name"></b><em id="adv-coin"></em></div></div>
+
+<div id="touch" hidden>
+  <div id="stick" aria-label="이동 조이스틱"><i></i></div>
+  <button id="t-e" aria-label="상호작용">E</button>
+  <button id="t-eat" aria-label="먹기">냠!</button>
+</div>
+
+<section id="menu">
+  <h1 class="logo"><span>뚱</span><span>뚱</span><span>해</span><span>지</span><span>기</span></h1>
+  <p class="sub">많이 먹고 뚱뚱해져서 기네스북에 오르자!</p>
+  <nav class="side" aria-label="보상과 스킨">
+    <button id="m-daily"><span class="ico">🎁</span><span class="txt">일일<br>보상</span><i class="dot" hidden></i></button>
+    <button id="m-time"><span class="ico">⏰</span><span class="txt">시간<br>보상</span><i class="dot" hidden></i></button>
+    <button id="m-skin"><span class="ico">😀</span><span class="txt">스킨</span></button>
+    <button id="m-adv"><span class="ico">🏆</span><span class="txt">발전<br>과제</span></button>
+    <button id="m-friends"><span class="ico">👥</span><span class="txt">같이<br>하기</span><i class="dot on" hidden></i></button>
+  </nav>
+  <div class="start">
+    <p>시작</p>
+    <button id="m-start" aria-label="시작">▶</button>
+  </div>
+  <p class="record" id="m-record"></p>
+</section>
+
+<section id="panel" class="overlay" hidden>
+  <div class="sheet">
+    <header><h2 id="panel-title"></h2><button id="panel-close" aria-label="닫기">✕</button></header>
+    <p id="panel-sub"></p>
+    <div id="panel-body"></div>
+  </div>
+</section>
+
+<section id="story" class="overlay" hidden>
+  <div class="sheet story">
+    <div id="story-emoji"></div>
+    <p id="story-text"></p>
+    <button id="story-next" class="primary">다음 ▶</button>
+  </div>
+</section>
+
+<section id="cert" class="overlay" hidden>
+  <div class="paper">
+    <p class="cert-top">🏆 기네스북 기록 인증서 🏆</p>
+    <h2 id="cert-title"></h2>
+    <p class="cert-weight" id="cert-weight"></p>
+    <p id="cert-text"></p>
+    <button id="cert-ok" class="primary">좋아!</button>
+  </div>
+</section>
+<div id="confetti" aria-hidden="true"></div>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
