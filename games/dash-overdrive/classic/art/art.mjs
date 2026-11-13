@@ -1260,6 +1260,23 @@ const SKINS_2 = [
     }),
 ];
 
+// 시도 (attempt), shown at the start of a level with the attempt number
+// (the designer: "시도가 처음에 나오게 해줘"). Hand-drawn strokes in the game's
+// bubbly style, because the Lilita One font has no Hangul.
+function attemptWord() {
+  const strokes = [
+    'M40 16 Q36 62 10 98', // ㅅ left
+    'M36 52 Q48 80 66 98', // ㅅ right
+    'M90 10 V110', // ㅣ
+    'M126 18 H196 M126 18 V60 H198', // ㄷ
+    'M162 64 V84', // ㅗ stem
+    'M112 90 H212', // ㅗ bar
+  ];
+  const D = lin('aw', 0, 10, 0, 110, [[0, WHITE], [1, '#d9e4ff']]);
+  const path = (stroke, width) => strokes.map((d) => `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
+  return svg(222, 122, D, `<g transform="translate(0 2)">${path(NAVY, 28)}${path('url(#aw)', 15)}</g>`);
+}
+
 // small diamond for the shop prices in the skin picker
 function diamond() {
   const D = lin('dg', 0, 6, 0, 58, [[0, '#e8fcff'], [0.45, '#7fe3ff'], [1, '#2f7ee0']]);
@@ -2049,6 +2066,7 @@ const SPRITES = [
   ...SKINS_2.map((make, i) => ({ file: `skins/${12 + i}.png`, w: 185, h: 185, svg: make })),
   { file: 'skinLock.png', w: 180, h: 180, svg: skinLock },
   { file: 'diamond.png', w: 64, h: 64, svg: diamond },
+  { file: 'attempt.png', w: 222, h: 122, svg: attemptWord },
   { file: 'objects/204.png', w: 120, h: 120, svg: key },
   { file: 'keyIcon.png', w: 64, h: 64, svg: keyIcon },
   { file: 'keyEmpty.png', w: 64, h: 64, svg: keyEmpty },
