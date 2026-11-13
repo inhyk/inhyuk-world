@@ -306,3 +306,9 @@ header button{padding:6px 8px;word-break:keep-all}
 .walk-pad .walk-jump{font-size:18px;margin-left:auto}
 .walk-pad button+button{margin-left:12px}
 @media (pointer:coarse){body.walking .walk-pad{display:flex}}
+
+/* a friend's map from a link */
+.shared-card{width:min(460px,100%)}
+.shared-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.shared-actions button{flex:1;min-width:140px;border:1px solid #ffffff40;background:#ffffff10;color:var(--ink);border-radius:8px;padding:10px 12px;font-size:14px;font-weight:700}
+.shared-actions button.buy{background:#bfff59;color:#0b1030;border-color:#bfff59}
