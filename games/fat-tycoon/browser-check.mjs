@@ -119,6 +119,16 @@ for(let w=2;w<=5;w++){
 }
 await page.waitForFunction(()=>window.__fat.C.allDone(window.__fat.save));
 // 잠긴 포탈은 창이 안 뜬다
+// 리셋: 한 번 누르면 다시 묻고, 두 번째에 전부 지운다. "안 할래"는 아무것도 안 지운다.
+await page.locator('#b-home').click();
+await page.locator('#m-reset').click(); await page.getByRole('button',{name:'안 할래'}).click();
+if(!(await page.evaluate(()=>window.__fat.C.allDone(window.__fat.save)))) throw Error('cancel must keep save');
+await page.locator('#m-reset').click(); await page.screenshot({path:out+'/reset.png'});
+await page.getByRole('button',{name:'리셋하기'}).click();
+if(!(await page.evaluate(()=>window.__fat.C.allDone(window.__fat.save)))) throw Error('first click must not reset');
+await page.getByRole('button',{name:'진짜로 다 지우기'}).click();
+await page.waitForFunction(()=>{const s=window.__fat.save;return s.stage===0&&s.weight===30&&s.coins===0&&s.gender===''&&s.jump===1&&s.adv.length===0&&window.__fat.place===1&&!document.querySelector('#menu').hidden;});
+await page.reload(); await page.waitForFunction(()=>window.__fat?.save.stage===0 && window.__fat.save.weight===30);
 const locked=await browser.newPage({viewport:{width:1280,height:760}});
 await locked.goto(url.href);await locked.waitForFunction(()=>window.__fat);
 await locked.evaluate(()=>{const f=window.__fat,s=f.C.newSave();s.intro=true;f.save=s;f.start();f.pos.set(0,0,-22.3)});
@@ -135,5 +145,5 @@ await phone.locator('.gender button').nth(1).click();
 for(let i=0;i<5;i++)await phone.locator('#story-next').click();
 await phone.waitForTimeout(200); await phone.screenshot({path:out+'/mobile.png'});
 if(errors.length) throw new Error(errors.join('\n'));
-console.log(JSON.stringify({errors,out,checks:['intro','daily','food pickup','click eating','level up','save reload','world 1 certificate','walk-in portal picker','worlds 2-5 certificates','locked worlds in picker','mobile controls','gender choice','space jump','trampoline','weather chip','paid food and sample','home','cooking','mukbang video','exercise','jump map flag and respawn']},null,2));
+console.log(JSON.stringify({errors,out,checks:['intro','daily','food pickup','click eating','level up','save reload','world 1 certificate','walk-in portal picker','worlds 2-5 certificates','locked worlds in picker','mobile controls','gender choice','space jump','trampoline','weather chip','paid food and sample','home','cooking','mukbang video','exercise','jump map flag and respawn','reset with double confirm']},null,2));
 await browser.close();

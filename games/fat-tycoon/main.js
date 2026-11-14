@@ -333,6 +333,14 @@ function endVideo() {
 }
 
 // ── 상호작용 (E) ──
+let resetStep = 0;
+// 리셋: 전부 지우고 처음부터 (소리 설정만 남긴다). 로그인 중이면 서버 기록도 새 기록으로 덮어쓴다.
+function doReset() {
+  const fresh = C.newSave(); fresh.sound = save.sound; fresh.music = save.music;
+  rec = null; recCool = 0; stopGym(); save = fresh; handId = null; hero.setFood(null); robots.clear(); advQueue.length = 0;
+  $('panel').hidden = true; panelKind = null; setMode('menu'); enterWorld(1); persist(); if (cloud.loggedIn) cloud.upload();
+  sfx.portal(); toast('🔄 리셋했어요. 처음부터 다시 시작!'); sendState(true);
+}
 let near = null, cookCounts = { tomato: 0, meat: 0, onion: 0, choco: 0 };
 function promptFor(it) {
   if (it.type === 'table') {
@@ -455,6 +463,15 @@ function drawPanel() {
     const go = el('button', 'primary', !r ? '재료를 골라요' : save.coins < price ? `코인이 ${C.fmtNum(price - save.coins)}개 모자라요` : save.plate > 0 ? '요리하기 (쟁반 음식은 버려요)' : '요리하기'); go.disabled = !r || save.coins < price;
     go.onclick = () => { const d = C.cook(save, cookCounts); if (!d) return; closePanel(); sfx.buy(); hero.cheer = 1; refreshHand(); big(`${d.emoji} ${d.name} 완성!${d.note ? `\n${d.note}` : ''}`, 2.4); checkAdv(); persist(); sendState(true); };
     box.append(out, go); body.append(box);
+  } else if (panelKind === 'reset') {
+    $('panel-title').textContent = '🔄 리셋'; $('panel-sub').textContent = '처음부터 다시 시작해요.';
+    const box = el('div', 'reset'), two = el('div', 'two'), no = el('button', 'primary', '안 할래'), yes = el('button', 'primary danger', resetStep ? '진짜로 다 지우기' : '리셋하기');
+    box.append(el('div', 'warn', resetStep
+      ? '정말이야? 한 번 지우면 되돌릴 수 없어요!'
+      : `몸무게 ${C.fmtKg(save.weight)}, ${C.fmtNum(save.coins)}코인, 업그레이드, 스킨, 발전과제 ${save.adv.length}개, 점프력이 전부 없어지고 30kg 마쮸부터 다시 시작해요.${cloud.loggedIn ? ' 로그인 중이라 서버 기록도 같이 지워져요.' : ''}`));
+    no.onclick = () => { sfx.click(); closePanel(); };
+    yes.onclick = () => { if (!resetStep) { sfx.deny(); resetStep = 1; drawPanel(); return; } doReset(); };
+    two.append(no, yes); box.append(two); body.append(box);
   } else if (panelKind === 'gender') {
     $('panel-title').textContent = '누구로 시작할까?'; $('panel-sub').textContent = '여자로 시작할지 남자로 시작할지 골라요. 스킨 창에서 언제든 바꿀 수 있어요.';
     const box = el('div', 'gender');
@@ -555,6 +572,7 @@ $('m-daily').onclick = $('b-daily').onclick = () => openPanel('daily');
 $('m-time').onclick = $('b-time').onclick = () => openPanel('time');
 $('m-skin').onclick = $('b-skin').onclick = () => openPanel('skin');
 $('m-adv').onclick = $('b-adv').onclick = () => openPanel('adv');
+$('m-reset').onclick = () => { resetStep = 0; openPanel('reset'); };
 $('m-login').onclick = $('b-login').onclick = () => { loginMsg = ''; loginBad = false; openPanel('login'); };
 $('m-friends').onclick = $('b-friends').onclick = () => openPanel('friends');
 $('panel-close').onclick = () => { sfx.click(); closePanel(); };
