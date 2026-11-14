@@ -12,8 +12,8 @@
       "beatSeconds": 0.481417,
       "totalBeats": 132.941,
       "difficulty": "easy",
-      "style": "bright happy electro-pop",
-      "key": "C major",
+      "style": "lofi (made by the song maker)",
+      "key": "F major",
       "sections": [
         {
           "name": "intro",
@@ -60,22 +60,6 @@
       ],
       "cues": [
         {
-          "beat": 31.5,
-          "type": "stop"
-        },
-        {
-          "beat": 32,
-          "type": "drop"
-        },
-        {
-          "beat": 87.5,
-          "type": "stop"
-        },
-        {
-          "beat": 88,
-          "type": "drop"
-        },
-        {
           "beat": 128,
           "type": "end"
         }
@@ -89,8 +73,8 @@
       "beatSeconds": 0.433276,
       "totalBeats": 156.944,
       "difficulty": "easy",
-      "style": "bouncy chiptune",
-      "key": "G major",
+      "style": "chiptune (made by the song maker)",
+      "key": "C# major",
       "sections": [
         {
           "name": "intro",
@@ -166,8 +150,8 @@
       "beatSeconds": 0.481417,
       "totalBeats": 149.558,
       "difficulty": "normal",
-      "style": "upbeat synthwave",
-      "key": "A minor",
+      "style": "house (made by the song maker)",
+      "key": "D# major",
       "sections": [
         {
           "name": "intro",
@@ -249,8 +233,8 @@
       "beatSeconds": 0.433276,
       "totalBeats": 170.792,
       "difficulty": "normal",
-      "style": "dance beat with a phrygian-dominant melody and hand percussion",
-      "key": "D phrygian dominant",
+      "style": "trap (made by the song maker)",
+      "key": "F# minor",
       "sections": [
         {
           "name": "intro",
@@ -332,8 +316,8 @@
       "beatSeconds": 0.385134,
       "totalBeats": 202.527,
       "difficulty": "hard",
-      "style": "industrial electro",
-      "key": "E minor",
+      "style": "jazz (made by the song maker)",
+      "key": "E major",
       "sections": [
         {
           "name": "intro",
@@ -386,22 +370,6 @@
       ],
       "cues": [
         {
-          "beat": 63.5,
-          "type": "stop"
-        },
-        {
-          "beat": 64,
-          "type": "drop"
-        },
-        {
-          "beat": 143.5,
-          "type": "stop"
-        },
-        {
-          "beat": 144,
-          "type": "drop"
-        },
-        {
           "beat": 196,
           "type": "end"
         }
@@ -415,8 +383,8 @@
       "beatSeconds": 0.481417,
       "totalBeats": 166.176,
       "difficulty": "hard",
-      "style": "dark synthwave with half-time drops",
-      "key": "F# minor",
+      "style": "reggae (made by the song maker)",
+      "key": "C# major",
       "sections": [
         {
           "name": "intro",
@@ -469,22 +437,6 @@
       ],
       "cues": [
         {
-          "beat": 63.5,
-          "type": "stop"
-        },
-        {
-          "beat": 64,
-          "type": "drop"
-        },
-        {
-          "beat": 119.5,
-          "type": "stop"
-        },
-        {
-          "beat": 120,
-          "type": "drop"
-        },
-        {
           "beat": 160,
           "type": "end"
         }
@@ -498,8 +450,8 @@
       "beatSeconds": 0.385134,
       "totalBeats": 212.913,
       "difficulty": "hard",
-      "style": "uplifting trance",
-      "key": "D major",
+      "style": "halftime (made by the song maker)",
+      "key": "A# phryg",
       "sections": [
         {
           "name": "intro",
@@ -581,7 +533,7 @@
       "beatSeconds": 0.433276,
       "totalBeats": 193.872,
       "difficulty": "harder",
-      "style": "glassy bell arpeggios over deep bass",
+      "style": "orchestral (made by the song maker)",
       "key": "B minor",
       "sections": [
         {
@@ -635,16 +587,8 @@
       ],
       "cues": [
         {
-          "beat": 63.5,
-          "type": "stop"
-        },
-        {
           "beat": 64,
           "type": "drop"
-        },
-        {
-          "beat": 143.5,
-          "type": "stop"
         },
         {
           "beat": 144,
@@ -664,8 +608,8 @@
       "beatSeconds": 0.336984,
       "totalBeats": 255.205,
       "difficulty": "harder",
-      "style": "drum and bass",
-      "key": "C minor",
+      "style": "chiptune (made by the song maker)",
+      "key": "F# major",
       "sections": [
         {
           "name": "intro",
@@ -741,8 +685,8 @@
       "beatSeconds": 0.385134,
       "totalBeats": 228.492,
       "difficulty": "harder",
-      "style": "heavy electro-house with big saw stabs",
-      "key": "G minor",
+      "style": "metal (made by the song maker)",
+      "key": "B phryg",
       "sections": [
         {
           "name": "intro",
@@ -789,16 +733,8 @@
       ],
       "cues": [
         {
-          "beat": 47.5,
-          "type": "stop"
-        },
-        {
           "beat": 48,
           "type": "drop"
-        },
-        {
-          "beat": 175.5,
-          "type": "stop"
         },
         {
           "beat": 176,
@@ -818,8 +754,8 @@
       "beatSeconds": 0.433276,
       "totalBeats": 207.72,
       "difficulty": "insane",
-      "style": "funky electro",
-      "key": "Eb major",
+      "style": "funk (made by the song maker)",
+      "key": "F dorian",
       "sections": [
         {
           "name": "intro",
@@ -872,16 +808,8 @@
       ],
       "cues": [
         {
-          "beat": 63.5,
-          "type": "stop"
-        },
-        {
           "beat": 64,
           "type": "drop"
-        },
-        {
-          "beat": 143.5,
-          "type": "stop"
         },
         {
           "beat": 144,
@@ -901,8 +829,8 @@
       "beatSeconds": 0.336984,
       "totalBeats": 273.01,
       "difficulty": "insane",
-      "style": "fast chiptune-trance",
-      "key": "A minor",
+      "style": "chiptune (made by the song maker)",
+      "key": "C minor",
       "sections": [
         {
           "name": "intro",
@@ -978,8 +906,8 @@
       "beatSeconds": 0.385134,
       "totalBeats": 244.071,
       "difficulty": "insane",
-      "style": "half-time wobble bass with laser zaps",
-      "key": "F minor",
+      "style": "metal (made by the song maker)",
+      "key": "C# minor",
       "sections": [
         {
           "name": "intro",
@@ -1026,16 +954,8 @@
       ],
       "cues": [
         {
-          "beat": 47.5,
-          "type": "stop"
-        },
-        {
           "beat": 48,
           "type": "drop"
-        },
-        {
-          "beat": 175.5,
-          "type": "stop"
         },
         {
           "beat": 176,
@@ -1055,8 +975,8 @@
       "beatSeconds": 0.433276,
       "totalBeats": 221.568,
       "difficulty": "demon",
-      "style": "dark aggressive complextro with glitch fills",
-      "key": "C# minor",
+      "style": "orchestral (made by the song maker)",
+      "key": "G# minor",
       "sections": [
         {
           "name": "intro",
@@ -1103,20 +1023,8 @@
       ],
       "cues": [
         {
-          "beat": 47.5,
-          "type": "stop"
-        },
-        {
           "beat": 48,
           "type": "drop"
-        },
-        {
-          "beat": 110,
-          "type": "tapestop"
-        },
-        {
-          "beat": 159.5,
-          "type": "stop"
         },
         {
           "beat": 160,
@@ -1136,8 +1044,8 @@
       "beatSeconds": 0.336984,
       "totalBeats": 296.75,
       "difficulty": "demon",
-      "style": "epic finale with hard kicks and a soaring lead",
-      "key": "E minor",
+      "style": "halftime (made by the song maker)",
+      "key": "D# minor",
       "sections": [
         {
           "name": "intro",
@@ -1213,8 +1121,8 @@
       "beatSeconds": 0.433276,
       "totalBeats": 235.416,
       "difficulty": "secret (very hard)",
-      "style": "mysterious treasure-vault electro: music-box melody over punchy kicks",
-      "key": "F# minor",
+      "style": "synthwave (made by the song maker)",
+      "key": "A minor",
       "sections": [
         {
           "name": "intro",
@@ -1296,8 +1204,8 @@
       "beatSeconds": 0.336984,
       "totalBeats": 314.555,
       "difficulty": "secret (extreme)",
-      "style": "dark glitchy drum and bass with stuttering fills and a deep reese",
-      "key": "D minor",
+      "style": "metal (made by the song maker)",
+      "key": "E minor",
       "sections": [
         {
           "name": "intro",
@@ -1356,24 +1264,12 @@
       ],
       "cues": [
         {
-          "beat": 47.5,
-          "type": "stop"
-        },
-        {
           "beat": 48,
           "type": "drop"
         },
         {
-          "beat": 175.5,
-          "type": "stop"
-        },
-        {
           "beat": 176,
           "type": "drop"
-        },
-        {
-          "beat": 255.5,
-          "type": "stop"
         },
         {
           "beat": 256,
@@ -1393,8 +1289,8 @@
       "beatSeconds": 0.336984,
       "totalBeats": 326.425,
       "difficulty": "secret (final)",
-      "style": "epic final-boss run: hard kicks, choir-like pads, soaring lead, a huge last drop",
-      "key": "A minor",
+      "style": "dnb (made by the song maker)",
+      "key": "C# minor",
       "sections": [
         {
           "name": "intro",
@@ -1496,8 +1392,8 @@
       "beatSeconds": 0.385134,
       "totalBeats": 290.808,
       "difficulty": "extreme",
-      "style": "electric hard dance: sawtooth stabs, sirens, a breakdown with a ticking build",
-      "key": "B minor",
+      "style": "halftime (made by the song maker)",
+      "key": "A minor",
       "sections": [
         {
           "name": "intro",
@@ -1579,8 +1475,8 @@
       "beatSeconds": 0.336984,
       "totalBeats": 356.1,
       "difficulty": "final (hardest)",
-      "style": "triumphant speed anthem: driving kicks, huge chords, hero lead, three drops each bigger than the last",
-      "key": "E major",
+      "style": "chiptune (made by the song maker)",
+      "key": "D# major",
       "sections": [
         {
           "name": "intro",
@@ -1682,8 +1578,8 @@
       "beatSeconds": 0.385134,
       "totalBeats": 280.422,
       "difficulty": "harder",
-      "style": "running electro: offbeat bass, square-saw lead, two pairs of drops",
-      "key": "D minor",
+      "style": "jazz (made by the song maker)",
+      "key": "E major",
       "sections": [
         {
           "name": "intro",
@@ -1748,6 +1644,73 @@
       ],
       "cues": [
         {
+          "beat": 272,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 121,
+      "name": "Level 22",
+      "bpm": 138.48,
+      "durationSeconds": 104.853,
+      "beatSeconds": 0.433276,
+      "totalBeats": 242.001,
+      "difficulty": "level",
+      "style": "synthwave (made by the song maker)",
+      "key": "D minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 242.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
           "beat": 79.5,
           "type": "stop"
         },
@@ -1756,79 +1719,144 @@
           "type": "drop"
         },
         {
-          "beat": 112,
-          "type": "drop"
-        },
-        {
-          "beat": 191.5,
+          "beat": 159.5,
           "type": "stop"
         },
         {
-          "beat": 192,
+          "beat": 160,
           "type": "drop"
         },
         {
-          "beat": 224,
-          "type": "drop"
-        },
-        {
-          "beat": 272,
+          "beat": 236,
           "type": "end"
         }
       ]
     },
     {
-      "index": 21,
-      "name": "DASH TOWER",
-      "bpm": 178.05,
-      "durationSeconds": 56,
-      "beatSeconds": 0.336984,
-      "totalBeats": 166.18,
-      "difficulty": "tower",
-      "style": "climbing anthem: rising arpeggios, square lead, a short break before the top",
-      "key": "E minor",
+      "index": 122,
+      "name": "Level 23",
+      "bpm": 155.79,
+      "durationSeconds": 87.04,
+      "beatSeconds": 0.385134,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "jazz (made by the song maker)",
+      "key": "G# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 123,
+      "name": "Level 24",
+      "bpm": 138.48,
+      "durationSeconds": 104.853,
+      "beatSeconds": 0.433276,
+      "totalBeats": 242.001,
+      "difficulty": "level",
+      "style": "trap (made by the song maker)",
+      "key": "F# phryg",
       "sections": [
         {
           "name": "intro",
           "startBeat": 0,
           "endBeat": 16,
-          "energy": 0.45
+          "energy": 0.4
         },
         {
           "name": "build",
           "startBeat": 16,
           "endBeat": 32,
-          "energy": 0.7
+          "energy": 0.8
         },
         {
           "name": "drop",
           "startBeat": 32,
           "endBeat": 64,
-          "energy": 0.9
+          "energy": 0.95
         },
         {
           "name": "breakdown",
           "startBeat": 64,
-          "endBeat": 80,
+          "endBeat": 96,
           "energy": 0.5
         },
         {
           "name": "build 2",
-          "startBeat": 80,
-          "endBeat": 96,
-          "energy": 0.85
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
         },
         {
           "name": "drop 2",
-          "startBeat": 96,
+          "startBeat": 112,
           "endBeat": 144,
-          "energy": 1
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
         },
         {
           "name": "outro",
-          "startBeat": 144,
-          "endBeat": 166.18,
-          "energy": 0.4
+          "startBeat": 224,
+          "endBeat": 242.001,
+          "energy": 0.35
         }
       ],
       "cues": [
@@ -1841,6 +1869,5793 @@
           "type": "drop"
         },
         {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 124,
+      "name": "Level 25",
+      "bpm": 178.05,
+      "durationSeconds": 76.158,
+      "beatSeconds": 0.336984,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "rock (made by the song maker)",
+      "key": "E major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 125,
+      "name": "Level 26",
+      "bpm": 178.05,
+      "durationSeconds": 86.942,
+      "beatSeconds": 0.336984,
+      "totalBeats": 258,
+      "difficulty": "level",
+      "style": "metal (made by the song maker)",
+      "key": "C minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 240,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 240,
+          "endBeat": 258,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 96,
+          "type": "drop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 252,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 126,
+      "name": "Level 27",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "disco (made by the song maker)",
+      "key": "C# dorian",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 127,
+      "name": "Level 28",
+      "bpm": 178.05,
+      "durationSeconds": 70.767,
+      "beatSeconds": 0.336984,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "halftime (made by the song maker)",
+      "key": "D# phryg",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 128,
+      "name": "Level 29",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "latin (made by the song maker)",
+      "key": "C# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 80,
+          "endBeat": 96,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 129,
+      "name": "Level 30",
+      "bpm": 138.48,
+      "durationSeconds": 84.055,
+      "beatSeconds": 0.433276,
+      "totalBeats": 193.999,
+      "difficulty": "level",
+      "style": "orchestral (made by the song maker)",
+      "key": "A# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 193.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 130,
+      "name": "Level 31",
+      "bpm": 124.632,
+      "durationSeconds": 116.503,
+      "beatSeconds": 0.481417,
+      "totalBeats": 242,
+      "difficulty": "level",
+      "style": "pop (made by the song maker)",
+      "key": "A major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 242,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 131,
+      "name": "Level 32",
+      "bpm": 178.05,
+      "durationSeconds": 81.55,
+      "beatSeconds": 0.336984,
+      "totalBeats": 242,
+      "difficulty": "level",
+      "style": "dnb (made by the song maker)",
+      "key": "G minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 242,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 132,
+      "name": "Level 33",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "lofi (made by the song maker)",
+      "key": "E major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 133,
+      "name": "Level 34",
+      "bpm": 138.48,
+      "durationSeconds": 84.055,
+      "beatSeconds": 0.433276,
+      "totalBeats": 193.999,
+      "difficulty": "level",
+      "style": "chiptune (made by the song maker)",
+      "key": "C# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 193.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 134,
+      "name": "Level 35",
+      "bpm": 178.05,
+      "durationSeconds": 81.55,
+      "beatSeconds": 0.336984,
+      "totalBeats": 242,
+      "difficulty": "level",
+      "style": "dnb (made by the song maker)",
+      "key": "F# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 242,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 135,
+      "name": "Level 36",
+      "bpm": 178.05,
+      "durationSeconds": 65.375,
+      "beatSeconds": 0.336984,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "rock (made by the song maker)",
+      "key": "G mixo",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 136,
+      "name": "Level 37",
+      "bpm": 178.05,
+      "durationSeconds": 81.55,
+      "beatSeconds": 0.336984,
+      "totalBeats": 242,
+      "difficulty": "level",
+      "style": "metal (made by the song maker)",
+      "key": "A# phryg",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 242,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 137,
+      "name": "Level 38",
+      "bpm": 155.79,
+      "durationSeconds": 93.202,
+      "beatSeconds": 0.385134,
+      "totalBeats": 241.999,
+      "difficulty": "level",
+      "style": "jazz (made by the song maker)",
+      "key": "G# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 241.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 138,
+      "name": "Level 39",
+      "bpm": 138.48,
+      "durationSeconds": 84.055,
+      "beatSeconds": 0.433276,
+      "totalBeats": 193.999,
+      "difficulty": "level",
+      "style": "halftime (made by the song maker)",
+      "key": "F phryg",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 193.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 139,
+      "name": "Level 40",
+      "bpm": 138.48,
+      "durationSeconds": 97.92,
+      "beatSeconds": 0.433276,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "latin (made by the song maker)",
+      "key": "C minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 140,
+      "name": "Level 41",
+      "bpm": 138.48,
+      "durationSeconds": 90.988,
+      "beatSeconds": 0.433276,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "pop (made by the song maker)",
+      "key": "D# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 127.5,
+          "type": "stop"
+        },
+        {
+          "beat": 128,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 141,
+      "name": "Level 42",
+      "bpm": 124.632,
+      "durationSeconds": 93.395,
+      "beatSeconds": 0.481417,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "disco (made by the song maker)",
+      "key": "D# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 142,
+      "name": "Level 43",
+      "bpm": 124.632,
+      "durationSeconds": 108.8,
+      "beatSeconds": 0.481417,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "house (made by the song maker)",
+      "key": "D# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 143,
+      "name": "Level 44",
+      "bpm": 124.632,
+      "durationSeconds": 116.503,
+      "beatSeconds": 0.481417,
+      "totalBeats": 242,
+      "difficulty": "level",
+      "style": "latin (made by the song maker)",
+      "key": "D minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 192,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 242,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 128,
+          "type": "drop"
+        },
+        {
+          "beat": 192,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 144,
+      "name": "Level 45",
+      "bpm": 124.632,
+      "durationSeconds": 93.395,
+      "beatSeconds": 0.481417,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "synthwave (made by the song maker)",
+      "key": "G minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 145,
+      "name": "Level 46",
+      "bpm": 138.48,
+      "durationSeconds": 90.988,
+      "beatSeconds": 0.433276,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "funk (made by the song maker)",
+      "key": "E dorian",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 80,
+          "endBeat": 96,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 128,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 146,
+      "name": "Level 47",
+      "bpm": 178.05,
+      "durationSeconds": 81.55,
+      "beatSeconds": 0.336984,
+      "totalBeats": 242,
+      "difficulty": "level",
+      "style": "halftime (made by the song maker)",
+      "key": "D# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 242,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 147,
+      "name": "Level 48",
+      "bpm": 138.48,
+      "durationSeconds": 90.988,
+      "beatSeconds": 0.433276,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "pop (made by the song maker)",
+      "key": "C major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 127.5,
+          "type": "stop"
+        },
+        {
+          "beat": 128,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 148,
+      "name": "Level 49",
+      "bpm": 155.79,
+      "durationSeconds": 80.878,
+      "beatSeconds": 0.385134,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "metal (made by the song maker)",
+      "key": "E phryg",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 149,
+      "name": "Level 50",
+      "bpm": 138.48,
+      "durationSeconds": 90.988,
+      "beatSeconds": 0.433276,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "chiptune (made by the song maker)",
+      "key": "B major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 150,
+      "name": "Level 51",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "funk (made by the song maker)",
+      "key": "D dorian",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 151,
+      "name": "Level 52",
+      "bpm": 155.79,
+      "durationSeconds": 105.527,
+      "beatSeconds": 0.385134,
+      "totalBeats": 274.001,
+      "difficulty": "level",
+      "style": "jazz (made by the song maker)",
+      "key": "F# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 192,
+          "endBeat": 256,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 256,
+          "endBeat": 274.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 268,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 152,
+      "name": "Level 53",
+      "bpm": 155.79,
+      "durationSeconds": 93.202,
+      "beatSeconds": 0.385134,
+      "totalBeats": 241.999,
+      "difficulty": "level",
+      "style": "rock (made by the song maker)",
+      "key": "C mixo",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 241.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 153,
+      "name": "Level 54",
+      "bpm": 124.632,
+      "durationSeconds": 108.8,
+      "beatSeconds": 0.481417,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "pop (made by the song maker)",
+      "key": "C# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 154,
+      "name": "Level 55",
+      "bpm": 178.05,
+      "durationSeconds": 76.158,
+      "beatSeconds": 0.336984,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "metal (made by the song maker)",
+      "key": "A minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 155,
+      "name": "Level 56",
+      "bpm": 138.48,
+      "durationSeconds": 97.92,
+      "beatSeconds": 0.433276,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "pop (made by the song maker)",
+      "key": "F major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 156,
+      "name": "Level 57",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "lofi (made by the song maker)",
+      "key": "A# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 80,
+          "endBeat": 96,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 157,
+      "name": "Level 58",
+      "bpm": 138.48,
+      "durationSeconds": 84.055,
+      "beatSeconds": 0.433276,
+      "totalBeats": 193.999,
+      "difficulty": "level",
+      "style": "pop (made by the song maker)",
+      "key": "D major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 193.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 158,
+      "name": "Level 59",
+      "bpm": 155.79,
+      "durationSeconds": 87.04,
+      "beatSeconds": 0.385134,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "rock (made by the song maker)",
+      "key": "D# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 160,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 96,
+          "type": "drop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 159,
+      "name": "Level 60",
+      "bpm": 178.05,
+      "durationSeconds": 65.375,
+      "beatSeconds": 0.336984,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "dnb (made by the song maker)",
+      "key": "F# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 160,
+      "name": "Level 61",
+      "bpm": 138.48,
+      "durationSeconds": 84.055,
+      "beatSeconds": 0.433276,
+      "totalBeats": 193.999,
+      "difficulty": "level",
+      "style": "trap (made by the song maker)",
+      "key": "A minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 193.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 161,
+      "name": "Level 62",
+      "bpm": 138.48,
+      "durationSeconds": 104.853,
+      "beatSeconds": 0.433276,
+      "totalBeats": 242.001,
+      "difficulty": "level",
+      "style": "rock (made by the song maker)",
+      "key": "D# mixo",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 242.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 162,
+      "name": "Level 63",
+      "bpm": 124.632,
+      "durationSeconds": 131.908,
+      "beatSeconds": 0.481417,
+      "totalBeats": 273.999,
+      "difficulty": "level",
+      "style": "reggae (made by the song maker)",
+      "key": "C# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 192,
+          "endBeat": 256,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 256,
+          "endBeat": 273.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 268,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 163,
+      "name": "Level 64",
+      "bpm": 138.48,
+      "durationSeconds": 90.988,
+      "beatSeconds": 0.433276,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "rock (made by the song maker)",
+      "key": "F# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 164,
+      "name": "Level 65",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "funk (made by the song maker)",
+      "key": "G dorian",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 128,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 165,
+      "name": "Level 66",
+      "bpm": 138.48,
+      "durationSeconds": 90.988,
+      "beatSeconds": 0.433276,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "chiptune (made by the song maker)",
+      "key": "C major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 166,
+      "name": "Level 67",
+      "bpm": 155.79,
+      "durationSeconds": 74.716,
+      "beatSeconds": 0.385134,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "halftime (made by the song maker)",
+      "key": "C# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 167,
+      "name": "Level 68",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "funk (made by the song maker)",
+      "key": "C# dorian",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 168,
+      "name": "Level 69",
+      "bpm": 178.05,
+      "durationSeconds": 76.158,
+      "beatSeconds": 0.336984,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "orchestral (made by the song maker)",
+      "key": "F minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 160,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 96,
+          "type": "drop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 169,
+      "name": "Level 70",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "house (made by the song maker)",
+      "key": "G major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 170,
+      "name": "Level 71",
+      "bpm": 124.632,
+      "durationSeconds": 124.206,
+      "beatSeconds": 0.481417,
+      "totalBeats": 258.001,
+      "difficulty": "level",
+      "style": "lofi (made by the song maker)",
+      "key": "D major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 160,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 176,
+          "endBeat": 240,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 240,
+          "endBeat": 258.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 252,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 171,
+      "name": "Level 72",
+      "bpm": 138.48,
+      "durationSeconds": 90.988,
+      "beatSeconds": 0.433276,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "trap (made by the song maker)",
+      "key": "C# phryg",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 172,
+      "name": "Level 73",
+      "bpm": 178.05,
+      "durationSeconds": 70.767,
+      "beatSeconds": 0.336984,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "metal (made by the song maker)",
+      "key": "D# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 173,
+      "name": "Level 74",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "lofi (made by the song maker)",
+      "key": "A# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 174,
+      "name": "Level 75",
+      "bpm": 155.79,
+      "durationSeconds": 99.365,
+      "beatSeconds": 0.385134,
+      "totalBeats": 258.001,
+      "difficulty": "level",
+      "style": "halftime (made by the song maker)",
+      "key": "F minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 80,
+          "endBeat": 96,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 176,
+          "endBeat": 240,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 240,
+          "endBeat": 258.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 252,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 175,
+      "name": "Level 76",
+      "bpm": 155.79,
+      "durationSeconds": 80.878,
+      "beatSeconds": 0.385134,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "metal (made by the song maker)",
+      "key": "E phryg",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 176,
+      "name": "Level 77",
+      "bpm": 124.632,
+      "durationSeconds": 124.206,
+      "beatSeconds": 0.481417,
+      "totalBeats": 258.001,
+      "difficulty": "level",
+      "style": "pop (made by the song maker)",
+      "key": "G# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 160,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 176,
+          "endBeat": 240,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 240,
+          "endBeat": 258.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 127.5,
+          "type": "stop"
+        },
+        {
+          "beat": 128,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 252,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 177,
+      "name": "Level 78",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "funk (made by the song maker)",
+      "key": "A dorian",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 96,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 178,
+      "name": "Level 79",
+      "bpm": 155.79,
+      "durationSeconds": 80.878,
+      "beatSeconds": 0.385134,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "rock (made by the song maker)",
+      "key": "C mixo",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 179,
+      "name": "Level 80",
+      "bpm": 178.05,
+      "durationSeconds": 70.767,
+      "beatSeconds": 0.336984,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "chiptune (made by the song maker)",
+      "key": "D# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 180,
+      "name": "Level 81",
+      "bpm": 178.05,
+      "durationSeconds": 65.375,
+      "beatSeconds": 0.336984,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "dnb (made by the song maker)",
+      "key": "F minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 181,
+      "name": "Level 82",
+      "bpm": 124.632,
+      "durationSeconds": 124.206,
+      "beatSeconds": 0.481417,
+      "totalBeats": 258.001,
+      "difficulty": "level",
+      "style": "house (made by the song maker)",
+      "key": "A# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 160,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 240,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 240,
+          "endBeat": 258.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 252,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 182,
+      "name": "Level 83",
+      "bpm": 178.05,
+      "durationSeconds": 76.158,
+      "beatSeconds": 0.336984,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "dnb (made by the song maker)",
+      "key": "A# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 183,
+      "name": "Level 84",
+      "bpm": 155.79,
+      "durationSeconds": 74.716,
+      "beatSeconds": 0.385134,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "orchestral (made by the song maker)",
+      "key": "B minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 184,
+      "name": "Level 85",
+      "bpm": 155.79,
+      "durationSeconds": 87.04,
+      "beatSeconds": 0.385134,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "rock (made by the song maker)",
+      "key": "C# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 160,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 185,
+      "name": "Level 86",
+      "bpm": 124.632,
+      "durationSeconds": 93.395,
+      "beatSeconds": 0.481417,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "funk (made by the song maker)",
+      "key": "D dorian",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 186,
+      "name": "Level 87",
+      "bpm": 155.79,
+      "durationSeconds": 87.04,
+      "beatSeconds": 0.385134,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "halftime (made by the song maker)",
+      "key": "G phryg",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 187,
+      "name": "Level 88",
+      "bpm": 138.48,
+      "durationSeconds": 90.988,
+      "beatSeconds": 0.433276,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "orchestral (made by the song maker)",
+      "key": "D minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 188,
+      "name": "Level 89",
+      "bpm": 178.05,
+      "durationSeconds": 76.158,
+      "beatSeconds": 0.336984,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "jazz (made by the song maker)",
+      "key": "G major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 189,
+      "name": "Level 90",
+      "bpm": 138.48,
+      "durationSeconds": 104.853,
+      "beatSeconds": 0.433276,
+      "totalBeats": 242.001,
+      "difficulty": "level",
+      "style": "synthwave (made by the song maker)",
+      "key": "G# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 242.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 190,
+      "name": "Level 91",
+      "bpm": 124.632,
+      "durationSeconds": 101.098,
+      "beatSeconds": 0.481417,
+      "totalBeats": 210.001,
+      "difficulty": "level",
+      "style": "house (made by the song maker)",
+      "key": "F minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 159.5,
+          "type": "stop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 191,
+      "name": "Level 92",
+      "bpm": 178.05,
+      "durationSeconds": 65.375,
+      "beatSeconds": 0.336984,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "dnb (made by the song maker)",
+      "key": "F# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 192,
+      "name": "Level 93",
+      "bpm": 178.05,
+      "durationSeconds": 76.158,
+      "beatSeconds": 0.336984,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "rock (made by the song maker)",
+      "key": "D# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 193,
+      "name": "Level 94",
+      "bpm": 124.632,
+      "durationSeconds": 108.8,
+      "beatSeconds": 0.481417,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "funk (made by the song maker)",
+      "key": "B dorian",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 194,
+      "name": "Level 95",
+      "bpm": 124.632,
+      "durationSeconds": 93.395,
+      "beatSeconds": 0.481417,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "disco (made by the song maker)",
+      "key": "D dorian",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 195,
+      "name": "Level 96",
+      "bpm": 138.48,
+      "durationSeconds": 97.92,
+      "beatSeconds": 0.433276,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "pop (made by the song maker)",
+      "key": "A# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 144,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 143.5,
+          "type": "stop"
+        },
+        {
+          "beat": 144,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 196,
+      "name": "Level 97",
+      "bpm": 155.79,
+      "durationSeconds": 80.878,
+      "beatSeconds": 0.385134,
+      "totalBeats": 210,
+      "difficulty": "level",
+      "style": "metal (made by the song maker)",
+      "key": "G# phryg",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 192,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 192,
+          "endBeat": 210,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 204,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 197,
+      "name": "Level 98",
+      "bpm": 178.05,
+      "durationSeconds": 81.55,
+      "beatSeconds": 0.336984,
+      "totalBeats": 242,
+      "difficulty": "level",
+      "style": "rock (made by the song maker)",
+      "key": "A# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 160,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 160,
+          "endBeat": 224,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 224,
+          "endBeat": 242,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 160,
+          "type": "drop"
+        },
+        {
+          "beat": 236,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 198,
+      "name": "Level 99",
+      "bpm": 138.48,
+      "durationSeconds": 97.92,
+      "beatSeconds": 0.433276,
+      "totalBeats": 225.999,
+      "difficulty": "level",
+      "style": "synthwave (made by the song maker)",
+      "key": "G minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 128,
+          "endBeat": 144,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 144,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 176,
+          "endBeat": 208,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 208,
+          "endBeat": 225.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
           "beat": 95.5,
           "type": "stop"
         },
@@ -1849,7 +7664,744 @@
           "type": "drop"
         },
         {
-          "beat": 160,
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 220,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 199,
+      "name": "Level 100",
+      "bpm": 155.79,
+      "durationSeconds": 99.365,
+      "beatSeconds": 0.385134,
+      "totalBeats": 258.001,
+      "difficulty": "level",
+      "style": "chiptune (made by the song maker)",
+      "key": "D minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 112,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 128,
+          "endBeat": 160,
+          "energy": 0.95
+        },
+        {
+          "name": "build 3",
+          "startBeat": 160,
+          "endBeat": 176,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 3",
+          "startBeat": 176,
+          "endBeat": 240,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 240,
+          "endBeat": 258.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 127.5,
+          "type": "stop"
+        },
+        {
+          "beat": 128,
+          "type": "drop"
+        },
+        {
+          "beat": 175.5,
+          "type": "stop"
+        },
+        {
+          "beat": 176,
+          "type": "drop"
+        },
+        {
+          "beat": 252,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 200,
+      "name": "Tower 1F",
+      "bpm": 178.05,
+      "durationSeconds": 49.2,
+      "beatSeconds": 0.336984,
+      "totalBeats": 146.001,
+      "difficulty": "level",
+      "style": "dnb (made by the song maker)",
+      "key": "E minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 128,
+          "energy": 0.8
+        },
+        {
+          "name": "outro",
+          "startBeat": 128,
+          "endBeat": 146.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 140,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 201,
+      "name": "Tower 2F",
+      "bpm": 155.79,
+      "durationSeconds": 62.392,
+      "beatSeconds": 0.385134,
+      "totalBeats": 162.001,
+      "difficulty": "level",
+      "style": "jazz (made by the song maker)",
+      "key": "C# major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 144,
+          "endBeat": 162.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 156,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 202,
+      "name": "Tower 3F",
+      "bpm": 155.79,
+      "durationSeconds": 50.067,
+      "beatSeconds": 0.385134,
+      "totalBeats": 129.999,
+      "difficulty": "level",
+      "style": "trap (made by the song maker)",
+      "key": "F# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 112,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 112,
+          "endBeat": 129.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 124,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 203,
+      "name": "Tower 4F",
+      "bpm": 138.48,
+      "durationSeconds": 70.191,
+      "beatSeconds": 0.433276,
+      "totalBeats": 162.001,
+      "difficulty": "level",
+      "style": "synthwave (made by the song maker)",
+      "key": "B minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 64,
+          "endBeat": 80,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 80,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 144,
+          "endBeat": 162.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 79.5,
+          "type": "stop"
+        },
+        {
+          "beat": 80,
+          "type": "drop"
+        },
+        {
+          "beat": 156,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 204,
+      "name": "Tower 5F",
+      "bpm": 178.05,
+      "durationSeconds": 59.983,
+      "beatSeconds": 0.336984,
+      "totalBeats": 178,
+      "difficulty": "level",
+      "style": "chiptune (made by the song maker)",
+      "key": "A major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 80,
+          "endBeat": 96,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 96,
+          "endBeat": 160,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 160,
+          "endBeat": 178,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 95.5,
+          "type": "stop"
+        },
+        {
+          "beat": 96,
+          "type": "drop"
+        },
+        {
+          "beat": 172,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 205,
+      "name": "Tower 6F",
+      "bpm": 178.05,
+      "durationSeconds": 54.591,
+      "beatSeconds": 0.336984,
+      "totalBeats": 161.999,
+      "difficulty": "level",
+      "style": "halftime (made by the song maker)",
+      "key": "F# phryg",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 32,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 32,
+          "endBeat": 48,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 48,
+          "endBeat": 80,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 80,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 144,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 144,
+          "endBeat": 161.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 47.5,
+          "type": "stop"
+        },
+        {
+          "beat": 48,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 156,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 206,
+      "name": "Tower 7F",
+      "bpm": 178.05,
+      "durationSeconds": 65.375,
+      "beatSeconds": 0.336984,
+      "totalBeats": 194,
+      "difficulty": "level",
+      "style": "chiptune (made by the song maker)",
+      "key": "F# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "build",
+          "startBeat": 16,
+          "endBeat": 32,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 32,
+          "endBeat": 64,
+          "energy": 0.95
+        },
+        {
+          "name": "breakdown",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.5
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 194,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 31.5,
+          "type": "stop"
+        },
+        {
+          "beat": 32,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 207,
+      "name": "Tower 8F",
+      "bpm": 155.79,
+      "durationSeconds": 56.23,
+      "beatSeconds": 0.385134,
+      "totalBeats": 146.001,
+      "difficulty": "level",
+      "style": "trap (made by the song maker)",
+      "key": "C# phryg",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 128,
+          "endBeat": 146.001,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 140,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 208,
+      "name": "Tower 9F",
+      "bpm": 138.48,
+      "durationSeconds": 63.258,
+      "beatSeconds": 0.433276,
+      "totalBeats": 145.999,
+      "difficulty": "level",
+      "style": "orchestral (made by the song maker)",
+      "key": "F# minor",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 128,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 128,
+          "endBeat": 145.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 140,
+          "type": "end"
+        }
+      ]
+    },
+    {
+      "index": 209,
+      "name": "Tower 10F",
+      "bpm": 138.48,
+      "durationSeconds": 84.055,
+      "beatSeconds": 0.433276,
+      "totalBeats": 193.999,
+      "difficulty": "level",
+      "style": "pop (made by the song maker)",
+      "key": "F major",
+      "sections": [
+        {
+          "name": "intro",
+          "startBeat": 0,
+          "endBeat": 16,
+          "energy": 0.4
+        },
+        {
+          "name": "verse",
+          "startBeat": 16,
+          "endBeat": 48,
+          "energy": 0.6
+        },
+        {
+          "name": "build",
+          "startBeat": 48,
+          "endBeat": 64,
+          "energy": 0.8
+        },
+        {
+          "name": "drop",
+          "startBeat": 64,
+          "endBeat": 96,
+          "energy": 0.95
+        },
+        {
+          "name": "build 2",
+          "startBeat": 96,
+          "endBeat": 112,
+          "energy": 0.8
+        },
+        {
+          "name": "drop 2",
+          "startBeat": 112,
+          "endBeat": 176,
+          "energy": 0.95
+        },
+        {
+          "name": "outro",
+          "startBeat": 176,
+          "endBeat": 193.999,
+          "energy": 0.35
+        }
+      ],
+      "cues": [
+        {
+          "beat": 63.5,
+          "type": "stop"
+        },
+        {
+          "beat": 64,
+          "type": "drop"
+        },
+        {
+          "beat": 111.5,
+          "type": "stop"
+        },
+        {
+          "beat": 112,
+          "type": "drop"
+        },
+        {
+          "beat": 188,
           "type": "end"
         }
       ]

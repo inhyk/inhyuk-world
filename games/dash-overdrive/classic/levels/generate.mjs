@@ -120,15 +120,15 @@ export const EXTRA_FIRST = LEVELS.length; // index of level 22
 const SONG_LIST = existsSync(TIMELINE) ? JSON.parse(readFileSync(TIMELINE, 'utf8')).songs : [];
 const SEEDS = new URL('./extra-seeds.json', import.meta.url);
 const EXTRA_SEEDS = existsSync(SEEDS) ? JSON.parse(readFileSync(SEEDS, 'utf8')) : {};
-// tiers by level number: tuning numbers spread over the tier (17-19 are the
+// tiers by level number (every level has its own song, 100 + level index): tuning numbers spread over the tier (17-19 are the
 // secret levels' tuning, 20-22 go past Endless Dash), the songs it uses, and
 // the speed gates (1 normal, 2 fast, 3 very fast) of the drops, builds and the
 // other parts. The designer asked for the new levels to be very hard
 // ("새로운 레벨은 엄청 어렵게"), so even level 22 starts at Demon.
 export const EXTRA_TIERS = [
-  {last: 40, tunes: [14, 15, 16], songs: [8, 11, 12, 14, 9], drop: 3, build: 2, other: 1},
-  {last: 70, tunes: [17, 18, 19], songs: [14, 16, 17, 18, 20, 11], drop: 3, build: 3, other: 2},
-  {last: LEVEL_TOTAL, tunes: [20, 21, 22], songs: [16, 17, 19, 14, 18, 20], drop: 3, build: 3, other: 2},
+  {last: 40, tunes: [14, 15, 16], drop: 3, build: 2, other: 1},
+  {last: 70, tunes: [17, 18, 19], drop: 3, build: 3, other: 2},
+  {last: LEVEL_TOTAL, tunes: [20, 21, 22], drop: 3, build: 3, other: 2},
 ];
 const NAME_FIRST = ['Neon', 'Pixel', 'Crystal', 'Thunder', 'Solar', 'Lunar', 'Frozen', 'Cosmic', 'Turbo', 'Velvet',
   'Emerald', 'Ruby', 'Sapphire', 'Midnight', 'Sunny', 'Cloud', 'Candy', 'Shadow', 'Rocket', 'Coral'];
@@ -201,7 +201,8 @@ function extraLevels() {
     for (let number = tierStart; number <= tier.last; number++) {
       const position = number - tierStart;
       const tune = tier.tunes[Math.floor(position * tier.tunes.length / size)];
-      const songIndex = tier.songs[position % tier.songs.length];
+      // every level has its own song now (the designer: "레벨 노래가 다 비슷해 다 다르게 해줘 완전"): song 100 + level index
+      const songIndex = 100 + number - 1;
       const song = SONG_LIST.find(entry => entry.index === songIndex);
       if (!song) continue;
       const hue = (number * 47) % 360;
@@ -227,7 +228,8 @@ LEVELS.push(...extraLevels());
 export const TOWER_FIRST = LEVELS.length;
 export const TOWER_FLOORS = 10;
 export const TOWER_DOORS = [[3, 4], [6, 10], [9, 18]]; // [floor index, keys needed]
-export const TOWER_SONG = 21;
+// each tower floor has its own song: 200 + floor
+export const TOWER_SONG = 200;
 export const TOWER_SKIN = 31;
 const TOWER_TUNES = [6, 9, 11, 13, 15, 16, 17, 19, 21, 22];
 
@@ -251,13 +253,12 @@ function towerPlan(song, floor) {
 }
 
 function towerFloors() {
-  const song = SONG_LIST.find(entry => entry.index === TOWER_SONG);
-  if (!song) return [];
   return TOWER_TUNES.map((tune, floor) => {
+    const song = SONG_LIST.find(entry => entry.index === TOWER_SONG + floor) ?? {bpm: 178.05, durationSeconds: 56};
     // warm evening at the bottom, deep night with gold at the top
     const hue = (24 + floor * 28) % 360;
     return {
-      name: `DASH TOWER ${floor + 1}F`, song: TOWER_SONG, bpm: song.bpm, seconds: song.durationSeconds, tune,
+      name: `DASH TOWER ${floor + 1}F`, song: TOWER_SONG + floor, bpm: song.bpm, seconds: song.durationSeconds, tune,
       difficulty: difficultyOf(tune), tower: floor, key: true, platformer: true,
       seed: EXTRA_SEEDS[TOWER_FIRST + floor + 1] ?? 12000 + floor * 37,
       colors: [[hsl(hue, 0.7, 0.5), hsl(hue, 0.75, 0.3)], [hsl(hue + 180, 0.7, 0.5), hsl(hue + 180, 0.75, 0.3)], [hsl(45, 0.9, 0.55), hsl(30, 0.85, 0.35)]],

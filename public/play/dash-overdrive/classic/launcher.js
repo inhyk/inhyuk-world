@@ -2,7 +2,7 @@
 'use strict';
 // The page around the WebAssembly engine: level picker, song downloads,
 // touch input and the hooks the engine calls (Module.classic*).
-const VERSION = 'classic-original-13';
+const VERSION = 'classic-original-14';
 // [name, difficulty, song] for levels 1-100, written by levels/level-list.mjs
 const CLASSIC_LEVELS = window.CLASSIC_LEVEL_LIST;
 // groups in the level picker
