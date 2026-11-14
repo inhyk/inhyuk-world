@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#242723">
+<title>그린 체스 · 온라인 대전·퍼즐·러시</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-view="home">
+<aside class="rail">
+  <a class="brand" href="/" aria-label="게임 홈">♟<span>그린<span class="brand-light">체스</span></span></a>
+  <div class="rail-label">YOUR NEXT MOVE</div>
+  <nav class="rail-nav" aria-label="메뉴">
+    <button class="nav" data-view="home"><span>⌂</span> 홈</button>
+    <button class="nav" data-view="play"><span>♟</span> 플레이</button>
+    <button class="nav" data-view="puzzle"><span>◈</span> 퍼즐</button>
+    <button class="nav" data-view="rush"><span>⚡</span> 퍼즐 러시</button>
+    <button class="nav" data-view="review"><span>⌁</span> 게임 리뷰</button>
+    <button class="nav" id="help-nav"><span>?</span> 플레이 가이드</button>
+  </nav>
+  <div class="rail-bottom">
+    <button class="rail-account" id="rail-account"><span class="avatar human mini">♔</span><span><b id="rail-name">손님</b><small id="rail-sub">로그인하기</small></span></button>
+    <div class="rail-ratings" id="rail-ratings"></div>
+  </div>
+</aside>
+
+<main>
+  <header>
+    <div><div class="eyebrow" id="view-eyebrow">GREEN CHESS CLUB</div><h1 id="view-title">어서 와, 체스 한 판 할까<span>?</span></h1></div>
+    <span class="header-badge" id="live-badge"><span class="online-dot off" id="live-dot"></span> <b id="live-text">오프라인</b></span>
+  </header>
+
+  <section id="home-view" class="home">
+    <div class="home-hero">
+      <div class="hero-text">
+        <div class="eyebrow">PLAY · THINK · GROW</div>
+        <h2>오늘은 누구랑 둘까?</h2>
+        <p>모르는 사람과 바로 붙는 온라인 대전, 숲속 캐릭터 7명, 10만 개 퍼즐과 퍼즐 러시가 기다려.</p>
+        <div class="hero-buttons">
+          <button class="primary big" data-go="online">⚡ 온라인 대전 <small>10분</small></button>
+          <button class="ghost big" data-go="ai">♞ 컴퓨터와 대전</button>
+        </div>
+      </div>
+      <div class="hero-board" id="hero-board" aria-hidden="true"></div>
+    </div>
+    <div class="rating-cards" id="rating-cards"></div>
+    <div class="home-grid">
+      <button class="home-card" data-go="puzzle"><span class="card-icon">◈</span><b>퍼즐</b><small>내 점수에 맞는 전술 퍼즐</small></button>
+      <button class="home-card" data-go="rush"><span class="card-icon">⚡</span><b>퍼즐 러시</b><small>3분 동안 몇 개나 풀까?</small></button>
+      <button class="home-card" data-go="daily"><span class="card-icon">☀</span><b>오늘의 퍼즐</b><small>하루에 하나, 모두 같은 문제</small></button>
+      <button class="home-card" data-go="friends"><span class="card-icon">♙</span><b>친구와 대전</b><small>방 코드나 친구 초대로</small></button>
+    </div>
+    <div class="home-bots">
+      <div class="section-head"><h3>숲속 캐릭터</h3><small>얼굴을 누르면 바로 대전</small></div>
+      <div class="bot-strip" id="home-bots"></div>
+    </div>
+  </section>
+
+  <div class="game-layout" id="game-view" hidden>
+    <section class="board-section">
+      <div class="player top">
+        <div class="avatar bot" id="opponent-avatar">♞</div>
+        <div class="player-text"><strong id="opponent-name">숲속의 기사</strong><small id="opponent-sub">컴퓨터</small><div class="captured" id="captured-top"></div></div>
+        <div class="speech" id="speech" hidden></div>
+        <div class="clock" id="clock-top">10:00</div>
+      </div>
+      <div class="board-frame"><div id="board" role="group" aria-label="체스판"></div><div id="promotion" class="promotion hidden" role="dialog" aria-label="승격 기물 선택"></div></div>
+      <div class="player bottom">
+        <div class="avatar human" id="my-avatar">♔</div>
+        <div class="player-text"><strong id="my-name">나</strong><small id="my-sub">백</small><div class="captured" id="captured-bottom"></div></div>
+        <div class="speech mine" id="my-speech" hidden></div>
+        <div class="clock" id="clock-bottom">10:00</div>
+      </div>
+      <div class="board-toolbar"><span id="board-caption">기물을 선택하면 갈 수 있는 칸이 보여요.</span><button id="sound" title="소리 켜기/끄기" aria-label="소리 켜기/끄기">♪</button><button id="flip" title="체스판 뒤집기" aria-label="체스판 뒤집기">⇅</button></div>
+    </section>
+
+    <aside class="panel">
+      <div class="tabs">
+        <button data-view="play">플레이</button>
+        <button data-view="review">리뷰 <span>✦</span></button>
+        <button data-view="puzzle">퍼즐 <span>◈</span></button>
+        <button data-view="rush">러시 <span>⚡</span></button>
+      </div>
+
+      <div id="play-panel" class="panel-body">
+        <div class="segmented modes" id="mode-switch">
+          <button data-mode="online">⚡ 온라인</button>
+          <button data-mode="ai">♞ 컴퓨터</button>
+          <button data-mode="local">♟ 같은 기기</button>
+        </div>
+
+        <div id="setup-ai" class="setup">
+          <div class="bot-grid" id="bot-grid"></div>
+          <div class="bot-card" id="bot-card"></div>
+          <div class="setting-row">
+            <div><label>내 색</label><div class="segmented small" id="color-pick"><button data-color="w">♔ 백</button><button data-color="random">?</button><button data-color="b">♚ 흑</button></div></div>
+            <div><label for="time">제한 시간</label><select id="time"><option value="0">시간 무제한</option><option value="600" selected>10분</option><option value="300">5분</option><option value="180">3분</option><option value="60">1분</option></select></div>
+          </div>
+          <button class="primary" id="new-game">대전 시작 <span>→</span></button>
+        </div>
+
+        <div id="setup-local" class="setup" hidden>
+          <p class="setup-note">한 기기에서 친구와 번갈아 둬. 백이 먼저야.</p>
+          <div class="setting-row single"><div><label for="time-local">제한 시간</label><select id="time-local"><option value="0">시간 무제한</option><option value="600" selected>10분</option><option value="300">5분</option><option value="180">3분</option></select></div></div>
+          <button class="primary" id="new-local">새 게임 시작 <span>→</span></button>
+        </div>
+
+        <div id="setup-online" class="setup" hidden>
+          <div class="account-box">
+            <div class="avatar human mini">♔</div>
+            <div class="account-text"><strong id="account-name">손님</strong><small id="account-note">로그인하면 게임 찾기와 친구 초대를 할 수 있어.</small></div>
+            <button class="pill" id="account-btn">로그인</button>
+          </div>
+          <button class="primary" id="find-match">⚡ 게임 찾기 <small>10분 랭크전</small></button>
+          <div class="wait-box" id="match-wait" hidden><span class="spinner"></span><div><b>상대를 찾고 있어…</b><small id="match-wait-sub">비슷한 때 들어온 사람과 붙어.</small></div><button class="pill" id="cancel-match">취소</button></div>
+          <div class="section-head"><h3>방 코드로 친구와</h3><small>로그인 없이 · 친선전</small></div>
+          <div class="code-row">
+            <select id="time-online" aria-label="방 시간"><option value="600" selected>10분</option><option value="300">5분</option><option value="180">3분</option><option value="0">무제한</option></select>
+            <button class="pill" id="room-create">방 만들기</button>
+            <input id="room-code" maxlength="6" placeholder="코드 6자리" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="방 코드">
+            <button class="pill" id="room-join">들어가기</button>
+          </div>
+          <div class="wait-box" id="room-wait" hidden><span class="spinner"></span><div><b>방 코드 <span class="code" id="room-code-show"></span></b><small>친구에게 이 코드를 알려 줘. 친구가 들어오면 바로 시작해.</small></div><button class="pill" id="room-cancel">닫기</button></div>
+          <div class="section-head"><h3>친구</h3><button class="link" id="friends-refresh">새로고침</button></div>
+          <div id="friend-requests"></div>
+          <div id="friend-list" class="friend-list"><p class="empty-note">로그인하면 친구 목록이 보여.</p></div>
+          <form id="friend-add" class="code-row"><input id="friend-name" maxlength="10" placeholder="친구 닉네임" autocomplete="off" aria-label="친구 닉네임"><button class="pill">친구 요청</button></form>
+          <p class="online-msg" id="online-msg" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="status-box"><span class="status-dot"></span><div><strong id="status">백의 차례예요</strong><small id="status-sub">중앙을 차지하며 시작해 보세요.</small></div></div>
+        <div class="result-card" id="result-card" hidden></div>
+
+        <div id="online-live" hidden>
+          <div class="quick-says" id="quick-says"></div>
+          <div class="offer-box" id="offer-box" hidden></div>
+        </div>
+
+        <div class="history-heading"><h3>기보</h3><span>MOVE HISTORY</span></div>
+        <div id="history" class="history"></div>
+        <div class="actions" id="actions-offline"><button id="undo">↶ 무르기</button><button id="hint">☀ 힌트</button><button id="resign">⚑ 기권</button></div>
+        <div class="actions" id="actions-online" hidden><button id="offer-draw">½ 무승부 제안</button><button id="online-resign">⚑ 기권</button></div>
+        <div class="actions after" id="actions-after" hidden><button id="rematch">↻ 한 판 더</button><button id="add-opponent">＋ 친구 요청</button><button id="leave-room">나가기</button></div>
+        <button class="review-cta" id="start-review">✦ 이 경기 리뷰하기 <span>→</span></button>
+      </div>
+
+      <div id="review-panel" class="panel-body hidden">
+        <div class="panel-heading"><span class="tiny-icon">⌁</span><div><h2>한 수를 돌아보는 시간</h2><p>좋았던 수와 놓친 기회를 발견해요.</p></div></div>
+        <div class="review-note">내 수와 상대 응수까지 살펴보는 간단한 분석이에요.<br>공식 레이팅이나 Stockfish 평가와는 달라요.</div>
+        <div id="review-summary"></div><div id="chart"></div>
+        <div class="review-controls"><button id="first" aria-label="처음">|‹</button><button id="prev" aria-label="이전 수">‹</button><strong id="review-position">시작 위치</strong><button id="next" aria-label="다음 수">›</button><button id="last" aria-label="마지막">›|</button></div>
+        <div id="review-detail" aria-live="polite"></div><div id="review-list"></div>
+        <button class="primary" id="analyze">✦ 경기 분석 시작</button><button class="secondary" id="export">↓ PGN 저장</button>
+      </div>
+
+      <div id="puzzle-panel" class="panel-body hidden">
+        <div class="panel-heading"><span class="tiny-icon">◈</span><div><h2>한 수의 발견</h2><p>퍼즐 점수 <b class="hl" id="puzzle-rating">800</b> · 처음 보는 퍼즐을 힌트 없이 풀면 올라가.</p></div></div>
+        <div class="puzzle-progress-row"><span><span id="puzzle-progress-text"></span> · 총 <span id="puzzle-total">10</span>개</span><span class="puzzle-quick"><button id="puzzle-mine">내 점수 퍼즐 ↗</button><button id="puzzle-daily">오늘의 퍼즐 ↗</button></span></div>
+        <progress id="puzzle-progress" value="0" max="10" aria-label="해결한 퍼즐"></progress>
+        <div class="puzzle-card"><small id="puzzle-meta"></small><h3 id="puzzle-title"></h3><p id="puzzle-goal"></p></div>
+        <div id="puzzle-feedback" class="puzzle-feedback" role="status" aria-live="polite"></div>
+        <p id="puzzle-line" class="puzzle-line"></p><p id="puzzle-explanation" class="puzzle-explanation"></p>
+        <div class="puzzle-actions"><button id="puzzle-hint">☀ 힌트</button><button id="puzzle-retry">↶ 다시 풀기</button><button id="puzzle-answer">정답 보기</button></div>
+        <button class="primary" id="puzzle-next">다른 퍼즐 →</button>
+        <p id="puzzle-source" class="puzzle-footnote">퍼즐 출처: Lichess 공개 데이터 · CC0</p>
+        <div class="puzzle-library"><label for="puzzle-filter">문제 고르기</label><select id="puzzle-filter"><option value="all">전체</option><option value="easy">입문 · 500–1,299</option><option value="medium">중급 · 1,300–1,899</option><option value="hard">도전 · 1,900+</option></select></div>
+        <div id="puzzle-picker" aria-label="퍼즐 목록"></div>
+        <p class="puzzle-footnote">두 번째 힌트는 이동할 칸을 보여 줘요.<br>정답 보기만으로는 해결 기록이 올라가지 않아요.</p>
+      </div>
+
+      <div id="rush-panel" class="panel-body hidden">
+        <div class="panel-heading"><span class="tiny-icon">⚡</span><div><h2>퍼즐 러시</h2><p>점점 어려워지는 퍼즐을 빨리빨리!</p></div></div>
+        <div id="rush-setup">
+          <label>모드</label>
+          <div class="segmented" id="rush-modes"><button data-rush="180">3분</button><button data-rush="300">5분</button><button data-rush="survival">서바이벌</button></div>
+          <div class="rush-best-box"><small>이 모드 최고 기록</small><strong id="rush-best">0</strong></div>
+          <button class="primary" id="rush-start">러시 시작 <span>→</span></button>
+          <p class="puzzle-footnote">틀리면 ✕ 하나. ✕ 3개면 끝나.<br>서바이벌은 시간 제한 없이 ✕ 3개까지야.<br>러시는 퍼즐 점수를 바꾸지 않아.</p>
+        </div>
+        <div id="rush-live" hidden>
+          <div class="rush-top"><div><small>점수</small><strong id="rush-score">0</strong></div><div><small>남은 시간</small><strong class="rush-timer" id="rush-timer">3:00</strong></div></div>
+          <div class="rush-strikes" id="rush-strikes"></div>
+          <div id="rush-msg" class="puzzle-feedback" role="status" aria-live="polite"></div>
+          <div class="rush-results" id="rush-results"></div>
+          <button class="secondary" id="rush-quit">그만하기</button>
+        </div>
+        <div id="rush-over" hidden>
+          <div class="rush-final"><small>내 점수</small><strong id="rush-final">0</strong><p id="rush-final-note"></p><p class="rush-final-top" id="rush-final-top"></p></div>
+          <div class="rush-results" id="rush-final-list"></div>
+          <button class="primary" id="rush-again">한 번 더 <span>→</span></button>
+          <button class="secondary" id="rush-menu">다른 모드 고르기</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer><span>♟ GREEN CHESS</span><span>서두르지 않아도 괜찮아요. 좋은 수는 생각에서 시작되니까요.</span><span>PLAY · THINK · GROW</span></footer>
+</main>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite"><p id="toast-text"></p><div class="toast-actions" id="toast-actions"></div></div>
+
+<dialog id="account-dialog">
+  <form id="account-form" method="dialog">
+    <button type="button" class="close" id="account-cancel" aria-label="닫기">×</button>
+    <div class="eyebrow">GREEN CHESS ACCOUNT</div>
+    <h2 id="account-heading">로그인</h2>
+    <p class="dialog-note">seonn.dev 게임들이 같이 쓰는 계정이야. 이메일은 받지 않아서 <b>비밀번호를 잊으면 찾을 수 없어.</b> 진짜 이름 말고 별명을 써 줘.</p>
+    <label for="account-nickname">닉네임 (2~10글자)</label>
+    <input id="account-nickname" maxlength="10" autocomplete="username" required>
+    <label for="account-password">비밀번호 (4~16글자)</label>
+    <input id="account-password" type="password" maxlength="16" autocomplete="current-password" required>
+    <div id="account-confirm-row" hidden><label for="account-confirm">비밀번호 한 번 더</label><input id="account-confirm" type="password" maxlength="16" autocomplete="new-password"></div>
+    <p class="form-error" id="account-error" role="alert"></p>
+    <button class="primary" id="account-submit" type="submit">로그인</button>
+    <button class="secondary" id="account-switch" type="button">처음 왔어 · 계정 만들기</button>
+    <button class="secondary danger" id="account-logout" type="button" hidden>로그아웃</button>
+  </form>
+</dialog>
+
+<dialog id="help">
+  <button id="close-help" class="close" aria-label="닫기">×</button>
+  <div class="eyebrow">YOUR FIRST MOVE</div>
+  <h2>체스, 한 수씩 배워요.</h2>
+  <p>내 기물을 누르고 표시된 칸을 누르면 이동해요. 백이 먼저 두고, 상대 왕이 피할 수 없는 체크메이트를 만들면 승리해요.</p>
+  <p>♙ 폰은 앞으로, 잡을 때는 대각선으로.<br>♘ 나이트는 ㄱ자로 뛰어넘어요.<br>♗ 비숍은 대각선, ♖ 룩은 가로·세로.<br>♕ 퀸은 모든 방향, ♔ 킹은 한 칸씩.</p>
+  <p><b>점수(레이팅)</b>는 처음에 800점이에요. 이기면 오르고 지면 내려가요. 컴퓨터 대전, 온라인 랭크전(게임 찾기), 퍼즐 점수가 따로 있어요. 무르기나 힌트를 쓴 판은 점수가 바뀌지 않아요. 점수는 이 기기에 저장돼요.</p>
+  <p><b>온라인</b>에서는 글 대신 빠른 인사말만 보낼 수 있어요. 방 코드와 친구 초대는 친선전이라 점수가 그대로예요.</p>
+</dialog>
+
+<script type="module" src="game.mjs"></script>
+</body>
+</html>

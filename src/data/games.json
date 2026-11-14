@@ -1,5 +1,29 @@
 [
   {
+    "slug": "chess",
+    "title": "그린 체스 · 온라인 대전·퍼즐 러시",
+    "description": "모르는 사람과 바로 붙는 온라인 체스! 숲속 캐릭터 7명, 10만 개 퍼즐, 퍼즐 러시, 레이팅 점수까지.",
+    "longDescription": "게임 찾기로 다른 사람과 10분 랭크전을 하고, 방 코드나 친구 초대로 친구와 친선전을 해요. 250점 새싹이부터 2000점 숲의 용까지 컴퓨터 캐릭터 7명과 겨룰 수 있고, 이기면 오르고 지면 내려가는 레이팅 점수가 컴퓨터 대전, 온라인, 퍼즐마다 따로 쌓여요. Lichess 공개 퍼즐 10만 개를 내 점수에 맞게 풀고, 3분 동안 점점 어려워지는 퍼즐 러시에 도전해요. 수별 게임 리뷰와 PGN 저장도 있어요.",
+    "emoji": "♟️",
+    "thumbnail": "/images/games/chess-thumb.png",
+    "screenshots": [
+      "/images/games/chess-play.png",
+      "/images/games/chess-rush.png",
+      "/images/games/chess-mobile.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "chess.js",
+      "Web Workers",
+      "Cloudflare Workers"
+    ],
+    "category": "보드",
+    "playUrl": "/play/chess",
+    "createdAt": "2026-11",
+    "featured": true,
+    "order": 106
+  },
+  {
     "slug": "fat-tycoon",
     "title": "뚱뚱해지기 · 먹방 타이쿤",
     "description": "마쮸부터 마라탕 100판까지! 먹을수록 커지는 3D 캐릭터로 월드 5개의 기록에 도전해요.",
