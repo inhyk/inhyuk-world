@@ -1868,6 +1868,418 @@ SONGS[21] = {
   },
 };
 
+// ------------------------------------------------------------------ genre songs (every level its own song)
+// The designer: "레벨 노래가 다 비슷해 다 다르게 해줘 완전". Every level now has its own song, and
+// the songs come in many styles (chiptune, rock, metal, funk, disco, house, drum and bass, trap,
+// synthwave, jazz swing, lo-fi, latin, reggae, orchestral, half-time wobble, pop). A style picks the
+// instruments, drums, bass lines, chord families and the shape of the melody; the chords, key and
+// melody are then written here from a seed. Nothing is taken from an existing song.
+
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+Object.assign(SCALES, { dorian: [0, 2, 3, 5, 7, 9, 10], mixo: [0, 2, 4, 5, 7, 9, 10], phryg: [0, 1, 3, 5, 7, 8, 10] });
+const pickR = (r, list) => list[Math.floor(r() * list.length)];
+
+// chord families: [scale degree, chord quality] per bar
+const PROGS = {
+  pop: [[[1, ''], [5, ''], [6, 'm'], [4, '']], [[1, ''], [6, 'm'], [4, ''], [5, '']], [[4, ''], [5, ''], [3, 'm'], [6, 'm']],
+    [[1, ''], [4, ''], [6, 'm'], [5, '']], [[6, 'm'], [4, ''], [1, ''], [5, '']], [[1, ''], [3, 'm'], [4, ''], [5, '']], [[4, ''], [1, ''], [5, ''], [6, 'm']]],
+  minor: [[[1, 'm'], [6, ''], [3, ''], [7, '']], [[1, 'm'], [4, 'm'], [5, ''], [1, 'm']], [[1, 'm'], [7, ''], [6, ''], [5, '']],
+    [[6, ''], [7, ''], [1, 'm'], [1, 'm']], [[1, 'm'], [3, ''], [7, ''], [4, 'm']], [[4, 'm'], [6, ''], [5, ''], [1, 'm']], [[1, 'm'], [6, ''], [4, 'm'], [5, '']]],
+  jazz: [[[2, 'm7'], [5, '7'], [1, 'maj7'], [6, '7']], [[1, 'maj7'], [6, 'm7'], [2, 'm7'], [5, '7']], [[3, 'm7'], [6, '7'], [2, 'm7'], [5, '7']],
+    [[4, 'maj7'], [3, 'm7'], [2, 'm7'], [5, '9']], [[1, '6'], [6, 'm7'], [2, 'm9'], [5, '13']]],
+  lofi: [[[2, 'm9'], [5, '9'], [1, 'maj7'], [1, 'maj7']], [[4, 'maj7'], [3, 'm7'], [6, 'm9'], [5, '7sus4']], [[1, 'maj9'], [6, 'm7'], [2, 'm9'], [5, '13']],
+    [[4, 'maj9'], [5, '6'], [3, 'm7'], [6, 'm7']]],
+  dorian: [[[1, 'm7'], [4, '7'], [1, 'm7'], [4, '7']], [[1, 'm9'], [1, 'm9'], [4, '9'], [4, '9']], [[1, 'm7'], [7, ''], [4, '7'], [5, 'm7']],
+    [[1, 'm7'], [2, 'm7'], [3, 'maj7'], [4, '7']]],
+  power: [[[1, '5'], [6, '5'], [7, '5'], [1, '5']], [[1, '5'], [2, '5'], [1, '5'], [7, '5']], [[1, '5'], [3, '5'], [4, '5'], [6, '5']],
+    [[6, '5'], [7, '5'], [1, '5'], [1, '5']], [[1, '5'], [4, '5'], [3, '5'], [5, '5']]],
+  reggae: [[[1, ''], [4, ''], [1, ''], [5, '']], [[1, ''], [4, ''], [5, ''], [4, '']], [[1, ''], [6, 'm'], [4, ''], [5, '']]],
+  latin: [[[1, 'm'], [4, 'm'], [5, '7'], [1, 'm']], [[1, 'm'], [7, ''], [6, ''], [5, '7']], [[1, 'm'], [4, 'm7'], [7, '7'], [3, 'maj7']]],
+  epic: [[[1, 'm'], [6, ''], [3, ''], [7, '']], [[6, ''], [7, ''], [1, 'm'], [5, '']], [[1, 'm'], [4, 'm'], [6, ''], [5, '']],
+    [[1, 'm'], [7, ''], [6, ''], [7, '']]],
+  disco: [[[1, 'm7'], [4, 'm7'], [7, '7'], [3, 'maj7']], [[2, 'm7'], [3, 'm7'], [4, 'maj7'], [5, '7sus4']], [[1, 'm9'], [6, 'maj7'], [4, 'm7'], [5, '7']]],
+};
+function progString(keyPc, scale, bars) {
+  return bars.map(([deg, q]) => NOTE_NAMES[(keyPc + scale[deg - 1]) % 12] + q).join(' ');
+}
+
+// 16th-note rhythms for one bar of melody
+const RHYTHMS = {
+  straight: [[2, 2, 2, 2, 2, 2, 2, 2], [4, 2, 2, 4, 4], [2, 2, 4, 2, 2, 4], [3, 3, 2, 4, 4], [2, 2, 2, 2, 4, 4]],
+  drive: [[2, 2, 1, 1, 2, 2, 2, 2, 2], [1, 1, 2, 1, 1, 2, 2, 2, 4], [2, 1, 1, 2, 2, 2, 1, 1, 4], [3, 3, 2, 3, 3, 2]],
+  chip: [[1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 4], [2, 1, 1, 2, 1, 1, 2, 2, 4], [1, 1, 2, 1, 1, 2, 1, 1, 2, 4], [1, 1, 1, 1, 1, 1, 2, 4, 4]],
+  swing: [[3, 1, 3, 1, 4, 4], [2, 2, 3, 1, 3, 1, 4], [4, 3, 1, 4, 4], [3, 1, 2, 2, 3, 1, 4]],
+  long: [[4, 4, 8], [8, 8], [6, 2, 8], [4, 4, 4, 4], [12, 4]],
+  sync: [[3, 3, 2, 3, 3, 2], [2, 1, 2, 1, 2, 2, 2, 4], [3, 3, 4, 2, 4], [1, 2, 1, 2, 2, 2, 2, 4]],
+  riff: [[2, 2, 1, 1, 2, 2, 1, 1, 2, 2], [1, 1, 2, 1, 1, 2, 1, 1, 2, 2, 2], [3, 3, 2, 3, 3, 2], [2, 1, 1, 2, 1, 1, 2, 2, 4]],
+  half: [[4, 2, 2, 8], [2, 2, 4, 4, 4], [6, 2, 4, 4], [3, 3, 2, 8]],
+};
+const ENDINGS = [[4, 4, 8], [2, 2, 4, 8], [8, 8], [4, 12], [2, 2, 2, 2, 8]];
+
+// A four-bar melody over four chords, as parseMel text. Strong beats take a chord tone close to the
+// last note; the rest walk by steps; bar 3 repeats bar 1's rhythm a little higher; bar 4 ends long
+// on a chord tone. Positions count scale steps from the tonic.
+function writeHook(r, chords, keyPc, scale, style) {
+  const pcAt = p => (keyPc + scale[((p % 7) + 7) % 7]) % 12;
+  const lo = style.lo ?? -3, hi = style.hi ?? 9;
+  const nearestTone = (tones, near, lift = 0) => {
+    let best = near, cost = Infinity;
+    for (let p = lo; p <= hi; p++) {
+      if (!tones.includes(pcAt(p))) continue;
+      const k = Math.abs(p - near - lift) + (p < 0 ? 0.3 : 0);
+      if (k < cost) { cost = k; best = p; }
+    }
+    return best;
+  };
+  const token = (p, len) => {
+    const oct = Math.floor(p / 7);
+    return `${(((p % 7) + 7) % 7) + 1}${oct > 0 ? "'".repeat(oct) : ','.repeat(-oct)}:${len}`;
+  };
+  const bank = RHYTHMS[style.rhythm] ?? RHYTHMS.straight;
+  const motif = pickR(r, bank);
+  let p = nearestTone(chords[0].tones, style.start ?? 4);
+  let dir = r() < 0.5 ? 1 : -1;
+  const bars = [];
+  for (let b = 0; b < 4; b++) {
+    const rhythm = b === 0 || b === 2 ? motif : b === 3 ? pickR(r, ENDINGS) : pickR(r, bank);
+    const tones = chords[b].tones;
+    const out = [];
+    let s = 0;
+    rhythm.forEach((len, i) => {
+      const last = b === 3 && i === rhythm.length - 1;
+      const strong = s % 8 === 0;
+      if (!strong && !last && r() < (style.rests ?? 0.07)) { out.push(`r:${len}`); s += len; return; }
+      if (last) p = nearestTone(tones.includes(keyPc) ? [keyPc] : tones, p);
+      else if (strong) p = nearestTone(tones, p + dir, b === 2 ? 2 : 0);
+      else {
+        const step = pickR(r, style.leaps ? [-2, -1, 1, 2, 3, -3] : [-1, -1, 1, 1, 2, -2]);
+        p = Math.max(lo, Math.min(hi, p + (r() < 0.65 ? Math.sign(step) * dir * Math.abs(step) : step)));
+      }
+      if (p >= hi - 1) dir = -1;
+      else if (p <= lo + 1) dir = 1;
+      else if (r() < 0.2) dir = -dir;
+      out.push(token(p, len));
+      s += len;
+    });
+    bars.push(out.join(' '));
+  }
+  return bars.join(' | ');
+}
+
+// ---- instruments shared by the styles
+const INST = {
+  square: { osc: [{ w: 'sq', pw: 0.5 }], a: 0.001, d: 0.12, s: 0.7, r: 0.05, vib: { r: 6, d: 0.12, dl: 0.18 }, gain: 0.1, mono: true },
+  pulse: { osc: [{ w: 'sq', pw: 0.25 }], a: 0.001, d: 0.1, s: 0.6, r: 0.04, vib: { r: 5.5, d: 0.1, dl: 0.2 }, gain: 0.1, mono: true },
+  guitar: { osc: [{ w: 'saw', uni: 2, spr: 10 }, { w: 'sq', g: 0.5, oct: -1 }], a: 0.003, d: 0.4, s: 0.6, r: 0.12, drive: 3.2, flt: { t: 'lp', f: 2600, q: 1 }, vib: { r: 5, d: 0.14, dl: 0.25 }, gain: 0.07, rev: 0.2, mono: true, glide: 0.02, legato: true },
+  brass: { osc: [{ w: 'saw', uni: 3, spr: 8 }], a: 0.04, d: 0.3, s: 0.8, r: 0.15, flt: { t: 'lp', f: 900, q: 0.8, env: 2.2, fa: 0.05, fd: 0.3, kt: 0.5 }, vib: { r: 5, d: 0.08, dl: 0.3 }, gain: 0.09, rev: 0.35, mono: true },
+  strings: { osc: [{ w: 'saw', uni: 6, spr: 14, wid: 0.9 }], a: 0.35, d: 0.6, s: 0.85, r: 0.8, flt: { t: 'lp', f: 3200, q: 0.6 }, gain: 0.05, rev: 0.55 },
+  flute: { ...PT.flute },
+  bell: { ...PT.bell },
+  vibes: { ...PT.vibes },
+  ep: { ...PT.ep },
+  pluck: { ...PT.pluck },
+  softPluck: { ...PT.softPluck },
+  marimba: { osc: [{ w: 'fm', ratio: 4, idx: 1.2 }, { w: 'sin', g: 0.7 }], fmd: 0.08, a: 0.001, d: 0.35, s: 0, r: 0.2, reset: true, gain: 0.14, rev: 0.25 },
+  steel: { osc: [{ w: 'fm', ratio: 2.4, idx: 1.6 }, { w: 'sin', g: 0.5 }], fmd: 0.25, a: 0.001, d: 0.7, s: 0, r: 0.3, reset: true, gain: 0.12, rev: 0.3, dly: 0.2 },
+  organ: { osc: [{ w: 'sin' }, { w: 'sin', oct: 1, g: 0.6 }, { w: 'sin', oct: 2, g: 0.3 }, { w: 'sq', oct: 1, g: 0.08 }], a: 0.01, d: 0.1, s: 1, r: 0.08, vib: { r: 6.5, d: 0.06, dl: 0 }, gain: 0.07, rev: 0.25 },
+  sawLead: { osc: [{ w: 'saw', uni: 3, spr: 12 }, { w: 'sq', g: 0.4 }], a: 0.004, d: 0.25, s: 0.7, r: 0.15, flt: { t: 'lp', f: 3400, q: 0.9, env: 1.2, fd: 0.2, kt: 0.5 }, vib: { r: 5.8, d: 0.12, dl: 0.2 }, gain: 0.09, rev: 0.3, dly: 0.25, mono: true, glide: 0.03, legato: true },
+  whistle: { osc: [{ w: 'sin' }, { w: 'tri', g: 0.2 }], a: 0.02, d: 0.2, s: 0.9, r: 0.12, vib: { r: 6, d: 0.2, dl: 0.12 }, gain: 0.13, rev: 0.4, dly: 0.3, mono: true, glide: 0.04, legato: true },
+  choir: CHOIR({ gain: 0.05 }),
+};
+const BASS = {
+  tri: { osc: [{ w: 'tri' }], a: 0.001, d: 0.1, s: 0.85, r: 0.02, gain: 0.25, gate: 0.7 },
+  round: { ...PT.roundBass },
+  pick: { osc: [{ w: 'saw' }, { w: 'sin', oct: -1, g: 0.5 }], a: 0.002, d: 0.15, s: 0.5, r: 0.05, drive: 1.6, flt: { t: 'lp', f: 700, q: 1, env: 1.5, fd: 0.1 }, gain: 0.2, gate: 0.8 },
+  slap: { osc: [{ w: 'tri' }, { w: 'saw', g: 0.4 }], a: 0.001, d: 0.12, s: 0.4, r: 0.04, flt: { t: 'lp', f: 600, q: 1.6, env: 3, fd: 0.06 }, gain: 0.24, gate: 0.6 },
+  reese: { osc: [{ w: 'saw', uni: 4, spr: 22 }, { w: 'sin', oct: -1, g: 0.8 }], a: 0.01, d: 0.2, s: 0.9, r: 0.05, drive: 1.8, flt: { t: 'lp', f: 420, q: 1.2 }, gain: 0.2, gate: 0.95 },
+  b808: { osc: [{ w: 'sin' }, { w: 'tri', g: 0.15 }], a: 0.002, d: 0.6, s: 0.6, r: 0.15, pe: { a: 7, d: 0.04 }, drive: 1.4, gain: 0.3, gate: 0.95, mono: true, glide: 0.06 },
+  wobble: { osc: [{ w: 'saw', uni: 2, spr: 10 }, { w: 'sq', oct: -1, g: 0.6 }], a: 0.004, d: 0.1, s: 1, r: 0.03, drive: 2.4,
+    flt: { t: 'lp', f: 140, q: 2.6, lfo: { r: 4, d: 4.2, sh: 'sin', ph: 0 } }, gain: 0.22, gate: 0.97, mono: true, legato: true, glide: 0.02 },
+  upright: { osc: [{ w: 'sin' }, { w: 'tri', g: 0.4 }], a: 0.005, d: 0.35, s: 0.3, r: 0.1, flt: { t: 'lp', f: 900, q: 0.8 }, gain: 0.28, gate: 0.85 },
+  sub: { ...PT.sub },
+};
+
+// ---- the styles. Each gives drums per section, kit voices, bass, pads, arps, lead options.
+const KICK = {
+  punch: { f0: 220, f1: 52, dec: 0.18, drive: 2.2, click: 0.5 },
+  deep: { f0: 160, f1: 44, dec: 0.3, drive: 1.3, click: 0.25 },
+  tight: { f0: 300, f1: 70, dec: 0.1, drive: 2.6, click: 0.7, lp: 7000 },
+  soft: { f0: 130, f1: 50, dec: 0.22, drive: 1.1, click: 0.12, lp: 2600, g: 0.7 },
+  boom: { f0: 110, f1: 38, dec: 0.5, drive: 1.6, click: 0.2 },
+};
+const NOEDM = { intro: { filt: false }, build: { riser: 0, roll: 0, filt: false, stop: false }, break: { down: 0 }, outro: { filt: false } };
+const STYLES = {
+  chiptune: {
+    modes: ['major', 'minor'], progs: { major: 'pop', minor: 'minor' }, rhythm: 'chip', leads: ['square', 'pulse'], kick: KICK.tight, sc: false, rt: 0.9, revWet: 0.18, dlyBeats: 0.5, dlyFb: 0.25,
+    kit: { s: { type: 'chip', dec: 0.08, rate: 9000, g: 0.32 }, h: { type: 'chip', short: true, dec: 0.02, rate: 15000, g: 0.14 }, c: { type: 'chip', dec: 0.07, rate: 6500, g: 0.3 }, x: { type: 'chip', dec: 0.35, rate: 5000, g: 0.18 }, roll: { ...KIT.s, g: 0.25 } },
+    drums: { intro: { k: 'x...x...x...x...', h: 'x.x.x.x.x.x.x.x.' }, verse: { k: 'x.......x.x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' }, build: { k: 'x...x...x...x...', s: 'x.x.x.x.x.x.x.x.' },
+      drop: { k: 'x...x..x..x.x...', s: '....X.......X...', h: 'xxxxxxxxxxxxxxxx' }, break: { h: 'x...x...x...x...' }, outro: { k: 'x...x...x...x...', h: 'x.x.x.x.x.x.x.x.' } },
+    bass: 'tri', bassPat: { drop: 'R.R.O.R.R.R.O.R.', verse: 'R...R...O...R...', build: 'RRRRRRRRRRRRRRRR', outro: 'R...O...R...O...' },
+    pad: { osc: [{ w: 'sq', pw: 0.25 }], a: 0.002, d: 0.1, s: 0.5, r: 0.05, gain: 0.03 }, padOpt: { all: { pat: 'x.x.x.x.x.x.x.x.', gate: 0.4, lo: 60, hi: 76 } },
+    arp: { patch: { osc: [{ w: 'sq', pw: 0.125 }], a: 0.001, d: 0.08, s: 0.3, r: 0.03, gain: 0.07 }, pat: '0120', rate: 4, lo: 64, hi: 84 },
+    layers: { build: { lead: 'tease', filt: false } },
+  },
+  rock: {
+    modes: ['minor', 'major', 'mixo'], progs: { minor: 'minor', major: 'pop', mixo: 'pop' }, rhythm: 'drive', leads: ['guitar', 'guitar', 'sawLead'], kick: KICK.punch, sc: false, rt: 1.4, revWet: 0.3,
+    kit: { s: { ...KIT.s, g: 0.55, f: 200, rev: 0.25 } },
+    drums: { intro: { k: 'x.......x.......', H: 'x.x.x.x.x.x.x.x.' }, verse: { k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' }, build: { k: 'x...x...x...x...', s: '..x...x...x.xxxx' },
+      drop: { k: 'x.....x.x.x.....', s: '....X.......X...', H: 'x.x.x.x.x.x.x.x.' }, break: { r: 'x.x.x.x.x.x.x.x.', k: 'x.......x.......' }, outro: { k: 'x.......x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' } },
+    bass: 'pick', bassPat: { drop: 'RRRRRRRRRRRRRRRR', verse: 'R.R.R.R.R.R.R.R.', build: 'RRRRRRRRRRRRRRRR', outro: 'R.R.R.R.R.R.R.R.' },
+    pad: { ...INST.guitar, mono: false, gain: 0.035, a: 0.003, d: 0.5, s: 0.5 }, padOpt: { all: { pat: 'x-------x-------', gate: 0.95, lo: 50, hi: 70, size: 3 } },
+    stab: { patch: { ...INST.guitar, mono: false, gain: 0.03 }, pat: 'x..x..x.x..x..x.', gate: 0.5, lo: 45, hi: 62, size: 3 },
+    layers: { ...NOEDM, drop: { stab: 1 } },
+  },
+  metal: {
+    modes: ['phryg', 'minor'], progs: { phryg: 'power', minor: 'power' }, rhythm: 'riff', leads: ['guitar', 'sawLead'], kick: KICK.tight, sc: false, rt: 1.2, revWet: 0.25,
+    kit: { s: { ...KIT.s, g: 0.6, f: 210 } },
+    drums: { intro: { k: 'x.......x.......', x: 'x...............' }, verse: { k: 'x.x.x.x.x.x.x.x.', s: '....x.......x...', H: 'x...x...x...x...' }, build: { k: 'xxxxxxxxxxxxxxxx', s: 'x...x...x...xxxx' },
+      drop: { k: 'xxxxxxxxxxxxxxxx', s: '....X.......X...', r: 'x.x.x.x.x.x.x.x.' }, break: { k: 'x.......x.......', r: 'x...x...x...x...' }, outro: { k: 'x.x.x.x.x.x.x.x.', s: '....x.......x...' } },
+    bass: 'pick', bassPat: { drop: 'RRRRRRRRRRRRRRRR', verse: 'RRRRRRRRRRRRRRRR', build: 'R.R.R.R.RRRRRRRR', outro: 'R.R.R.R.R.R.R.R.' },
+    pad: { ...INST.guitar, mono: false, gain: 0.03, drive: 4 }, padOpt: { all: { pat: 'xxxxxxxxxxxxxxxx', gate: 0.5, lo: 40, hi: 58, size: 2 } },
+    layers: { ...NOEDM },
+  },
+  funk: {
+    modes: ['dorian'], progs: { dorian: 'dorian' }, rhythm: 'sync', leads: ['brass', 'organ', 'sawLead'], kick: KICK.punch, sc: { depth: 0.2, rel: 0.4 }, rt: 1.2, revWet: 0.25, swing8: 0.08,
+    kit: { s: { ...KIT.s, g: 0.45 } },
+    drums: { intro: { k: 'x.........x.....', h: 'x.x.x.x.x.x.x.x.' }, verse: { k: 'x.....x...x..x..', s: '....x..g.g..x..g', h: 'xxxxxxxxxxxxxxxx' }, build: { k: 'x.x...x.x.x...x.', s: '....x.......xxxx', h: 'xxxxxxxxxxxxxxxx' },
+      drop: { k: 'x.....x...x..x..', s: '....X..g.g..X..g', h: 'xgxgxgxgxgxgxgxg', H: '..............x.' }, break: { h: 'x.x.x.x.x.x.x.x.', s: '....g.......g...' }, outro: { k: 'x.....x...x.....', s: '....x.......x...' } },
+    bass: 'slap', bassPat: { drop: 'R..R..O.R.5..R7.', verse: 'R..R...OR...5...', build: 'R.R.R.R.R.R.R.R.', outro: 'R...O...R...O...' },
+    pad: { ...INST.ep, gain: 0.06 }, padOpt: { all: { pat: '..x..x....x..x..', gate: 0.35, lo: 55, hi: 74 } },
+    stab: { patch: { ...PT.pluck, gain: 0.08 }, pat: '.x.x.x.x.x.x.x.x', gate: 0.3, lo: 60, hi: 76 },
+    layers: { ...NOEDM, drop: { stab: 1 } },
+  },
+  disco: {
+    modes: ['minor', 'dorian'], progs: { minor: 'disco', dorian: 'disco' }, rhythm: 'sync', leads: ['strings', 'whistle', 'pluck'], kick: KICK.punch, sc: { depth: 0.35, rel: 0.5 }, rt: 1.6, revWet: 0.35,
+    drums: { intro: { k: 'x...x...x...x...', H: '..x...x...x...x.' }, verse: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.', h: 'x.x.x.x.x.x.x.x.' }, build: { k: 'x...x...x...x...', c: 'x.x.x.x.x.x.x.x.' },
+      drop: { k: 'x...x...x...x...', c: '....X.......X...', H: '..x...x...x...x.', h: 'xxxxxxxxxxxxxxxx' }, break: { H: '..x...x...x...x.' }, outro: { k: 'x...x...x...x...', H: '..x...x...x...x.' } },
+    bass: 'pick', bassPat: { drop: 'RORORORORORORORO', verse: 'R.O.R.O.R.O.R.O.', build: 'RORORORORORORORO', outro: 'R.O.R.O.R.O.R.O.' },
+    pad: INST.strings, stab: { patch: { ...INST.strings, a: 0.005, d: 0.2, s: 0.3, gain: 0.04 }, pat: '..x...x...x...x.', gate: 0.4, lo: 62, hi: 80 },
+    arp: { patch: { ...PT.softPluck, gain: 0.08 }, pat: '0123', rate: 4, lo: 64, hi: 84 },
+    layers: { drop: { stab: 1 } },
+  },
+  house: {
+    modes: ['minor', 'major'], progs: { minor: 'disco', major: 'lofi' }, rhythm: 'sync', leads: ['organ', 'pluck', 'bell'], kick: KICK.deep, sc: { depth: 0.55, rel: 0.5 }, rt: 1.8, revWet: 0.4,
+    drums: { intro: { k: 'x...x...x...x...', h: '..x...x...x...x.' }, verse: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.' }, build: { k: 'x...x...x...x...', c: 'x.x.x.x.x.x.x.x.' },
+      drop: { k: 'x...x...x...x...', c: '....x.......x...', H: '..x...x...x...x.', h: 'gxgxgxgxgxgxgxgx' }, break: { h: '..x...x...x...x.' }, outro: { k: 'x...x...x...x...', H: '..x...x...x...x.' } },
+    bass: 'round', bassPat: { drop: '..R...R...R...R.', verse: '..R...R...R...R.', build: 'R.R.R.R.R.R.R.R.', outro: '..R...R...R...R.' },
+    pad: { ...INST.organ, gain: 0.04 }, padOpt: { all: { pat: '...x..x....x..x.', gate: 0.35, lo: 58, hi: 76 } },
+    arp: { patch: { ...PT.pluck, gain: 0.08 }, pat: '0213', rate: 4, lo: 62, hi: 84 },
+  },
+  dnb: {
+    modes: ['minor'], progs: { minor: 'minor' }, rhythm: 'long', leads: ['strings', 'bell', 'sawLead'], kick: KICK.tight, sc: { depth: 0.3, rel: 0.3 }, rt: 2.2, revWet: 0.45,
+    drums: { intro: { h: 'x.x.x.x.x.x.x.x.' }, verse: { k: 'x.........x.....', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' }, build: { s: 'x.x.x.x.x.x.x.x.', h: 'xxxxxxxxxxxxxxxx' },
+      drop: { k: 'x.........xx....', s: '....X.......X...', h: 'xgxgxgxgxgxgxgxg', r: 'x...x...x...x...' }, break: { h: 'x.x.x.x.x.x.x.x.' }, outro: { k: 'x.........x.....', s: '....x.......x...' } },
+    bass: 'reese', bassPat: { drop: 'R-----R---R-----', verse: 'R-------R-------', build: 'R.R.R.R.R.R.R.R.', outro: 'R-------R-------' },
+    pad: DARKPAD({ gain: 0.05 }), arp: { patch: { ...PT.softPluck, gain: 0.07 }, pat: '0124', rate: 4, lo: 64, hi: 88 },
+  },
+  trap: {
+    modes: ['minor', 'phryg'], progs: { minor: 'minor', phryg: 'minor' }, rhythm: 'half', leads: ['bell', 'flute', 'whistle'], kick: KICK.boom, sc: false, rt: 2, revWet: 0.4,
+    kit: { c: { ...KIT.c, g: 0.5, rev: 0.25 } },
+    drums: { intro: { h: 'x.x.x.x.x.x.x.x.' }, verse: { k: 'x.........x.....', c: '........x.......', h: 'x.x.x.x.x.xxx.x.' }, build: { k: 'x.......x.......', c: 'x.x.x.x.xxxxxxxx' },
+      drop: { k: 'x......x..x.....', c: '........X.......', h: 'x.xxx.x.x.xxxxx.', H: '..............x.' }, break: { h: 'x...x...x...x...' }, outro: { k: 'x.........x.....', c: '........x.......' } },
+    bass: 'b808', bassPat: { drop: 'R------R..R-----', verse: 'R-------R-------', build: 'R.......R.......', outro: 'R-------........' },
+    pad: DARKPAD({ gain: 0.045 }), layers: { build: { filt: false } },
+  },
+  synthwave: {
+    modes: ['minor'], progs: { minor: 'minor' }, rhythm: 'straight', leads: ['sawLead', 'brass', 'strings'], kick: KICK.punch, sc: { depth: 0.4, rel: 0.5 }, rt: 2.8, revWet: 0.55,
+    kit: { s: { ...KIT.s, g: 0.5, nd: 0.25, rev: 0.6 } },
+    drums: { intro: { k: 'x.......x.......', h: 'x.x.x.x.x.x.x.x.' }, verse: { k: 'x.......x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' }, build: { k: 'x...x...x...x...', s: 'x...x...x.x.x.x.' },
+      drop: { k: 'x...x...x...x...', s: '....X.......X...', h: 'xxxxxxxxxxxxxxxx' }, break: { h: 'x.x.x.x.x.x.x.x.' }, outro: { k: 'x.......x.......', s: '....x.......x...' } },
+    bass: 'pick', bassPat: { drop: 'RRRRRRRRRRRRRRRR', verse: 'R.R.R.R.R.R.R.R.', build: 'RRRRRRRRRRRRRRRR', outro: 'R.R.R.R.R.R.R.R.' },
+    pad: SUPERSAW({ a: 0.3, d: 0.6, s: 0.85, r: 0.7, gain: 0.045 }), arp: { patch: { ...PT.pluck, gain: 0.09 }, pat: '01230123', rate: 4, lo: 60, hi: 84 },
+  },
+  jazz: {
+    modes: ['major'], progs: { major: 'jazz' }, rhythm: 'swing', leads: ['vibes', 'brass', 'ep'], kick: KICK.soft, sc: false, rt: 1.6, revWet: 0.35, swing8: 0.33,
+    kit: { r: { ...KIT.r, g: 0.16 }, s: { noise: 1, hp: 1500, lp: 6000, nd: 0.18, g: 0.12, rev: 0.2 }, p: { ...KIT.p, g: 0.12 } },
+    drums: { intro: { r: 'x..x..x..x..x..x' }, verse: { r: 'x...x.xx..x.x.xx', h: '....x.......x...', k: 'x...............' }, build: { r: 'x...x.xx..x.x.xx', s: '......x.......x.' },
+      drop: { r: 'x...x.xx..x.x.xx', h: '....x.......x...', k: 'x.........x.....', s: '...g.....g....g.' }, break: { r: 'x...x...x...x...' }, outro: { r: 'x...x.xx..x.x.xx', h: '....x.......x...' } },
+    bass: 'upright', bassPat: { drop: 'R...3...5...6...', verse: 'R...5...O...5...', build: 'R...R...R...R...', outro: 'R...3...5...O...' },
+    pad: { ...INST.ep, gain: 0.06 }, padOpt: { all: { pat: '..x.....x.x.....', gate: 0.5, lo: 55, hi: 74 } },
+    layers: { ...NOEDM, drop: { crash: 0 } },
+  },
+  lofi: {
+    modes: ['major'], progs: { major: 'lofi' }, rhythm: 'half', leads: ['ep', 'flute', 'vibes'], kick: KICK.soft, sc: false, rt: 1.4, revWet: 0.35, swing8: 0.25,
+    kit: { s: { tone: 0.4, f: 190, td: 0.05, noise: 0.6, hp: 900, lp: 4500, nd: 0.12, g: 0.3, rev: 0.12 }, p: { ...KIT.p, g: 0.16 }, h: { ...KIT.h, g: 0.12, hp: 6000 },
+      v: { noise: 1, hp: 2500, lp: 9000, nd: 0.002, g: 0.03, att: 0.0001 } },
+    drums: { intro: { h: 'x.x.x.x.x.x.x.x.' }, verse: { k: 'x......x..x.....', s: '........x.......', h: 'x.x.x.x.x.x.x.x.' }, build: { k: 'x......x..x.....', p: '....x.......x...' },
+      drop: { k: 'x......x..x.....', s: '........x.......', h: 'x.x.x.x.x.x.x.x.', p: '...x.......x....' }, break: { h: 'x.x.x.x.x.x.x.x.' }, outro: { k: 'x......x........', h: 'x.x.x.x.x.x.x.x.' } },
+    bass: 'round', bassPat: { drop: 'R-----5-R---6---', verse: 'R-------5-------', build: 'R-------R-------', outro: 'R-------5-------' },
+    pad: { ...INST.ep, gain: 0.07 }, padOpt: { all: { pat: 'x-------x-------', gate: 0.95, lo: 52, hi: 72 } },
+    layers: { ...NOEDM, drop: { crash: 0 }, all: {} },
+  },
+  latin: {
+    modes: ['minor'], progs: { minor: 'latin' }, rhythm: 'sync', leads: ['brass', 'flute', 'marimba'], kick: KICK.soft, sc: false, rt: 1.3, revWet: 0.3,
+    kit: { q: { tone: 0.9, f: 330, pa: 0.2, td: 0.12, noise: 0.1, lp: 4000, nd: 0.02, g: 0.26, pan: 0.3 }, u: { tone: 0.9, f: 220, pa: 0.2, td: 0.15, noise: 0.1, lp: 3000, nd: 0.02, g: 0.28, pan: -0.3 },
+      v: { tone: 1, f: 2400, td: 0.03, g: 0.14, pan: 0.2 }, y: { noise: 1, hp: 6000, nd: 0.04, g: 0.08, pan: -0.2 } },
+    drums: { intro: { v: 'x..x...x..x.x...', y: 'xxxxxxxxxxxxxxxx' }, verse: { v: 'x..x...x..x.x...', q: '...x..x....x..x.', u: 'x.......x.......', y: 'x.x.x.x.x.x.x.x.' },
+      build: { q: 'x.x.x.x.xxxxxxxx', u: 'x...x...x...x...' }, drop: { k: 'x.......x.......', v: 'x..x...x..x.x...', q: '...x..x....x..x.', u: 'x.....x.x.......', y: 'xxxxxxxxxxxxxxxx', b: 'x.x.x.x.x.x.x.x.' },
+      break: { v: 'x..x...x..x.x...' }, outro: { v: 'x..x...x..x.x...', u: 'x.......x.......' } },
+    bass: 'round', bassPat: { drop: '...R..5....R..5.', verse: '...R..5....R..5.', build: 'R.R.R.R.R.R.R.R.', outro: '...R..5....R..5.' },
+    arp: { patch: { ...INST.marimba, gain: 0.1 }, pat: '0102010201020102', rate: 4, lo: 60, hi: 84, gate: 0.5 },
+    pad: { ...INST.strings, gain: 0.035 }, layers: { ...NOEDM },
+  },
+  reggae: {
+    modes: ['major'], progs: { major: 'reggae' }, rhythm: 'sync', leads: ['organ', 'steel', 'whistle'], kick: KICK.deep, sc: false, rt: 1.6, revWet: 0.35, dlyBeats: 0.75, dlyFb: 0.5,
+    drums: { intro: { h: '..x...x...x...x.' }, verse: { k: '........x.......', s: '........x.......', h: 'x.x.x.x.x.x.x.x.' }, build: { k: '........x.......', s: '....x.......x...' },
+      drop: { k: '........x.......', s: '........X.......', h: 'x.x.x.x.x.x.x.x.', p: '...x.......x....' }, break: { h: '..x...x...x...x.' }, outro: { k: '........x.......', s: '........x.......' } },
+    bass: 'round', bassPat: { drop: 'R---..5.R...O...', verse: 'R---..5.R...O...', build: 'R.......R.......', outro: 'R---....R---....' },
+    stab: { patch: { ...PT.pluck, gain: 0.07 }, pat: '....x.......x...', gate: 0.25, lo: 60, hi: 76 },
+    pad: { ...INST.organ, gain: 0.03 }, padOpt: { all: { pat: '..x.x...x.x...x.', gate: 0.25, lo: 55, hi: 72 } },
+    layers: { ...NOEDM, verse: { stab: 1 }, drop: { stab: 1, crash: 0 } },
+  },
+  orchestral: {
+    modes: ['minor'], progs: { minor: 'epic' }, rhythm: 'long', leads: ['brass', 'strings', 'flute'], kick: KICK.boom, sc: false, rt: 3.2, revWet: 0.6,
+    kit: { m: { tone: 0.9, f: 70, pa: 0.5, pd: 0.05, td: 0.4, noise: 0.15, lp: 1500, nd: 0.08, g: 0.45, rev: 0.4 }, x: { ...KIT.x, g: 0.22 } },
+    drums: { intro: { m: 'x...............' }, verse: { m: 'x.......x.......' }, build: { m: 'x.x.x.x.xxxxxxxx' },
+      drop: { m: 'x..x..x.x..x..x.', k: 'x.......x.......' }, break: { m: 'x...............' }, outro: { m: 'x.......x.......' } },
+    bass: 'sub', bassPat: { drop: 'R-------R-------', verse: 'R---------------', build: 'R-------R-------', outro: 'R---------------' },
+    pad: INST.strings, stab: { patch: { ...INST.brass, mono: false, gain: 0.04 }, pat: 'x.....x.....x...', gate: 0.6, lo: 50, hi: 70 },
+    arp: { patch: { ...PT.vibes, gain: 0.08 }, pat: '01234321', rate: 4, lo: 64, hi: 88 },
+    layers: { ...NOEDM, drop: { stab: 1 } }, extraChoir: true,
+  },
+  halftime: {
+    modes: ['minor', 'phryg'], progs: { minor: 'minor', phryg: 'power' }, rhythm: 'half', leads: ['sawLead', 'bell', 'whistle'], kick: KICK.punch, sc: { depth: 0.5, rel: 0.5 }, rt: 2.2, revWet: 0.4,
+    drums: { intro: { h: 'x...x...x...x...' }, verse: { k: 'x.........x.....', s: '........x.......', h: 'x.x.x.x.x.x.x.x.' }, build: { k: 'x...x...x...x...', s: 'x.x.x.x.x.x.x.x.' },
+      drop: { k: 'x......x..x.....', s: '........X.......', h: 'x.x.x.x.x.x.x.x.' }, break: { h: 'x...x...x...x...' }, outro: { k: 'x.........x.....', s: '........x.......' } },
+    bass: 'wobble', bassPat: { drop: 'R-------R---R---', verse: 'R-------R-------', build: 'R.R.R.R.R.R.R.R.', outro: 'R---------------' }, wobble: true,
+    pad: DARKPAD({ gain: 0.05 }),
+  },
+  pop: {
+    modes: ['major'], progs: { major: 'pop' }, rhythm: 'straight', leads: ['pluck', 'sawLead', 'bell', 'whistle'], kick: KICK.punch, sc: { depth: 0.45, rel: 0.5 }, rt: 1.8, revWet: 0.4,
+    drums: { intro: { k: 'x...x...x...x...', h: '..x...x...x...x.' }, verse: { k: 'x.....x...x.....', c: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' }, build: { k: 'x...x...x...x...', c: 'x.x.x.x.x.x.x.x.' },
+      drop: { k: 'x...x...x...x...', c: '....X.......X...', H: '..x...x...x...x.', h: 'xgxgxgxgxgxgxgxg' }, break: { h: 'x.x.x.x.x.x.x.x.' }, outro: { k: 'x...x...x...x...', c: '....x.......x...' } },
+    bass: 'pick', bassPat: { drop: 'R.R.R.R.R.R.O.R.', verse: 'R...R...R...R...', build: 'RRRRRRRRRRRRRRRR', outro: 'R...R...R...R...' },
+    pad: SUPERSAW({ a: 0.2, d: 0.5, s: 0.8, r: 0.5, gain: 0.04 }), arp: { patch: { ...PT.softPluck, gain: 0.09 }, pat: '01212101', rate: 4, lo: 64, hi: 86 },
+  },
+};
+const STYLE_NAMES = Object.keys(STYLES);
+// which styles feel right at each of the level tempos (the levels need these tempos)
+const STYLE_TEMPO = {
+  124.632: ['house', 'lofi', 'reggae', 'disco', 'funk', 'pop', 'latin', 'synthwave'],
+  138.48: ['pop', 'trap', 'synthwave', 'rock', 'latin', 'halftime', 'orchestral', 'funk', 'chiptune'],
+  155.79: ['rock', 'metal', 'chiptune', 'jazz', 'trap', 'halftime', 'orchestral', 'pop'],
+  178.05: ['dnb', 'chiptune', 'metal', 'jazz', 'rock', 'halftime', 'orchestral'],
+};
+
+// A whole song spec in a style. Keeps index, name, bpm, length and form (the levels use those).
+function styledSong(base, style, seed) {
+  const r = rng(seed * 7919 + 13);
+  const st = STYLES[style];
+  const mode = pickR(r, st.modes);
+  const keyPc = Math.floor(r() * 12);
+  const scale = SCALES[mode];
+  const bank = PROGS[st.progs[mode]];
+  const progA = pickR(r, bank);
+  let progB = pickR(r, bank);
+  if (progB === progA) progB = bank[(bank.indexOf(progA) + 1) % bank.length];
+  const chords = bars => bars.map(([deg, q]) => parseChord(NOTE_NAMES[(keyPc + scale[deg - 1]) % 12] + q));
+  const hookTonic = 60 + keyPc - (keyPc > 6 ? 12 : 0);
+  const melodyStyle = { rhythm: st.rhythm, leaps: style === 'jazz' || style === 'chiptune', rests: style === 'reggae' || style === 'lofi' ? 0.18 : 0.07 };
+  const hooks = [writeHook(r, chords(progA), keyPc, scale, melodyStyle), writeHook(r, chords(progB), keyPc, scale, melodyStyle)];
+  const lead = { ...INST[pickR(r, st.leads)] };
+  const spec = {
+    ...base, style: `${style} (made by the song maker)`, keyName: `${NOTE_NAMES[keyPc]} ${mode}`,
+    // the 89 new songs are kept a little smaller (vorbis quality 0) so the game stays light
+    key: NOTE_NAMES[keyPc], mode, seed, hookTonic, q: base.index >= 100 ? 0 : 1, maxBytes: 1600000,
+    prog: [progString(keyPc, scale, progA), progString(keyPc, scale, progB)], hooks,
+    kick: st.kick, kit: st.kit ?? {}, drums: st.drums,
+    bassPatch: BASS[st.bass], bassPat: st.bassPat, padPatch: st.pad, padOpt: st.padOpt, stab: st.stab, arp: st.arp,
+    lead, softLead: { ...lead, gain: (lead.gain ?? 0.1) * 0.8 }, teaseLead: { ...PT.pluck, gain: 0.08 },
+    layers: { ...(st.layers ?? {}) }, sc: st.sc ?? { depth: 0.45, rel: 0.5 }, rt: st.rt ?? 1.8, revWet: st.revWet ?? 0.45,
+    dlyBeats: st.dlyBeats ?? 0.75, dlyFb: st.dlyFb ?? 0.35, swing8: st.swing8, mix: { lead: 1.1 },
+  };
+  if (!st.stab) spec.layers.drop = { ...(spec.layers.drop ?? {}), stab: 0 };
+  if (st.wobble) {
+    const WOBS = [1, 2, 0.5, 4];
+    spec.bassOpt = (ctx, sec) => ({ lfo: s => ctx.S.bpm / 60 * (sec.type === 'drop' ? WOBS[(s >> 4) % 4] : 1) });
+  }
+  if (st.extraChoir) {
+    spec.extra = (ctx, sec, L, bars) => { if (sec.type === 'drop') padSec(ctx, sec, CHOIR({ gain: 0.05 }), { bars, lo: 57, hi: 76 }); };
+  }
+  if (style === 'trap') {
+    // quick hat rolls at the end of every other bar in the drops
+    spec.extra = (ctx, sec, L, bars) => {
+      if (sec.type !== 'drop') return;
+      for (let b = 1; b < bars; b += 2) for (let k = 0; k < 6; k++) { const t = ctx.t(sec.bar0 + b, 12) + k * ctx.st * 0.5; if (!ctx.stopped(t)) hit(ctx, 'h', t, 0.5 + 0.08 * k); }
+    };
+  }
+  return spec;
+}
+
+// A new song for a level that had none of its own: a form at one of the level tempos.
+function newSong(index, name, seed, { tempos, minBars = 44, maxBars = 72 } = {}) {
+  const r = rng(seed * 104729 + 7);
+  const bpm = pickR(r, tempos);
+  const barS = 240 / bpm;
+  const form = [['intro', pickR(r, [4, 8]), 0.4]];
+  let bars = form[0][1];
+  if (r() < 0.6) { form.push(['verse', 8, 0.6]); bars += 8; }
+  let round = 0;
+  while (bars < minBars && round < 4) {
+    const build = pickR(r, [4, 4, 8]);
+    const drop = pickR(r, [8, 8, 16]);
+    form.push(['build', build, 0.8], ['drop', drop, 0.95]);
+    bars += build + drop;
+    if (bars < minBars - 8) { const brk = pickR(r, [4, 8]); form.push(['break', brk, 0.5]); bars += brk; }
+    round++;
+  }
+  while (bars > maxBars && form.length > 3) { bars -= form.pop()[1]; }
+  form.push(['outro', 0, 0.35]);
+  const nBars = bars + 4;
+  const dur = +(nBars * barS + barS * 0.5).toFixed(3);
+  return { index, name, bpm, dur, difficulty: 'level', form, q: 1 };
+}
+
+// Which style each song gets: a shuffled order, never the same style twice in a row.
+function styleOrder(count, seed) {
+  const r = rng(seed);
+  const out = [];
+  while (out.length < count) {
+    const round = STYLE_NAMES.slice();
+    for (let i = round.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [round[i], round[j]] = [round[j], round[i]]; }
+    if (out.length && round[0] === out.at(-1)) round.push(round.shift());
+    out.push(...round);
+  }
+  return out.slice(0, count);
+}
+function styleFor(bpm, wanted, r) {
+  const fits = STYLE_TEMPO[bpm] ?? STYLE_NAMES;
+  return fits.includes(wanted) ? wanted : pickR(r, fits);
+}
+
+// Levels 1-21 keep their tempo, length and form; their sound changes completely.
+{
+  const r = rng(2026_11_14);
+  const order = styleOrder(21, 4242);
+  let last = '';
+  for (let i = 0; i <= 20; i++) {
+    const old = SONGS[i];
+    let style = styleFor(old.bpm, order[i], r);
+    if (style === last) style = styleFor(old.bpm, (STYLE_TEMPO[old.bpm] ?? STYLE_NAMES).find(s => s !== last), r);
+    last = style;
+    SONGS[i] = styledSong({ index: i, name: old.name, bpm: old.bpm, dur: old.dur, difficulty: old.difficulty, form: old.form, q: old.q }, style, 300 + i);
+  }
+  // the old tower song is gone: every tower floor gets its own (songs 200-209)
+  delete SONGS[21];
+}
+
+// Levels 22-100 (songs 121-199) and the tower's ten floors (songs 200-209): one new song each.
+{
+  const order = styleOrder(89, 9191);
+  const r = rng(77);
+  let last = SONGS[20].style.split(' ')[0];
+  for (let k = 0; k < 89; k++) {
+    const index = k < 79 ? 121 + k : 200 + (k - 79);
+    const tower = k >= 79;
+    const base = newSong(index, tower ? `Tower ${k - 78}F` : `Level ${index - 99}`, 500 + k,
+      tower ? { tempos: [138.48, 155.79, 178.05], minBars: 28, maxBars: 44 } : { tempos: [124.632, 138.48, 155.79, 178.05] });
+    let style = styleFor(base.bpm, order[k], r);
+    if (style === last) style = (STYLE_TEMPO[base.bpm] ?? STYLE_NAMES).find(s => s !== last);
+    last = style;
+    SONGS[index] = styledSong(base, style, 600 + k);
+  }
+}
+
 // ------------------------------------------------------------------ verification
 function decode(file, mono = true) {
   const r = spawnSync(FFMPEG, ['-hide_banner', '-loglevel', 'error', '-i', file, '-ac', mono ? '1' : '2', '-f', 'f32le', '-'], { maxBuffer: 1 << 30 });
@@ -1934,7 +2346,7 @@ function verify() {
     return p;
   };
   console.log('\nverification');
-  for (const S of SONGS) {
+  for (const S of SONGS.filter(Boolean)) {
     const file = path.join(OUT_MUSIC, S.index + '.ogg'), p = check(file, `${S.index}.ogg`, d => Math.abs(d - S.dur) <= 0.1);
     if (!p) continue;
     const L = ebur(file), x = decode(file), spb = 60 / S.bpm, on = firstOnsetMs(x, spb);
@@ -1981,6 +2393,11 @@ function writeMusic(name, r, out, o = {}) {
   return e;
 }
 function updateTimeline(entry) {
+  if (process.env.TIMELINE_PART) {
+    fs.mkdirSync(process.env.TIMELINE_PART, { recursive: true });
+    fs.writeFileSync(path.join(process.env.TIMELINE_PART, entry.index + '.json'), JSON.stringify(entry));
+    return;
+  }
   let tl = {};
   try { tl = JSON.parse(fs.readFileSync(OUT_TIMELINE, "utf8")); } catch { tl = {}; }
   const songs = (tl.songs ?? []).filter(s => s.index !== entry.index).concat(entry).sort((a, b) => a.index - b.index);
@@ -1991,7 +2408,8 @@ function updateTimeline(entry) {
 }
 function writeSong(S) {
   const r = renderSong(S);
-  writeMusic(String(S.index), r, path.join(OUT_MUSIC, S.index + ".ogg"), { I: -15, TP: -1.5, ...(S.q != null ? { qs: [S.q] } : {}) });
+  // vorbis at quality 0 overshoots peaks more, so those songs leave more headroom
+  writeMusic(String(S.index), r, path.join(OUT_MUSIC, S.index + ".ogg"), { I: -15, TP: S.q === 0 ? -2.8 : -1.5, ...(S.q != null ? { qs: [S.q] } : {}) });
   updateTimeline(r.timeline);
 }
 const JOBS = [
@@ -1999,10 +2417,26 @@ const JOBS = [
   { id: 'coin', run: () => writeSfx('coin', sfxCoin) },
   { id: 'menu', run: () => writeMusic('menuLoop', renderLoop(MENU), path.join(OUT_SFX, 'menuLoop.ogg'), { I: -16 }) },
   { id: 'practice', run: () => writeMusic('practice', renderLoop(PRACTICE), path.join(OUT_SFX, 'practice.ogg'), { I: -17 }) },
-  ...SONGS.map(S => ({ id: String(S.index), run: () => writeSong(S) })),
+  ...SONGS.filter(Boolean).map(S => ({ id: String(S.index), run: () => writeSong(S) })),
 ];
+// node music.mjs --merge=<dir>: put rendered part entries into timeline.json and drop songs that are gone
+function mergeTimeline(dir) {
+  let tl = {};
+  try { tl = JSON.parse(fs.readFileSync(OUT_TIMELINE, 'utf8')); } catch { tl = {}; }
+  const keep = new Set(SONGS.filter(Boolean).map(S => S.index));
+  const byIndex = new Map((tl.songs ?? []).filter(s => keep.has(s.index)).map(s => [s.index, s]));
+  for (const name of fs.readdirSync(dir).filter(n => n.endsWith('.json'))) {
+    const entry = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8'));
+    byIndex.set(entry.index, entry);
+  }
+  const doc = { ...tl, songs: [...byIndex.values()].sort((a, b) => a.index - b.index) };
+  fs.writeFileSync(OUT_TIMELINE, JSON.stringify(doc, null, 2) + "\n");
+  console.log(`timeline.json: ${doc.songs.length} songs`);
+}
 function main() {
   const args = process.argv.slice(2);
+  const merge = args.find(a => a.startsWith('--merge='));
+  if (merge) { mergeTimeline(merge.slice(8)); return; }
   const only = (args.find(a => a.startsWith('--only=')) ?? '').slice(7).split(',').filter(Boolean);
   fs.mkdirSync(OUT_MUSIC, { recursive: true }); fs.mkdirSync(OUT_SFX, { recursive: true });
   try {
