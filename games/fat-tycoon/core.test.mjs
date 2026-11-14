@@ -121,9 +121,12 @@ test('친구가 보낸 상태는 숫자만 받는다', () => {
   assert.equal(C.cleanPeer(null), null);
   assert.equal(C.cleanPeer({ p: [1, 'x', 0] }), null);
   const p = C.cleanPeer({ p: [999, -2, 1], w: -5, wd: 7, sk: 99, fd: 3.7, n: 4, m: 1, st: 'a', name: '나쁜 글' });
-  assert.equal(p.x, 30); assert.equal(p.weight, 30); assert.equal(p.world, C.WORLD_COUNT); assert.equal(C.cleanPeer({ p: [0, 0, 0], wd: 'x' }).world, 1); assert.equal(p.skin, C.SKINS.length - 1);
+  assert.equal(p.x, 30); assert.equal(p.weight, 30); assert.equal(p.world, C.JUMP_PLACE); assert.equal(C.cleanPeer({ p: [0, 0, 0], wd: 'x' }).world, 1); assert.equal(p.skin, C.SKINS.length - 1);
   assert.equal(p.food, 3); assert.equal(p.stage, 0); assert.equal(p.name, undefined);
   assert.equal(C.peerNumber('p3'), 3);
+  const q = C.cleanPeer({ p: [1, 2, 0, 999], g: 1, ds: 7, wd: 0 });
+  assert.equal(q.y, 200); assert.equal(q.girl, true); assert.equal(q.dish, 7); assert.equal(q.world, C.HOME_PLACE);
+  assert.equal(C.cleanPeer({ p: [1, 2, 0, 0, 5] }), null); assert.equal(C.cleanPeer({ p: [1, 2, 0], ds: 99 }).dish, -1);
 });
 
 test('클라우드 저장: 새 저장인지, 진행이 같은지', () => {
@@ -134,4 +137,60 @@ test('클라우드 저장: 새 저장인지, 진행이 같은지', () => {
   assert.match(C.cloudSummary(b), /월드 1 4레벨/);
   assert.match(C.cloudSummary({ junk: 1 }), /30\.0kg/);
   assert.ok(JSON.stringify(b).length < 30000);
+});
+
+test('계획 2: 먹는 건 돈을 낸다. 마쮸는 공짜, 모자라면 시식', () => {
+  const s = C.newSave(); s.stage = 2;
+  assert.equal(C.platePrice(s, 0), 0);
+  const price = C.platePrice(s, 2); assert.ok(price > 0);
+  assert.equal(C.fillPlate(s, 2), 'sample'); assert.equal(s.plate, C.SAMPLE);
+  s.coins = price + 5;
+  assert.equal(C.fillPlate(s, 2), 'full'); assert.equal(s.coins, 5); assert.equal(s.plate, C.traySize(s));
+  assert.equal(C.fillPlate(s, 3), false);
+});
+
+test('계획 2: 요리는 재료 값만큼 내고, 재료에 따라 요리가 달라진다', () => {
+  assert.equal(C.recipe({}), null);
+  assert.equal(C.recipe({ tomato: 1 }).name, '토마토 주스');
+  assert.equal(C.recipe({ tomato: 1, meat: 1, onion: 1 }).name, '수제 햄버거');
+  assert.equal(C.recipe({ choco: 2 }).name, '초콜렛 케이크');
+  assert.equal(C.recipe({ choco: 1, onion: 1 }).name, '초코 괴식');
+  assert.ok(C.recipe({ choco: 1, onion: 1 }).mult < 1);
+  assert.equal(C.recipe({ tomato: 9, meat: 1, onion: 1, choco: 1 }).counts.tomato, 3);
+  const s = C.newSave();
+  assert.equal(C.cook(s, { meat: 1 }), null);
+  s.coins = 1000;
+  const d = C.cook(s, { tomato: 1, meat: 1, onion: 1, choco: 1 });
+  assert.equal(d.name, '전설의 잡탕'); assert.equal(s.coins, 1000 - d.price); assert.equal(s.plate, C.DISH_BITES); assert.ok(s.legend);
+  const w = s.weight; const r = C.bite(s);
+  assert.ok(Math.abs(r.kg - 0.1 * d.mult) < 1e-9 && s.weight > w);
+  for (let i = 0; i < C.DISH_BITES - 1; i += 1) C.bite(s);
+  assert.equal(s.plateMult, 1); assert.equal(s.plateName, '');
+  assert.ok(C.DISHES.every((x) => C.fixSave({ plateName: x.name, plateMult: 2, plate: 3 }).plateModel === x.model));
+  assert.equal(C.fixSave({ plateName: '없는 요리', plateMult: 9 }).plateMult, 1);
+});
+
+test('계획 2: 먹방 동영상, 운동, 점프', () => {
+  const s = C.newSave();
+  assert.deepEqual(C.videoPay(s, 0), { coin: 0, views: 0, subs: 0 });
+  const v = C.videoPay(s, 30); assert.ok(v.coin > 0 && v.views > 0); assert.equal(s.videos, 2); assert.equal(s.subs, 15);
+  assert.equal(C.exercise(s), 0);
+  s.weight = 1000; assert.equal(C.exercise(s), 10); assert.equal(s.weight, 990);
+  s.weight = 30.05; C.exercise(s); assert.equal(s.weight, 30);
+  assert.equal(s.jump, 1);
+  C.trainJump(s); assert.equal(s.jump, 1.02);
+  s.jump = 4.99; C.trainJump(s); C.trainJump(s); assert.equal(s.jump, 5); assert.equal(C.trainJump(s), false);
+  const slim = C.newSave(), fat = C.newSave(); fat.weight = 1e9;
+  assert.ok(C.jumpHeight(slim) > C.jumpHeight(fat));
+  // 구간마다 적어 둔 점프력이면 날씬한 캐릭터가 오를 수 있고, 한 구간 아래 점프력으로는 못 오른다
+  C.JUMP_SECTIONS.forEach((sec, i) => { slim.jump = sec.need; assert.ok(C.jumpHeight(slim) > sec.rise + 0.1, `구간 ${i + 1}`); if (i) { slim.jump = C.JUMP_SECTIONS[i - 1].need; assert.ok(C.jumpHeight(slim) < sec.rise, `구간 ${i + 1} 잠금`); } });
+  assert.ok(C.jumpReward(s, 1) > 0); assert.equal(C.jumpReward(s, 1), 0); assert.equal(s.jumpTop, 1);
+});
+
+test('계획 2: 날씨는 1시간마다 꼭 바뀐다', () => {
+  const h0 = C.hourOf(Date.UTC(2026, 10, 14));
+  for (let h = h0; h < h0 + 500; h += 1) assert.notEqual(C.weatherIndex(h), C.weatherIndex(h + 1), `시간 ${h}`);
+  assert.equal(new Set(Array.from({ length: 200 }, (_, i) => C.weatherIndex(h0 + i))).size, C.WEATHERS.length);
+  assert.equal(C.weatherAt(h0 * 3600000 + 5).id, C.weatherAt(h0 * 3600000 + 3599000).id);
+  assert.equal(C.minutesToNextWeather(h0 * 3600000 + 60000), 59);
 });

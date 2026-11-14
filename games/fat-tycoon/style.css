@@ -168,3 +168,38 @@ body.touch #toast { bottom: 232px; }
 .pick .row b { font-weight: 400; font-size: 19px; }
 .side .txt#m-login-txt { font-size: 18px; padding: 0 4px; word-break: break-all; }
 @media (max-height: 640px) { .side { top: 17vh; } .side button { min-height: 50px; } .side .txt br { display: none; } .side .ico { font-size: 24px; } }
+
+.chip.jump b { font-weight: 400; font-size: 20px; color: #2f9e44; }
+.chip.jump.up { animation: pulse .2s 2 alternate; background: #d8ffd0; }
+.chip.small { font-size: 14px; padding: 4px 12px; }
+#t-jump { right: max(30px, env(safe-area-inset-right)); bottom: 150px; width: 76px; height: 76px; border-radius: 50%; border: var(--line); background: #7bff8a; font-size: 20px; box-shadow: var(--pop); }
+#goal.rec { background: #ff5e5e; color: #fff; }
+.cook { display: grid; gap: 8px; }
+.cook .ing { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; border: var(--line); border-radius: 14px; background: #fff; padding: 6px 12px; font-size: 18px; }
+.cook .ing small { display: block; font-size: 13px; opacity: .7; }
+.cook .cnt { display: flex; align-items: center; gap: 8px; }
+.cook .cnt button { width: 40px; height: 40px; border: var(--line); border-radius: 12px; background: #ffe066; font-size: 22px; line-height: 1; }
+.cook .cnt button:disabled { background: #dedbe6; color: #8a8499; }
+.cook .cnt b { font-weight: 400; font-size: 24px; min-width: 22px; text-align: center; }
+.cook .out { border-radius: 14px; background: #fff1a8; padding: 10px 12px; text-align: center; font-size: 18px; min-height: 86px; }
+.cook .out b { display: block; font-weight: 400; font-size: 26px; }
+.cook .out.bad { background: #e5dbff; }
+.gender { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.gender button { border: var(--line); border-radius: 18px; background: #fff; box-shadow: 0 5px 0 var(--ink); padding: 16px 8px; font-size: 24px; }
+.gender button span { display: block; font-size: 64px; line-height: 1.1; }
+.gender button.on { background: #ffe066; }
+.gender button:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+.gender.mini { margin-bottom: 12px; } .gender.mini button { padding: 6px; font-size: 18px; } .gender.mini button span { display: inline; font-size: 24px; }
+body.touch #prompt { bottom: 240px; } body.touch #toast { bottom: 300px; }
+@media (max-width: 720px) { #goal { bottom: 300px; } .chip.small { font-size: 12px; } }
+
+#adv-pop { top: 176px; }
+@media (max-width: 720px) { #adv-pop { top: 156px; } }
+
+#m-reset { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: 4vh; border: var(--line); border-radius: 999px; background: #ffd0d0; box-shadow: 0 4px 0 var(--ink); padding: 6px 16px; font-size: 17px; }
+#m-reset:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.reset { display: grid; gap: 12px; text-align: center; font-size: 18px; line-height: 1.5; }
+.reset .warn { background: #ffd0d0; border-radius: 14px; padding: 12px; }
+.reset .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.reset .danger { background: #ff5e5e; color: #fff; }
+@media (max-height: 520px) { #m-reset { bottom: 2vh; font-size: 14px; } }

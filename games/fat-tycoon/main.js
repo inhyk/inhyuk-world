@@ -8,6 +8,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildWorld, LAYOUT, LIMIT, redrawLabels, makeLabel } from './src/world.js';
 import { Net } from './src/net.js';
 import { Cloud } from './src/cloud.js';
+import { buildHome, buildJump } from './src/places.js';
 import { sfx, unlock, setSound, setMusic, setTune } from './src/audio.js';
 
 const $ = (id) => document.getElementById(id);
@@ -47,6 +48,10 @@ scene.fog = new THREE.Fog('#ffffff', 50, 200);
 const hero = new Character(); scene.add(hero.root);
 const pos = new THREE.Vector3(LAYOUT.spawn[0], 0, LAYOUT.spawn[1]);
 let facing = Math.PI, camYaw = 0, camPitch = 0.36, zoom = 1, mode = 'menu', clock = 0, moving = false;
+// 계획 2: 점프, 지금 있는 곳(월드 번호, 'home', 'jump'), 먹방 촬영, 운동
+const GRAVITY = 22;
+let place = 1, vy = 0, onGround = true, jumpHeld = false, checkpoint = null, rec = null, recCool = 0, gymOn = false, gymT = 0, wxHour = -1;
+const placeCode = () => (place === 'home' ? C.HOME_PLACE : place === 'jump' ? C.JUMP_PLACE : save.world);
 
 // 목표 화살표
 const arrow = new THREE.Group();
@@ -82,21 +87,61 @@ function burst(n, color) {
 const worlds = {}; let world = null;
 function enterWorld(id, spawn = true) {
   if (world) scene.remove(world.root);
-  world = worlds[id] || (worlds[id] = buildWorld(id)); scene.add(world.root);
-  const th = world.theme;
-  sky.material.uniforms.top.value.set(th.top); sky.material.uniforms.bottom.value.set(th.bottom);
-  scene.fog.color.set(th.fog); scene.fog.near = th.fogNear; scene.fog.far = th.fogFar;
-  hemi.color.set(th.hemiSky); hemi.groundColor.set(th.hemiGround); hemi.intensity = th.hemiI;
-  sun.color.set(th.sun); sun.intensity = th.sunI; scene.environmentIntensity = th.env; renderer.toneMappingExposure = th.exposure;
-  save.world = id; setTune(id);
-  if (spawn) { pos.set(LAYOUT.spawn[0], 0, LAYOUT.spawn[1]); facing = Math.PI; camYaw = 0; }
-  refresh();
+  world = worlds[id] || (worlds[id] = id === 'home' ? buildHome() : id === 'jump' ? buildJump() : buildWorld(id)); scene.add(world.root);
+  place = id; if (typeof id === 'number') save.world = id;
+  setTune(typeof id === 'number' ? id : id === 'home' ? 1 : 5);
+  if (spawn) { const sp = world.spawn ?? LAYOUT.spawn; pos.set(sp[0], 0, sp[1]); facing = Math.PI; camYaw = 0; vy = 0; onGround = true; }
+  checkpoint = null; stopGym();
+  if (id === 'home' && !save.home) { save.home = true; }
+  applyAtmosphere(); refresh();
+}
+// 우리 집이나 점프맵에서 원래 월드로 돌아간다
+function leavePlace() {
+  const from = place; sfx.portal(); enterWorld(save.world);
+  if (from === 'home') { pos.set(LAYOUT.home[0], 0, LAYOUT.home[1] - 1.6); facing = Math.PI; }
+  else { pos.set(LAYOUT.portal[0], 0, LAYOUT.portal[1] + 4.5); facing = 0; camYaw = Math.PI; portalArmed = false; }
+  persist(); sendState(true);
+}
+
+// ── 날씨 (1시간마다 바뀐다) ──
+const wx = new THREE.Group(); scene.add(wx);
+const RAIN = 500, rainPos = new Float32Array(RAIN * 6), rainGeo = new THREE.BufferGeometry();
+for (let i = 0; i < RAIN; i += 1) { const x = (Math.random() - 0.5) * 60, y = Math.random() * 34, z = (Math.random() - 0.5) * 60; rainPos.set([x, y, z, x + 0.15, y - 1.1, z], i * 6); }
+rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+const rain = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({ color: '#cfe6ff', transparent: true, opacity: 0.6 })); rain.frustumCulled = false; wx.add(rain);
+const SNOW = 600, snowPos = new Float32Array(SNOW * 3), snowGeo = new THREE.BufferGeometry();
+for (let i = 0; i < SNOW; i += 1) snowPos.set([(Math.random() - 0.5) * 60, Math.random() * 34, (Math.random() - 0.5) * 60], i * 3);
+snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+const snowFall = new THREE.Points(snowGeo, new THREE.PointsMaterial({ color: '#ffffff', size: 0.24, transparent: true, opacity: 0.95 })); snowFall.frustumCulled = false; wx.add(snowFall);
+const rainbow = new THREE.Group();
+['#ff5e7e', '#ff922b', '#ffd43b', '#51cf66', '#4dabf7', '#b197fc'].forEach((c, i) => rainbow.add(new THREE.Mesh(new THREE.TorusGeometry(110 - i * 4.5, 2.3, 6, 60, Math.PI), new THREE.MeshBasicMaterial({ color: c, fog: false, transparent: true, opacity: 0.8 }))));
+scene.add(rainbow);
+const grey = new THREE.Color(), tmpC = new THREE.Color();
+let wxForce = null; // 시험할 때만 날씨를 정해 본다 (?debug)
+const weatherNow = () => (wxForce ? C.WEATHERS.find((w) => w.id === wxForce) : C.weatherAt(Date.now()));
+function applyAtmosphere() {
+  if (!world) return;
+  const th = world.theme, w = th.indoor ? 'sunny' : weatherNow().id; wxHour = C.hourOf(Date.now());
+  const mix = { cloudy: 0.5, rain: 0.72, snow: 0.5, fog: 0.62 }[w] ?? 0, dim = { cloudy: 0.68, rain: 0.45, snow: 0.72, fog: 0.55 }[w] ?? 1, fogK = { fog: 0.26, rain: 0.7, snow: 0.75 }[w] ?? 1;
+  grey.set(world.night ? '#23263a' : w === 'snow' ? '#e9eef5' : w === 'fog' ? '#d5dbe3' : '#93a1b0');
+  sky.material.uniforms.top.value.set(th.top).lerp(grey, mix); sky.material.uniforms.bottom.value.set(th.bottom).lerp(grey, mix * 0.8);
+  scene.fog.color.set(th.fog).lerp(grey, mix); scene.fog.near = th.fogNear * fogK * (w === 'fog' ? 0.2 : 1); scene.fog.far = th.fogFar * fogK;
+  hemi.color.set(th.hemiSky).lerp(tmpC.set(grey), mix * 0.5); hemi.groundColor.set(th.hemiGround); hemi.intensity = th.hemiI * (0.55 + dim * 0.45);
+  sun.color.set(th.sun); sun.intensity = th.sunI * dim; scene.environmentIntensity = th.env; renderer.toneMappingExposure = th.exposure;
+  rain.visible = w === 'rain'; snowFall.visible = w === 'snow'; rainbow.visible = w === 'rainbow';
+}
+function weatherTick(dt) {
+  wx.position.set(camera.position.x, 0, camera.position.z);
+  if (rain.visible) { for (let i = 0; i < RAIN; i += 1) { let y = rainPos[i * 6 + 1] - 38 * dt; if (y < 0) y += 34; rainPos[i * 6 + 1] = y; rainPos[i * 6 + 4] = y - 1.1; } rainGeo.attributes.position.needsUpdate = true; wx.position.y = Math.max(0, pos.y - 6); }
+  if (snowFall.visible) { for (let i = 0; i < SNOW; i += 1) { let y = snowPos[i * 3 + 1] - 2.6 * dt; if (y < 0) y += 34; snowPos[i * 3 + 1] = y; snowPos[i * 3] += Math.sin(clock + i) * 0.4 * dt; } snowGeo.attributes.position.needsUpdate = true; wx.position.y = Math.max(0, pos.y - 6); }
+  if (rainbow.visible) rainbow.position.set(pos.x, -8, pos.z - 170);
+  if (C.hourOf(Date.now()) !== wxHour) { applyAtmosphere(); if (mode === 'play' && !world.theme.indoor) { const w = weatherNow(); toast(`${w.emoji} 날씨가 바뀌었어요: ${w.name}`); } }
 }
 
 // ── 화면 글씨 ──
 let handId = null;
 function refreshHand() {
-  const id = save.plate > 0 ? C.STAGES[save.plateStage].id : null;
+  const id = save.plate > 0 ? (save.plateModel || C.STAGES[save.plateStage].id) : null;
   if (id !== handId) { handId = id; hero.setFood(id ? makeFood(id, 0.62) : null); }
   if (id) hero.foodScale = 0.55 + 0.45 * (((save.plate - 1) % 4) + 1) / 4;
 }
@@ -112,9 +157,8 @@ function refresh() {
     const lv = save.up[p.up.id], cost = C.upgradeCost(save, p.up.id), max = cost === Infinity;
     p.label.userData.set(`${p.up.name} ${p.up.max > 1 ? `Lv.${lv}` : (max ? '✔' : '')}\n${max ? '끝까지 올렸어요' : `🪙 ${C.fmtNum(cost)}`}`, { bg: max ? 'rgba(210,205,220,.95)' : save.coins >= cost ? '#b9ffb0' : 'rgba(255,255,255,.94)' });
   });
-  const open = C.canEnterWorld(save, 2);
-  world.portal.open = open;
-  world.portal.label.userData.set(open ? '🚪 월드 문\n들어가면 월드를 골라요' : '🔒 월드 문\n10레벨을 깨면 열려요', { bg: open ? '#e5dbff' : 'rgba(210,205,220,.95)' });
+  if (world.portal) { world.portal.open = true; world.portal.label.userData.set('🚪 월드 문\n들어가면 갈 곳을 골라요', { bg: '#e5dbff' }); }
+  if (hero.gender !== save.gender) { hero.gender = save.gender; hero.setGender(save.gender); }
   refreshHand();
   const n = Math.min(8, save.up.robot);
   while (robots.children.length < n) robots.add(makeRobot(robots.children.length));
@@ -135,8 +179,11 @@ function hud() {
   const p = C.levelProgress(save), full = C.canLevelUp(save);
   $('h-bar').style.width = `${p * 100}%`; $('h-bar').parentElement.classList.toggle('full', full);
   setText($('h-need'), done ? '계속 먹어서 기록을 늘려요!' : full ? '저울로 가서 레벨 업!' : `다음 레벨까지 ${C.fmtKg(st.target - save.weight)}`);
-  const ps = C.STAGES[save.plateStage];
-  setText($('h-plate'), save.plate > 0 ? `🍽️ ${ps.emoji} ${ps.name} ${save.plate}개` : '🍽️ 쟁반이 비었어요');
+  const ps = C.STAGES[save.plateStage], dish = save.plateName ? C.DISHES.find((d) => d.name === save.plateName) : null;
+  setText($('h-plate'), save.plate > 0 ? (dish ? `🍽️ ${dish.emoji} ${dish.name} ${save.plate}개 (x${save.plateMult})` : `🍽️ ${ps.emoji} ${ps.name} ${save.plate}개`) : '🍽️ 쟁반이 비었어요');
+  setText($('h-jump'), save.jump.toFixed(2));
+  const w = world.theme.indoor ? null : weatherNow();
+  setText($('h-weather'), w ? `${w.emoji} ${w.name} · ${C.minutesToNextWeather(Date.now())}분 뒤 바뀜` : '🏠 우리 집');
   $('h-plate').classList.toggle('empty', save.plate <= 0 && !save.up.drone);
 }
 let toastT = 0;
@@ -146,7 +193,7 @@ function big(t, sec = 2.4) { const e = $('big'); e.textContent = t; e.classList.
 const v3 = new THREE.Vector3();
 function float(text, cls = '') {
   const box = $('floats'); if (box.children.length > 24) return;
-  v3.set(pos.x, hero.height + 0.2, pos.z).project(camera);
+  v3.set(pos.x, pos.y + hero.height + 0.2, pos.z).project(camera);
   const s = document.createElement('span'); s.className = cls; s.textContent = text;
   s.style.left = `${(v3.x * 0.5 + 0.5) * innerWidth + (Math.random() - 0.5) * 120}px`; s.style.top = `${(-v3.y * 0.5 + 0.5) * innerHeight + (Math.random() - 0.5) * 30}px`;
   box.appendChild(s); setTimeout(() => s.remove(), 800);
@@ -160,7 +207,7 @@ function confetti(n = 70) {
 let chooseDone = null, loginMsg = '', loginBad = false;
 cloud = new Cloud({
   getState: () => save,
-  applyState: (data) => { save = C.fixSave(data); try { localStorage.setItem(C.SAVE_KEY, JSON.stringify(save)); } catch { /* 계속 */ } handId = null; hero.setFood(null); enterWorld(C.canEnterWorld(save, save.world) ? save.world : 1); setSound(save.sound); setMusic(save.music); },
+  applyState: (data) => { rec = null; save = C.fixSave(data); try { localStorage.setItem(C.SAVE_KEY, JSON.stringify(save)); } catch { /* 계속 */ } handId = null; hero.setFood(null); enterWorld(C.canEnterWorld(save, save.world) ? save.world : 1); setSound(save.sound); setMusic(save.music); },
   toast: (t) => toast(t),
   choose: (local, server) => new Promise((resolve) => { chooseDone = { local, server, resolve }; panelKind = 'choose'; $('panel').hidden = false; drawPanel(); }),
 });
@@ -220,18 +267,21 @@ const net = new Net({
 let sendT = 0;
 function sendState(force) {
   if (!net.live || (!force && mode !== 'play')) return;
-  net.send({ t: 's', p: [Math.round(pos.x * 100) / 100, Math.round(pos.z * 100) / 100, Math.round(facing * 100) / 100], w: save.weight, wd: save.world, sk: C.SKINS.findIndex((k) => k.id === save.skin), fd: save.plate > 0 ? save.plateStage : -1, n: save.bites, m: moving ? 1 : 0, st: save.stage });
+  net.send({ t: 's', p: [Math.round(pos.x * 100) / 100, Math.round(pos.z * 100) / 100, Math.round(facing * 100) / 100, Math.round(pos.y * 100) / 100], w: save.weight, wd: placeCode(), g: save.gender === 'girl' ? 1 : 0, ds: save.plate > 0 && save.plateName ? C.DISHES.findIndex((d) => d.name === save.plateName) : -1, sk: C.SKINS.findIndex((k) => k.id === save.skin), fd: save.plate > 0 ? save.plateStage : -1, n: save.bites, m: moving ? 1 : 0, st: save.stage });
 }
 function updateRemotes(dt) {
   for (const r of remotes.values()) {
     const st = r.st, ch = r.ch;
-    ch.root.visible = !!st && st.world === save.world;
+    ch.root.visible = !!st && st.world === placeCode() && place !== 'home';
     if (!st) continue;
     if (r.fresh) { r.x = st.x; r.z = st.z; r.f = st.f; r.fresh = false; }
     const k = Math.min(1, dt * 10); r.x += (st.x - r.x) * k; r.z += (st.z - r.z) * k;
     const d = Math.atan2(Math.sin(st.f - r.f), Math.cos(st.f - r.f)); r.f += d * k;
     if (st.skin !== r.skin) { r.skin = st.skin; ch.star = null; ch.setSkin(C.SKINS[st.skin]); }
-    if (st.food !== r.food) { r.food = st.food; ch.setFood(st.food >= 0 ? makeFood(C.STAGES[st.food].id, 0.62) : null); }
+    const fkey = st.food >= 0 ? (st.dish >= 0 ? C.DISHES[st.dish].model : C.STAGES[st.food].id) : '';
+    if (fkey !== r.food) { r.food = fkey; ch.setFood(fkey ? makeFood(fkey, 0.62) : null); }
+    if (st.girl !== r.girl) { r.girl = st.girl; ch.setGender(st.girl ? 'girl' : 'boy'); }
+    r.y = (r.y ?? st.y) + (st.y - (r.y ?? st.y)) * Math.min(1, dt * 14); ch.baseY = r.y;
     if (r.n >= 0 && st.bites > r.n && st.food >= 0) ch.bite();
     r.n = st.bites;
     ch.setFat(C.fatScale(st.weight)); ch.root.position.x = r.x; ch.root.position.z = r.z;
@@ -245,32 +295,79 @@ let lastBite = 0, lastDeny = 0;
 function doBite() {
   if (mode !== 'play' || overlayOpen()) return;
   const now = performance.now(); if (now - lastBite < 70) return; lastBite = now;
+  if (gymOn) { doRep(); return; }
   const r = C.bite(save);
   if (r && net.live) { const extra = Math.max(1, Math.round(r.coin * C.FRIEND_BONUS)); save.coins += extra; r.coin += extra; }
   if (!r) {
-    if (now - lastDeny > 900) { lastDeny = now; sfx.deny(); toast('쟁반이 비었어요! 음식 테이블로 가서 E를 눌러요'); }
+    if (now - lastDeny > 900) { lastDeny = now; sfx.deny(); toast('쟁반이 비었어요! 음식 테이블에서 E로 사거나, 우리 집 부엌에서 요리해요'); }
     return;
   }
+  if (rec) rec.bites += 1;
   hero.bite(); sfx.bite(); float(`+${C.fmtKg(r.kg)}`); if (Math.random() < 0.34) float(`+${C.fmtNum(r.coin)}코인`, 'c');
   burst(3, ['#ffd9a0', '#ff9a1f', '#e8262d', '#c8281e'][save.plateStage % 4]);
   refreshHand();
-  if (save.plate <= 0 && !save.up.drone) { sfx.plate(); toast('다 먹었어요! 테이블에서 E로 또 받아요'); }
+  if (save.plate <= 0 && !save.up.drone) { sfx.plate(); toast('다 먹었어요! 테이블에서 E로 또 사요'); }
+}
+
+// ── 계획 2: 운동, 먹방 동영상 ──
+function doRep() {
+  const loss = C.exercise(save); hero.jiggle = 0.6;
+  if (loss > 0) { float(`-${C.fmtKg(loss)}`, 'r'); sfx.click(); } else if (performance.now() - lastDeny > 1500) { lastDeny = performance.now(); toast('더는 뺄 살이 없어요! (30kg)'); }
+}
+function stopGym() { if (!gymOn) return; gymOn = false; if (world?.gym) world.gym.running = false; checkAdv(); persist(); }
+function startGym() {
+  gymOn = true; gymT = 0; world.gym.running = true; pos.set(world.bounds.gym[0], 0, world.bounds.gym[1]); facing = Math.PI / 2; vy = 0;
+  toast('🏃 운동 시작! 클릭하면 더 빨리 빠져요. 움직이면 멈춰요');
+}
+function startVideo() {
+  if (rec) return;
+  if (recCool > 0) { sfx.deny(); toast(`카메라 배터리 충전 중... ${Math.ceil(recCool)}초 뒤에 찍을 수 있어요`); return; }
+  if (save.plate <= 0 && !save.up.drone) { sfx.deny(); toast('먹을 음식이 없어요! 음식을 사 오거나 부엌에서 요리한 뒤에 찍어요'); return; }
+  rec = { t: C.VIDEO_SEC, bites: 0 }; if (world.video) world.video.recording = true; sfx.buy(); big('🔴 촬영 시작!\n클릭해서 맛있게 먹어요', 1.6);
+}
+function endVideo() {
+  const r = C.videoPay(save, rec.bites); rec = null; recCool = C.VIDEO_COOL; if (world?.video) world.video.recording = false; $('goal').classList.remove('rec');
+  if (!r.coin) { sfx.deny(); big('🎬 촬영 끝\n아무것도 안 먹어서 조회수 0회...', 2.6); }
+  else { sfx.level(); confetti(40); hero.cheer = 1.5; big(`🎬 조회수 ${C.fmtNum(r.views)}회!\n+${C.fmtNum(r.coin)}코인 · 구독자 +${C.fmtNum(r.subs)}`, 3); }
+  checkAdv(); persist();
 }
 
 // ── 상호작용 (E) ──
-let near = null;
+let resetStep = 0;
+// 리셋: 전부 지우고 처음부터 (소리 설정만 남긴다). 로그인 중이면 서버 기록도 새 기록으로 덮어쓴다.
+function doReset() {
+  const fresh = C.newSave(); fresh.sound = save.sound; fresh.music = save.music;
+  rec = null; recCool = 0; stopGym(); save = fresh; handId = null; hero.setFood(null); robots.clear(); advQueue.length = 0;
+  $('panel').hidden = true; panelKind = null; setMode('menu'); enterWorld(1); persist(); if (cloud.loggedIn) cloud.upload();
+  sfx.portal(); toast('🔄 리셋했어요. 처음부터 다시 시작!'); sendState(true);
+}
+let near = null, cookCounts = { tomato: 0, meat: 0, onion: 0, choco: 0 };
 function promptFor(it) {
-  if (it.type === 'table') return it.stage.index > C.bestStage(save) ? [`🔒 ${it.stage.level}레벨이 되면 먹을 수 있어요`, false] : [`${it.stage.emoji} ${it.stage.name} 받기 (${C.traySize(save)}개)`, true];
+  if (it.type === 'table') {
+    if (it.stage.index > C.bestStage(save)) return [`🔒 ${it.stage.level}레벨이 되면 먹을 수 있어요`, false];
+    const price = C.platePrice(save, it.stage.index);
+    if (!price) return [`${it.stage.emoji} ${it.stage.name} 받기 (${C.traySize(save)}개 · 공짜)`, true];
+    return save.coins >= price ? [`${it.stage.emoji} ${it.stage.name} 사기 (${C.traySize(save)}개 · ${C.fmtNum(price)}코인)`, true] : [`${it.stage.emoji} 돈이 모자라요 (${C.fmtNum(price)}코인) · 시식 ${C.SAMPLE}개 받기`, true];
+  }
+  if (it.type === 'tramp') return ['🦘 트램폴린 위로 올라가서 통통 튀어요', true];
+  if (it.type === 'home') return ['🏠 우리 집에 들어가기', true];
+  if (it.type === 'exit') return ['🚪 밖으로 나가기', true];
+  if (it.type === 'cook') return ['🍳 요리하기 (토마토, 고기, 양파, 초콜렛)', true];
+  if (it.type === 'video') return rec ? ['🔴 촬영 중...', false] : recCool > 0 ? [`🔋 충전 중 ${Math.ceil(recCool)}초`, false] : [`🎬 먹방 동영상 찍기 (${C.VIDEO_SEC}초)`, true];
+  if (it.type === 'gym') return gymOn ? ['🏃 운동 멈추기', true] : ['🏃 운동해서 살 빼기', true];
   if (it.type === 'pad') { const c = C.upgradeCost(save, it.up.id); return c === Infinity ? [`${it.up.name}: 끝까지 올렸어요`, false] : [`${it.up.emoji} ${it.up.name} 사기 · ${C.fmtNum(c)}코인`, save.coins >= c]; }
   if (it.type === 'scale') return C.allDone(save) ? ['🏆 기록 인증서 보기', true] : C.canLevelUp(save) ? ['⚖️ 몸무게 재고 레벨 업!', true] : ['⚖️ 몸무게 재기', true];
-  return C.canEnterWorld(save, 2) ? ['🚪 문 안으로 들어가면 월드를 골라요', true] : ['🔒 10레벨 마라탕 100판을 깨면 열려요', false];
+  return ['🚪 문 안으로 들어가면 갈 곳을 골라요', true];
 }
 function interact() {
   if (mode !== 'play' || overlayOpen() || !near) return;
   const it = near;
   if (it.type === 'table') {
-    if (!C.fillPlate(save, it.stage.index)) { sfx.deny(); toast(`${it.stage.level}레벨이 되어야 ${it.stage.name}을(를) 먹을 수 있어요`); return; }
-    sfx.plate(); toast(`${it.stage.emoji} ${it.stage.name} ${save.plate}개를 받았어요. 클릭해서 먹어요!`);
+    const price = C.platePrice(save, it.stage.index), got = C.fillPlate(save, it.stage.index);
+    if (!got) { sfx.deny(); toast(`${it.stage.level}레벨이 되어야 ${it.stage.name}을(를) 먹을 수 있어요`); return; }
+    sfx.plate();
+    if (got === 'sample') toast(`돈이 모자라서 시식 ${save.plate}개만 받았어요. 먹방 동영상을 찍어서 돈을 벌어요!`);
+    else toast(price ? `${it.stage.emoji} ${it.stage.name} ${save.plate}개를 ${C.fmtNum(price)}코인에 샀어요. 클릭해서 먹어요!` : `${it.stage.emoji} ${it.stage.name} ${save.plate}개를 받았어요. 클릭해서 먹어요!`);
   } else if (it.type === 'pad') {
     const c = C.upgradeCost(save, it.up.id);
     if (!C.buyUpgrade(save, it.up.id)) { sfx.deny(); toast(c === Infinity ? '이미 끝까지 올렸어요' : `코인이 ${C.fmtNum(c - save.coins)}개 모자라요`); return; }
@@ -282,10 +379,13 @@ function interact() {
     hero.cheer = 2.6; confetti(); float(`+${C.fmtNum(r.bonus)}코인`, 'c');
     net.send({ t: 'up', st: save.stage, wc: r.worldClear || 0 });
     if (r.worldClear) { sfx.record(); setTimeout(() => showCert(r.worldClear, true), 900); } else { sfx.level(); big(`레벨 업!\n${r.next.level}레벨 ${r.next.emoji} ${r.next.name}`); }
-  } else if (it.type === 'portal') {
-    if (!C.canEnterWorld(save, 2)) { sfx.deny(); toast('월드 1의 10레벨을 깨면 문이 열려요'); return; }
-    openPanel('worlds'); return;
-  }
+  } else if (it.type === 'portal') { openPanel('worlds'); return; }
+  else if (it.type === 'home') { sfx.portal(); enterWorld('home'); big('🏠 우리 집', 1.6); }
+  else if (it.type === 'exit') { leavePlace(); return; }
+  else if (it.type === 'cook') { cookCounts = { tomato: 0, meat: 0, onion: 0, choco: 0 }; openPanel('cook'); return; }
+  else if (it.type === 'video') { startVideo(); return; }
+  else if (it.type === 'gym') { if (gymOn) stopGym(); else startGym(); return; }
+  else if (it.type === 'tramp') { toast('트램폴린 위로 걸어 올라가면 저절로 튀어요. 튈 때마다 점프력 +0.02!'); return; }
   refresh(); checkAdv(); persist(); sendState(true);
 }
 
@@ -294,9 +394,9 @@ function openPanelGuard() { return panelKind === 'choose'; }
 const overlayOpen = () => !$('panel').hidden || !$('story').hidden || !$('cert').hidden;
 let panelKind = null;
 function openPanel(kind) { if (openPanelGuard()) return; unlock(); sfx.click(); panelKind = kind; $('panel').hidden = false; drawPanel(); }
-function closePanel() { if (panelKind === 'choose') return; $('panel').hidden = true; panelKind = null; }
+function closePanel() { if (panelKind === 'choose' || panelKind === 'gender') return; $('panel').hidden = true; panelKind = null; }
 function drawPanel() {
-  const body = $('panel-body'); body.innerHTML = ''; $('panel-close').hidden = panelKind === 'choose';
+  const body = $('panel-body'); body.innerHTML = ''; $('panel-close').hidden = panelKind === 'choose' || panelKind === 'gender';
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   if (panelKind === 'daily') {
     $('panel-title').textContent = '🎁 일일 보상'; $('panel-sub').textContent = '하루에 한 번 받아요. 매일 오면 더 많이 줘요!';
@@ -320,6 +420,9 @@ function drawPanel() {
     body.append(rows);
   } else if (panelKind === 'skin') {
     $('panel-title').textContent = '😀 스킨'; $('panel-sub').textContent = `코인으로 옷을 사서 입어요. 지금 ${C.fmtNum(save.coins)}코인`;
+    const gb = el('div', 'gender mini');
+    [['girl', '👧', '여자'], ['boy', '👦', '남자']].forEach(([g, e, name]) => { const b = el('button', save.gender === g ? 'on' : ''); b.append(el('span', '', e), document.createTextNode(` ${name}`)); b.onclick = () => { sfx.click(); save.gender = g; persist(); refresh(); drawPanel(); sendState(true); }; gb.append(b); });
+    body.append(gb);
     const grid = el('div', 'skins');
     C.SKINS.forEach((k) => {
       const own = save.skins.includes(k.id), on = save.skin === k.id, card = el('div', `skin${on ? ' on' : ''}`), sw = el('div', 'sw'), pants = el('i');
@@ -330,16 +433,50 @@ function drawPanel() {
     });
     body.append(grid);
   } else if (panelKind === 'worlds') {
-    $('panel-title').textContent = '🚪 월드 문'; $('panel-sub').textContent = '가고 싶은 월드를 골라요. 앞 월드를 끝까지 깨면 다음 월드가 열려요.';
+    $('panel-title').textContent = '🚪 월드 문'; $('panel-sub').textContent = '가고 싶은 곳을 골라요. 앞 월드를 끝까지 깨면 다음 월드가 열려요.';
     const rows = el('div', 'rows');
+    { const row = el('div', 'row'), left = el('div', '', '🏔️ 점프맵'), btn = el('button', 'primary', place === 'jump' ? '여기' : '가기'); btn.disabled = place === 'jump';
+      left.append(el('small', '', save.jumpTop >= C.JUMP_SECTIONS.length ? '✔ 꼭대기까지 올랐어요' : `깃발 ${save.jumpTop}/${C.JUMP_SECTIONS.length} · 지금 점프력 ${save.jump.toFixed(2)}`));
+      btn.onclick = () => { closePanel(); sfx.portal(); enterWorld('jump'); big('🏔️ 점프맵\n스페이스로 점프!', 2); persist(); sendState(true); };
+      row.append(left, btn); rows.append(row); }
     C.WORLDS.forEach((w) => {
-      const can = C.canEnterWorld(save, w.id), here = save.world === w.id, row = el('div', 'row'), left = el('div', '', `${w.emoji} 월드 ${w.id} · ${w.name}`), first = C.STAGES[(w.id - 1) * 10], last = C.STAGES[w.id * 10 - 1];
+      const can = C.canEnterWorld(save, w.id), here = place === w.id, row = el('div', 'row'), left = el('div', '', `${w.emoji} 월드 ${w.id} · ${w.name}`), first = C.STAGES[(w.id - 1) * 10], last = C.STAGES[w.id * 10 - 1];
       left.append(el('small', '', save.cleared[w.id - 1] ? `✔ 기록: ${w.record}` : can ? `${first.name}부터 ${last.name}까지` : `🔒 월드 ${w.id - 1}을(를) 끝까지 깨면 열려요`));
       const btn = el('button', 'primary', here ? '여기' : can ? '가기' : '잠김'); btn.disabled = here || !can;
       btn.onclick = () => { closePanel(); sfx.portal(); enterWorld(w.id); big(`월드 ${w.id}\n${w.name}`, 2); checkAdv(); persist(); sendState(true); };
       row.append(left, btn); rows.append(row);
     });
     body.append(rows);
+  } else if (panelKind === 'cook') {
+    $('panel-title').textContent = '🍳 요리하기'; $('panel-sub').textContent = `재료를 골라서 내 음식을 만들어요. 지금 ${C.fmtNum(save.coins)}코인`;
+    const box = el('div', 'cook');
+    C.INGREDIENTS.forEach((ing) => {
+      const row = el('div', 'ing'), left = el('div', '', `${ing.emoji} ${ing.name}`), cnt = el('div', 'cnt'), minus = el('button', '', '−'), num = el('b', '', String(cookCounts[ing.id])), plus = el('button', '', '+');
+      left.append(el('small', '', `한 개 ${C.fmtNum(C.ingredientPrice(save, ing.id))}코인`));
+      minus.disabled = cookCounts[ing.id] <= 0; plus.disabled = cookCounts[ing.id] >= C.INGREDIENT_MAX;
+      minus.onclick = () => { sfx.click(); cookCounts[ing.id] -= 1; drawPanel(); }; plus.onclick = () => { sfx.click(); cookCounts[ing.id] += 1; drawPanel(); };
+      cnt.append(minus, num, plus); row.append(left, cnt); box.append(row);
+    });
+    const r = C.recipe(cookCounts), price = C.cookPrice(save, cookCounts), out = el('div', `out${r && r.mult < 1 ? ' bad' : ''}`);
+    if (r) { out.append(el('b', '', `${r.emoji} ${r.name}`), document.createTextNode(`${C.DISH_BITES}입 · 한 입에 몸무게 ${r.mult}배 · ${C.fmtNum(price)}코인`)); if (r.note) out.append(el('small', '', ` ${r.note}`)); }
+    else out.textContent = '재료를 하나 넣어 봐요. 무슨 요리가 될까?';
+    const go = el('button', 'primary', !r ? '재료를 골라요' : save.coins < price ? `코인이 ${C.fmtNum(price - save.coins)}개 모자라요` : save.plate > 0 ? '요리하기 (쟁반 음식은 버려요)' : '요리하기'); go.disabled = !r || save.coins < price;
+    go.onclick = () => { const d = C.cook(save, cookCounts); if (!d) return; closePanel(); sfx.buy(); hero.cheer = 1; refreshHand(); big(`${d.emoji} ${d.name} 완성!${d.note ? `\n${d.note}` : ''}`, 2.4); checkAdv(); persist(); sendState(true); };
+    box.append(out, go); body.append(box);
+  } else if (panelKind === 'reset') {
+    $('panel-title').textContent = '🔄 리셋'; $('panel-sub').textContent = '처음부터 다시 시작해요.';
+    const box = el('div', 'reset'), two = el('div', 'two'), no = el('button', 'primary', '안 할래'), yes = el('button', 'primary danger', resetStep ? '진짜로 다 지우기' : '리셋하기');
+    box.append(el('div', 'warn', resetStep
+      ? '정말이야? 한 번 지우면 되돌릴 수 없어요!'
+      : `몸무게 ${C.fmtKg(save.weight)}, ${C.fmtNum(save.coins)}코인, 업그레이드, 스킨, 발전과제 ${save.adv.length}개, 점프력이 전부 없어지고 30kg 마쮸부터 다시 시작해요.${cloud.loggedIn ? ' 로그인 중이라 서버 기록도 같이 지워져요.' : ''}`));
+    no.onclick = () => { sfx.click(); closePanel(); };
+    yes.onclick = () => { if (!resetStep) { sfx.deny(); resetStep = 1; drawPanel(); return; } doReset(); };
+    two.append(no, yes); box.append(two); body.append(box);
+  } else if (panelKind === 'gender') {
+    $('panel-title').textContent = '누구로 시작할까?'; $('panel-sub').textContent = '여자로 시작할지 남자로 시작할지 골라요. 스킨 창에서 언제든 바꿀 수 있어요.';
+    const box = el('div', 'gender');
+    [['girl', '👧', '여자'], ['boy', '👦', '남자']].forEach(([g, e, name]) => { const b = el('button'); b.append(el('span', '', e), document.createTextNode(name)); b.onclick = () => { sfx.buy(); save.gender = g; persist(); refresh(); $('panel').hidden = true; panelKind = null; if (!save.intro) showStory(); else startPlay(); }; box.append(b); });
+    body.append(box);
   } else if (panelKind === 'choose' && chooseDone) {
     $('panel-title').textContent = '☁️ 어느 기록으로 할까?'; $('panel-sub').textContent = '이 기기와 서버의 기록이 달라요. 하나를 고르면 다른 하나는 없어져요.';
     const box = el('div', 'pick'), done = (pick) => { const d = chooseDone; chooseDone = null; panelKind = null; $('panel').hidden = true; sfx.click(); d.resolve(pick); };
@@ -403,6 +540,7 @@ const STORY = [
   ['📺', '어느 날 TV에 기네스북이 나왔어.\n"세계에서 제일 뚱뚱한 사람" 기록이래!'],
   ['🔥', '좋아, 결심했어!\n많이 먹고 뚱뚱해져서 기네스북에 오를 거야!'],
   ['🍬', '먼저 마쮸부터 시작하자.\n음식 테이블에서 E로 받고, 클릭해서 먹어.\n몸무게가 차면 가운데 저울에서 E!'],
+  ['🏠', '마쮸는 공짜지만 다른 음식은 돈을 내야 해.\n우리 집에서 먹방 동영상을 찍으면 돈을 벌 수 있어.\n스페이스바로 점프도 할 수 있어!'],
 ];
 let storyI = 0;
 function showStory() { storyI = 0; $('story').hidden = false; drawStory(); }
@@ -429,11 +567,12 @@ function setMode(m) {
   if (m === 'menu') { $('prompt').hidden = true; refresh(); }
 }
 function startPlay() { setMode('play'); canvas.focus(); refresh(); if (C.dailyReady(save, today())) toast('🎁 오늘의 일일 보상을 받을 수 있어요!'); }
-$('m-start').onclick = () => { unlock(); sfx.click(); if (!save.intro) showStory(); else startPlay(); };
+$('m-start').onclick = () => { unlock(); sfx.click(); if (!save.gender) openPanel('gender'); else if (!save.intro) showStory(); else startPlay(); };
 $('m-daily').onclick = $('b-daily').onclick = () => openPanel('daily');
 $('m-time').onclick = $('b-time').onclick = () => openPanel('time');
 $('m-skin').onclick = $('b-skin').onclick = () => openPanel('skin');
 $('m-adv').onclick = $('b-adv').onclick = () => openPanel('adv');
+$('m-reset').onclick = () => { resetStep = 0; openPanel('reset'); };
 $('m-login').onclick = $('b-login').onclick = () => { loginMsg = ''; loginBad = false; openPanel('login'); };
 $('m-friends').onclick = $('b-friends').onclick = () => openPanel('friends');
 $('panel-close').onclick = () => { sfx.click(); closePanel(); };
@@ -450,7 +589,7 @@ addEventListener('keydown', (e) => {
   if (e.repeat && (e.code === 'KeyE')) return;
   keys.add(e.code);
   if (e.code === 'KeyE') interact();
-  if (e.code === 'Space') { e.preventDefault(); doBite(); }
+  if (e.code === 'Space') e.preventDefault();
   if (e.code === 'Escape') { if (panelKind) closePanel(); else if (mode === 'play' && !overlayOpen()) setMode('menu'); }
   if (e.code === 'Enter' && mode === 'menu' && !overlayOpen()) $('m-start').click();
 });
@@ -488,6 +627,8 @@ let eatTimer = null;
 $('t-eat').addEventListener('pointerdown', (e) => { e.preventDefault(); unlock(); doBite(); clearInterval(eatTimer); eatTimer = setInterval(doBite, 160); });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach((n) => $('t-eat').addEventListener(n, () => { clearInterval(eatTimer); eatTimer = null; }));
 $('t-e').addEventListener('pointerdown', (e) => { e.preventDefault(); unlock(); interact(); });
+$('t-jump').addEventListener('pointerdown', (e) => { e.preventDefault(); unlock(); jumpHeld = true; });
+['pointerup', 'pointercancel', 'pointerleave'].forEach((n) => $('t-jump').addEventListener(n, () => { jumpHeld = false; }));
 
 function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
@@ -495,14 +636,34 @@ addEventListener('resize', resize); resize();
 // ── 매 프레임 ──
 let robotAcc = 0, slow = 0, saveT = 0, last = performance.now(), portalArmed = true;
 const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3();
+function groundAt(x, z, y) {
+  let g = world.flat ? 0 : -Infinity, hit = null;
+  for (const p of world.platforms) {
+    if (p.top > y + 0.35 || p.top < g) continue;
+    let inside;
+    if (p.kind === 'box') { const dx = x - p.x, dz = z - p.z, c = Math.cos(p.ry), s = Math.sin(p.ry), lx = dx * c - dz * s, lz = dx * s + dz * c; inside = Math.abs(lx) <= p.w / 2 + 0.25 && Math.abs(lz) <= p.d / 2 + 0.25; }
+    else inside = Math.hypot(x - p.x, z - p.z) <= p.r;
+    if (inside) { g = p.top; hit = p; }
+  }
+  return [g, hit];
+}
+function respawn() {
+  const c = checkpoint; sfx.deny();
+  if (c) { pos.set(c.x, c.top + 0.2, c.z); } else { const sp = world.spawn ?? LAYOUT.spawn; pos.set(sp[0], 0.2, sp[1]); }
+  vy = 0; toast(c ? '앗, 떨어졌어요! 마지막 깃발에서 다시 해요' : '앗, 떨어졌어요! 처음부터 다시 해요');
+}
 function goalTarget() {
+  if (rec) return [null, `🔴 촬영 중 ${Math.ceil(rec.t)}초 · 먹은 횟수 ${rec.bites}번 · 클릭해서 먹어요!`];
+  if (gymOn) return [null, `🏃 운동 중 · 몸무게 ${C.fmtKg(save.weight)} · 클릭하면 더 빨리!`];
+  if (place === 'home') return [null, '🏠 우리 집: 부엌에서 요리, 카메라로 먹방, 러닝머신으로 운동'];
+  if (place === 'jump') { const sec = C.JUMP_SECTIONS[checkpoint ? checkpoint.flag : 0]; return [null, sec ? `🏔️ 점프맵 ${(checkpoint ? checkpoint.flag : 0) + 1}구간 · 필요한 점프력 ${sec.need.toFixed(1)} (지금 ${save.jump.toFixed(2)})` : '🏆 점프맵 꼭대기! 대단해요']; }
   if (C.canLevelUp(save)) return [world.scale, '⚖️ 저울로 가서 E로 레벨 업!'];
   if (C.allDone(save)) return [null, '🏆 우주 기록 보유자! 계속 먹어 봐요'];
   const st = C.stageOf(save);
   if (st.world !== save.world) return [world.portal, `🚪 문 안으로 들어가서 월드 ${st.world}로!`];
   const table = world.tables[st.level - 1];
-  if (save.plate <= 0 && !save.up.drone) return [table, `${st.emoji} ${st.name} 테이블에서 E로 받기`];
-  if (save.plateStage !== st.index && !save.up.drone) return [table, `${st.emoji} 새 음식 ${st.name}을(를) 받으러 가요!`];
+  if (save.plate <= 0 && !save.up.drone) return [table, `${st.emoji} ${st.name} 테이블에서 E로 ${st.index ? '사기' : '받기'}`];
+  if (save.plateStage !== st.index && !save.up.drone && !save.plateName) return [table, `${st.emoji} 새 음식 ${st.name}을(를) 사러 가요!`];
   return [null, '🖱️ 클릭해서 냠냠 먹기!'];
 }
 function frame(now) {
@@ -514,6 +675,7 @@ function frame(now) {
     let ix = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) + stick.x;
     let iz = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) + stick.y;
     const l = Math.hypot(ix, iz);
+    if (l > 0.12 && gymOn) stopGym();
     if (l > 0.12) {
       if (l > 1) { ix /= l; iz /= l; }
       const c = Math.cos(camYaw), s = Math.sin(camYaw), dx = ix * c + iz * s, dz = -ix * s + iz * c, sp = C.walkSpeed(save);
@@ -522,41 +684,59 @@ function frame(now) {
     }
     const pr = Math.min(1.5, hero.radius * 0.7);
     for (const [sx, sz, sr] of world.solids) { const dx = pos.x - sx, dz = pos.z - sz, d = Math.hypot(dx, dz), m = sr + pr; if (d < m && d > 1e-4) { pos.x = sx + (dx / d) * m; pos.z = sz + (dz / d) * m; } }
-    const d = Math.hypot(pos.x, pos.z); if (d > LIMIT) { pos.x *= LIMIT / d; pos.z *= LIMIT / d; }
-    // 포탈 안으로 걸어 들어가면 월드를 고르는 창이 뜬다
-    const inPortal = Math.hypot(pos.x - LAYOUT.portal[0], pos.z - LAYOUT.portal[1]) < 1.7;
+    if (world.bounds) { pos.x = Math.min(world.bounds.maxX, Math.max(world.bounds.minX, pos.x)); pos.z = Math.min(world.bounds.maxZ, Math.max(world.bounds.minZ, pos.z)); }
+    else if (world.flat) { const d = Math.hypot(pos.x, pos.z); if (d > LIMIT) { pos.x *= LIMIT / d; pos.z *= LIMIT / d; } }
+    // 점프 (스페이스), 중력, 트램폴린, 점프맵 발판
+    if (gymOn) { gymT += dt; moving = true; if (gymT > 0.6) { gymT = 0; doRep(); } }
+    else {
+      if ((keys.has('Space') || jumpHeld) && onGround) { vy = C.jumpVelocity(save); onGround = false; save.jumps += 1; sfx.click(); }
+      vy -= GRAVITY * dt; pos.y += vy * dt;
+      const [ground, hit] = groundAt(pos.x, pos.z, pos.y - vy * dt);
+      if (pos.y <= ground && vy <= 0) {
+        pos.y = ground;
+        if (hit?.kind === 'tramp') { vy = C.jumpVelocity(save) * 1.25; onGround = false; hit.tramp.bounce(clock); sfx.plate(); if (C.trainJump(save)) { float(`점프력 +${C.JUMP_STEP}`, 'r'); const ch = $('h-jump').parentElement; ch.classList.remove('up'); void ch.offsetWidth; ch.classList.add('up'); } }
+        else { vy = 0; onGround = true; if (hit?.flag && (!checkpoint || hit.flag > checkpoint.flag)) { checkpoint = hit; const coin = C.jumpReward(save, hit.flag); if (coin) { sfx.level(); confetti(50); hero.cheer = 1.5; big(`🚩 ${hit.flag}구간 깼다!\n+${C.fmtNum(coin)}코인`, 2.4); checkAdv(); persist(); } else toast(`🚩 ${hit.flag}구간 깃발! 떨어지면 여기서 다시 해요`); } }
+      } else onGround = false;
+      if (!world.flat && pos.y < (checkpoint ? checkpoint.top : 0) - 14) respawn();
+    }
+    // 먹방 촬영 시간
+    if (rec) { rec.t -= dt; $('goal').classList.add('rec'); if (rec.t <= 0) endVideo(); }
+    if (recCool > 0) recCool -= dt;
+    // 포탈 안으로 걸어 들어가면 갈 곳을 고르는 창이 뜬다
+    const inPortal = !!world.portal && Math.hypot(pos.x - LAYOUT.portal[0], pos.z - LAYOUT.portal[1]) < 1.7;
     if (!inPortal) portalArmed = true;
-    else if (portalArmed) { portalArmed = false; if (C.canEnterWorld(save, 2)) openPanel('worlds'); else { sfx.deny(); toast('🔒 월드 1의 10레벨을 깨면 문이 열려요'); } }
+    else if (portalArmed) { portalArmed = false; openPanel('worlds'); }
     // 로봇이 먹여 준다
     robotAcc += C.robotRate(save) * dt;
     if (robotAcc >= 1) { const n = Math.floor(robotAcc); robotAcc -= n; const r = C.robotBites(save, n); if (r) { hero.jiggle = Math.max(hero.jiggle, 0.5); if (Math.random() < 0.5) float(`🤖 +${C.fmtKg(r.kg)}`, 'r'); } }
     C.tickTime(save, today(), dt);
     // 가까운 것 찾기
     near = null; let bestD = 1e9;
-    for (const it of world.interact) { const dd = Math.hypot(pos.x - it.x, pos.z - it.z) - it.r - pr * 0.5; if (dd < 0 && dd < bestD) { bestD = dd; near = it; } }
+    for (const it of world.interact) { const dd = Math.hypot(pos.x - it.x, pos.z - it.z) - it.r - pr * 0.5; if (dd < 0 && dd < bestD && pos.y < 3) { bestD = dd; near = it; } }
     const pe = $('prompt'); pe.hidden = !near;
     if (near) { const [t, ok] = promptFor(near); setText($('prompt-text'), t); pe.classList.toggle('no', !ok); }
     const [target, text] = goalTarget(); setText($('goal'), text);
-    arrow.visible = !!target && target !== near;
+    arrow.visible = !!target && target !== near && typeof place === 'number';
     if (target) { arrow.position.set(target.at ? target.at[0] : target.x, (target.top || 5) + 0.9 + Math.sin(clock * 5) * 0.3, target.at ? target.at[1] : target.z); arrow.rotation.y = clock * 2; }
-    world.scale.beam.visible = C.canLevelUp(save);
+    if (world.scale) world.scale.beam.visible = C.canLevelUp(save);
     hud();
     slow += dt; if (slow > 0.5) { slow = 0; refresh(); checkAdv(); if (panelKind === 'time') drawPanel(); }
     sendT += dt; if (sendT > 0.1) { sendT = 0; sendState(); }
     saveT += dt; if (saveT > 4) { saveT = 0; persist(); }
   } else { arrow.visible = false; if (mode === 'menu') { $('prompt').hidden = true; } }
 
-  advTick(dt); updateRemotes(dt);
+  advTick(dt); updateRemotes(dt); weatherTick(dt);
+  hero.baseY = pos.y;
   hero.setFat(C.fatScale(save.weight));
   hero.root.position.x = pos.x; hero.root.position.z = pos.z;
   hero.update(dt, clock, moving);
   hero.root.rotation.y = mode === 'menu' ? Math.sin(clock * 0.6) * 0.5 : facing;
   if (world) { for (const sp of world.sprites) { const d = sp.getWorldPosition(v3).distanceTo(camera.position); sp.material.opacity = mode === 'menu' ? 0 : Math.min(1, Math.max(0, (d - 4.5 - hero.shownFat) / 3.5)); }
-    world.update(clock); world.scale.needle.rotation.z = 2.1 - C.levelProgress(save) * 4.2; }
+    world.update(clock); if (world.scale) world.scale.needle.rotation.z = 2.1 - C.levelProgress(save) * 4.2; }
   const rr = hero.radius + 1.0;
-  robots.children.forEach((r, i) => { const a = clock * 0.9 + (i / robots.children.length) * Math.PI * 2; r.visible = i < save.up.robot; r.position.set(pos.x + Math.sin(a) * rr, hero.headY - 0.2 + Math.sin(clock * 3 + i) * 0.15, pos.z + Math.cos(a) * rr); r.rotation.y = a + Math.PI; r.scale.setScalar(0.8 + hero.shownFat * 0.25); });
-  drone.position.set(pos.x, hero.height + 1.0 + Math.sin(clock * 2) * 0.15, pos.z); drone.rotation.y = clock * 1.5; drone.scale.setScalar(0.8 + hero.shownFat * 0.3);
-  for (const m of crumbs) if (m.visible) { const u = m.userData; u.life -= dt; u.v.y -= 14 * dt; m.position.addScaledVector(u.v, dt); if (u.life <= 0 || m.position.y < 0) m.visible = false; }
+  robots.children.forEach((r, i) => { const a = clock * 0.9 + (i / robots.children.length) * Math.PI * 2; r.visible = i < save.up.robot; r.position.set(pos.x + Math.sin(a) * rr, pos.y + hero.headY - 0.2 + Math.sin(clock * 3 + i) * 0.15, pos.z + Math.cos(a) * rr); r.rotation.y = a + Math.PI; r.scale.setScalar(0.8 + hero.shownFat * 0.25); });
+  drone.position.set(pos.x, pos.y + hero.height + 1.0 + Math.sin(clock * 2) * 0.15, pos.z); drone.rotation.y = clock * 1.5; drone.scale.setScalar(0.8 + hero.shownFat * 0.3);
+  for (const m of crumbs) if (m.visible) { const u = m.userData; u.life -= dt; u.v.y -= 14 * dt; m.position.addScaledVector(u.v, dt); if (u.life <= 0 || m.position.y < pos.y - 0.5) m.visible = false; }
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').classList.remove('on'); }
   if (bigT > 0) { bigT -= dt; if (bigT <= 0) $('big').classList.remove('on'); }
 
@@ -569,12 +749,12 @@ function frame(now) {
     camera.position.copy(camPos);
   } else {
     const dist = (5.8 + f * 2.3) * zoom;
-    camTarget.set(pos.x, hero.height * 0.72, pos.z);
+    camTarget.set(pos.x, pos.y + hero.height * 0.72, pos.z);
     camPos.set(pos.x + Math.sin(camYaw) * Math.cos(camPitch) * dist, camTarget.y + Math.sin(camPitch) * dist, pos.z + Math.cos(camYaw) * Math.cos(camPitch) * dist);
     camera.position.lerp(camPos, Math.min(1, dt * 12));
   }
   camera.lookAt(camTarget);
-  sun.position.set(pos.x + 22, 46, pos.z + 16); sun.target.position.set(pos.x, 0, pos.z);
+  sun.position.set(pos.x + 22, pos.y + 46, pos.z + 16); sun.target.position.set(pos.x, pos.y, pos.z);
   sky.position.copy(camera.position);
   renderer.render(scene, camera);
 }
@@ -585,5 +765,5 @@ refreshLogin(); cloud.sync();
 document.fonts?.ready.then(() => { redrawLabels(); });
 addEventListener('pagehide', () => { persist(); net.leave(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); cloud.upload(); } last = performance.now(); });
-if (new URLSearchParams(location.search).has('debug')) window.__fat = { C, hero, pos, get save() { return save; }, set save(v) { save = C.fixSave(v); refresh(); }, refresh, interact, doBite, enterWorld, net, remotes, cloud, start: startPlay, cam(y, p, z) { camYaw = y; camPitch = p; zoom = z; } };
+if (new URLSearchParams(location.search).has('debug')) window.__fat = { C, hero, pos, get save() { return save; }, set save(v) { save = C.fixSave(v); refresh(); }, refresh, interact, doBite, enterWorld, net, remotes, cloud, get place() { return place; }, get world() { return world; }, get rec() { return rec; }, set rec(v) { rec = v; }, set recCool(v) { recCool = v; }, get checkpoint() { return checkpoint; }, applyAtmosphere, weather(id) { wxForce = id; applyAtmosphere(); }, start: startPlay, cam(y, p, z) { camYaw = y; camPitch = p; zoom = z; } };
 requestAnimationFrame(frame);

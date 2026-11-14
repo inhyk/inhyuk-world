@@ -42,9 +42,20 @@ export class Character {
     this.cheeks = [1, -1].map((s) => { const c = part(S(0.085, 12, 8), mat('#ff9d9d', { rough: 0.7 }), 0.2 * s, -0.07, 0.25, [1, 0.75, 0.5]); this.head.add(c); return c; });
     this.mouth = part(S(0.06, 12, 8), mat('#7a1f2b', { rough: 0.5 }), 0, -0.11, 0.3, [1.2, 0.35, 0.4]); this.head.add(this.mouth);
     this.hat = new THREE.Group(); this.head.add(this.hat);
+    // 여자 캐릭터: 양갈래 머리, 리본, 치마
+    this.girl = new THREE.Group(); this.girl.visible = false; this.head.add(this.girl);
+    const hairM = mat('#3a2718', { rough: 0.9 });
+    this.girl.add(part(S(0.36, 20, 14), hairM, 0, -0.06, -0.1, [1.02, 1.05, 0.8]));
+    for (const s of [1, -1]) this.girl.add(part(S(0.13, 12, 10), hairM, 0.36 * s, -0.12, -0.02, [0.9, 1.5, 0.9]), part(S(0.1, 12, 10), hairM, 0.4 * s, -0.36, -0.02, [0.8, 1.2, 0.8]), part(S(0.055, 8, 6), mat('#ff5e9c'), 0.36 * s, 0.03, 0.0),
+      part(S(0.012, 4, 4), mat('#20232a'), 0.165 * s, 0.1, 0.3, [3, 1, 1]));
+    const bow = new THREE.Group(); for (const s of [1, -1]) { const w = part(new THREE.ConeGeometry(0.09, 0.16, 4), mat('#ff5e9c', { rough: 0.5 }), 0.09 * s, 0, 0); w.rotation.z = (Math.PI / 2) * s; bow.add(w); } bow.add(part(S(0.045, 8, 6), mat('#ff8fbf'), 0, 0, 0)); bow.position.set(0.16, 0.3, 0.12); bow.rotation.z = -0.3; this.girl.add(bow);
+    this.skirt = part(new THREE.CylinderGeometry(0.3, 0.5, 0.26, 24, 1, true), this.pantsMat, 0, -0.36, 0); this.skirt.visible = false; this.body.add(this.skirt);
+    this.baseY = 0; this.running = false;
     this.food = null; this.foodScale = 1;
     this.setFat(1, true);
   }
+
+  setGender(g) { const girl = g === 'girl'; this.girl.visible = girl; this.skirt.visible = girl; }
 
   setSkin(k) {
     this.rainbow = k.shirt === 'rainbow';
@@ -99,7 +110,7 @@ export class Character {
     this.cheeks.forEach((c) => c.scale.set(puff, 0.75 * puff, 0.5));
     const wob = Math.sin(this.walkT) * 0.06 * this.moving * (1 + f * 0.5);
     this.root.rotation.z = wob;
-    this.root.position.y = Math.abs(Math.sin(this.walkT)) * 0.07 * this.moving + (this.cheer > 0 ? Math.abs(Math.sin(t * 9)) * 0.5 : 0);
+    this.root.position.y = this.baseY + Math.abs(Math.sin(this.walkT)) * 0.07 * this.moving + (this.cheer > 0 ? Math.abs(Math.sin(t * 9)) * 0.5 : 0);
   }
 
   bite() { this.biteT = 1; this.jiggle = 1; }
