@@ -13,6 +13,8 @@ export const LAYOUT = {
   portal: [0, -22.3],
   tables: Array.from({ length: 10 }, (_, i) => polar(162 - i * 36, 19)),
   pads: UPGRADES.map((_, i) => polar(30 + i * 60, 10.5)),
+  tramps: [[-5.6, 1.6], [5.6, 1.6]],
+  home: [0, 23.2],
 };
 
 export const THEMES = {
@@ -75,7 +77,7 @@ export function makeEmoji(e, size = 1.4) {
   return sp;
 }
 
-function tileTexture(a, b, glow) {
+export function tileTexture(a, b, glow) {
   const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
   for (let i = 0; i < 4; i += 1) for (let j = 0; j < 4; j += 1) { x.fillStyle = (i + j) % 2 ? a : b; x.fillRect(i * 64, j * 64, 64, 64); }
   x.strokeStyle = glow || 'rgba(120,80,40,.25)'; x.lineWidth = glow ? 4 : 3;
@@ -83,7 +85,7 @@ function tileTexture(a, b, glow) {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(7, 7); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   return t;
 }
-const flat = (g, m, y) => { const o = new THREE.Mesh(g, m); o.rotation.x = -Math.PI / 2; o.position.y = y; o.receiveShadow = true; return o; };
+export const flat = (g, m, y) => { const o = new THREE.Mesh(g, m); o.rotation.x = -Math.PI / 2; o.position.y = y; o.receiveShadow = true; return o; };
 const seeded = (seed) => { let t = seed; return () => { t = (t * 16807) % 2147483647; return t / 2147483647; }; };
 
 function tree(th, r) {
@@ -139,6 +141,26 @@ function palace(r, i) {
   return g;
 }
 
+export function makeTrampoline(color, anim) {
+  const g = new THREE.Group(), bed = part(new THREE.CylinderGeometry(1.45, 1.45, 0.06, 32), mat('#2b2f4a', { rough: 0.6 }), 0, 0.27, 0), state = { t: 0 };
+  const frame = part(new THREE.TorusGeometry(1.6, 0.14, 10, 36), mat(color, { rough: 0.4 }), 0, 0.3, 0); frame.rotation.x = Math.PI / 2;
+  const star = part(new THREE.CylinderGeometry(0.5, 0.5, 0.065, 5), mat('#ffd43b', { emissive: '#ffb300', glow: 0.4 }), 0, 0.275, 0);
+  g.add(bed, frame, star);
+  for (let i = 0; i < 6; i += 1) { const a = (i / 6) * 6.28; g.add(part(new THREE.CylinderGeometry(0.06, 0.06, 0.3, 8), mat('#ced4da', { metal: 0.6, rough: 0.3 }), Math.sin(a) * 1.6, 0.15, Math.cos(a) * 1.6)); }
+  const label = makeLabel('트램폴린\n점프력 +0.02', { width: 2.8, tall: true }); label.position.y = 3.0; g.add(label);
+  anim.push((t) => { const k = Math.max(0, state.t - t); bed.position.y = star.position.y = 0.27 - Math.sin(k * 12) * k * 0.5; star.rotation.y = t; });
+  return { group: g, bounce: (t) => { state.t = t + 0.5; } };
+}
+export function homeHouse() {
+  const g = new THREE.Group();
+  g.add(part(new THREE.BoxGeometry(5.2, 3.4, 4), mat('#fff3d6', { rough: 0.85 }), 0, 1.7, 0));
+  const roof = part(new THREE.ConeGeometry(4.3, 2.2, 4), mat('#ff7a59', { rough: 0.7, flat: true }), 0, 4.5, 0); roof.rotation.y = Math.PI / 4; roof.scale.z = 0.82; g.add(roof);
+  g.add(part(new THREE.BoxGeometry(1.3, 2.2, 0.14), mat('#8a5a34', { rough: 0.6 }), 0, 1.1, 2.02), part(new THREE.SphereGeometry(0.08, 8, 6), mat('#ffd43b', { metal: 0.8, rough: 0.3 }), 0.42, 1.1, 2.12), part(new THREE.BoxGeometry(1.7, 0.16, 0.9), mat('#ced4da'), 0, 0.08, 2.4),
+    part(new THREE.BoxGeometry(0.5, 1.3, 0.5), mat('#b5651d'), 1.4, 5.0, 0), part(new THREE.SphereGeometry(0.22, 10, 8), mat('#ff5e7e', { emissive: '#ff5e7e', glow: 0.6 }), 0, 2.75, 2.06));
+  for (const s of [1, -1]) g.add(part(new THREE.BoxGeometry(1.0, 1.0, 0.1), mat('#aee4ff', { rough: 0.2, emissive: '#5ab8ff', glow: 0.3 }), 1.7 * s, 2.0, 2.02), part(new THREE.BoxGeometry(1.2, 0.2, 0.3), mat('#ff8fb3'), 1.7 * s, 1.35, 2.12));
+  return g;
+}
+
 function foodTable(theme, stage, night) {
   const g = new THREE.Group(), stripe = ['#ff5e5e', '#ff9f43', '#ffd43b', '#51cf66', '#3fa7ff', '#9b5cff', '#ff6fb5', '#21c7b8', '#ff8a3d', '#e63946'][stage.level - 1];
   g.add(part(new THREE.BoxGeometry(3.2, 1.0, 1.5), mat(theme.wood, { rough: 0.8 }), 0, 0.5, 0), part(new THREE.BoxGeometry(3.4, 0.12, 1.7), mat('#fff8ea', { rough: 0.5 }), 0, 1.06, 0),
@@ -173,7 +195,7 @@ export function buildWorld(worldId) {
   });
   // 나무와 집(또는 가게)
   for (let i = 0; i < 30; i += 1) {
-    const deg = i * 12 + r() * 5; if (Math.abs(((deg + 180) % 360) - 360) < 9 || Math.abs((deg % 360) - 180) < 10) continue;
+    const deg = i * 12 + r() * 5; if (Math.abs((deg % 360) - 180) < 10 || deg % 360 < 15 || deg % 360 > 345) continue;
     const building = i % 4 === 1, [x, z] = polar(deg, building ? 27.6 : 25.6 + r() * 3.6);
     const o = building ? ({ night: stall, ice: igloo, space: rocket, gold: palace }[kind] ?? house)(r, i) : tree(th, r);
     o.position.set(x, 0, z); o.rotation.y = building ? Math.atan2(-x, -z) : r() * 6; root.add(o);
@@ -243,6 +265,13 @@ export function buildWorld(worldId) {
     const it = { type: 'pad', up: UPGRADES[i], x, z, r: 2.1, top: 4.4, label, group: g }; interact.push(it);
     return it;
   });
+  // 계획 2: 트램폴린 두 개 (위에서 튈 때마다 점프력 +0.02)
+  const platforms = LAYOUT.tramps.map(([x, z], i) => { const tr = makeTrampoline(i ? '#ff7a59' : '#3fa7ff', anim); tr.group.position.set(x, 0, z); root.add(tr.group); interact.push({ type: 'tramp', x, z, r: 2.4, top: 3.6 }); return { kind: 'tramp', x, z, r: 1.45, top: 0.3, tramp: tr }; });
+  // 계획 2: 우리 집
+  const hg = homeHouse(); hg.position.set(LAYOUT.home[0], 0, LAYOUT.home[1] + 2.6); hg.rotation.y = Math.PI; root.add(hg);
+  const hlabel = makeLabel('🏠 우리 집', { width: 3 }); hlabel.position.set(LAYOUT.home[0], 6.6, LAYOUT.home[1] + 2.6); root.add(hlabel);
+  interact.push({ type: 'home', x: LAYOUT.home[0], z: LAYOUT.home[1] - 0.4, r: 2.3, top: 7 });
+  solids.push([LAYOUT.home[0], LAYOUT.home[1] + 2.6, 2.3]);
   // 기네스 저울과 심사위원
   const sg = new THREE.Group(), [sx, sz] = LAYOUT.scale;
   sg.add(part(new THREE.CylinderGeometry(2.5, 2.7, 0.22, 36), mat('#f1f3f5', { rough: 0.35 }), 0, 0.11, 0), part(new THREE.CylinderGeometry(2.1, 2.1, 0.24, 36), mat(night ? '#3fd0ff' : '#ff8fb3', { rough: 0.5, emissive: night ? '#3fd0ff' : '#ff8fb3', glow: 0.2 }), 0, 0.12, 0),
@@ -267,5 +296,5 @@ export function buildWorld(worldId) {
   anim.push((t) => { stars.rotation.z = t * 1.2; swirl.material.opacity = portal.open ? 0.6 + Math.sin(t * 3) * 0.2 : 0.12; pring.material.emissiveIntensity = portal.open ? 1.3 : 0.15; stars.visible = portal.open; });
   const portal = { type: 'portal', x: px, z: pz + 1.2, r: 3.2, top: 6.8, label: plabel, open: false }; interact.push(portal);
 
-  return { root, theme: th, night, sprites, interact, tables, pads, scale, portal, solids, update: (t) => anim.forEach((f) => f(t)) };
+  return { root, theme: th, night, sprites, interact, tables, pads, scale, portal, solids, platforms, flat: true, id: worldId, update: (t) => anim.forEach((f) => f(t)) };
 }

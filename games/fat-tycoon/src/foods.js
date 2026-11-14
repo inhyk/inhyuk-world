@@ -527,6 +527,58 @@ Object.assign(BUILD, {
   },
 });
 
+// ── 계획 2: 내가 만든 요리 ──
+Object.assign(BUILD, {
+  'dish-juice'() {
+    const g = new THREE.Group();
+    add(g, part(cylG(0.26, 0.2, 0.7, 20), new THREE.MeshStandardMaterial({ color: '#dff4ff', transparent: true, opacity: 0.45, roughness: 0.05 }), 0, 0.35, 0), part(cylG(0.235, 0.185, 0.56, 20), mat('#e8372d', { rough: 0.3 }), 0, 0.31, 0),
+      part(cylG(0.02, 0.02, 0.8, 6), mat('#51cf66'), 0.08, 0.55, 0), part(sphereG(0.12, 12, 8), gloss('#e8262d'), 0.26, 0.72, 0), part(coneG(0.05, 0.04, 5), mat('#2f9e44'), 0.26, 0.84, 0));
+    g.children[2].rotation.z = -0.2;
+    return g;
+  },
+  'dish-rings'() {
+    const g = plate(0.5);
+    for (let i = 0; i < 7; i += 1) { const r = part(torusG(0.2 - (i % 3) * 0.03, 0.05, 18), mat('#e0a04a', { rough: 0.9, flat: true }), Math.sin(i * 2.2) * 0.12, 0.1 + i * 0.07, Math.cos(i * 1.6) * 0.12); r.rotation.set(Math.PI / 2 + Math.sin(i) * 0.3, 0, i); g.add(r); }
+    g.add(part(cylG(0.1, 0.08, 0.1, 12), mat('#e8372d', { rough: 0.3 }), 0.34, 0.1, 0.2));
+    return g;
+  },
+  'dish-choco'() {
+    const g = plate(0.52);
+    add(g, part(cylG(0.4, 0.4, 0.32, 24), mat('#5a2d12', { rough: 0.6 }), 0, 0.21, 0), part(cylG(0.41, 0.41, 0.05, 24), mat('#fff3e0'), 0, 0.2, 0), part(cylG(0.41, 0.41, 0.05, 24), mat('#3a1c0a', { rough: 0.25 }), 0, 0.385, 0));
+    ring(8, 0.3, (x, z) => g.add(part(sphereG(0.06, 8, 6), mat('#fff3e0', { rough: 0.4 }), x, 0.44, z)));
+    add(g, part(boxG(0.2, 0.06, 0.14), mat('#7a3b12', { rough: 0.3 }), 0, 0.46, 0), part(coneG(0.06, 0.1, 8), gloss('#e8262d'), 0, 0.54, 0));
+    return g;
+  },
+  'dish-spaghetti'() {
+    const g = plate(0.55), r = rnd(101);
+    for (let i = 0; i < 9; i += 1) { const n = part(torusG(0.1 + r() * 0.22, 0.025, 18), mat('#f3d27a', { rough: 0.5 }), (r() - 0.5) * 0.2, 0.08 + i * 0.022, (r() - 0.5) * 0.2); n.rotation.set(Math.PI / 2 + (r() - 0.5) * 0.4, 0, r() * 6); g.add(n); }
+    g.add(part(sphereG(0.24, 12, 8), mat('#c8281e', { rough: 0.3 }), 0, 0.26, 0, [1, 0.35, 1]));
+    ring(4, 0.16, (x, z) => g.add(part(sphereG(0.085, 8, 6), mat('#7a4a2a', { flat: true }), x, 0.33, z)), 0.5);
+    g.add(part(sphereG(0.05, 6, 5), mat('#58c043', { flat: true }), 0, 0.38, 0, [1.6, 0.4, 1]));
+    return g;
+  },
+  'dish-salsa'() {
+    const g = bowl(0.5, '#ffd43b', '#e8372d', 0.45), y = g.userData.top, r = rnd(111);
+    for (let i = 0; i < 16; i += 1) g.add(part(boxG(0.08, 0.07, 0.08), mat(['#e8372d', '#fff3c9', '#58c043', '#ff7a45'][i % 4], { rough: 0.4 }), (r() - 0.5) * 0.6, y + 0.03 + r() * 0.05, (r() - 0.5) * 0.6));
+    for (let i = 0; i < 3; i += 1) { const c = part(coneG(0.12, 0.02, 3), mat('#f2c14e'), 0.3 - i * 0.3, y + 0.14, -0.2); c.rotation.set(0.9, i, 0); g.add(c); }
+    return g;
+  },
+  'dish-weird'() {
+    const g = bowl(0.5, '#7a4bb0', '#5a2d12', 0.55), y = g.userData.top, r = rnd(121);
+    for (let i = 0; i < 9; i += 1) g.add(part(sphereG(0.06 + r() * 0.07, 8, 6), mat(['#8ce99a', '#b197fc', '#5a2d12'][i % 3], { emissive: i % 3 === 0 ? '#51cf66' : '#000000', glow: 0.5, rough: 0.3 }), (r() - 0.5) * 0.55, y + 0.03 + r() * 0.12, (r() - 0.5) * 0.55));
+    add(g, part(torusG(0.12, 0.04, 14), mat('#fff3c9'), 0.1, y + 0.08, 0.1), part(boxG(0.16, 0.05, 0.1), mat('#7a3b12'), -0.15, y + 0.1, -0.05), part(capG(0.02, 0.5), mat('#d9dde3', { metal: 0.8, rough: 0.25 }), 0.3, y + 0.2, -0.1));
+    g.children.at(-3).rotation.x = Math.PI / 2; g.children.at(-1).rotation.z = -0.6;
+    return g;
+  },
+  'dish-legend'() {
+    const g = bowl(0.55, '#ffcf33', '#ff9ecb', 0.6), y = g.userData.top;
+    g.children[0].material = mat('#ffcf33', { metal: 0.9, rough: 0.2 });
+    ['#ff5e7e', '#ff922b', '#ffd43b', '#51cf66', '#4dabf7', '#b197fc'].forEach((c, i) => { const a = (i / 6) * 6.28; g.add(part(sphereG(0.13, 10, 8), mat(c, { emissive: c, glow: 0.5, rough: 0.3 }), Math.sin(a) * 0.28, y + 0.06, Math.cos(a) * 0.28)); });
+    add(g, part(new THREE.OctahedronGeometry(0.16), mat('#ffe066', { emissive: '#ffd43b', glow: 1.2 }), 0, y + 0.34, 0), part(sphereG(0.16, 12, 8), mat('#ffffff', { rough: 0.3 }), 0, y + 0.08, 0));
+    return g;
+  },
+});
+
 export function makeFood(id, size = 1) {
   const inner = (BUILD[id] || BUILD.apple)(), box = new THREE.Box3().setFromObject(inner), dim = box.getSize(new THREE.Vector3());
   const k = size / Math.max(dim.x, dim.y * 1.15, dim.z), c = box.getCenter(new THREE.Vector3());

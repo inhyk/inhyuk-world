@@ -122,6 +122,7 @@ export function newSave() {
     skins: ['basic'], skin: 'basic',
     daily: { last: '', streak: 0 }, time: { day: '', sec: 0, got: [] },
     intro: false, cleared: WORLDS.map(() => false), bites: 0, sound: true, music: true, adv: [], friend: false,
+    plateMult: 1, plateName: '', plateModel: '', jump: 1, jumps: 0, jumpTop: 0, gender: '', videos: 0, subs: 0, reps: 0, cooked: 0, weird: false, legend: false, home: false,
   };
 }
 export function fixSave(raw) {
@@ -145,6 +146,12 @@ export function fixSave(raw) {
   s.bites = Math.floor(num(raw.bites, 0));
   s.adv = Array.isArray(raw.adv) ? [...new Set(raw.adv.filter((id) => typeof id === 'string'))].slice(0, 100) : [];
   s.friend = !!raw.friend;
+  s.plateMult = num(raw.plateMult, 1, 0.1, 20); s.plateName = typeof raw.plateName === 'string' && DISHES.some((d) => d.name === raw.plateName) ? raw.plateName : '';
+  s.plateModel = s.plateName ? DISHES.find((d) => d.name === s.plateName).model : ''; if (!s.plateName) s.plateMult = 1;
+  s.jump = Math.round(num(raw.jump, 1, 1, JUMP_MAX) * 100) / 100; s.jumps = Math.floor(num(raw.jumps, 0)); s.jumpTop = Math.floor(num(raw.jumpTop, 0, 0, JUMP_SECTIONS.length));
+  s.gender = raw.gender === 'girl' || raw.gender === 'boy' ? raw.gender : '';
+  s.videos = Math.floor(num(raw.videos, 0)); s.subs = Math.floor(num(raw.subs, 0)); s.reps = Math.floor(num(raw.reps, 0)); s.cooked = Math.floor(num(raw.cooked, 0));
+  s.weird = !!raw.weird; s.legend = !!raw.legend; s.home = !!raw.home;
   s.world = Number.isInteger(raw.world) && raw.world >= 1 && raw.world <= WORLDS.length && (raw.world === 1 || s.cleared[raw.world - 2]) ? raw.world : 1;
   s.sound = raw.sound !== false; s.music = raw.music !== false;
   return s;
@@ -163,25 +170,31 @@ export const biteCoin = (s, stageIndex) => Math.max(1, Math.round(STAGES[stageIn
 // 지금 받을 수 있는 가장 좋은 음식 (끝까지 깼으면 마지막 음식)
 export const bestStage = (s) => Math.min(s.stage, STAGES.length - 1);
 
+// 계획 2: 먹는 건 돈 내고 먹는다. 마쮸(첫 음식)는 공짜, 돈이 모자라면 시식 5개를 준다 (막히지 않게).
+export const SAMPLE = 5;
+export const platePrice = (s, stageIndex) => (stageIndex === 0 ? 0 : Math.round(STAGES[stageIndex].coin * traySize(s) * 0.4));
+// 돌려주는 값: false(잠김) | 'full'(돈 내고 한 쟁반) | 'sample'(돈이 모자라서 시식)
 export function fillPlate(s, stageIndex) {
   if (stageIndex > bestStage(s)) return false;
-  s.plate = traySize(s); s.plateStage = stageIndex;
-  return true;
+  const price = platePrice(s, stageIndex), poor = s.coins < price;
+  if (!poor) s.coins -= price;
+  s.plate = poor ? SAMPLE : traySize(s); s.plateStage = stageIndex; s.plateMult = 1; s.plateName = ''; s.plateModel = '';
+  return poor ? 'sample' : 'full';
 }
-function gain(s, stageIndex, times) {
-  const kg = biteGain(s, stageIndex) * times, coin = biteCoin(s, stageIndex) * times;
+function gain(s, stageIndex, times, mult = 1) {
+  const kg = biteGain(s, stageIndex) * times * mult, coin = biteCoin(s, stageIndex) * times;
   s.weight += kg; s.coins += coin; s.bites += times;
   return { kg, coin };
 }
-// 클릭 한 번 = 한 입. 쟁반이 비었으면 못 먹는다 (드론이 있으면 알아서 채운다).
+// 클릭 한 번 = 한 입. 쟁반이 비었으면 못 먹는다 (드론이 있으면 알아서 사 온다).
 export function bite(s) {
   if (s.plate <= 0) {
     if (!s.up.drone) return null;
     fillPlate(s, bestStage(s));
   }
   s.plate -= 1;
-  const r = gain(s, s.plateStage, 1);
-  if (s.plate <= 0 && s.up.drone) fillPlate(s, bestStage(s));
+  const r = gain(s, s.plateStage, 1, s.plateMult || 1);
+  if (s.plate <= 0) { s.plateMult = 1; s.plateName = ''; s.plateModel = ''; if (s.up.drone) fillPlate(s, bestStage(s)); }
   return r;
 }
 // 로봇은 쟁반과 상관없이 지금 레벨 음식을 먹여 준다.
@@ -310,6 +323,18 @@ export const ADVANCEMENTS = [
   { id: 'skins', emoji: '🌈', name: '옷장 가득', desc: '스킨을 전부 모으기', coin: 500000, ok: (s) => s.skins.length >= SKINS.length },
   { id: 'daily', emoji: '🎁', name: '선물이다', desc: '일일 보상 받기', coin: 100, ok: (s) => s.daily.streak >= 1 },
   { id: 'daily7', emoji: '📅', name: '매일매일', desc: '7일 연속으로 일일 보상 받기', coin: 20000, ok: (s) => s.daily.streak >= 7 },
+  { id: 'jump', emoji: '🦘', name: '폴짝', desc: '스페이스바로 점프하기', coin: 20, ok: (s) => s.jumps >= 1 },
+  { id: 'jump2', emoji: '🤸', name: '트램폴린 선수', desc: '점프력 2.0 만들기', coin: 2000, ok: (s) => s.jump >= 2 },
+  { id: 'jumpmap1', emoji: '🚩', name: '점프맵 첫 깃발', desc: '점프맵 1구간 깨기', coin: 500, ok: (s) => s.jumpTop >= 1 },
+  { id: 'jumpmap', emoji: '🏔️', name: '점프맵 꼭대기', desc: '점프맵을 끝까지 오르기', coin: 500000, ok: (s) => s.jumpTop >= JUMP_SECTIONS.length },
+  { id: 'cook', emoji: '🍳', name: '첫 요리', desc: '우리 집 부엌에서 요리하기', coin: 100, ok: (s) => s.cooked >= 1 },
+  { id: 'weird', emoji: '🤢', name: '괴식 요리사', desc: '초콜렛을 이상한 재료와 섞기', coin: 300, ok: (s) => s.weird },
+  { id: 'legend', emoji: '🌟', name: '전설의 잡탕', desc: '재료 네 가지를 전부 넣기', coin: 5000, ok: (s) => s.legend },
+  { id: 'video', emoji: '🎬', name: '첫 먹방 동영상', desc: '먹방 동영상 찍기', coin: 200, ok: (s) => s.videos >= 1 },
+  { id: 'subs', emoji: '📢', name: '구독자 1000명', desc: '구독자 1000명 모으기', coin: 30000, ok: (s) => s.subs >= 1000 },
+  { id: 'gym', emoji: '🏃', name: '운동 시작', desc: '운동해서 살 빼기', coin: 100, ok: (s) => s.reps >= 1 },
+  { id: 'gym100', emoji: '💦', name: '땀 뻘뻘', desc: '운동 100번 하기', coin: 5000, ok: (s) => s.reps >= 100 },
+  { id: 'home', emoji: '🏠', name: '우리 집', desc: '우리 집에 들어가 보기', coin: 50, ok: (s) => s.home },
   { id: 'friend', emoji: '👫', name: '같이 먹자', desc: '친구와 같은 방에서 먹기', coin: 500, ok: (s) => s.friend },
 ];
 // 새로 이룬 발전과제를 돌려준다 (보상 코인도 준다)
@@ -325,11 +350,11 @@ export const MAX_PLAYERS = 4;
 export const FRIEND_BONUS = 0.2; // 친구와 같이 먹으면 코인을 20% 더 받는다
 // 친구가 보낸 상태. 숫자만 받고, 이상한 값은 버리거나 범위 안으로 맞춘다.
 export function cleanPeer(d) {
-  if (!d || typeof d !== 'object' || !Array.isArray(d.p) || d.p.length !== 3 || !d.p.every(Number.isFinite)) return null;
+  if (!d || typeof d !== 'object' || !Array.isArray(d.p) || d.p.length < 3 || d.p.length > 4 || !d.p.every(Number.isFinite)) return null;
   const n = (v, lo, hi, def) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def);
   return {
     x: n(d.p[0], -30, 30, 0), z: n(d.p[1], -30, 30, 0), f: n(d.p[2], -10, 10, 0),
-    weight: n(d.w, START_WEIGHT, 1e30, START_WEIGHT), world: Math.floor(n(d.wd, 1, WORLDS.length, 1)),
+    weight: n(d.w, START_WEIGHT, 1e30, START_WEIGHT), world: Math.floor(n(d.wd, 0, WORLDS.length + 1, 1)), y: n(d.p[3] ?? 0, -40, 200, 0), girl: d.g === 1, dish: Number.isInteger(d.ds) && d.ds >= 0 && d.ds < DISHES.length ? d.ds : -1,
     skin: Math.floor(n(d.sk, 0, SKINS.length - 1, 0)), food: Math.floor(n(d.fd, -1, STAGES.length - 1, -1)),
     bites: Math.floor(n(d.n, 0, 1e12, 0)), moving: d.m === 1, stage: Math.floor(n(d.st, 0, STAGES.length, 0)),
   };
@@ -347,3 +372,112 @@ export function cloudSummary(s, updated) {
   const st = stageOf(f);
   return `몸무게 ${fmtKg(f.weight)} · ${allDone(f) ? '우주 기록 달성' : `월드 ${st.world} ${st.level}레벨`} · ${fmtNum(f.coins)}코인 · 발전과제 ${f.adv.length}개${when}`;
 }
+
+// ── 계획 2: 점프, 트램폴린, 점프맵 ──
+export const JUMP_MAX = 5;
+export const JUMP_STEP = 0.02; // 트램폴린에서 한 번 튈 때마다 오르는 점프력
+export const HOME_PLACE = 0;   // 같이 하기에서 보내는 곳 번호: 0 우리 집, 1~5 월드, 6 점프맵
+export const JUMP_PLACE = WORLDS.length + 1;
+export function trainJump(s) { const before = s.jump; s.jump = Math.min(JUMP_MAX, Math.round((s.jump + JUMP_STEP) * 100) / 100); return s.jump > before; }
+// 뚱뚱할수록 조금 낮게 뛴다 (운동해서 살을 빼면 더 높이 뛴다)
+export const jumpVelocity = (s) => (7.5 * Math.sqrt(s.jump)) / (1 + 0.06 * (fatScale(s.weight) - 1));
+export const jumpHeight = (s, gravity = 22) => jumpVelocity(s) ** 2 / (2 * gravity);
+export const JUMP_SECTIONS = [
+  { rise: 0.6, need: 1.0, steps: 8 }, { rise: 1.4, need: 1.3, steps: 8 }, { rise: 2.0, need: 1.9, steps: 8 }, { rise: 2.9, need: 2.6, steps: 8 }, { rise: 3.9, need: 3.5, steps: 8 },
+];
+// 점프맵 깃발에 처음 닿으면 코인을 준다 (idx 1~5)
+export function jumpReward(s, idx) {
+  if (!(idx > s.jumpTop) || idx > JUMP_SECTIONS.length) return 0;
+  s.jumpTop = idx;
+  const coin = STAGES[bestStage(s)].coin * 400 * idx; s.coins += coin;
+  return coin;
+}
+
+// ── 계획 2: 요리 (재료: 토마토, 고기, 양파, 초콜렛) ──
+export const INGREDIENTS = [
+  { id: 'tomato', name: '토마토', emoji: '🍅', k: 1, g: 0.25 },
+  { id: 'meat', name: '고기', emoji: '🥩', k: 2, g: 0.5 },
+  { id: 'onion', name: '양파', emoji: '🧅', k: 1, g: 0.2 },
+  { id: 'choco', name: '초콜렛', emoji: '🍫', k: 3, g: 0.6 },
+];
+export const INGREDIENT_MAX = 3;
+export const DISH_BITES = 12;
+export const DISHES = [
+  { name: '토마토 주스', emoji: '🍅', model: 'dish-juice' }, { name: '스테이크', emoji: '🥩', model: 'steak' }, { name: '양파링', emoji: '🧅', model: 'dish-rings' },
+  { name: '초콜렛 케이크', emoji: '🍫', model: 'dish-choco' }, { name: '미트볼 스파게티', emoji: '🍝', model: 'dish-spaghetti' }, { name: '불고기', emoji: '🍖', model: 'samgyeopsal' },
+  { name: '살사 샐러드', emoji: '🥗', model: 'dish-salsa' }, { name: '수제 햄버거', emoji: '🍔', model: 'burger' }, { name: '초코 괴식', emoji: '🤢', model: 'dish-weird' }, { name: '전설의 잡탕', emoji: '🌟', model: 'dish-legend' },
+];
+const dish = (name) => DISHES.find((d) => d.name === name);
+export const ingredientPrice = (s, id) => Math.round(STAGES[bestStage(s)].coin * 6 * INGREDIENTS.find((x) => x.id === id).k);
+const cleanCounts = (c) => Object.fromEntries(INGREDIENTS.map((x) => [x.id, Math.max(0, Math.min(INGREDIENT_MAX, Math.floor(Number(c?.[x.id]) || 0)))]));
+// 재료 개수로 무슨 요리가 되는지 정한다. mult 는 한 입에 찌는 몸무게 배수.
+export function recipe(counts) {
+  const c = cleanCounts(counts), total = INGREDIENTS.reduce((n, x) => n + c[x.id], 0);
+  if (!total) return null;
+  const base = 1 + INGREDIENTS.reduce((n, x) => n + x.g * c[x.id], 0), T = c.tomato > 0, M = c.meat > 0, O = c.onion > 0, Ch = c.choco > 0, savory = T || M || O;
+  let name, mult = base, note = '';
+  if (T && M && O && Ch) { name = '전설의 잡탕'; mult = base * 2; note = '네 가지를 다 넣었더니 전설의 맛!'; }
+  else if (Ch && savory) { name = '초코 괴식'; mult = base * 0.5; note = '으악, 초콜렛이랑 섞었더니 맛이 이상해!'; }
+  else if (Ch) name = '초콜렛 케이크';
+  else if (T && M && O) { name = '수제 햄버거'; mult = base + 1; note = '토마토, 고기, 양파가 딱 맞아!'; }
+  else if (T && M) name = '미트볼 스파게티';
+  else if (M && O) name = '불고기';
+  else if (T && O) name = '살사 샐러드';
+  else if (T) name = '토마토 주스';
+  else if (M) name = '스테이크';
+  else name = '양파링';
+  return { ...dish(name), mult: Math.round(mult * 100) / 100, note, counts: c };
+}
+export const cookPrice = (s, counts) => { const c = cleanCounts(counts); return INGREDIENTS.reduce((n, x) => n + ingredientPrice(s, x.id) * c[x.id], 0); };
+// 요리해서 쟁반에 올린다. 돈이 모자라거나 재료가 없으면 null.
+export function cook(s, counts) {
+  const r = recipe(counts), price = cookPrice(s, counts);
+  if (!r || s.coins < price) return null;
+  s.coins -= price; s.plate = DISH_BITES; s.plateStage = bestStage(s); s.plateMult = r.mult; s.plateName = r.name; s.plateModel = r.model;
+  s.cooked += 1; if (r.name === '초코 괴식') s.weird = true; if (r.name === '전설의 잡탕') s.legend = true;
+  return { ...r, price };
+}
+
+// ── 계획 2: 먹방 동영상 ──
+export const VIDEO_SEC = 20;
+export const VIDEO_COOL = 30;
+// 찍는 동안 먹은 횟수만큼 돈을 번다. 구독자가 많을수록 조회수가 많다.
+export function videoPay(s, bites) {
+  bites = Math.max(0, Math.floor(bites));
+  s.videos += 1;
+  if (!bites) return { coin: 0, views: 0, subs: 0 };
+  const views = Math.round(bites * (12 + s.subs * 0.05)), coin = Math.round(bites * biteCoin(s, bestStage(s)) * 2), subs = Math.max(1, Math.round(bites / 2));
+  s.coins += coin; s.subs += subs;
+  return { coin, views, subs };
+}
+
+// ── 계획 2: 운동해서 살 빼기 ──
+export function exercise(s) {
+  const loss = Math.min(s.weight - START_WEIGHT, Math.max(0.1, s.weight * 0.01));
+  s.reps += 1;
+  if (loss <= 0) return 0;
+  s.weight -= loss;
+  return loss;
+}
+
+// ── 계획 2: 날씨 (1시간마다 바뀐다. 모두 같은 날씨를 본다) ──
+export const WEATHERS = [
+  { id: 'sunny', name: '맑음', emoji: '☀️' }, { id: 'cloudy', name: '구름', emoji: '⛅' }, { id: 'rain', name: '비', emoji: '🌧️' },
+  { id: 'snow', name: '눈', emoji: '🌨️' }, { id: 'fog', name: '안개', emoji: '🌫️' }, { id: 'rainbow', name: '무지개', emoji: '🌈' },
+];
+const hourPick = (h) => { let x = Math.imul(h | 0, 2654435761) >>> 0; x ^= x >>> 15; x = Math.imul(x, 2246822519) >>> 0; x ^= x >>> 13; return (x >>> 0) % WEATHERS.length; };
+// 하루(24시간) 묶음마다 첫 시간을 정하고, 그 뒤로는 앞 시간과 다른 날씨로 1~5칸씩 넘긴다.
+// 마지막 시간은 앞 시간과도, 다음 날 첫 시간과도 다르게 고른다. 그래서 언제나 1시간마다 바뀐다.
+export function weatherIndex(hour) {
+  const N = WEATHERS.length, day = Math.floor(hour / 24), start = day * 24, k = hour - start;
+  let w = hourPick(day * 31 + 7);
+  for (let i = 1; i <= Math.min(k, 22); i += 1) w = (w + 1 + (hourPick(start + i) % (N - 1))) % N;
+  if (k < 23) return w;
+  const next = hourPick((day + 1) * 31 + 7);
+  let v = hourPick(hour);
+  while (v === w || v === next) v = (v + 1) % N;
+  return v;
+}
+export const hourOf = (ms) => Math.floor(ms / 3600000);
+export const weatherAt = (ms) => WEATHERS[weatherIndex(hourOf(ms))];
+export const minutesToNextWeather = (ms) => Math.ceil((3600000 - (ms % 3600000)) / 60000);
