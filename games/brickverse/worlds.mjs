@@ -1102,6 +1102,58 @@ function bWarehouse(out, loot, x, z, rnd) {
   loot.push([x - 8, 0.7, z], [x + 8, 0.7, z], [x, 0.7, z - 3]);
 }
 
+// 섬 한가운데 성 (팀전에서 지킨다. 개인전에서는 그냥 큰 건물)
+// 동서남북 성문, 성문에서 바깥으로 곧은 길, 길 끝에 몬스터가 나오는 보라색 포털.
+export const CASTLE = {
+  half: 20, wall: 6,
+  gates: [[0, -20], [20, 0], [0, 20], [-20, 0]],
+  spawns: [[0, -118], [118, 0], [0, 118], [-118, 0]],
+  // 동료 봇이 서는 성벽 위 자리
+  posts: [[6, -20], [20, 6], [-6, 20], [-20, -6], [-6, -20], [20, -6], [6, 20], [-20, 6]],
+  starts: [[-10, 10], [10, 10], [-10, -10], [10, -10], [0, 13], [13, 0], [-13, 0], [0, -13]],
+};
+
+function bCastle(out, loot, effects) {
+  const H = CASTLE.wall, half = CASTLE.half, c = '#d9d3ea', c2 = '#bdb3dc';
+  out.push({ x: 0, y: 0.06, z: 0, w: half * 2, h: 0.12, d: half * 2, c: '#e9e2d4', m: 'stone', round: 0.04 });
+  // 북쪽 벽 기준으로 만들고 90도씩 돌린다: k=0 북(-z), 1 동(+x), 2 남(+z), 3 서(-x)
+  const rot = (x, z, k) => [[x, z], [-z, x], [-x, -z], [z, -x]][k];
+  const put = (k, x, z, y, w, h, d, extra = {}) => { const [rx, rz] = rot(x, z, k); out.push({ ...extra, x: rx, y, z: rz, w: k % 2 ? d : w, h, d: k % 2 ? w : d }); };
+  for (let k = 0; k < 4; k++) {
+    // 벽 (가운데 성문 6칸, 높이 4.5)
+    for (const [a0, a1] of [[-half - 1, -3], [3, half + 1]]) put(k, (a0 + a1) / 2, -half, H / 2, a1 - a0, H, 2, { c, m: 'stone' });
+    put(k, 0, -half, (4.5 + H) / 2, 6, H - 4.5, 2, { c, m: 'stone' });
+    // 성가퀴 (벽 위 낮은 담)
+    for (let x = -half + 1; x <= half - 1; x += 2.6) put(k, x, -half - 0.75, H + 0.45, 1.1, 0.9, 0.5, { c: c2, m: 'stone' });
+    // 안쪽 계단: 성문 옆에서 모퉁이 쪽으로 올라간다 (한 칸 0.6)
+    for (let i = 0; i < 10; i++) put(k, -5 - i * 1.15, -half + 2.05, (0.6 * (i + 1)) / 2, 1.15, 0.6 * (i + 1), 2.1, { c: '#c9bfa8', m: 'stone' });
+    // 성문 위 깃발
+    put(k, 0, -half - 1.1, H + 2.2, 0.15, 3.4, 0.15, { c: '#ffffff', shape: 'cyl', deco: true });
+    put(k, 0.8, -half - 1.1, H + 3.3, 1.5, 1.0, 0.08, { c: '#ff5e7e', deco: true, flag: true });
+  }
+  // 모퉁이 탑
+  for (const [x, z] of [[-half, -half], [half, -half], [half, half], [-half, half]]) {
+    out.push({ x, y: 4.5, z, w: 5.5, h: 9, d: 5.5, c: c2, m: 'stone', shape: 'cyl' });
+    out.push({ x, y: 10.4, z, w: 6.4, h: 2.8, d: 6.4, c: '#6c5ce7', shape: 'cone', deco: true });
+  }
+  // 가운데 받침대 (성의 보석은 src/defense.js 가 올린다)
+  out.push({ x: 0, y: 0.6, z: 0, w: 5, h: 1.2, d: 5, c: '#ffffff', m: 'stone', shape: 'cyl' });
+  out.push({ x: 0, y: 1.25, z: 0, w: 4, h: 0.1, d: 4, c: '#7dfcff', m: 'neon', shape: 'cyl', deco: true, shadow: false });
+  // 길과 가로등, 길 끝 포털
+  CASTLE.spawns.forEach(([sx, sz], k) => {
+    const [gx, gz] = CASTLE.gates[k];
+    const mx = (gx + sx) / 2, mz = (gz + sz) / 2, len = Math.hypot(sx - gx, sz - gz) + 4;
+    out.push({ x: mx, y: 0.05, z: mz, w: k % 2 ? len : 7, h: 0.1, d: k % 2 ? 7 : len, c: '#d6ccb8', m: 'stone', round: 0.03, shadow: false });
+    for (let t = 0.2; t < 1; t += 0.2) {
+      const x = gx + (sx - gx) * t, z = gz + (sz - gz) * t;
+      for (const s of [-1, 1]) lamp(out, x + (k % 2 ? 0 : s * 5), z + (k % 2 ? s * 5 : 0));
+    }
+    effects.push({ type: 'portal', x: sx, y: 3, z: sz, w: 5, h: 6, color: '#9b5cff', ry: k % 2 ? Math.PI / 2 : 0 });
+    out.push({ x: sx, y: 0.2, z: sz, w: 8, h: 0.4, d: 8, c: '#4a3a6b', m: 'stone', round: 0.1 });
+  });
+  loot.push([0, 1.8, 0], [12, 0.7, 12], [-12, 0.7, -12], [12, H + 0.6, -half], [-12, H + 0.6, half]);
+}
+
 export function buildBattle() {
   const parts = [], signs = [], effects = [], coins = [], loot = [];
   const rnd = seeded(5150);
@@ -1123,7 +1175,7 @@ export function buildBattle() {
   const zones = [{ x0: L.x + 8.4, x1: L.x + 10.6, y0: L.y, y1: L.y + 3.5, z0: L.z + 8.4, z1: L.z + 10.6, portal: 0 }];
   // 마을 7곳: 가운데 광장 둘레에 집
   const busy = [];
-  const towns = [[0, 0], [-150, -120], [150, -110], [-145, 130], [140, 145], [10, -195], [-205, 5]];
+  const towns = [[72, 76], [-150, -120], [150, -110], [-145, 130], [140, 145], [40, -200], [-205, 40]];
   const doors = ['s', 'w', 'n', 'e'];
   towns.forEach(([tx, tz], t) => {
     parts.push({ x: tx, y: 0.06, z: tz, w: 16, h: 0.12, d: 16, c: '#e9dfcf', m: 'stone', round: 0.05 });
@@ -1140,10 +1192,14 @@ export function buildBattle() {
     busy.push([tx, tz, 12]);
     void doors;
   });
+  // 성과 네 갈래 길 (다른 것이 길을 막지 않게)
+  bCastle(parts, loot, effects);
+  busy.push([0, 0, 34]);
+  for (const [sx, sz] of CASTLE.spawns) for (let t = 0.15; t <= 1.05; t += 0.07) busy.push([sx * t, sz * t, 8]);
   // 창고 5개
   for (const [x, z] of [[90, 30], [-80, -40], [60, -170], [-60, 190], [200, 60]]) { bWarehouse(parts, loot, x, z, rnd); busy.push([x, z, 18]); }
   // 저격 탑 8개
-  for (const [x, z, c] of [[0, 0 + 34, '#c7ccd6'], [110, -40, '#b0a8c8'], [-110, -60, '#a8c0b0'], [-40, 110, '#c8b8a8'], [190, -190, '#c7ccd6'], [-190, -190, '#b0a8c8'], [190, 200, '#a8c0b0'], [-190, 200, '#c8b8a8']]) { bTower(parts, loot, x, z, c); busy.push([x, z, 5]); }
+  for (const [x, z, c] of [[44, 44, '#c7ccd6'], [110, -40, '#b0a8c8'], [-110, -60, '#a8c0b0'], [-40, 110, '#c8b8a8'], [190, -190, '#c7ccd6'], [-190, -190, '#b0a8c8'], [190, 200, '#a8c0b0'], [-190, 200, '#c8b8a8']]) { bTower(parts, loot, x, z, c); busy.push([x, z, 5]); }
   // 언덕 10개
   for (let k = 0; k < 10; k++) {
     const a = k * 2.4 + 0.7, d = 70 + (k % 4) * 40;

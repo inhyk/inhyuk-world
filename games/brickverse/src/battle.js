@@ -5,9 +5,10 @@ import { THREE } from './render.js';
 import { Avatar } from './avatar.js';
 import {
   BATTLE, WEAPONS, LOOT, freshAmmo, reloadAmmo, ammoBox, applyDamage, GEAR, GEAR_NAMES, GEAR_ICONS, GEAR_COLORS, gearReduce, zonePhases, zoneAt, outsideZone, rayBody, rayBoxes, battleCoins,
-  newPlayer, stepPlayer, seeded, displayName, ADJECTIVES, ANIMALS, SKINS, COLORS, PHRASES,
+  newPlayer, stepPlayer, seeded, DEFENSE, defenseCoins, displayName, ADJECTIVES, ANIMALS, SKINS, COLORS, PHRASES,
 } from '../core.mjs';
-import { BATTLE_LOBBY } from '../worlds.mjs';
+import { BATTLE_LOBBY, CASTLE } from '../worlds.mjs';
+import { Defense } from './defense.js';
 import { Spectate } from './spectate.js';
 
 const WI = Object.fromEntries(WEAPONS.map((w, i) => [w.id, i]));
@@ -86,6 +87,9 @@ export class Battle {
     this.phases = zonePhases(1);
     this.zone = zoneAt(this.phases, 0);
     this.participants = [];
+    this.mode = 'royale';      // 이번 판: royale(개인전) · team(팀전: 성 지키기)
+    this.nextMode = 'royale';  // 대기실에서 고른 다음 판
+    this.defense = null;
     this.buildGrid();
     this.makeZone();
     this.makeHud();
@@ -119,7 +123,7 @@ export class Battle {
   }
   near(x, z, r = 4) { return this.boxesIn(x - r, z - r, x + r, z + r); }
 
-  freshMe() { return { hp: BATTLE.HP, armor: 0, helmet: 0, vest: 0, alive: false, weapons: new Set(['pistol']), cur: 'pistol', kills: 0, para: false, outTimer: 0, place: 0, ammo: { pistol: freshAmmo('pistol') }, reloading: 0, emptyTold: 0 }; }
+  freshMe() { return { hp: BATTLE.HP, armor: 0, helmet: 0, vest: 0, alive: false, weapons: new Set(['pistol']), cur: 'pistol', kills: 0, para: false, outTimer: 0, place: 0, ammo: { pistol: freshAmmo('pistol') }, reloading: 0, emptyTold: 0, downT: 0 }; }
   get net() { return this.game.net; }
   get auth() { return !this.net.active || this.net.host; }
   get myId() { return this.net.active ? this.net.id : 'me'; }
@@ -173,7 +177,32 @@ export class Battle {
     const hurt = document.createElement('div'); hurt.id = 'hurt';
     document.body.append(scope, hurt);
     this.scopeEl = scope; this.hurtEl = hurt;
+    // 대기실: 다음 판 고르기
+    const modeBar = document.createElement('div');
+    modeBar.id = 'mode-bar';
+    modeBar.innerHTML = '<small>다음 판</small><button data-m="royale"><kbd>1</kbd>🎯 개인전</button><button data-m="team"><kbd>2</kbd>🏰 팀전 <em>성 지키기</em></button>';
+    modeBar.querySelectorAll('button').forEach(b => b.addEventListener('click', () => this.pickMode(b.dataset.m)));
+    document.body.append(modeBar);
+    this.modeBar = modeBar;
+    // 팀전: 성의 보석 체력
+    const coreBar = document.createElement('div');
+    coreBar.id = 'core-bar';
+    coreBar.innerHTML = '<span>💎<em> 성의 보석</em></span><div class="track"><i></i></div><b></b>';
+    document.body.append(coreBar);
+    this.coreBar = coreBar;
     document.body.classList.add('battle');
+    this.syncModeBar();
+  }
+  // 대기실에서 다음 판 고르기 (버튼, 또는 쉬프트락으로 마우스가 붙잡혀 있으면 숫자 1, 2 키)
+  pickMode(mode) {
+    if (!this.auth) { this.game.ui.toast('모드는 방장이 골라'); return; }
+    this.game.sfx('click');
+    this.nextMode = mode === 'team' ? 'team' : 'royale';
+    this.net.send({ t: 'br', k: 'mode', mode: this.nextMode });
+    this.syncModeBar();
+  }
+  syncModeBar() {
+    this.modeBar.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b.dataset.m === this.nextMode); b.classList.toggle('locked', !this.auth); });
   }
 
   updateHud() {
@@ -258,6 +287,7 @@ export class Battle {
   key(code) {
     if (this.spec?.key(code)) return true;
     if (code === 'KeyR') { this.startReload(); return true; }
+    if (this.state === 'lobby' && (code === 'Digit1' || code === 'Digit2')) { this.pickMode(code === 'Digit2' ? 'team' : 'royale'); return true; }
     if (code.startsWith('Digit')) {
       const w = WEAPONS[Number(code.slice(5)) - 1];
       if (w && this.me.weapons.has(w.id)) { this.equip(w.id); this.game.sfx('click'); }
@@ -323,7 +353,10 @@ export class Battle {
     if (who === 'me') this.out.take = (this.out.take ?? []).concat(l.i);
   }
 
-  startRound(seed, list, nBots) {
+  startRound(seed, list, nBots, mode = 'royale') {
+    if (mode === 'team') { this.startTeam(seed, list, nBots); return; }
+    this.mode = 'royale';
+    this.defense?.start(seed, 1);
     this.round++;
     this.state = 'play';
     this.t = 0;
@@ -356,6 +389,150 @@ export class Battle {
     this.game.sfx('go');
     this.game.ui.big('🪂 낙하산을 펴고 내려가!', 2200);
     this.updateHud();
+  }
+
+  // ───── 팀전: 성 지키기 ─────
+  startTeam(seed, list, nBots) {
+    this.mode = 'team';
+    this.round++;
+    this.state = 'play';
+    this.t = 0;
+    this.participants = list;
+    this.rs = new Map(list.filter(id => id !== this.myId).map(id => [id, { hp: BATTLE.HP, armor: 0, alive: true, kills: 0 }]));
+    for (const l of this.loot) disposeObj(l.mesh);
+    this.loot = [];
+    // 동료 봇: 성벽 위에 서서 같이 쏜다
+    this.makeBots(nBots, seed);
+    this.bots.forEach((b, k) => {
+      const [x, z] = CASTLE.posts[k % CASTLE.posts.length];
+      Object.assign(b.pl, newPlayer(x, CASTLE.wall, z));
+      b.alive = true; b.para = false; b.hp = BATTLE.HP; b.armor = 50; b.weapon = 'rifle'; b.team = true; b.downT = 0;
+      b.yaw = Math.atan2(x, z);
+      disposeObj(b.gun); b.gun = makeGun('rifle'); this.attachGun(b.avatar, b.gun);
+      b.avatar.setName(b.name.replace('🤖', '🤖 동료'), 'rgba(33,150,90,0.8)');
+      if (b.chute) b.chute.visible = false;
+    });
+    // 나: 성 안에서 블래스터 4개 모두 들고 시작
+    this.me = this.freshMe();
+    const mine = Math.max(0, list.indexOf(this.myId));
+    const [sx, sz] = CASTLE.starts[mine % CASTLE.starts.length];
+    this.me.alive = true; this.me.armor = 50;
+    for (const w of WEAPONS) { this.me.weapons.add(w.id); this.me.ammo[w.id] = { mag: w.mag, res: w.start === Infinity ? Infinity : w.start * 2 }; }
+    this.game.teleport(sx, 0.2, sz, Math.atan2(sx, sz));
+    this.game.controls.faceBehind(Math.atan2(sx, sz));
+    this.game.myAvatar.root.visible = true;
+    if (this.myChute) this.myChute.visible = false;
+    this.equip('rifle');
+    this.defense = this.defense ?? new Defense(this);
+    this.defense.start(seed, list.length + nBots);
+    this.game.sfx('go');
+    this.game.ui.big('🏰 성의 보석을 지켜! 몬스터가 와', 2600);
+    this.updateHud();
+  }
+  respawnTeam() {
+    const m = this.me;
+    const [sx, sz] = CASTLE.starts[Math.floor(Math.random() * CASTLE.starts.length)];
+    m.alive = true; m.hp = BATTLE.HP; m.downT = 0;
+    this.game.teleport(sx, 0.2, sz, Math.atan2(sx, sz));
+    this.game.myAvatar.root.visible = true;
+    this.game.ui.toast('💪 다시 일어났어!', 1400);
+    this.updateHud();
+  }
+  // 쓰러짐 (팀전은 탈락하지 않고 6초 뒤 성에서 다시)
+  downMe() {
+    const m = this.me;
+    m.alive = false; m.downT = DEFENSE.RESPAWN;
+    this.game.burstMe();
+    this.game.myAvatar.root.visible = false;
+    this.game.sfx('die');
+    this.game.ui.big(`쓰러졌어! ${DEFENSE.RESPAWN}초 뒤 다시 일어나`, 2400);
+    this.out.dead = -5000;
+  }
+  refill() {
+    const m = this.me;
+    for (const id of m.weapons) { const w = WEAPONS[WI[id]], a = m.ammo[id] ?? { mag: 0, res: 0 }; m.ammo[id] = { mag: w.mag, res: w.start === Infinity ? Infinity : Math.min(300, a.res + w.start) }; }
+    if (m.alive) { m.hp = BATTLE.HP; m.armor = Math.min(BATTLE.ARMOR, m.armor + 30); }
+    this.updateHud();
+  }
+  // 몬스터가 사람을 때림 (방장만 부른다)
+  monsterHits(t, dmg) {
+    if (t.me) this.hurtMe(dmg, -5000);
+    else if (t.id) this.out.h.push([numOf(t.id), dmg, -5000]);
+    else if (t.bot !== undefined) this.hurtBot(t.bot, dmg, -5000);
+  }
+  creditKill(by, m) {
+    if (by === this.myNum) { this.me.kills++; this.game.sfx('coin'); }
+    else if (by < 0 && this.bots[-by - 1]) this.bots[-by - 1].kills++;
+    if (m.type === 'golem' || m.type === 'king') this.game.ui.log(`💥 ${this.nameOf(by)} → ${m.M.icon} ${m.M.name}`);
+    if (m.type === 'king') this.game.ui.big('👑 킹 슬라임을 물리쳤어!', 2600, 'gold');
+  }
+  waveStarted(n) {
+    this.lastWave = n;
+    this.game.sfx('go');
+    this.game.ui.big(n === 5 || n === 10 ? `👑 웨이브 ${n}: 킹 슬라임이 온다!` : `⚔️ 웨이브 ${n}!`, 2200, n === 5 || n === 10 ? 'gold' : '');
+  }
+  waveCleared(n) {
+    this.refill();
+    this.net.send({ t: 'br', k: 'refill', r: this.round });
+    this.game.sfx('check');
+    this.game.ui.big(`✅ 웨이브 ${n} 막았어! 총알, 체력 채움`, 2400);
+  }
+  teamEnd(won) {
+    this.finishTeam(won);
+    this.net.send({ t: 'br', k: 'end', team: 1, won: won ? 1 : 0 });
+  }
+  finishTeam(won) {
+    if (this.state === 'end') return;
+    this.state = 'end';
+    this.timer = 8;
+    const wave = this.defense?.wave ?? 0;
+    const reached = won ? DEFENSE.WAVES : Math.max(0, wave - 1);
+    const coins = defenseCoins(reached, this.me.kills, won);
+    const s = this.game.save.battle;
+    if (won) s.teamWins++;
+    if (reached > s.teamBest) s.teamBest = reached;
+    s.kills += this.me.kills;
+    this.game.addCoins(coins);
+    if (won) {
+      this.game.sfx('win');
+      this.game.effects.confetti(0, 8, 0, 300);
+      this.game.ui.big(`🏰 성을 지켰어! 처치 ${this.me.kills} · 🪙+${coins}`, 4800, 'gold');
+    } else {
+      this.game.sfx('die');
+      this.game.ui.big(`💔 보석이 부서졌어… 웨이브 ${reached}까지 막음 · 🪙+${coins}`, 4800);
+    }
+    this.game.persist();
+  }
+  // 동료 봇: 성벽 위 제자리에서 가까운 몬스터를 쏜다
+  helperBrain(b, k, dt) {
+    if (!b.alive) {
+      b.downT -= dt;
+      if (b.downT <= 0) { const [x, z] = CASTLE.posts[k % CASTLE.posts.length]; Object.assign(b.pl, newPlayer(x, CASTLE.wall, z)); b.alive = true; b.hp = BATTLE.HP; }
+      return;
+    }
+    b.cool -= dt; b.think -= dt;
+    const d = this.defense;
+    if (b.think <= 0) {
+      b.think = 0.3;
+      let best = null, bd = 70;
+      for (const m of d.monsters.values()) {
+        const dist = Math.hypot(m.x - b.pl.x, m.z - b.pl.z);
+        if (dist < bd && this.sees(b.pl.x, b.pl.y + 1.7, b.pl.z, m.x, m.y + m.M.h * 0.5, m.z)) { bd = dist; best = m.id; }
+      }
+      b.target = best;
+    }
+    const m = b.target !== null ? d.monsters.get(b.target) : null;
+    if (!m) { b.target = null; return; }
+    b.yaw = Math.atan2(m.x - b.pl.x, m.z - b.pl.z);
+    if (b.cool > 0) return;
+    const w = WEAPONS[WI[b.weapon]];
+    b.cool = (1 / w.rate) * (1.6 + (1 - b.skill));
+    const dist = Math.hypot(m.x - b.pl.x, m.z - b.pl.z);
+    const hit = b.rnd() < 0.62 * b.skill * Math.max(0.15, 1 - dist / (w.range * 1.2));
+    const from = new THREE.Vector3(b.pl.x, b.pl.y + 1.7, b.pl.z), to = new THREE.Vector3(m.x, m.y + m.M.h * 0.5, m.z);
+    if (!hit) to.add(new THREE.Vector3((b.rnd() - 0.5) * 3, (b.rnd() - 0.5) * 2, (b.rnd() - 0.5) * 3));
+    this.tracer(from, to, w.color);
+    if (hit) d.hit(m.id, w.dmg * w.pellets * 0.8, -(k + 1));
   }
 
   parachutes() {
@@ -396,7 +573,7 @@ export class Battle {
     m.hp = r.hp; m.armor = r.armor;
     this.hurtEl.classList.remove('on'); void this.hurtEl.offsetWidth; this.hurtEl.classList.add('on');
     this.game.sfx('hurt');
-    if (m.hp <= 0) this.eliminateMe(by);
+    if (m.hp <= 0) { if (this.mode === 'team') this.downMe(); else this.eliminateMe(by); }
     this.updateHud();
   }
   eliminateMe(by) {
@@ -449,6 +626,7 @@ export class Battle {
     b.hp = r.hp; b.armor = r.armor;
     if (b.hp <= 0) {
       b.alive = false;
+      b.downT = DEFENSE.RESPAWN;
       this.game.effects.burst(b.pl.x, b.pl.y + 1.4, b.pl.z, [COLORS[b.avatar.look.shirt], SKINS[b.avatar.look.skin], '#ffffff'], 22, 7);
       if (by === this.myNum) { this.me.kills++; this.game.sfx('coin'); }
       else if (by < 0 && this.bots[-by - 1]) this.bots[-by - 1].kills++;
@@ -477,12 +655,18 @@ export class Battle {
       const so = o.clone().addScaledVector(d, tMin);
       let best = rayBoxes(so.x, so.y, so.z, d.x, d.y, d.z, this.boxesIn(so.x, so.z, so.x + d.x * w.range, so.z + d.z * w.range), w.range);
       let target = null;
-      this.bots.forEach((b, k) => {
+      if (this.mode === 'team') {
+        for (const m of this.defense.monsters.values()) {
+          const t = rayBody(so.x, so.y, so.z, d.x, d.y, d.z, m.x, m.y, m.z, m.M.r, m.M.h);
+          if (t < best) { best = t; target = { mon: m.id }; }
+        }
+      }
+      if (this.mode !== 'team') this.bots.forEach((b, k) => {
         if (!b.alive) return;
         const t = rayBody(so.x, so.y, so.z, d.x, d.y, d.z, b.pl.x, b.pl.y, b.pl.z);
         if (t < best) { best = t; target = { bot: k }; }
       });
-      for (const [id, s] of this.rs) {
+      if (this.mode !== 'team') for (const [id, s] of this.rs) {
         const r = this.game.remotes.get(id);
         if (!s.alive || !r || r.w !== 5) continue;
         const t = rayBody(so.x, so.y, so.z, d.x, d.y, d.z, r.x, r.y, r.z);
@@ -494,7 +678,10 @@ export class Battle {
       if (target) {
         hitAny = true;
         this.game.effects.burst(end.x, end.y, end.z, [w.color, '#ffffff'], 4, 3);
-        if (target.bot !== undefined) {
+        if (target.mon !== undefined) {
+          if (this.auth) this.defense.hit(target.mon, w.dmg, this.myNum);
+          else this.out.h.push([-(10000 + target.mon), w.dmg]);
+        } else if (target.bot !== undefined) {
           if (this.auth) this.hurtBot(target.bot, w.dmg, this.myNum);
           else this.out.h.push([-(target.bot + 1), w.dmg]);
         } else this.out.h.push([numOf(target.id), w.dmg]);
@@ -623,17 +810,21 @@ export class Battle {
   message(d, from) {
     const host = this.net.room.hostId;
     if (d.k === 'start' && from === host && Number.isInteger(d.seed) && Array.isArray(d.list)) {
-      this.startRound(d.seed, d.list.filter(x => typeof x === 'string').slice(0, 8), Math.max(0, Math.min(BATTLE.PLAYERS, d.bots | 0)));
+      this.startRound(d.seed, d.list.filter(x => typeof x === 'string').slice(0, 8), Math.max(0, Math.min(BATTLE.PLAYERS, d.bots | 0)), d.mode === 'team' ? 'team' : 'royale');
       this.round = d.r | 0;
       return;
     }
+    if (d.k === 'end' && from === host && d.team) { this.finishTeam(!!d.won); return; }
     if (d.k === 'end' && from === host) { this.finish(Number.isInteger(d.w) ? d.w : null); return; }
+    if (d.k === 'mode' && from === host) { this.nextMode = d.mode === 'team' ? 'team' : 'royale'; this.syncModeBar(); return; }
+    if (d.k === 'refill' && from === host && d.r === this.round) { this.refill(); this.game.sfx('check'); this.game.ui.big('✅ 웨이브를 막았어! 총알, 체력 채움', 2200); return; }
     if (d.k === 'lobby' && from === host) { this.toLobby(); return; }
     if (d.k !== 'tick' || d.r !== this.round) return;
     const s = this.rs.get(from);
     if (s) {
       if (Number.isFinite(d.hp)) s.hp = d.hp;
       if (Number.isFinite(d.ar)) s.armor = d.ar;
+      if (d.al === 1 && !s.alive && this.mode === 'team') s.alive = true; // 팀전: 다시 일어남
       if (d.al === 0 && s.alive) { s.alive = false; const r = this.game.remotes.get(from); if (r?.avatar) this.game.effects.burst(r.x, r.y + 1.4, r.z, ['#ffffff', '#ff5e3a'], 20, 7); if (Number.isFinite(d.by)) { this.game.ui.log(`💥 ${this.nameOf(d.by)} → ${r?.name ?? '친구'}`); if (d.by === this.myNum) { this.me.kills++; this.game.sfx('coin'); } else if (d.by < 0 && this.auth && this.bots[-d.by - 1]) this.bots[-d.by - 1].kills++; } }
       if (Number.isFinite(d.kills)) s.kills = d.kills;
       if (Number.isInteger(d.hl) && Number.isInteger(d.vl)) { s.helmet = Math.max(0, Math.min(3, d.hl)); s.vest = Math.max(0, Math.min(3, d.vl)); const r = this.game.remotes.get(from); if (r?.avatar) wearGear(r.avatar, s.helmet, s.vest); }
@@ -643,8 +834,14 @@ export class Battle {
       if (!Array.isArray(q) || !Number.isFinite(q[0]) || !Number.isFinite(q[1])) continue;
       const dmg = Math.max(0, Math.min(500, q[1]));
       const by = Number.isFinite(q[2]) ? q[2] : numOf(from);
-      if (q[0] === this.myNum && this.net.active) this.hurtMe(dmg, by);
+      if (q[0] <= -10000) { if (this.auth && this.mode === 'team') this.defense?.hit(-q[0] - 10000, dmg, by); }
+      else if (q[0] === this.myNum && this.net.active) this.hurtMe(dmg, by);
       else if (q[0] < 0 && this.auth) this.hurtBot(-q[0] - 1, dmg, by);
+    }
+    if (d.df && from === host && !this.auth && this.mode === 'team' && this.defense) {
+      const before = this.defense.wave;
+      this.defense.apply(d.df);
+      if (this.defense.wave > before && this.defense.phase === 'wave') this.waveStarted(this.defense.wave);
     }
     if (Array.isArray(d.t)) for (const i of d.t.slice(0, 20)) { const l = this.loot.find(x => x.i === i); if (l) this.takeLoot(l, 'net'); }
     if (Array.isArray(d.b) && from === host && !this.auth) d.b.forEach((q, k) => {
@@ -671,6 +868,7 @@ export class Battle {
     if (o.s.length) msg.s = o.s.splice(0, 8);
     if (o.h.length) msg.h = o.h.splice(0);
     if (o.take?.length) { msg.t = o.take; o.take = []; }
+    if (this.auth && this.mode === 'team' && this.defense) msg.df = this.defense.pack();
     if (this.auth && this.bots.length) msg.b = this.bots.map(b => [r2(b.pl.x), r2(b.pl.y), r2(b.pl.z), r2(b.yaw), Math.ceil(b.hp), b.alive ? 1 : 0, WI[b.weapon], b.para ? 1 : 0, b.helmet, b.vest]);
     o.s.length = 0;
     this.net.send(msg);
@@ -696,6 +894,8 @@ export class Battle {
 
   toLobby() {
     this.stopSpectate();
+    this.defense?.start(1, 1);
+    this.mode = 'royale';
     this.state = 'lobby';
     this.timer = BATTLE.LOBBY_WAIT;
     this.me = this.freshMe();
@@ -724,11 +924,17 @@ export class Battle {
       const sec = Math.ceil(this.timer);
       if (sec !== this.lastCount && sec <= 3 && sec > 0) { this.lastCount = sec; g.sfx('tick'); g.ui.big(String(sec), 800); }
       if (this.timer <= 0 && this.auth) {
-        const seed = (Math.random() * 1e9) | 0, list = this.participantsNow();
-        const bots = Math.max(0, BATTLE.PLAYERS - list.length);
-        this.startRound(seed, list, bots);
-        net.send({ t: 'br', k: 'start', r: this.round, seed, list, bots });
+        const seed = (Math.random() * 1e9) | 0, list = this.participantsNow(), mode = this.nextMode;
+        const bots = mode === 'team' ? Math.max(0, DEFENSE.TEAM - list.length) : Math.max(0, BATTLE.PLAYERS - list.length);
+        this.startRound(seed, list, bots, mode);
+        net.send({ t: 'br', k: 'start', r: this.round, seed, list, bots, mode });
       } else if (this.timer <= -4 && !this.auth) this.timer = BATTLE.LOBBY_WAIT;
+      // 방장은 고른 모드를 가끔 알려 준다 (늦게 들어온 친구도 보게)
+      this.modeTimer = (this.modeTimer ?? 0) - dt;
+      if (this.auth && net.live && this.modeTimer <= 0) { this.modeTimer = 2; net.send({ t: 'br', k: 'mode', mode: this.nextMode }); }
+    } else if (this.state === 'play' && this.mode === 'team') {
+      this.t += dt;
+      this.defense.update(dt, this.auth);
     } else if (this.state === 'play') {
       this.t += dt;
       this.zone = zoneAt(this.phases, Math.max(0, this.t - 8));
@@ -751,6 +957,7 @@ export class Battle {
     const pl = g.player, m = this.me;
     if (m.para && pl.ground) { m.para = false; if (this.myChute) this.myChute.visible = false; g.sfx('land'); }
     if (this.myChute) this.myChute.visible = m.para;
+    if (this.state === 'play' && this.mode === 'team' && !m.alive && m.downT > 0) { m.downT -= dt; if (m.downT <= 0) this.respawnTeam(); }
     if (this.state === 'play' && m.alive) {
       // 쏘기
       this.cool -= dt;
@@ -788,8 +995,8 @@ export class Battle {
         else if ((l.kind === 'helmet' || l.kind === 'vest') && l.level > m[l.kind]) { m[l.kind] = l.level; this.takeLoot(l, 'me'); g.sfx('buy'); g.ui.toast(`${GEAR_ICONS[l.kind]} ${GEAR_NAMES[l.kind]} ${l.level}단계! 맞을 때 ${Math.round(GEAR[l.kind][l.level] * 100)}% 덜 아파`, 1800); this.updateHud(); }
         else if (l.kind === 'shield' && m.armor < BATTLE.ARMOR) { m.armor = Math.min(BATTLE.ARMOR, m.armor + l.amount); this.takeLoot(l, 'me'); g.sfx('check'); g.ui.toast(`🛡️ 방패 +${l.amount}`, 1400); this.updateHud(); }
       }
-      // 구역 밖이면 체력이 준다
-      if (!m.para && outsideZone(this.zone, pl.x, pl.z)) {
+      // 구역 밖이면 체력이 준다 (개인전만)
+      if (this.mode !== 'team' && !m.para && outsideZone(this.zone, pl.x, pl.z)) {
         m.outTimer += dt;
         m.hp = Math.max(0, m.hp - this.zone.dps * dt);
         if (m.outTimer > 0.6) { m.outTimer = 0; this.hurtEl.classList.remove('on'); void this.hurtEl.offsetWidth; this.hurtEl.classList.add('on'); this.updateHud(); }
@@ -806,10 +1013,10 @@ export class Battle {
 
     // 봇
     this.bots.forEach((b, k) => {
-      if (!b.alive) { b.avatar.root.visible = false; return; }
+      if (!b.alive) { b.avatar.root.visible = false; if (this.auth && this.mode === 'team' && this.state === 'play') this.helperBrain(b, k, dt); return; }
       b.avatar.root.visible = true;
       if (this.auth) {
-        if (this.state === 'play') this.botBrain(b, k, dt);
+        if (this.state === 'play') { if (this.mode === 'team') this.helperBrain(b, k, dt); else this.botBrain(b, k, dt); }
       } else if (b.net) {
         const kk = 1 - Math.exp(-dt * 12);
         b.pl.x += (b.net.x - b.pl.x) * kk; b.pl.y += (b.net.y - b.pl.y) * kk; b.pl.z += (b.net.z - b.pl.z) * kk; b.yaw = b.net.yaw;
@@ -838,13 +1045,23 @@ export class Battle {
     }
     // 안전 구역 모습
     const z = this.zone;
-    const playing = this.state !== 'lobby';
+    const playing = this.state !== 'lobby' && this.mode !== 'team';
     this.zoneMesh.visible = playing;
     if (playing) { this.zoneMesh.scale.set(Math.max(0.5, z.r), 160, Math.max(0.5, z.r)); this.zoneMesh.position.set(z.x, 60, z.z); this.zoneMat.opacity = 0.18 + Math.sin(now * 3) * 0.04; }
     const ph = this.phases[z.phase];
     this.nextRing.visible = playing && !!ph && !z.shrinking;
     if (this.nextRing.visible) { this.nextRing.scale.set(Math.max(0.5, ph.to.r), Math.max(0.5, ph.to.r), 1); this.nextRing.position.set(ph.to.x, 0.3, ph.to.z); }
 
+    // 대기실 모드 고르기, 팀전 보석 체력
+    document.body.classList.toggle('br-lobby', this.state === 'lobby');
+    const teamOn = this.mode === 'team' && this.state !== 'lobby';
+    document.body.classList.toggle('br-team', teamOn);
+    if (teamOn && this.defense) {
+      const f = this.defense.coreHp / DEFENSE.CORE_HP;
+      this.coreBar.querySelector('i').style.width = `${Math.max(0, f) * 100}%`;
+      this.coreBar.querySelector('i').style.background = f > 0.5 ? '#3fd6ff' : f > 0.25 ? '#ffd23f' : '#ff4d5e';
+      this.coreBar.querySelector('b').textContent = `${Math.ceil(this.defense.coreHp)} / ${DEFENSE.CORE_HP}`;
+    }
     this.sendTick(dt);
     this.drawMinimap(dt);
     this.info();
@@ -860,7 +1077,14 @@ export class Battle {
     g.clearRect(0, 0, W, W);
     g.fillStyle = '#33a6ff'; g.beginPath(); g.roundRect(0, 0, W, W, 28); g.fill();
     g.fillStyle = '#7cc95a'; g.beginPath(); g.roundRect(X(-BATTLE.ISLAND), Z(-BATTLE.ISLAND), BATTLE.ISLAND * 2 * S, BATTLE.ISLAND * 2 * S, 18); g.fill();
-    if (this.state !== 'lobby') {
+    if (this.mode === 'team' && this.state !== 'lobby' && this.defense) {
+      g.strokeStyle = '#d6ccb8'; g.lineWidth = 7;
+      for (const [sx, sz] of CASTLE.spawns) { g.beginPath(); g.moveTo(X(0), Z(0)); g.lineTo(X(sx), Z(sz)); g.stroke(); g.fillStyle = '#9b5cff'; g.beginPath(); g.arc(X(sx), Z(sz), 8, 0, Math.PI * 2); g.fill(); }
+      g.fillStyle = '#bdb3dc'; g.fillRect(X(-CASTLE.half), Z(-CASTLE.half), CASTLE.half * 2 * S, CASTLE.half * 2 * S);
+      g.fillStyle = '#3fd6ff'; g.beginPath(); g.arc(X(0), Z(0), 6, 0, Math.PI * 2); g.fill();
+      for (const m of this.defense.monsters.values()) { g.fillStyle = m.type === 'king' ? '#ffd23f' : '#ff3b3b'; g.beginPath(); g.arc(X(m.x), Z(m.z), m.type === 'king' ? 9 : m.type === 'golem' ? 6 : 4, 0, Math.PI * 2); g.fill(); }
+      for (const [id, s] of this.rs) { const r = this.game.remotes.get(id); if (!s.alive || !r || r.w !== 5) continue; g.fillStyle = '#3fa7ff'; g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.arc(X(r.x), Z(r.z), 7, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    } else if (this.state !== 'lobby') {
       const z = this.zone, ph = this.phases[z.phase];
       // 구역 밖은 어둡게
       g.save(); g.beginPath(); g.rect(0, 0, W, W); g.arc(X(z.x), Z(z.z), Math.max(1, z.r * S), 0, Math.PI * 2, true); g.fillStyle = 'rgba(40,30,120,0.45)'; g.fill('evenodd'); g.restore();
@@ -879,7 +1103,13 @@ export class Battle {
   info() {
     const s = this.game.save.battle, m = this.me, z = this.zone, pl = this.game.player;
     let html;
-    if (this.state === 'lobby') html = `<b>⏳ 다음 판까지 ${Math.max(0, Math.ceil(this.timer))}초</b><small>우승 ${s.wins}번 · 처치 ${s.kills} · 최고 ${s.best ? `${s.best}등` : '-'}</small>`;
+    if (this.state === 'lobby') html = `<b>⏳ 다음 판까지 ${Math.max(0, Math.ceil(this.timer))}초 · ${this.nextMode === 'team' ? '🏰 팀전' : '🎯 개인전'}</b><small>${this.nextMode === 'team' ? `성 지키기 성공 ${s.teamWins}번 · 최고 웨이브 ${s.teamBest}` : `우승 ${s.wins}번 · 처치 ${s.kills} · 최고 ${s.best ? `${s.best}등` : '-'}`}</small>`;
+    else if (this.mode === 'team' && this.defense) {
+      const d = this.defense;
+      const line = d.phase === 'break' ? (d.wave === 0 ? `몬스터가 오기까지 ${Math.max(0, Math.ceil(d.timer))}초 · 성벽에 올라가 봐!` : `다음 웨이브까지 ${Math.max(0, Math.ceil(d.timer))}초`) : d.phase === 'wave' ? '⚔️ 몬스터가 몰려와!' : d.phase === 'win' ? '🏰 성을 지켰어!' : '💔 보석이 부서졌어';
+      const down = !m.alive && m.downT > 0 ? `<small class="warn-zone">다시 일어나기까지 ${Math.ceil(m.downT)}초</small>` : '';
+      html = `<b>🏰 웨이브 ${d.wave} / ${DEFENSE.WAVES} · 남은 몬스터 ${d.count} · 처치 ${m.kills}</b><small>${line}</small>${down}`;
+    }
     else if (this.state === 'end') html = '<b>🏁 판 끝!</b><small>곧 대기실로</small>';
     else {
       const line = z.shrinking ? `⚠ 안전 구역이 줄어드는 중 ${fmt(z.next)}` : z.next > 0 ? `안전 구역이 줄어들기까지 ${fmt(z.next)}` : '마지막 구역!';
@@ -898,7 +1128,9 @@ export class Battle {
     const g = this.game;
     g.canvas.removeEventListener('pointerdown', this.onDown);
     removeEventListener('pointerup', this.onUp);
-    for (const el of [this.hud, this.fireEl, this.zoomEl, this.reloadEl, this.scopeEl, this.hurtEl, this.mini]) el.remove();
+    for (const el of [this.hud, this.fireEl, this.zoomEl, this.reloadEl, this.scopeEl, this.hurtEl, this.mini, this.modeBar, this.coreBar]) el.remove();
+    this.defense?.dispose();
+    document.body.classList.remove('br-lobby', 'br-team');
     this.spec?.dispose();
     document.body.classList.remove('battle');
     disposeObj(this.myGun); disposeObj(this.myChute);

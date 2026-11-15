@@ -395,7 +395,7 @@ export function defaultSave(rand = Math.random) {
     obby: { cp: 0, top: 0, best: 0, clears: 0, paid: 0 },
     tycoon: { cash: 0, pending: 0, items: [], done: false, away: 0, bank: 0 },
     survival: { best: 0, wins: 0 },
-    battle: { wins: 0, kills: 0, best: 0 },
+    battle: { wins: 0, kills: 0, best: 0, teamWins: 0, teamBest: 0 },
     tower: { blocks: [], best: 0 },
     sound: true,
     music: true,
@@ -445,7 +445,7 @@ export function cleanSave(raw, rand = Math.random) {
   for (const it of TYCOON) if (items.includes(it.id) && (!it.need || ok.includes(it.need))) ok.push(it.id);
   s.tycoon = { cash: Math.floor(num(t.cash, 0, 1e12, 0)), pending: Math.floor(num(t.pending, 0, 1e12, 0)), items: ok, done: !!t.done && ok.includes('statue'), away: Math.floor(num(t.away, 0, 1e14, 0)), bank: num(t.bank, 0, 1, 0) };
   s.survival = { best: Math.floor(num(raw.survival?.best, 0, 3600, 0)), wins: Math.floor(num(raw.survival?.wins, 0, 99_999, 0)) };
-  s.battle = { wins: Math.floor(num(raw.battle?.wins, 0, 99_999, 0)), kills: Math.floor(num(raw.battle?.kills, 0, 9_999_999, 0)), best: Math.floor(num(raw.battle?.best, 0, 99, 0)) };
+  s.battle = { wins: Math.floor(num(raw.battle?.wins, 0, 99_999, 0)), kills: Math.floor(num(raw.battle?.kills, 0, 9_999_999, 0)), best: Math.floor(num(raw.battle?.best, 0, 99, 0)), teamWins: Math.floor(num(raw.battle?.teamWins, 0, 99_999, 0)), teamBest: Math.floor(num(raw.battle?.teamBest, 0, 99, 0)) };
   s.tower = { blocks: cleanTowerBlocks(raw.tower?.blocks), best: Math.floor(num(raw.tower?.best, 0, TOWER.TOP + 1, 0)) };
   s.sound = raw.sound !== false;
   s.music = raw.music !== false;
@@ -624,10 +624,34 @@ export function zoneAt(phases, t) {
 export const outsideZone = (z, x, zz) => Math.hypot(x - z.x, zz - z.z) > z.r;
 
 // 광선이 사람 몸 상자(발 x, y, z, 너비 1, 키 P.H)에 맞는 거리 (안 맞으면 Infinity)
-export function rayBody(ox, oy, oz, dx, dy, dz, bx, by, bz) {
-  const b = { x0: bx - P.R, x1: bx + P.R, y0: by, y1: by + P.H, z0: bz - P.R, z1: bz + P.R, on: true };
+export function rayBody(ox, oy, oz, dx, dy, dz, bx, by, bz, r = P.R, h = P.H) {
+  const b = { x0: bx - r, x1: bx + r, y0: by, y1: by + h, z0: bz - r, z1: bz + r, on: true };
   const t = rayBoxes(ox, oy, oz, dx, dy, dz, [b], 1e9);
   return t >= 1e9 ? Infinity : t;
 }
 // 몇 등이고 코인은 얼마
 export const battleCoins = (place, kills) => kills * 5 + Math.max(0, 13 - place) * 2 + (place === 1 ? 30 : 0);
+
+// ───── 팀전: 성 지키기 (2026-11-15 인혁: "팀전은 몬스터가 나와서 애들이랑 협동해서 성을 지키는거야") ─────
+export const MONSTERS = {
+  slime: { name: '슬라임', hp: 40, speed: 5, dmg: 6, r: 0.75, h: 1.4, icon: '🟢' },
+  goblin: { name: '고블린', hp: 75, speed: 6.4, dmg: 9, r: 0.5, h: 2.7, icon: '👺' },
+  golem: { name: '돌 골렘', hp: 340, speed: 3.2, dmg: 22, r: 0.95, h: 4.6, icon: '🗿' },
+  king: { name: '킹 슬라임', hp: 1400, speed: 2.6, dmg: 40, r: 2.1, h: 4.0, icon: '👑' },
+};
+export const MONSTER_TYPES = Object.keys(MONSTERS);
+export const DEFENSE = Object.freeze({ WAVES: 10, CORE_HP: 1000, FIRST: 10, BREAK: 12, RESPAWN: 6, TEAM: 4, SPAWN_GAP: 0.85 });
+// n 번째 웨이브에 나오는 몬스터 (팀이 많을수록 조금 더 많이)
+export function waveOf(n, team = DEFENSE.TEAM) {
+  const k = Math.max(0.8, team / 3);
+  const list = [];
+  const add = (type, c) => { for (let i = 0; i < c; i++) list.push(type); };
+  add('slime', Math.round((3 + n * 2) * k));
+  add('goblin', Math.round(Math.max(0, n - 1) * 1.5 * k));
+  add('golem', Math.floor((n / 3) * k));
+  if (n === 5 || n === 10) add('king', 1);
+  return list;
+}
+// 웨이브가 갈수록 몬스터 체력이 늘어난다 (킹 슬라임은 5번째가 더 약하다)
+export const monsterHp = (type, n) => Math.round(MONSTERS[type].hp * (1 + (n - 1) * 0.08) * (type === 'king' && n === 5 ? 0.6 : 1));
+export const defenseCoins = (wave, kills, won) => kills + wave * 5 + (won ? 100 : 0);

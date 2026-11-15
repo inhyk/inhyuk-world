@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -324,4 +324,22 @@ test('배틀: 헬멧과 조끼가 맞는 아픔을 줄인다', () => {
   assert.ok(Math.abs(r.hp - 84) < 1e-9);
   const r2 = applyDamage({ hp: 100, armor: 0, helmet: 1, vest: 2 }, 100);
   assert.ok(Math.abs(r2.hp - 35) < 1e-9);
+});
+
+test('팀전: 웨이브가 갈수록 몬스터가 많고 세지고, 5와 10 번째에 킹 슬라임', () => {
+  let last = 0;
+  for (let n = 1; n <= DEFENSE.WAVES; n++) {
+    const w = waveOf(n);
+    assert.ok(w.length > last, `wave ${n}`);
+    last = w.length;
+    assert.equal(w.includes('king'), n === 5 || n === 10);
+    assert.ok(w.every(t => MONSTERS[t]));
+  }
+  assert.ok(waveOf(3, 1).length < waveOf(3, 4).length);
+  assert.ok(monsterHp('slime', 10) > monsterHp('slime', 1));
+  assert.ok(monsterHp('king', 5) < monsterHp('king', 10));
+  assert.equal(defenseCoins(10, 30, true), 30 + 50 + 100);
+  const s = cleanSave({ battle: { teamWins: 2, teamBest: 7 } });
+  assert.equal(s.battle.teamWins, 2);
+  assert.equal(s.battle.teamBest, 7);
 });
