@@ -1,5 +1,29 @@
 [
   {
+    "slug": "zoom-kart",
+    "title": "씽씽 카트 · 드리프트 레이싱",
+    "description": "드리프트로 부스터를 모으고 아이템으로 역전! 친구 4명까지 같이 달리는 3D 카트 레이싱.",
+    "longDescription": "직접 만든 3D 카트 레이싱 게임이에요. 말랑이, 콩떡이, 반달이 같은 선수 8명 중 하나를 골라 컴퓨터 카트 7대와 달려요. Shift로 드리프트를 하다가 놓으면 순간 부스터가 나가요. 아이템전에서는 상자를 먹고 로켓 부스터, 미끌 젤리, 따라가 꿀벌, 눈덩이, 방울 방패, 먹구름으로 역전하고, 스피드전에서는 드리프트로 게이지를 채워 부스터를 모아요. 혼자 기록 재기로 최고 기록에도 도전할 수 있어요. 말랑 숲 서킷, 반짝 모래 해변, 눈꽃 고개, 네온 시티, 부글부글 화산, 무지개 구름길까지 트랙 6개가 있고, 3등 안에 들면 다음 트랙이 열려요. 코인을 모아 카트 5대를 살 수 있어요. 방 코드로 친구 4명까지 같이 달릴 수 있고 빈자리는 컴퓨터가 채워요. 방향키와 터치 버튼을 지원하고 진행 상황은 이 브라우저에 자동 저장돼요. 그림, 3D 모델과 소리는 코드로 만들었어요.",
+    "emoji": "🏎️",
+    "thumbnail": "/images/games/zoom-kart-thumb.png",
+    "screenshots": [
+      "/images/games/zoom-kart-city.png",
+      "/images/games/zoom-kart-cloud.png",
+      "/images/games/zoom-kart-mobile.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Three.js",
+      "WebGL",
+      "Web Audio"
+    ],
+    "category": "레이싱",
+    "playUrl": "/play/zoom-kart",
+    "createdAt": "2026-11",
+    "featured": true,
+    "order": 107
+  },
+  {
     "slug": "chess",
     "title": "그린 체스 · 온라인 대전·퍼즐 러시",
     "description": "모르는 사람과 바로 붙는 온라인 체스! 숲속 캐릭터 7명, 10만 개 퍼즐, 퍼즐 러시, 레이팅 점수까지.",
