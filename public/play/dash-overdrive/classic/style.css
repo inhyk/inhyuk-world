@@ -252,6 +252,30 @@ header button{padding:6px 8px;word-break:keep-all}
 .shop-item button.buy{background:#9fe9ff;color:#0b1030;font-weight:800;border-color:#9fe9ff}
 .shop-item button:disabled{opacity:.6}
 .shop-help{color:var(--muted);font-size:12px;margin:10px 0 0}
+.gift-card{position:relative;overflow:hidden;width:min(440px,100%);text-align:center;border-color:#ff8fa0;background:linear-gradient(#123a2a,#0b1030 70%)}
+.gift-card .shop-head,.gift-card p,.gift-box,.gift-wear{position:relative;z-index:1}
+.gift-card .shop-head h2{color:#ffe08a}
+.gift-text{margin:10px 0 4px;font-size:15px;line-height:1.5;word-break:keep-all}
+.gift-snow{position:absolute;inset:0;pointer-events:none;opacity:.85;background-image:radial-gradient(3px 3px at 20px 30px,#fff,transparent),radial-gradient(2px 2px at 80px 120px,#fff,transparent),radial-gradient(3px 3px at 150px 60px,#fff,transparent),radial-gradient(2px 2px at 210px 160px,#fff,transparent),radial-gradient(2.5px 2.5px at 260px 20px,#fff,transparent),radial-gradient(2px 2px at 120px 190px,#fff,transparent);background-size:280px 200px;animation:gift-snow 6s linear infinite}
+@keyframes gift-snow{to{background-position:30px 200px,30px 200px,30px 200px,30px 200px,30px 200px,30px 200px}}
+.gift-box{display:block;position:relative;width:170px;height:190px;margin:8px auto 0;border:0;background:none;padding:0;cursor:pointer}
+.gift-body{position:absolute;left:15px;right:15px;bottom:0;height:110px;border:4px solid var(--navy);border-radius:10px;background:linear-gradient(90deg,transparent 42%,#ffd23d 42%,#ffd23d 58%,transparent 58%),linear-gradient(#ff5468,#c8173a)}
+.gift-lid{position:absolute;left:5px;right:5px;bottom:104px;height:40px;border:4px solid var(--navy);border-radius:10px;background:linear-gradient(90deg,transparent 42%,#ffd23d 42%,#ffd23d 58%,transparent 58%),linear-gradient(#ff7d8c,#e02848);transition:transform .55s cubic-bezier(.3,1.6,.5,1),opacity .55s}
+.gift-lid::before,.gift-lid::after{content:'';position:absolute;bottom:34px;width:38px;height:28px;border:4px solid var(--navy);border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:#ffd23d}
+.gift-lid::before{left:calc(50% - 40px);transform:rotate(-24deg)}
+.gift-lid::after{right:calc(50% - 40px);transform:rotate(24deg)}
+.gift-skin{position:absolute;left:50%;bottom:36px;width:96px;height:96px;margin-left:-48px;opacity:0;transform:translateY(20px) scale(.4);transition:transform .6s cubic-bezier(.3,1.7,.5,1) .15s,opacity .3s .15s}
+.gift-box:not(.open){animation:gift-wiggle 1.6s ease-in-out infinite}
+@keyframes gift-wiggle{0%,70%,100%{transform:rotate(0)}76%{transform:rotate(-6deg)}82%{transform:rotate(6deg)}88%{transform:rotate(-4deg)}94%{transform:rotate(3deg)}}
+.gift-box:focus{outline:none}
+.gift-box:focus-visible .gift-body{box-shadow:0 0 0 4px #ffe08a}
+.gift-box.open{cursor:default}
+.gift-box.open .gift-lid{transform:translate(70px,-90px) rotate(38deg);opacity:0}
+.gift-box.open .gift-skin{opacity:1;transform:translateY(-62px) scale(1)}
+.gift-hint{color:#ffe08a;font-weight:800;margin:10px 0 0;font-size:15px;word-break:keep-all}
+.gift-wear{margin-top:10px;border:0;border-radius:10px;padding:10px 22px;font-size:15px;font-weight:800;background:#ffd23d;color:#0b1030}
+.gift-wear:disabled{opacity:.7}
+@media(prefers-reduced-motion:reduce){.gift-snow,.gift-box:not(.open){animation:none}.gift-lid,.gift-skin{transition:none}}
 @media(max-width:760px){.my-level{padding:3px 6px!important}.my-level b{font-size:11px}.my-diamonds{display:none}.shop-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-height:560px) and (min-width:600px){.my-level-box{display:none}}
 /* with 100 levels the card list is long: the intro and my level stay in view on

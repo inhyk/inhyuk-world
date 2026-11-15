@@ -20,7 +20,7 @@ const SEND_MS = 66;
 // [name, difficulty, song] for levels 1-100 (level-list.js). Secret levels stay
 // single player: not everyone has them open. Every other level can be raced.
 const LEVELS = window.CLASSIC_LEVEL_LIST || [];
-const SKIN_MAX = 30; // engine Config::SKIN_COUNT - 1
+const SKIN_MAX = 32; // engine Config::SKIN_COUNT - 1
 const CUSTOM_LEVEL = LEVELS.length; // the map maker's slot in the engine
 const MAP_PART = 1500; // numbers per map message, well under the 16 KB limit
 const PIXELS_PER_MS = 20.772 * 60 / 1000;

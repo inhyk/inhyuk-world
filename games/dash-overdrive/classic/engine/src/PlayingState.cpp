@@ -204,9 +204,17 @@ void PlayingState::enter() {
     m_JustSetNewBest = false;
     m_LevelPercent = 0;
     updateLevelPercentTexture();
+    // the map maker's V key: start where the mouse was (runs from there are not records)
+    const bool fromStart = m_Level == Config::CUSTOM_LEVEL && m_StartColumn >= 0;
+    m_StartSongTime = m_Player.setStart(fromStart, {
+        static_cast<float>(m_StartColumn * Config::TILE_SIZE),
+        static_cast<float>(Config::FLOOR_Y - (m_StartRow + 1) * Config::TILE_SIZE),
+    });
 }
 
 void PlayingState::exit() {
+    m_StartColumn = -1;
+    m_Player.setStart(false, { 0, 0 });
     resetMusic();
     if (m_Song != nullptr) {
         Mix_FreeMusic(m_Song);
@@ -242,6 +250,9 @@ void PlayingState::startSong() {
     if (m_Song != nullptr) {
         // a tower floor takes as long as the player likes: its song loops
         Mix_PlayMusic(m_Song, m_Player.isPlatformer() ? -1 : 0);
+        if (m_Player.hasStart() && m_StartSongTime > 0) {
+            Mix_SetMusicPosition(m_StartSongTime);
+        }
     }
 }
 
@@ -370,6 +381,9 @@ void PlayingState::updatePause(bool isEscapeReleased) {
             m_Game->setCameraPosition({0, 0});
             m_Game->getBackground().fade(m_InitialBackground.r, m_InitialBackground.g, m_InitialBackground.b, 0);
             m_Game->getGround().fade(m_InitialGround.r, m_InitialGround.g, m_InitialGround.b, 0);
+            if (m_Player.hasStart()) {
+                m_Player.goToStart();
+            }
             resume();
             Mix_HaltMusic();
             m_IsSongPlaying = false;
@@ -383,6 +397,9 @@ void PlayingState::updatePause(bool isEscapeReleased) {
             m_Game->setCameraPosition({0, 0});
             m_Game->getBackground().fade(m_InitialBackground.r, m_InitialBackground.g, m_InitialBackground.b, 0);
             m_Game->getGround().fade(m_InitialGround.r, m_InitialGround.g, m_InitialGround.b, 0);
+            if (m_Player.hasStart()) {
+                m_Player.goToStart();
+            }
             resume();
             Mix_HaltMusic();
             Mix_PlayMusic(m_PracticeMusic, -1);
@@ -403,8 +420,8 @@ void PlayingState::updateEndLevel(float deltaTime) {
         m_ShouldEndLevel = false;
         m_ExitButton.setPosition(m_Game->getWidth()/2, m_Game->getHeight()/2, true, true);
         Mix_PlayChannel(-1, m_LevelCompleteSound, 0);
-        if (m_Game->isCreatorMode()) {
-            // creator runs are not records
+        if (m_Game->isCreatorMode() || m_Player.hasStart()) {
+            // creator runs and runs from a start position are not records
         } else if (m_IsInPractice) {
             LevelSelect::get().setBestPracticePercentage(100);
         } else {
@@ -425,7 +442,7 @@ void PlayingState::updateLevelComplete(bool isEscapeReleased) {
 }
 
 void PlayingState::updateNewBest() {
-    if (m_Game->isCreatorMode()) {
+    if (m_Game->isCreatorMode() || m_Player.hasStart()) {
         return;
     }
     LevelSelect &levelSelect = LevelSelect::get();
@@ -457,7 +474,7 @@ void PlayingState::countAttempt() {
 void PlayingState::renderAttempt() const {
     if (m_AttemptWordTexture == nullptr || m_AttemptNumberTexture == nullptr) return;
     const SDL_FPoint camera = m_Game->getCameraPosition();
-    const float x = 2.0f * Config::TILE_SIZE - camera.x;
+    const float x = (m_Player.hasStart() ? m_Player.getStartX() + 3.0f * Config::TILE_SIZE : 2.0f * Config::TILE_SIZE) - camera.x;
     const float y = Config::FLOOR_Y - 4.4f * Config::TILE_SIZE - camera.y;
     if (x > m_Game->getWidth() || x < -900) return;
     int numberWidth = 0;

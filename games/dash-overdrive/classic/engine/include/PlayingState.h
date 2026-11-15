@@ -28,6 +28,10 @@ public:
     inline SDL_Color getInitialBackground() const { return m_InitialBackground; }
     inline SDL_Color getInitialGround() const { return m_InitialGround; }
     inline void setCustomSong(int song) { m_CustomSong = song; }
+    // Map maker start position (V key): the cell the cube starts in for the next run
+    // of the map maker's level, or column -1 for the usual start. Cleared on leaving.
+    inline void setCustomStart(int column, int row) { m_StartColumn = column; m_StartRow = row; }
+    inline bool hasStartPosition() const { return m_Player.hasStart(); }
     // Friends in an online race, drawn see-through where the page says they are.
     static constexpr int GHOST_COUNT = 3;
     // mode is the friend's Gamemode number (0 cube, 1 ship, 2 ball, 3 UFO, 4 wave)
@@ -124,6 +128,9 @@ private:
     int m_Level = 0;
     int m_SongIndex = 0;
     int m_CustomSong = 0;
+    int m_StartColumn = -1;
+    int m_StartRow = 0;
+    float m_StartSongTime = 0;
     SDL_Color m_InitialBackground = { 0, 0, 255 };
     SDL_Color m_InitialGround = { 0, 0, 255 };
 

@@ -1258,6 +1258,33 @@ const SKINS_2 = [
         `<path d="M80 128 H105" stroke="${WHITE}" stroke-width="3" stroke-linecap="round"/>` +
         blush(124, '#ff8fc8', 0.5),
     }),
+  // 32: Christmas present skin (the designer: "크리스마스선물을 주게해줘"): a green
+  // tree-coloured buddy in a Santa hat with a string of lights and falling snow
+  () =>
+    cube({
+      colors: ['#9ff0b4', '#36c46a', '#14803f'],
+      defs: lin('hat', 0, 2, 0, 56, [[0, '#ff6b7d'], [0.55, '#e8253f'], [1, '#b3122c']]),
+      frame:
+        tallHead(40) +
+        // the hat leans right and its tip hangs down to a pompom
+        `<path d="M20 58 Q24 20 84 10 Q138 4 162 34 L150 46 Q134 30 112 34 L160 58 Z" fill="url(#hat)" stroke="${NAVY}" stroke-width="6" stroke-linejoin="round"/>` +
+        `<path d="M44 30 Q62 20 86 18" fill="none" stroke="${WHITE}" stroke-opacity=".45" stroke-width="5" stroke-linecap="round"/>` +
+        `<rect x="10" y="44" width="165" height="26" rx="13" fill="${WHITE}" stroke="${NAVY}" stroke-width="5"/>` +
+        [[30, 54], [58, 52], [92, 55], [124, 52], [152, 55]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="5" fill="#dfe8ff"/>`).join('') +
+        `<circle cx="164" cy="36" r="14" fill="${WHITE}" stroke="${NAVY}" stroke-width="5"/><circle cx="160" cy="32" r="4.5" fill="#dfe8ff"/>`,
+      inner: [17, 51, 151, 117],
+      gloss: false,
+      pattern:
+        // snowflakes in the back, then a string of lights across the bottom
+        [[34, 86, 5], [150, 90, 4.5], [160, 114, 3], [26, 108, 3], [92, 80, 3]].map(([x, y, r]) => `<path d="${starPath(x, y, r * 1.5, r * 0.5, 6, 0)}" fill="${WHITE}" fill-opacity=".7"/>`).join('') +
+        `<path d="M14 142 Q52 162 92.5 150 Q134 138 171 158" fill="none" stroke="${NAVY}" stroke-width="3.5"/>` +
+        [[30, 151, '#ffd23d'], [56, 157, '#ff3d7f'], [82, 152, '#7fe3ff'], [108, 146, '#ffd23d'], [134, 146, '#ff3d7f'], [158, 153, '#7fe3ff']]
+          .map(([x, y, c]) => `<ellipse cx="${x}" cy="${y + 6}" rx="6.5" ry="8.5" fill="${c}" stroke="${NAVY}" stroke-width="3"/><rect x="${x - 3.5}" y="${y - 3}" width="7" height="5" rx="1.5" fill="${NAVY}"/><circle cx="${x - 2}" cy="${y + 3}" r="2" fill="${WHITE}" fill-opacity=".8"/>`).join(''),
+      face:
+        eyesRound(66, 119, 98, 12, 14) +
+        `<path d="M70 118 H115 Q113 140 92.5 140 Q72 140 70 118 Z" fill="${NAVY}"/><path d="M80 133 Q92.5 125 105 133 Q100 140 92.5 140 Q85 140 80 133 Z" fill="#ff6f9c"/>` +
+        blush(118, '#ff7aa6', 0.6),
+    }),
 ];
 
 // 시도 (attempt), shown at the start of a level with the attempt number

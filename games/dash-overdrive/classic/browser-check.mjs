@@ -22,8 +22,11 @@ async function open(viewport, query = '', touch = false) {
   await page.goto(`${page_}${query}`);
   await page.waitForFunction(() => window.render_classic_status && JSON.parse(window.render_classic_status()).ready, null, {timeout: 60000});
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no sideways scroll');
+  // the Christmas present box opens for every new player until the end of 2026; close it
+  if (await page.locator('#gift').isVisible()) await page.click('#gift-close');
   return {page, context};
 }
+const GIFT_DAYS = Date.now() < Date.parse('2027-01-01T00:00:00+09:00');
 
 try {
   {
@@ -176,6 +179,71 @@ try {
     assert.deepEqual(seen.gravities, [-1, 1], 'the blue ring or pad flips gravity');
     assert.ok(seen.percent > 0);
     console.log(`map maker plan 2 passed (11 new objects, share code, run: modes ${seen.modes}, speeds ${seen.speeds})`);
+    await context.close();
+  }
+  {
+    // Christmas present: a new player gets skin 33 (engine 32) and sees the box once
+    const context = await browser.newContext({viewport: {width: 1280, height: 800}});
+    const page = await context.newPage();
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto(page_);
+    await page.waitForFunction(() => window.render_classic_status && JSON.parse(window.render_classic_status()).ready, null, {timeout: 60000});
+    if (GIFT_DAYS) {
+      await page.waitForSelector('#gift', {state: 'visible'});
+      assert.equal(await page.evaluate(() => localStorage.getItem('dash-classic:3')), '1', 'the present is kept at once');
+      await page.click('#gift-box');
+      await page.waitForSelector('#gift-wear', {state: 'visible'});
+      await page.waitForTimeout(800);
+      await page.screenshot({path: process.env.GIFT_SHOT || '/dev/null'}).catch(() => {});
+      await page.click('#gift-wear');
+      assert.equal(await page.evaluate(() => Module._classic_player_skin()), 32, 'wearing the present');
+      await page.click('#gift-close');
+      await page.reload();
+      await page.waitForFunction(() => window.render_classic_status && JSON.parse(window.render_classic_status()).ready, null, {timeout: 60000});
+      await page.waitForTimeout(300);
+      assert.equal(await page.locator('#gift').isVisible(), false, 'the box shows only once');
+      assert.equal(await page.evaluate(() => Module._classic_select_skin(32)), 1, 'still unlocked after a reload');
+      console.log('christmas present passed');
+    }
+
+    // V in the map maker: start at the cell under the mouse with the portals before it taken
+    await page.evaluate(() => {
+      const cells = [[5, 0, 13], [8, 0, 215]];
+      for (let r = 0; r < 11; r++) cells.push([27, r, 1]);
+      localStorage.setItem('dash-classic:editor-5', JSON.stringify({cells, song: 3, colors: 0}));
+      window.classicEditor.switchSlot(5);
+      window.classicEditor.open();
+      const position = document.getElementById('editor-position');
+      position.value = '14';
+      position.dispatchEvent(new Event('input'));
+    });
+    await page.waitForTimeout(300);
+    const grid = await page.locator('#editor-canvas').boundingBox();
+    const cell = grid.height / 12;
+    await page.mouse.move(grid.x + (20 - 14 + 0.5) * cell, grid.y + (10 - 3 + 0.5) * cell);
+    await page.waitForTimeout(100);
+    await page.keyboard.press('KeyV');
+    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 111);
+    const start = await page.evaluate(() => ({x: Module._sim_x(), y: Module._sim_y(), mode: Module._sim_mode(), speed: Module._sim_speed()}));
+    assert.ok(Math.abs(start.x - 20 * 120) < 130, `starts at column 20 (x ${start.x})`);
+    assert.equal(start.mode, 1, 'the ship portal before it is taken');
+    assert.equal(start.speed, 2, 'the fast gate before it is taken');
+    // the wall at column 27 stops the ship; it comes back to column 20, not the map start
+    await page.waitForFunction(() => Module._classic_player_dead() === 1, null, {timeout: 10000});
+    await page.waitForFunction(() => Module._classic_player_dead() === 0, null, {timeout: 10000});
+    await page.waitForTimeout(50);
+    const again = await page.evaluate(() => ({x: Module._sim_x(), mode: Module._sim_mode()}));
+    assert.ok(again.x > 20 * 120 - 10 && again.x < 27 * 120, `back at the start (x ${again.x})`);
+    assert.equal(again.mode, 1);
+    await page.evaluate(() => Module._classic_go_title());
+    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).editor);
+    // the usual ▶ button starts at the beginning again
+    await page.click('#editor-test');
+    await page.waitForFunction(() => JSON.parse(window.render_classic_status()).level === 111);
+    const usual = await page.evaluate(() => ({x: Module._sim_x(), mode: Module._sim_mode()}));
+    assert.ok(usual.x < 0, `usual start (x ${usual.x})`);
+    assert.equal(usual.mode, 0);
+    console.log(`map maker V start passed (x ${Math.round(start.x)}, ship, fast; back at x ${Math.round(again.x)} after dying)`);
     await context.close();
   }
   for (const viewport of [{width: 390, height: 844}, {width: 844, height: 390}]) {

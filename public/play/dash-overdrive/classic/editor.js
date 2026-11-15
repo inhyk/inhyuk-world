@@ -248,11 +248,13 @@
     shareBox.hidden = true;
   });
 
-  function test() {
+  // start: [column, row] of the cell to start in (the V key), or null for the usual start
+  function test(start = null) {
     if (!window.FS || !window.classicStartLevel) return;
     save();
     FS.writeFile(`/res/leveldata/${CUSTOM_LEVEL}.level`, levelText());
     Module._classic_set_custom_song(map.song);
+    Module._classic_set_custom_start(start ? start[0] : -1, start ? start[1] : 0);
     testing = true;
     close();
     window.classicStartLevel(CUSTOM_LEVEL);
@@ -510,7 +512,21 @@
     save();
     draw();
   });
-  document.getElementById('editor-test').addEventListener('click', test);
+  document.getElementById('editor-test').addEventListener('click', () => test());
+
+  // V: play from the cell under the mouse (the designer: "v를 하면 마우스포인터가있는 지점에서 내 맵을 플레이 할 수 있게 해줘").
+  // The cube starts there with the portals and speed gates before it already taken, and the
+  // song starts where it would be. A block or spike in that cell moves the start up above it.
+  const SOLID = new Set([1, 40, 202, 203, 8, 39, 1008, 1039]);
+  function testFromMouse() {
+    if (!hover) {
+      savedLabel.textContent = '마우스를 맵 위에 두고 V를 눌러 줘';
+      return;
+    }
+    let [c, r] = hover;
+    while (r < MAX_ROWS - 1 && SOLID.has(map.cells.get(`${c},${r}`))) r++;
+    test([c, r]);
+  }
   document.getElementById('editor-close').addEventListener('click', () => close());
   document.getElementById('editor-clear').addEventListener('click', () => {
     confirmBox.hidden = false;
@@ -588,6 +604,7 @@
     if (!window.FS || !window.classicStartLevel) return;
     FS.writeFile(`/res/leveldata/${CUSTOM_LEVEL}.level`, levelText(data));
     Module._classic_set_custom_song(data.song);
+    Module._classic_set_custom_start(-1, 0);
     sharedPlaying = true;
     window.classicStartLevel(CUSTOM_LEVEL);
   }
@@ -624,6 +641,7 @@
     handleKey(event) {
       if (event.type !== 'keydown') return;
       if (event.key === 'Escape') close();
+      else if (event.code === 'KeyV' && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey) testFromMouse();
       else if (event.key === 'ArrowLeft') scrollTo(Math.round(scroll) - 4);
       else if (event.key === 'ArrowRight') scrollTo(Math.round(scroll) + 4);
       else if (event.key === 'ArrowUp') scrollRows(rowScroll + 1);

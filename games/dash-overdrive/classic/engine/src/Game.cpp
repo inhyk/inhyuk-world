@@ -279,11 +279,13 @@ bool Game::isSkinUnlocked(int skin) const {
     if (m_CreatorMode || skin < Config::FREE_SKINS) return true;
     if (skin < Config::SHOP_FIRST) return LevelSelect::get().isCleared(skin - Config::FREE_SKINS);
     if (skin == Config::TOWER_SKIN) return LevelSelect::get().isCleared(Config::TOWER_FIRST + Config::TOWER_FLOORS - 1);
+    if (skin == Config::GIFT_SKIN) return (m_Gifts & 1) != 0;
     return ((m_BoughtSkins >> (skin - Config::SHOP_FIRST)) & 1) != 0;
 }
 
 void Game::refreshBoughtSkins() {
     m_BoughtSkins = Storage::getInt(Storage::BOUGHT_SKINS, 0);
+    m_Gifts = Storage::getInt(Storage::GIFTS, 0);
 }
 
 void Game::setSelectedSkin(int skin) {
