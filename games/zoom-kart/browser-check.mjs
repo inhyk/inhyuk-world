@@ -60,6 +60,7 @@ await phone.locator('#b-start').tap();
 await phone.waitForFunction(() => window.__kart.race && window.__kart.race.state === 'race', null, { timeout: 8000 });
 await phone.waitForFunction(() => window.__kart.race.player.s > 20);
 await phone.screenshot({ path: out + '/phone-race.png' });
+const fancy = await page.evaluate(() => window.__kart.fancy);
 await browser.close();
 if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
-console.log('zoom-kart browser check ok →', out);
+console.log('zoom-kart browser check ok →', out, '· 빛 번짐 효과', fancy ? '켜짐' : '꺼짐(느린 기기)');

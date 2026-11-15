@@ -85,6 +85,19 @@ test('드리프트: 미끄러지며 게이지가 차고, 놓으면 순간 부스
   assert.deepEqual(P.items, ['boost']); assert.ok(P.gauge < 0.5);
 });
 
+test('부스터 발판: 트랙마다 곧은 길에 있고, 밟으면 잠깐 빨라진다', () => {
+  for (const def of C.TRACKS) {
+    const T = C.buildTrack(def.id); assert.ok(T.pads.length >= 2, def.id + ' 발판 ' + T.pads.length);
+    for (const pad of T.pads) { assert.ok(Math.abs(T.curv[pad.idx]) < 0.012); assert.ok(Math.abs(pad.d) < T.half - 2); }
+  }
+  const r = C.createRace({ track: 'forest', mode: 'time', seed: 1 }); go(r);
+  const P = r.player, pad = r.track.pads[0];
+  P.x = pad.x; P.z = pad.z; P.idx = pad.idx; P.h = P.mv = pad.h; P.s = 20;
+  C.stepRace(r, DT, { gas: true });
+  assert.ok(P.turboT > 1); assert.ok(r.events.some((e) => e.type === 'pad'));
+  run(r, 0.8, { gas: true }); assert.ok(P.s > C.BASE_SPEED * 1.1);
+});
+
 test('아이템전에서는 드리프트 게이지가 차지 않는다', () => {
   const r = C.createRace({ track: 'forest', mode: 'item', seed: 1 }); go(r);
   run(r, 3, { gas: true }); run(r, 1, { gas: true, steer: 1, drift: true });
