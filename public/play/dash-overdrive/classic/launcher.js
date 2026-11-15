@@ -2,7 +2,7 @@
 'use strict';
 // The page around the WebAssembly engine: level picker, song downloads,
 // touch input and the hooks the engine calls (Module.classic*).
-const VERSION = 'classic-original-14';
+const VERSION = 'classic-original-15';
 // [name, difficulty, song] for levels 1-100, written by levels/level-list.mjs
 const CLASSIC_LEVELS = window.CLASSIC_LEVEL_LIST;
 // groups in the level picker
@@ -204,6 +204,70 @@ function wearSkin(skin) {
   buildShop();
 }
 
+// ---- Christmas present (the designer: "크리스마스선물을 주게해줘 (이 게임에 들어온사람에게모두다 스킨을)") ----
+// Everyone who opens the game before the end of 2026 (Korean time) gets the
+// Santa hat skin straight away; the box on screen only shows it.
+const GIFT_SKIN = 32; // engine Config::GIFT_SKIN
+const GIFT_KEY = 3; // engine Storage::GIFTS, bit 0 is this present
+const GIFT_UNTIL = Date.parse('2027-01-01T00:00:00+09:00');
+const GIFT_SEEN_KEY = 'dash-classic:gift-seen';
+const gift = document.getElementById('gift');
+const giftBox = document.getElementById('gift-box');
+const giftWear = document.getElementById('gift-wear');
+let giftNew = false;
+function hasGift() {
+  return (storedNumber(GIFT_KEY) & 1) === 1;
+}
+function giveGift() {
+  if (hasGift() || Date.now() >= GIFT_UNTIL) return;
+  try {
+    localStorage.setItem(`dash-classic:${GIFT_KEY}`, String(storedNumber(GIFT_KEY) | 1));
+    giftNew = localStorage.getItem(GIFT_SEEN_KEY) !== '1';
+  } catch {
+    // no storage: nothing can be kept, so no present to show either
+  }
+}
+giveGift();
+function openGift(open) {
+  gift.hidden = !open;
+  if (open) {
+    giftBox.classList.remove('open');
+    document.getElementById('gift-skin').src = skinPicture(GIFT_SKIN);
+    document.getElementById('gift-hint').textContent = '상자를 눌러서 열어 봐!';
+    giftWear.hidden = true;
+  } else {
+    try {
+      localStorage.setItem(GIFT_SEEN_KEY, '1');
+    } catch {
+      // it shows again next time
+    }
+    canvas.focus();
+  }
+}
+giftBox.addEventListener('click', () => {
+  if (giftBox.classList.contains('open')) return;
+  giftBox.classList.add('open');
+  document.getElementById('gift-hint').textContent = '🎅 산타 모자 큐브 스킨을 받았어!';
+  giftWear.hidden = false;
+  giftWear.disabled = false;
+  giftWear.textContent = '🎅 지금 쓰기';
+  try {
+    localStorage.setItem(GIFT_SEEN_KEY, '1');
+  } catch {
+    // fine
+  }
+});
+giftWear.addEventListener('click', () => {
+  if (!ready) return;
+  Module._classic_refresh_skins();
+  if (Module._classic_select_skin(GIFT_SKIN)) {
+    giftWear.textContent = '지금 쓰고 있어!';
+    giftWear.disabled = true;
+    if (!shop.hidden) buildShop();
+  }
+});
+document.getElementById('gift-close').addEventListener('click', () => openGift(false));
+
 function openShop(open) {
   shop.hidden = !open;
   if (open) buildShop();
@@ -347,7 +411,7 @@ function prepareSong(index) {
 }
 
 function panelOpen() {
-  return !launcher.hidden || !shop.hidden || !tower.hidden || !document.getElementById('shared-map').hidden || Boolean(window.classicEditor?.isOpen()) || Boolean(window.classicOnline?.isOpen()) || Boolean(window.classicSocial?.isOpen());
+  return !launcher.hidden || !shop.hidden || !gift.hidden || !tower.hidden || !document.getElementById('shared-map').hidden || Boolean(window.classicEditor?.isOpen()) || Boolean(window.classicOnline?.isOpen()) || Boolean(window.classicSocial?.isOpen());
 }
 
 const isField = target => target instanceof HTMLElement && target.matches('input, select, textarea');
@@ -359,7 +423,9 @@ for (const type of ['keydown', 'keyup']) {
     // a text box keeps its keys; it stops them from reaching the game itself
     if (isField(event.target)) return;
     event.stopImmediatePropagation();
-    if (!document.getElementById('shared-map').hidden) {
+    if (!gift.hidden) {
+      if (type === 'keydown' && event.key === 'Escape') openGift(false);
+    } else if (!document.getElementById('shared-map').hidden) {
       if (type === 'keydown' && event.key === 'Escape') document.getElementById('shared-map').hidden = true;
     } else if (!tower.hidden) {
       if (type === 'keydown' && event.key === 'Escape') openTower(false);
@@ -425,6 +491,9 @@ const Module = window.Module = {
     status.textContent = '게임 화면에서 PLAY를 눌러도 돼.';
     updateChoice();
     updateMyLevel();
+    Module._classic_refresh_skins();
+    // a shared map link opens its own box first; the present waits for the next visit
+    if (giftNew && !params.get('map') && !params.get('start')) openGift(true);
     const start = Number(params.get('start'));
     if (Number.isInteger(start) && start >= 1 && start <= CLASSIC_LEVELS.length) startLevel(start - 1);
     if (params.get('map')) openShared(params.get('map'));

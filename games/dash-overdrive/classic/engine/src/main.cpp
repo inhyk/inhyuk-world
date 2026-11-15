@@ -133,6 +133,11 @@ CLASSIC_EXPORT void classic_set_custom_song(int song) {
     PlayingState::get().setCustomSong(song);
 }
 
+// the map maker's V key: the next run of its level starts in this cell (column -1: the usual start)
+CLASSIC_EXPORT void classic_set_custom_start(int column, int row) {
+    PlayingState::get().setCustomStart(column, row);
+}
+
 CLASSIC_EXPORT void classic_go_title() {
     game.popToRoot();
 }

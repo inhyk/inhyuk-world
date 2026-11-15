@@ -270,6 +270,78 @@ void Player::placeCheckpoint() {
     });
 }
 
+float Player::setStart(bool active, SDL_FPoint pos) {
+    m_HasStart = active;
+    m_StartPos = pos;
+    return active ? goToStart() : 0.0f;
+}
+
+// As if the cube had run to the start position: it takes every portal and speed
+// gate left of it in order (mode, gravity, floor and ceiling, speed), and the time
+// it would have taken gives where the song is.
+float Player::goToStart() {
+    static constexpr float BOUNDS_HEIGHT = (Config::HEIGHT - 10*Config::TILE_SIZE)/2;
+    static constexpr float CAMERA_SCROLL = Config::TILE_SIZE * 6;
+    static constexpr float CAMERA_UP_SCROLL = Config::HEIGHT / 4;
+    m_Gamemode = Gamemode::CUBE;
+    m_GravityMultiplier = 1;
+    m_HasBounds = false;
+    m_YVelocity = 0;
+    m_Rotation = 0;
+    m_TargetRotation = 0;
+    setSpeed(NORMAL_SPEED);
+    float x = -TILE;
+    float seconds = 0;
+    for (const Object *object : PlayingState::get().getLevel().getCollidables()) {
+        const SDL_FRect box = object->getHitbox().value();
+        if (box.x >= m_StartPos.x) {
+            break;
+        }
+        if (box.x + box.w / 2 >= m_StartPos.x) {
+            continue;
+        }
+        switch (object->getType()) {
+        case ObjectType::UPSIDE_DOWN_PORTAL:
+        case ObjectType::NORMAL_PORTAL:
+        case ObjectType::SHIP_PORTAL:
+        case ObjectType::BALL_PORTAL:
+        case ObjectType::UFO_PORTAL:
+        case ObjectType::WAVE_PORTAL:
+        case ObjectType::CUBE_PORTAL:
+        case ObjectType::SPEED_SLOW:
+        case ObjectType::SPEED_NORMAL:
+        case ObjectType::SPEED_FAST:
+        case ObjectType::SPEED_VERY_FAST: {
+            // the cube touches it when its front reaches the left edge
+            const float reach = std::clamp(box.x - TILE, x, m_StartPos.x);
+            seconds += (reach - x) / (m_XVelocity * 60.0f);
+            x = reach;
+            m_Hitbox.y = m_StartPos.y;
+            collideWithObject(*object);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    seconds += (m_StartPos.x - x) / (m_XVelocity * 60.0f);
+    m_YVelocity = 0;
+    m_IsGrounded = false;
+    m_Hitbox.x = m_StartPos.x;
+    m_Hitbox.y = m_StartPos.y;
+    m_Position = m_StartPos;
+    m_PreviousPosition = m_Position;
+    m_Trail.clear();
+    float cameraY = 0;
+    if (hasBounds()) {
+        cameraY = m_Bounds.first - BOUNDS_HEIGHT;
+    } else if (m_Position.y < CAMERA_UP_SCROLL) {
+        cameraY = m_Position.y - CAMERA_UP_SCROLL;
+    }
+    m_Game->setCameraPosition({ std::max(0.0f, m_Position.x - CAMERA_SCROLL), std::min(0.0f, cameraY) });
+    return seconds;
+}
+
 void Player::removeCheckpoint() {
     if (!m_Checkpoints.empty()) {
         m_Checkpoints.pop_back();
@@ -307,6 +379,9 @@ void Player::respawn() {
         SDL_Color initialGround = PlayingState::get().getInitialGround();
         background.fade(initialBackground.r, initialBackground.g, initialBackground.b, 0);
         ground.fade(initialGround.r, initialGround.g, initialGround.b, 0);
+        if (m_HasStart) {
+            goToStart();
+        }
     } else {
         const Checkpoint &latestCheckpoint = m_Checkpoints.back();
         m_Hitbox.x = latestCheckpoint.position.x;

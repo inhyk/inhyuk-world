@@ -93,6 +93,13 @@ public:
     inline void moveY(float dist) { m_Position.y += dist; }
     void placeCheckpoint();
     void removeCheckpoint();
+    // Map maker start position (the designer: "v를 하면 마우스포인터가있는 지점에서 내 맵을 플레이"):
+    // the cube begins at pos with the portals and speed gates before it already taken,
+    // and comes back there after dying. Returns the song time in seconds at that spot.
+    float setStart(bool active, SDL_FPoint pos);
+    inline bool hasStart() const { return m_HasStart; }
+    float goToStart();
+    inline float getStartX() const { return m_StartPos.x; }
     void die();
     bool isDead() const;
     void render() const;
@@ -128,6 +135,8 @@ private:
     Mix_Chunk *m_CoinSound;
     // coins picked up in this run, one bit per coin
     int m_Coins = 0;
+    bool m_HasStart = false;
+    SDL_FPoint m_StartPos = { 0, 0 };
     SDL_FPoint m_Position;
     SDL_FPoint m_PreviousPosition;
     float m_XVelocity = DEFAULT_X_VELOCITY;

@@ -27,6 +27,7 @@ void SkinSelect::init(Game *game) {
         if (i < Config::FREE_SKINS) m_LevelTextures[i] = nullptr;
         else if (i < Config::SHOP_FIRST) m_LevelTextures[i] = Text::createTexture(m_Renderer, "Lv " + std::to_string(i - Config::FREE_SKINS + 1));
         else if (i == Config::TOWER_SKIN) m_LevelTextures[i] = Text::createTexture(m_Renderer, "Tower");
+        else if (i == Config::GIFT_SKIN) m_LevelTextures[i] = Text::createTexture(m_Renderer, "Gift");
         else m_LevelTextures[i] = Text::createTexture(m_Renderer, std::to_string(Config::SHOP_PRICE));
     }
     int backWidth = 0;

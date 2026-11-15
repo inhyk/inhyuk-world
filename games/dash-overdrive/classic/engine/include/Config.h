@@ -27,7 +27,10 @@ constexpr int SHOP_SKINS = 6;
 constexpr int SHOP_PRICE = 10;
 // Clearing the tower's top floor gives the last skin.
 constexpr int TOWER_SKIN = SHOP_FIRST + SHOP_SKINS;
-constexpr int SKIN_COUNT = TOWER_SKIN + 1;
+// Christmas present (the designer: "크리스마스선물을 주게해줘 (이 게임에 들어온사람에게모두다 스킨을)"):
+// the page gives this skin to everyone who opens the game in the gift days.
+constexpr int GIFT_SKIN = TOWER_SKIN + 1;
+constexpr int SKIN_COUNT = GIFT_SKIN + 1;
 constexpr bool isTowerFloor(int level) { return level >= TOWER_FIRST && level < TOWER_FIRST + TOWER_FLOORS; }
 constexpr int TILE_SIZE = 120;
 constexpr int HEIGHT = 1296; // Height is constant, width changes depending on aspect ratio

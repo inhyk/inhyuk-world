@@ -79,6 +79,7 @@ private:
     std::array<SDL_Color, Config::SKIN_COUNT> m_SkinColors;
     int m_SelectedSkin = 0;
     int m_BoughtSkins = 0;
+    int m_Gifts = 0;
     bool m_CreatorMode = false;
     bool m_ShowHitboxes = true;
     SDL_Texture *m_CreatorTexture = nullptr;
