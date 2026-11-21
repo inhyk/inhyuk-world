@@ -197,6 +197,7 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; }
 #build-bar .mode.remove { background: linear-gradient(#ff7b8f, #ff4d64); color: #fff; }
 #build-bar .clear { flex: none; font-size: 14px; padding: 8px 10px; background: #f1f4fa; white-space: nowrap; }
 #build-bar .tip { position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -6px); margin: 0; font-size: 13px; color: #fff; white-space: nowrap; text-shadow: 0 1px 3px rgba(0, 0, 0, .55); pointer-events: none; }
+#build-bar[hidden] { display: none; } /* 모두의 공터: 공터 가까이 있을 때만 보인다 */
 @media (pointer: coarse) {
   #build-bar { bottom: max(166px, calc(env(safe-area-inset-bottom) + 166px)); max-width: calc(100vw - 16px); }
   #build-bar .blocks { max-width: calc(100vw - 150px); }

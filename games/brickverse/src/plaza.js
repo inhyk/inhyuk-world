@@ -2,12 +2,13 @@
 // - 세계는 brickverse:plaza-1 ~ plaza-4 (12명씩). 언제나 plaza-1 부터 들어가 보고 꽉 찼으면 다음 번호로 간다.
 // - 보내는 것은 방과 같은 hi(별명 번호, 옷, 있는 세계, 펫), 위치(pose), say(정해 둔 말 번호)뿐이다.
 //   사람이 쓴 글, 타이쿤 돈 주기, 타워 블록, 미니게임 메시지는 보내지 않고 받아도 버린다.
-// - 칸(world.set, world.del)은 쓰지 않는다 (서버에 남는 것은 아직 없다).
+// - 칸(world.set, world.del)은 브릭 광장의 🧱 모두의 공터 블록만 쓴다 (src/commons.js). 칸 이름 'b|i|j|k', 값은 블록 번호 하나.
+//   모두 나가도 서버에 남고, 처음 놓은 사람만 바꾸거나 지운다. 사람이 쓴 글은 칸에 넣지 않는다.
 // - 미니게임(타이쿤, 바닥이 사라져요, 하늘 타워, 배틀 로얄, 술래잡기)은 game.net(방)과 game.remotes 만 본다.
 //   광장은 그것과 따로 있어서, 광장에만 연결돼 있으면 미니게임은 혼자 하기와 똑같다.
 // DOM 도 three.js 도 쓰지 않아서 node 에서도 쓴다 (plaza.test.mjs, plaza-check.mjs).
 import { World } from '../../../packages/net/world.mjs';
-import { GAME, PHRASES } from '../core.mjs';
+import { GAME, PHRASES, COMMONS } from '../core.mjs';
 
 export const PLAZA_WORLDS = ['plaza-1', 'plaza-2', 'plaza-3', 'plaza-4'];
 export const PLAZA_AWAY_MS = 5 * 60 * 1000; // 탭이 이만큼 가려져 있으면 광장에서 나간다 (12자리를 아끼려고)
@@ -34,6 +35,39 @@ export const PLAZA_TEXT = {
 };
 // 아이에게 알림으로 한 번 보여 주는 까닭 (나머지는 친구 화면의 글로만 보인다)
 const NOTICE = new Set(['all-full', 'replaced', 'suspended']);
+const NO_CELLS = new Map();
+
+// 🧱 모두의 공터에서 아이에게 한 줄로 알리는 말. 서버 오류(taken, not-owner, limit ...)와 놓기 전에 막는 까닭.
+export const COMMONS_TEXT = {
+  taken: '다른 친구가 먼저 놓았어',
+  'not-owner': '다른 친구가 놓은 블록은 못 부숴',
+  limit: `내 블록은 ${COMMONS.LIMIT}개까지야. 내 블록을 부수고 다시 놓아 봐`,
+  'world-full': '광장에 블록이 꽉 찼어. 내 블록을 부수면 다시 놓을 수 있어',
+  rate: '너무 빨라! 천천히 놓아 봐',
+  'limit-day': '오늘은 블록을 너무 많이 바꿨어. 내일 또 놓자',
+  bad: '그 블록은 못 놓아',
+  loggedOut: '로그인하면 여기에 같이 블록을 놓을 수 있어',
+  room: '방에 있는 동안은 공터에 블록을 못 놓아. 방에서 나오면 돼',
+  waiting: '모두의 광장에 들어가면 여기에 블록을 놓을 수 있어',
+  outside: '공터(주황 테두리) 안에만 놓을 수 있어',
+  top: `${COMMONS.TOP + 1}층이 끝이야!`,
+  exists: '이미 블록이 있어',
+  far: '너무 멀어! 가까이 가서 놓아',
+  self: '내 자리에는 못 놓아',
+};
+// 칸 놓기, 지우기에서 온 서버 오류 중 공터가 받는 것 (missing 은 이미 없어진 칸이라 알리지 않는다)
+const CELL_ERRORS = new Set(['taken', 'not-owner', 'missing', 'limit', 'world-full', 'rate', 'limit-day', 'bad']);
+export const commonsError = code => (code === 'missing' ? '' : COMMONS_TEXT[code] ?? '');
+
+// 같은 알림이 연달아 쏟아지지 않게: 같은 글은 ms 안에 한 번만 true.
+export function quietNotice(ms) {
+  let last = '', at = -Infinity;
+  return (text, now) => {
+    if (!text || (text === last && now - at < ms)) return false;
+    last = text; at = now;
+    return true;
+  };
+}
 
 // 다음에 들어가 볼 광장 번호 (0부터). 더 없으면 -1.
 export function nextPlaza(index) { return index + 1 < PLAZA_WORLDS.length ? index + 1 : -1; }
@@ -79,6 +113,8 @@ export class Plaza {
   //   pose(id, d)          다른 사람의 위치 (방의 'p' 와 같은 숫자 배열)
   //   message(data, from)  acceptPlaza 를 지난 메시지 (hi, say)
   //   notice(text)         아이에게 한 줄로 알릴 것
+  //   cell(k, entry | null) 들어온 뒤에 칸이 생기거나 바뀌거나 없어짐 (들어올 때 받은 칸은 opened 뒤 plaza.cells 로 본다)
+  //   cellError(code, k)   칸 놓기, 지우기가 거절됨 (taken, not-owner, missing, limit, world-full, rate, limit-day, bad)
   // options: ticket() → 한 번짜리 표 (account.ticket()), server, connect, fetch,
   //          World(시험용 가짜), timers({ setTimeout, clearTimeout }, 시험용)
   constructor(hooks = {}, options = {}) {
@@ -93,6 +129,10 @@ export class Plaza {
   get name() { return this.live ? PLAZA_WORLDS[this.index] : ''; }
   get number() { return this.live ? this.index + 1 : 0; }
   get count() { return this.live ? this.world.peers.size : 0; }
+  // 받은 칸 (칸 이름 → { v, owner: { id, nickname } }). 광장에 없으면 빈 Map
+  get cells() { return this.live ? this.world.cells : NO_CELLS; }
+  // 내 계정 번호 (칸 주인과 견준다). 광장에 없으면 null
+  get userId() { return this.live ? this.world.user?.id ?? null : null; }
 
   setState(state, text) { this.state = state; this.statusText = text; this.hooks.status?.(state, text); }
 
@@ -144,7 +184,12 @@ export class Plaza {
     const mine = () => this.world === world;
     const world = new Ctor({
       status: s => { if (mine() && this.joined && (s === 'offline' || s === 'error')) this.lost(); },
-      error: code => { if (mine() && (code === 'replaced' || code === 'suspended')) this.lastCode = code; },
+      error: (code, k) => {
+        if (!mine()) return;
+        if (code === 'replaced' || code === 'suspended') this.lastCode = code;
+        else if (this.joined && CELL_ERRORS.has(code)) this.hooks.cellError?.(code, k);
+      },
+      cell: (k, entry) => { if (mine() && this.joined) this.hooks.cell?.(k, entry); },
       join: id => { if (mine() && this.joined) this.hooks.join?.(id); },
       leave: id => { if (mine() && this.joined) this.hooks.leave?.(id); },
       pose: (id, d) => { if (mine()) this.hooks.pose?.(id, d); },
@@ -200,4 +245,7 @@ export class Plaza {
   pose(d) { return this.live && this.world.pose(d); }
   send(data) { return this.live && this.world.send(data); }
   sendTo(id, data) { return this.live && this.world.sendTo(id, data); }
+  // 칸 놓기, 지우기. 결과는 cell 이나 cellError 로 돌아온다 (내가 놓은 것도 서버를 거쳐서 온다)
+  setCell(k, v) { return this.live && this.world.set(k, v); }
+  delCell(k) { return this.live && this.world.del(k); }
 }

@@ -3,6 +3,8 @@
 //   node games/brickverse/plaza-check.mjs http://127.0.0.1:8787    이미 띄워 둔 로컬 서버를 쓴다 (끄지 않는다)
 // 게임이 쓰는 연결(src/plaza.js 의 Plaza)으로 계정 둘이 brickverse:plaza-1 에 들어가서 서로의 hi 와 위치,
 // 정해 둔 말을 받고, 돈 주기와 타워 메시지는 받는 쪽이 버리고, 한쪽이 나가면 다른 쪽이 leave 를 받는지 본다.
+// 🧱 모두의 공터: A 가 놓은 블록을 B 가 cell 로 받고, B 가 그 칸에 놓으면 taken, 지우면 not-owner 를 받는다.
+// 둘 다 나갔다가 다시 들어와도 블록이 그대로 오고(모두 나가도 남는다), A 가 지우면 둘 다에게서 사라진다.
 // 가입은 같은 서버에서 IP 하나당 1시간에 10번까지라, 이미 띄운 서버로 여러 번 하면 막힐 수 있다 (그때는 새로 띄운다).
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
@@ -11,8 +13,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Account, memoryStorage } from '../../packages/net/index.mjs';
-import { Plaza, plazaHi, plazaSay } from './src/plaza.js';
-import { NET_VERSION, defaultSave, lookToArray, packPose, unpackPose } from './core.mjs';
+import { Plaza, plazaHi, plazaSay, commonsError } from './src/plaza.js';
+import { NET_VERSION, defaultSave, lookToArray, packPose, unpackPose, commonsKey, commonsBlock, countMine } from './core.mjs';
 
 const LOCAL = /^http:\/\/(127\.0\.0\.1|localhost):\d{1,5}$/;
 const given = process.argv[2]?.replace(/\/+$/, '');
@@ -59,9 +61,11 @@ function stopServer() {
 
 // 게임(main.js)과 같은 순서로 보낸다: 들어오면 모두에게 hi 와 위치, 새 사람이 오면 그 사람에게 hi 와 위치.
 function client(name, account, hi, pose) {
-  const got = { hi: new Map(), pose: new Map(), say: [], join: [], leave: [], resets: 0, notices: [] };
+  const got = { hi: new Map(), pose: new Map(), say: [], join: [], leave: [], resets: 0, notices: [], opened: 0, cells: [], cellErrors: [] };
   const plaza = new Plaza({
-    opened: () => { plaza.send(hi); plaza.pose(pose); },
+    opened: () => { got.opened++; plaza.send(hi); plaza.pose(pose); },
+    cell: (k, entry) => got.cells.push([k, entry]),
+    cellError: (code, k) => got.cellErrors.push([code, k]),
     join: id => { got.join.push(id); plaza.sendTo(id, hi); plaza.pose(pose); },
     leave: id => got.leave.push(id),
     reset: () => { got.resets++; },
@@ -120,6 +124,26 @@ try {
   await until('B 의 정해 둔 말', () => A.got.say.length === 1);
   assert.deepEqual(A.got.say, [[bId, { t: 'say', i: 3 }]]);
 
+  // 🧱 모두의 공터: A 가 놓으면 B 도 받는다 (A 에게도 서버를 거쳐 돌아온다)
+  const key = commonsKey(3, 0, 4), aUser = A.plaza.userId, bUser = B.plaza.userId;
+  assert.ok(Number.isInteger(aUser) && Number.isInteger(bUser) && aUser !== bUser, '계정 번호');
+  assert.equal(A.plaza.cells.has(key), false, '빈 DB 라 처음에는 블록이 없다');
+  assert.equal(A.plaza.setCell(key, 5), true);
+  await until('B 가 A 의 블록을 받음', () => B.got.cells.some(([k, e]) => k === key && e?.v === 5));
+  await until('A 에게도 돌아옴', () => A.got.cells.some(([k, e]) => k === key && e?.v === 5));
+  assert.deepEqual(commonsBlock(key, B.plaza.cells.get(key)), { i: 3, j: 0, k: 4, t: 5, owner: aUser }, '그릴 수 있는 칸, 주인은 A');
+  assert.equal(countMine(A.plaza.cells, aUser), 1);
+  assert.equal(countMine(B.plaza.cells, bUser), 0);
+  // B 는 그 칸에 못 놓고 못 지운다
+  B.plaza.setCell(key, 2);
+  await until('B 가 taken 을 받음', () => B.got.cellErrors.some(([c]) => c === 'taken'));
+  B.plaza.delCell(key);
+  await until('B 가 not-owner 를 받음', () => B.got.cellErrors.some(([c]) => c === 'not-owner'));
+  assert.deepEqual(B.got.cellErrors, [['taken', key], ['not-owner', key]]);
+  assert.equal(commonsError('taken'), '다른 친구가 먼저 놓았어');
+  assert.equal(B.plaza.cells.get(key).v, 5, '블록은 그대로');
+  assert.deepEqual(A.got.cellErrors, []);
+
   // B 가 나가면 A 는 leave 를 받는다
   B.plaza.want(false);
   assert.equal(B.plaza.live, false);
@@ -127,8 +151,30 @@ try {
   await until('A 가 B 의 leave 를 받음', () => A.got.leave.includes(bId));
   assert.equal(A.plaza.count, 0);
   A.plaza.want(false);
+  assert.equal(A.plaza.cells.size, 0, '나오면 받은 칸도 없다');
+
+  // 둘 다 나갔다. A 가 다시 들어오면 블록이 그대로 온다 (서버에 남아 있다)
+  A.got.cells = [];
+  A.plaza.want(true);
+  await until('A 가 다시 들어감', () => A.plaza.live && A.got.opened === 2);
+  assert.equal(A.plaza.name, 'plaza-1');
+  assert.deepEqual(commonsBlock(key, A.plaza.cells.get(key)), { i: 3, j: 0, k: 4, t: 5, owner: aUser }, '모두 나가도 남는다');
+  assert.deepEqual(A.got.cells, [], '들어올 때 받은 칸은 cell 이 아니라 opened 뒤 plaza.cells 로 본다');
+  B.plaza.want(true);
+  await until('B 가 다시 들어감', () => B.plaza.live && B.got.opened === 2);
+  assert.equal(B.plaza.cells.get(key)?.v, 5);
+  // A 가 지우면 둘 다에게서 사라진다
+  B.got.cells = [];
+  assert.equal(A.plaza.delCell(key), true);
+  await until('A 의 블록이 사라짐', () => !A.plaza.cells.has(key) && A.got.cells.some(([k, e]) => k === key && e === null));
+  await until('B 에게서도 사라짐', () => !B.plaza.cells.has(key) && B.got.cells.some(([k, e]) => k === key && e === null));
+  assert.equal(countMine(A.plaza.cells, aUser), 0);
+  B.plaza.want(false);
+  A.plaza.want(false);
+  assert.deepEqual([...A.got.cellErrors, ...B.got.cellErrors.slice(2)], [], '다른 거절은 없다');
   assert.deepEqual([...A.got.notices, ...B.got.notices], []);
   console.log(`plaza check ok: ${A.account.user.nickname}(${aId}), ${B.account.user.nickname}(${bId}) 가 brickverse:plaza-1 에서 만나고 헤어짐`);
+  console.log(`commons check ok: A 가 놓은 ${key} 를 B 가 받음, B 는 taken 과 not-owner, 둘 다 나갔다 와도 남고, A 가 지우니 사라짐`);
 } catch (error) {
   console.error('plaza check 실패:', error?.stack ?? error);
   process.exitCode = 1;

@@ -12,6 +12,7 @@ import { Tycoon, remoteTycoonFrom } from './src/tycoon.js';
 import { Survival } from './src/survival.js';
 import { Cloud } from './src/cloud.js';
 import { Tower } from './src/tower.js';
+import { Commons } from './src/commons.js';
 import { Battle } from './src/battle.js';
 import { Tag } from './src/tag.js';
 import { PetFollower, EggShop, eggSign } from './src/pets.js';
@@ -220,7 +221,7 @@ function loadWorld(id) {
   if (id === 4) w.runtime = new Tower(game);
   if (id === 5) w.runtime = new Battle(game);
   if (id === 6) w.runtime = new Tag(game);
-  if (id === 0) group.add(eggSign());
+  if (id === 0) { group.add(eggSign()); w.runtime = new Commons(game); } // 🧱 모두의 공터
   view.setSky(def.sky);
   playMusic(def.sky);
   ui.setWorld(info.icon, info.name);
@@ -621,16 +622,21 @@ game.toggleMute = (id, plaza = false) => { const r = remotesOf(plaza).get(id); i
 
 // ───── 모두의 광장 (로그인하면 방 코드 없이 같은 광장에 모이기) ─────
 // 방 코드 방과 동시에 쓰지 않는다: 방에 들어가면 광장에서 나오고, 방에서 나오면 다시 광장에 들어간다.
+// 칸은 브릭 광장의 🧱 모두의 공터(src/commons.js) 블록이다. 브릭 광장에 있을 때만 그 런타임에 넘긴다.
 let plazaAway = false, plazaAwayTimer = 0;
+const commons = () => (game.worldId === 0 ? game.world?.runtime : null);
 game.plaza = new Plaza({
   status: () => { ui.renderFriends(); },
   opened: ({ again }) => {
     sendHi(); sendPose(true);
+    commons()?.sync();
     if (!again) ui.toast(PLAZA_TEXT.hello(game.plaza.number, game.plaza.count), 3200);
   },
   join: id => { sendHi(id); sendPose(true); },
   leave: id => { removeRemote(id, true); ui.renderFriends(); },
-  reset: () => { for (const id of [...game.plazaRemotes.keys()]) removeRemote(id, true, true); ui.renderFriends(); },
+  reset: () => { for (const id of [...game.plazaRemotes.keys()]) removeRemote(id, true, true); ui.renderFriends(); commons()?.sync(); },
+  cell: (k, entry) => commons()?.cell(k, entry),
+  cellError: (code, k) => commons()?.cellError(code, k),
   pose: (id, d) => applyPose(getRemote(id, true), d),
   message: (data, from) => onPlazaMessage(data, from),
   notice: text => ui.toast(text, 3600),
@@ -689,7 +695,7 @@ controls.onKey = (k) => {
   if (k === 'KeyT' || k === 'Slash') ui.togglePanel('chat');
   if (k === 'KeyG') ui.togglePanel('emote');
   if (k === 'KeyR' && game.worldId === 0) game.goHome();
-  if ((game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6) && game.world.runtime?.key?.(k)) return;
+  if ((game.worldId === 0 || game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6) && game.world.runtime?.key?.(k)) return;
   if (k.startsWith('Digit')) { const n = Number(k.slice(5)); if (n >= 1 && n <= 4) game.emote(n); }
 };
 
