@@ -3,7 +3,12 @@ import * as THREE from 'three';
 import './style.css';
 import * as C from './core.mjs';
 import { buildWorld } from './src/scene.js';
-import { makeKart, makeItemBox, makeTrap, makeShot, Particles } from './src/models.js';
+import { makeKart, makeItemBox, makeTrap, makeShot, makeTag, Particles, Skids } from './src/models.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { unlock, setSound, setMusic, setTune, engineSound, skidSound, sfx } from './src/audio.js';
 import { Net, peerNum } from './src/net.js';
 
@@ -24,14 +29,26 @@ renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadow
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(62, 1, 0.3, 2000);
-function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+// 카트가 반짝이게 둘레 빛을 준다
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.5;
+// 빛 번짐 효과. 느린 기기에서는 스스로 끈다
+let pixelRatio = Math.min(window.devicePixelRatio || 1, 2), fancy = true, slowT = 0, fastN = 0;
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 }));
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.25, 0.6, 0.9);
+composer.addPass(new RenderPass(scene, camera)); composer.addPass(bloom); composer.addPass(new OutputPass());
+function resize() { const w = window.innerWidth, h = window.innerHeight; renderer.setPixelRatio(pixelRatio); renderer.setSize(w, h, false); composer.setPixelRatio(pixelRatio); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
 window.addEventListener('resize', resize); resize();
-const particles = new Particles(scene);
+function watchSpeed(dt) { // 2초 넘게 느리면 효과를 끄고 화면을 조금 덜 촘촘하게
+  if (!fancy && pixelRatio <= 1) return;
+  if (dt > 0.03) { slowT += dt; fastN = 0; } else if (++fastN > 30) slowT = 0;
+  if (slowT > 2) { slowT = 0; if (fancy) fancy = false; else pixelRatio = Math.max(1, pixelRatio - 0.5); resize(); }
+}
+const particles = new Particles(scene), skids = new Skids(scene);
 
 // ── 상태 ──
 let screen = 'lobby', world = null, worldId = null, race = null, paused = false, overT = 0, shownResult = false;
 let views = [], boxViews = [], trapViews = new Map(), shotViews = new Map(), lobbyKart = null;
-let camA = 0, camFov = 62, shake = 0, clock = 0, msgT = 0, lastCount = 9, mini = null;
+let camA = 0, camFov = 62, shake = 0, clock = 0, msgT = 0, lastCount = 9, mini = null, lastRank = 0, finishA = 0;
 const dyn = new THREE.Group(); scene.add(dyn);
 
 function setWorld(id) {
@@ -39,6 +56,7 @@ function setWorld(id) {
   if (world) world.dispose();
   const T = C.buildTrack(id);
   world = buildWorld(scene, T); worldId = id; mini = makeMini(T);
+  bloom.strength = world.theme.bloom[0]; bloom.threshold = world.theme.bloom[1];
 }
 function clearDyn() {
   for (const v of views) dyn.remove(v.group);
@@ -46,7 +64,7 @@ function clearDyn() {
   for (const m of trapViews.values()) dyn.remove(m);
   for (const m of shotViews.values()) dyn.remove(m);
   if (lobbyKart) { dyn.remove(lobbyKart.group); lobbyKart = null; }
-  views = []; boxViews = []; trapViews.clear(); shotViews.clear(); particles.clear();
+  views = []; boxViews = []; trapViews.clear(); shotViews.clear(); particles.clear(); skids.clear();
 }
 
 // ── 조작 ──
@@ -134,7 +152,7 @@ function showLobbyScene(force) {
   if (!force && worldId === save.track && lobbyKart) return;
   setWorld(save.track); clearDyn();
   const T = C.buildTrack(save.track);
-  lobbyKart = makeKart(C.RACERS.find((r) => r.id === save.racer), C.KARTS.find((k) => k.id === save.kart));
+  lobbyKart = makeKart(C.RACERS.find((r) => r.id === save.racer), C.KARTS.find((k) => k.id === save.kart)); lobbyKart.glow.visible = !!world.theme.night;
   const p = C.trackPos(T, 6, 0); lobbyKart.group.position.set(p.x, 0, p.z); lobbyKart.group.rotation.y = p.h; dyn.add(lobbyKart.group);
   setTune('menu');
 }
@@ -157,13 +175,14 @@ function startRace(trackId = save.track, on = null) {
   race = on ? C.createRace({ track: trackId, mode: on.mode, difficulty: on.difficulty, seed: on.seed, slots: on.slots, host: net.host })
     : C.createRace({ track: trackId, mode: save.mode, difficulty: save.difficulty, racer: save.racer, kart: save.kart, seed: (Date.now() & 0xffff) + 1 });
   sendT = 0;
-  views = race.karts.map((k) => { const v = makeKart(k.racer, k.kart); v.spin = 0; v.hop = 0; dyn.add(v.group); return v; });
+  views = race.karts.map((k) => { const v = makeKart(k.racer, k.kart); v.spin = 0; v.hop = 0; v.glow.visible = !!world.theme.night; if (!k.player) { v.tag = makeTag(k.racer, k.kind === 'remote'); v.group.add(v.tag); } dyn.add(v.group); return v; });
+  lastRank = race.player.rank; finishA = 0;
   boxViews = race.boxes.map((b) => { const m = makeItemBox(); m.position.set(b.x, 1.3, b.z); dyn.add(m); return m; });
   screen = 'race'; paused = false; overT = 0; shownResult = false; lastCount = 9; camA = race.player.h; acc = 0;
   $('lobby').hidden = true; $('panel').hidden = true; $('hud').hidden = false; $('touch').hidden = !touchMode;
   $('h-gauge-wrap').style.visibility = race.mode === 'item' ? 'hidden' : '';
   $('h-order').style.display = race.mode === 'time' ? 'none' : '';
-  setText($('h-count'), ''); $('h-center').classList.remove('show');
+  setText($('h-count'), ''); $('h-center').classList.remove('show'); lights(0);
   setTune(race.track.theme); setSound(save.sound); setMusic(save.music);
   canvas.focus();
 }
@@ -337,10 +356,11 @@ function handleEvents() {
     if (race.online && !e.remote && e.kart.owned) sendEvent(e);
     const me = e.kart === P, near = me || Math.hypot(e.kart.x - P.x, e.kart.z - P.z) < 40;
     switch (e.type) {
-      case 'go': sfx.go(); setText($('h-count'), '출발!'); pop(); setTimeout(() => { if (race && race.state !== 'countdown') setText($('h-count'), ''); }, 900); break;
+      case 'go': sfx.go(); setText($('h-count'), '출발!'); pop(); lights(4); setTimeout(() => { if (race && race.state !== 'countdown') setText($('h-count'), ''); }, 900); break;
       case 'startboost': if (me) { sfx.boost(); flash('출발 부스터! 🚀', 1.2); } break;
       case 'turbo': if (me) sfx.turbo(e.lv); views[e.kart.i].hop = 0.16; break;
       case 'drift': views[e.kart.i].hop = 0.28; break;
+      case 'pad': if (me) sfx.turbo(2); for (let i = 0; i < 14; i++) particles.emit(e.kart.x + (Math.random() - 0.5) * 2, 0.3, e.kart.z + (Math.random() - 0.5) * 2, 0, 3 + Math.random() * 5, 0, 0x7dfcff, 0.4, 0.5, 0, 4, 1, 7); break;
       case 'charged': if (me) { sfx.charged(); flash('부스터 충전! Ctrl 로 써요', 1.2); } break;
       case 'box': if (me) sfx.box(); break;
       case 'use':
@@ -359,12 +379,22 @@ function handleEvents() {
       case 'lap':
         if (me && e.lap < race.laps) { sfx.lap(); flash(e.lap === race.laps - 1 ? `마지막 바퀴! (${C.fmtTime(e.time)})` : `${e.lap + 1}바퀴째! (${C.fmtTime(e.time)})`, 2); }
         break;
-      case 'finish': if (me) flash('골인! 🏁', 2.5); break;
+      case 'finish': if (me) { flash('골인! 🏁', 2.5); for (let i = 0; i < 5; i++) setTimeout(() => confetti(), i * 320); } break;
       case 'reset': if (me) flash('트랙으로 돌아왔어요', 1); break;
       default: break;
     }
   }
   race.events.length = 0;
+}
+const CONFETTI = [0xff5d73, 0xffd23e, 0x6ee08a, 0x39c2ff, 0xb48cff, 0xffffff];
+function confetti() {
+  if (!race) return; const k = race.player;
+  for (let i = 0; i < 70; i++) { const a = Math.random() * 6.28, r = Math.random() * 6; particles.emit(k.x + Math.cos(a) * r, 5 + Math.random() * 4, k.z + Math.sin(a) * r, (Math.random() - 0.5) * 6, 2 + Math.random() * 5, (Math.random() - 0.5) * 6, CONFETTI[i % 6], 0.34, 2 + Math.random(), 0, 7); }
+}
+function lights(n) { // 0: 끔, 1~3: 빨간 불 개수, 4: 초록
+  const el = $('h-lights'); el.hidden = n === 0;
+  [...el.children].forEach((d, i) => { d.className = n === 4 ? 'green' : i < n ? 'red' : ''; });
+  if (n === 4) setTimeout(() => { el.hidden = true; }, 900);
 }
 function pop() { const el = $('h-count'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
 function burst(x, y, z, color, n) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.28, s = 3 + Math.random() * 7; particles.emit(x, y, z, Math.cos(a) * s, 2 + Math.random() * 6, Math.sin(a) * s, color, 0.5, 0.6 + Math.random() * 0.4, 0, 12); } }
@@ -388,22 +418,24 @@ function syncViews(dt) {
     for (const f of v.front) f.rotation.y = -k.steer * 0.42;
     v.head.rotation.y = -k.steer * 0.35;
     const fl = k.boostT > 0 ? 1.5 : k.turboT > 0 ? 0.9 : 0;
-    for (const f of v.flames) { f.visible = fl > 0; if (fl) { f.scale.set(1, 1, fl * (0.8 + Math.random() * 0.45)); f.material.color.setHex(k.boostT > 0 ? 0xffa23e : 0x66d9ff); } }
+    for (const f of v.flames) { f.visible = fl > 0; if (fl) { f.scale.set(1, 1, fl * (0.8 + Math.random() * 0.45)); f.material.color.setHex(k.boostT > 0 ? 0xffa23e : 0x66d9ff).multiplyScalar(5); } }
     v.shield.visible = k.shieldT > 0; if (v.shield.visible) v.shield.scale.setScalar(1 + Math.sin(clock * 6) * 0.04);
     v.cloud.visible = k.slowT > 0;
     v.group.visible = !k.gone && !(k.safeT > 0 && k.spinT <= 0 && Math.floor(clock * 14) % 2 === 0);
     if (k.gone) return;
+    if (v.tag) { const cd = Math.hypot(k.x - camera.position.x, k.z - camera.position.z); v.tag.visible = cd > 9 && cd < 80; }
     // 반짝이
     const sh = Math.sin(k.h), ch = Math.cos(k.h);
     const rear = (lx) => [k.x + lx * ch - 0.95 * sh, k.z - lx * sh - 0.95 * ch];
+    for (const lx of [-1, 1]) { const [x, z] = rear(lx); skids.mark(i * 2 + (lx > 0 ? 1 : 0), x, z, k.h, (k.drifting || k.spinT > 0) && Math.abs(k.s) > 6 && !k.offroad); }
     if (k.drifting && Math.random() < 0.9) {
       const lv = k.driftT >= 2.4 ? 3 : k.driftT >= 1.4 ? 2 : k.driftT >= 0.7 ? 1 : 0;
       for (const lx of [-1, 1]) { const [x, z] = rear(lx);
-        if (lv) particles.emit(x, 0.15, z, (Math.random() - 0.5) * 5 - sh * 3, 2 + Math.random() * 4, (Math.random() - 0.5) * 5 - ch * 3, DRIFT_COL[lv], 0.3, 0.35, 0, 14);
+        if (lv) particles.emit(x, 0.15, z, (Math.random() - 0.5) * 5 - sh * 3, 2 + Math.random() * 4, (Math.random() - 0.5) * 5 - ch * 3, DRIFT_COL[lv], 0.3, 0.35, 0, 14, 1, 7);
         particles.emit(x, 0.2, z, (Math.random() - 0.5) * 1.5, 0.8, (Math.random() - 0.5) * 1.5, 0xffffff, 0.7, 0.55, 2.4, 0, 0.35);
       }
     }
-    if (fl > 0) for (const lx of [-0.36, 0.36]) { const [x, z] = [k.x + lx * ch - 2.1 * sh, k.z - lx * sh - 2.1 * ch]; particles.emit(x, 0.5, z, -sh * 6 + (Math.random() - 0.5) * 2, Math.random() * 1.5, -ch * 6 + (Math.random() - 0.5) * 2, k.boostT > 0 ? 0xffb347 : 0x7fdcff, 0.6, 0.3, -1.2); }
+    if (fl > 0) for (const lx of [-0.36, 0.36]) { const [x, z] = [k.x + lx * ch - 2.1 * sh, k.z - lx * sh - 2.1 * ch]; particles.emit(x, 0.5, z, -sh * 6 + (Math.random() - 0.5) * 2, Math.random() * 1.5, -ch * 6 + (Math.random() - 0.5) * 2, k.boostT > 0 ? 0xffb347 : 0x7fdcff, 0.6, 0.3, -1.2, 0, 1, 6); }
     if (k.offroad && Math.abs(k.s) > 8 && Math.random() < 0.5) { const [x, z] = rear(Math.random() < 0.5 ? -1 : 1); particles.emit(x, 0.2, z, (Math.random() - 0.5) * 2, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 2, world.theme.shoulder, 0.6, 0.6, 1.5, 3, 0.7); }
   });
   race.boxes.forEach((b, i) => { const m = boxViews[i]; m.visible = b.off <= 0; m.rotation.y = clock * 1.6 + i; m.rotation.x = clock * 0.9; m.position.y = 1.35 + Math.sin(clock * 3 + i) * 0.18; });
@@ -429,6 +461,12 @@ function updateCamera(dt) {
   const dist = (narrow ? 8.6 : 7.4) - boost * 0.9, sx = Math.sin(camA), cz = Math.cos(camA);
   shake = Math.max(0, shake - dt * 1.6);
   const jx = (Math.random() - 0.5) * shake, jy = (Math.random() - 0.5) * shake;
+  if (k.finished) { // 골인하면 카트 앞으로 돌아가서 보여 준다
+    finishA = Math.min(1, finishA + dt * 0.7);
+    const a = camA + finishA * 2.6, d2 = dist + finishA * 1.5;
+    camera.position.set(k.x - Math.sin(a) * d2, 3.5 - finishA * 1.2, k.z - Math.cos(a) * d2); camera.lookAt(k.x, 1.1, k.z);
+    return;
+  }
   camera.position.set(k.x - sx * dist + jx, 3.5 + jy, k.z - cz * dist);
   camera.lookAt(k.x + sx * 5, 1.2, k.z + cz * 5);
 }
@@ -441,6 +479,8 @@ function updateHud(dt) {
   setText($('h-best'), C.fmtTime(k.bestLap || (rec && rec.lap) || null));
   $('h-rank').style.visibility = race.mode === 'time' ? 'hidden' : '';
   setText($('h-rank').firstElementChild, String(k.rank)); setText($('h-rank').lastElementChild, '/' + race.karts.filter((o) => !o.gone).length);
+  if (k.rank !== lastRank && race.state === 'race') { const el = $('h-rank'); el.classList.remove('up', 'down'); void el.offsetWidth; el.classList.add(k.rank < lastRank ? 'up' : 'down'); if (k.rank < lastRank) sfx.click(); }
+  lastRank = k.rank;
   setText($('h-speed'), String(Math.round(Math.abs(k.s) * 4.6)));
   $('h-gauge').style.width = (k.gauge * 100).toFixed(1) + '%';
   const slots = $('h-items').children;
@@ -457,7 +497,7 @@ function updateHud(dt) {
   $('speedlines').classList.toggle('on', k.boostT > 0 || k.turboT > 0.2);
   if (race.state === 'countdown') {
     const c = Math.ceil(race.countdown);
-    if (c !== lastCount) { lastCount = c; if (c <= 3 && c >= 1) { setText($('h-count'), String(c)); pop(); sfx.beep(); } else setText($('h-count'), '준비!'); }
+    if (c !== lastCount) { lastCount = c; if (c <= 3 && c >= 1) { setText($('h-count'), String(c)); pop(); sfx.beep(); lights(4 - c); } else { setText($('h-count'), '준비!'); lights(0); } }
   }
   if (msgT > 0) { msgT -= dt; if (msgT <= 0) $('h-center').classList.remove('show'); }
   drawMini();
@@ -494,11 +534,12 @@ function frame(now) {
     if (lobbyKart) lobbyKart.head.rotation.y = Math.sin(clock * 1.3) * 0.5;
     world.update(clock, p.x, p.z);
   }
-  renderer.render(scene, camera);
+  watchSpeed(dt);
+  if (fancy) composer.render(); else renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
 setSound(save.sound); setMusic(save.music);
 toLobby();
 requestAnimationFrame(frame);
-if (debug) window.__kart = { C, net, friends, get race() { return race; }, get save() { return save; }, set save(s) { save = C.fixSave(s); persist(); drawLobby(); }, get screen() { return screen; }, startRace, toLobby, keys, get shownResult() { return shownResult; } };
+if (debug) window.__kart = { C, net, friends, get fancy() { return fancy; }, get race() { return race; }, get save() { return save; }, set save(s) { save = C.fixSave(s); persist(); drawLobby(); }, get screen() { return screen; }, startRace, toLobby, keys, get shownResult() { return shownResult; } };
