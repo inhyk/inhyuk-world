@@ -12,13 +12,17 @@ import { Survival } from './src/survival.js';
 import { Cloud } from './src/cloud.js';
 import { Tower } from './src/tower.js';
 import { Battle } from './src/battle.js';
+import { Tag } from './src/tag.js';
+import { PetFollower, EggShop, eggSign } from './src/pets.js';
+import { Phone } from './src/phone.js';
 import { startUpdateCheck } from './src/update.js';
 import {
   P, SAVE_KEY, makeBox, placeBox, newPlayer, stepPlayer, clearMotion, segmentDistance, cleanSave, defaultSave,
   HATS, FACES, EMBLEMS, HAIRS, PHRASES, displayName, lookToArray, lookFromArray, packPose, unpackPose,
   OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS, validGift, GIFT_MAX, NET_VERSION, GIFT_WAIT_MS, packBlocks, unpackBlocks, inTower, cellKey, TOWER,
+  PETS, petOf, petSpeed,
 } from './core.mjs';
-import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, buildBattle, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
+import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, buildBattle, buildTag, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -29,6 +33,7 @@ const WORLD_INFO = [
   { icon: '🔥', name: '바닥이 사라져요', build: buildSurvival },
   { icon: '🏗️', name: '하늘 타워 짓기', build: buildTower },
   { icon: '🎯', name: '블록 배틀 로얄', build: buildBattle },
+  { icon: '🏃', name: '술래잡기', build: buildTag },
 ];
 const fmtTime = ms => { const s = ms / 1000; return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; };
 const LOOK_KEYS = { hat: HATS, face: FACES, emblem: EMBLEMS, hair: HAIRS };
@@ -75,6 +80,24 @@ setSound(game.save.sound); setMusic(game.save.music);
 ui.setCoins(game.save.coins);
 ui.syncMenu();
 
+// ───── 펫 (속도 버프), 알 판매, 핸드폰 ─────
+const myPet = new PetFollower(view.scene);
+myPet.set(game.save.pet);
+game.myName = () => displayName(game.save.name);
+game.setPet = id => {
+  const p = petOf(id);
+  game.save.pet = p && game.save.pets[p.id] > 0 ? p.id : '';
+  myPet.set(game.save.pet);
+  game.persist();
+  sendHi();
+  if (p && game.save.pet) ui.toast(`${p.icon} ${p.name}랑 같이 다녀! 달리기 ${p.speed}배`);
+  else ui.toast('펫을 넣었어. 원래 빠르기로 달려');
+};
+const eggShop = new EggShop(game);
+const phone = new Phone(game);
+game.phone = phone;
+$('btn-phone')?.addEventListener('click', () => { sound.click(); phone.toggle(); });
+
 const writeLocal = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(game.save)); } catch { /* 저장 공간 없음 */ } };
 game.persist = () => {
   clearTimeout(game.persistTimer);
@@ -89,6 +112,7 @@ game.cloud = new Cloud({
     game.save = cleanSave(data);
     writeLocal();
     me.avatar.setLook(game.save.look);
+    myPet.set(game.save.pet);
     setSound(game.save.sound); setMusic(game.save.music);
     ui.setCoins(game.save.coins);
     ui.syncMenu();
@@ -193,10 +217,12 @@ function loadWorld(id) {
   if (id === 3) w.runtime = new Survival(game);
   if (id === 4) w.runtime = new Tower(game);
   if (id === 5) w.runtime = new Battle(game);
+  if (id === 6) w.runtime = new Tag(game);
+  if (id === 0) group.add(eggSign());
   view.setSky(def.sky);
   playMusic(def.sky);
   ui.setWorld(info.icon, info.name);
-  if (id !== 2 && id !== 3) ui.setInfo('');
+  if (id !== 2 && id !== 3 && id !== 6) ui.setInfo('');
   // 시작 위치
   let spawn = def.spawn;
   if (id === 1) {
@@ -348,6 +374,7 @@ game.resetAll = () => {
   writeLocal();
   game.cloud.queue();
   me.avatar.setLook(game.save.look);
+  myPet.set('');
   ui.setCoins(0);
   ui.toast('기록을 모두 지웠어. 처음부터 시작!');
   loadWorld(0);
@@ -368,7 +395,7 @@ game.net = new Net({
 });
 
 function myHi() {
-  const msg = { t: 'hi', v: NET_VERSION, n: game.save.name, l: lookToArray(game.save.look), w: game.worldId };
+  const msg = { t: 'hi', v: NET_VERSION, n: game.save.name, l: lookToArray(game.save.look), w: game.worldId, pt: PETS.findIndex(p => p.id === game.save.pet) + 1 };
   if (game.worldId === 2 && game.world?.runtime) msg.o = game.world.runtime.itemIndexes();
   else msg.o = game.save.tycoon.items.length ? undefined : undefined;
   return msg;
@@ -444,6 +471,7 @@ function removeRemote(id) {
   const r = game.remotes.get(id);
   if (!r) return;
   r.avatar?.dispose();
+  r.petF?.dispose();
   game.remotes.delete(id);
   if (game.worldId === 2 && r.tycoon) game.world.runtime?.remoteChanged(r.slot);
   if (game.worldId === 4 && r.tower?.size) game.world.runtime?.remoteChanged();
@@ -463,6 +491,7 @@ function onMessage(data, from) {
       else { r.avatar.setLook(r.look); r.avatar.setName(r.name); }
       if (Number.isInteger(data.w)) r.w = data.w;
       r.v = Number.isInteger(data.v) ? data.v : 1;
+      r.pet = PETS[(data.pt | 0) - 1]?.id ?? '';
       if (data.o !== undefined) {
         const items = remoteTycoonFrom(data.o);
         if (items) { r.tycoon = items; if (game.worldId === 2) game.world.runtime?.remoteChanged(r.slot); }
@@ -538,12 +567,15 @@ function onMessage(data, from) {
     case 'sv':
       if (game.worldId === 3 && game.world.runtime) game.world.runtime.message(data, from);
       break;
+    case 'tg':
+      if (game.worldId === 6 && game.world.runtime) game.world.runtime.message(data, from);
+      break;
     default: break;
   }
 }
 
 function refreshRemoteVisibility() {
-  for (const r of game.remotes.values()) if (r.avatar) r.avatar.root.visible = r.w === game.worldId && !r.muted;
+  for (const r of game.remotes.values()) if (r.avatar) { r.avatar.root.visible = r.w === game.worldId && !r.muted; if (r.petF?.mesh) r.petF.mesh.visible = r.avatar.root.visible; }
 }
 function updatePlayerList() {
   const list = [...game.remotes.values()].filter(r => r.avatar).map(r => { r.where = WORLD_INFO[r.w]?.name ?? ''; return r; });
@@ -583,13 +615,16 @@ $('btn-lock').addEventListener('click', () => game.toggleShiftLock());
 
 controls.onKey = (k) => {
   if (!game.started) { if (k === 'Enter' || k === 'Space') game.start(); return; }
+  if (phone.open) { if (k === 'KeyP' || k === 'Escape') phone.close(); return; }
+  if (eggShop.open) { if (k === 'Escape') eggShop.close(); return; }
   if (k === 'Escape') { ui.closeWardrobe(); ui.closeFriends(); ui.togglePanel(null); }
+  if (k === 'KeyP' && !game.wardrobeOpen) { phone.show(); return; }
   if (k === 'ShiftLeft' || k === 'ShiftRight') { game.toggleShiftLock(); return; }
   if (game.wardrobeOpen) return;
   if (k === 'KeyT' || k === 'Slash') ui.togglePanel('chat');
   if (k === 'KeyG') ui.togglePanel('emote');
   if (k === 'KeyR' && game.worldId === 0) game.goHome();
-  if ((game.worldId === 3 || game.worldId === 4 || game.worldId === 5) && game.world.runtime?.key?.(k)) return;
+  if ((game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6) && game.world.runtime?.key?.(k)) return;
   if (k.startsWith('Digit')) { const n = Number(k.slice(5)); if (n >= 1 && n <= 4) game.emote(n); }
 };
 
@@ -681,7 +716,8 @@ function updateMe(dt) {
   let mv = game.wardrobeOpen || !game.started ? { x: 0, z: 0 } : controls.move();
   let jump = game.started && !game.wardrobeOpen && controls.takeJump();
   if (w.runtime?.driving) { mv = { x: 0, z: 0 }; jump = false; } // 🌈 카펫을 조종하는 동안은 키가 카펫을 움직인다
-  const ev = stepPlayer(me.pl, { mx: mv.x, mz: mv.z, jump }, w.boxes, dt);
+  if (w.runtime?.frozen > 0) { mv = { x: 0, z: 0 }; jump = false; } // 술래가 숫자 세는 중
+  const ev = stepPlayer(me.pl, { mx: mv.x, mz: mv.z, jump, speed: petSpeed(game.save.pet) }, w.boxes, dt);
   const moving = Math.hypot(mv.x, mv.z) > 0.1;
   if (controls.shiftLock && game.started && !game.wardrobeOpen) {
     // 쉬프트락: 언제나 카메라가 보는 쪽을 본다 (옆으로 걸으면 게걸음)
@@ -710,6 +746,7 @@ function updateMe(dt) {
       w.inZone.add(z);
       if (z.portal !== undefined) { enterWorld(z.portal); return; }
       if (z.wardrobe) ui.openWardrobe();
+      if (z.eggs) eggShop.show();
       if (z.finish && game.save.obby.cp >= OBBY_STAGES) { /* 꼭대기 */ }
     } else if (!inside) w.inZone.delete(z);
   }
@@ -728,6 +765,8 @@ function updateRemotes(dt) {
     r.speed += (sp - r.speed) * Math.min(1, dt * 8);
     r.avatar.place(r.x, r.y, r.z, r.yaw, dt);
     r.avatar.animate(dt, { speed: r.speed, grounded: r.anim === 0, vy: r.anim === 1 ? (r.ty > r.y ? 1 : -1) : 0, climb: r.anim === 2, emote: r.emote });
+    if (r.pet && !r.petF) r.petF = new PetFollower(view.scene);
+    if (r.petF) { r.petF.set(r.pet ?? ''); r.petF.update(dt, r.x, r.y, r.z, r.yaw, r.avatar.root.visible); }
   }
 }
 
@@ -756,6 +795,7 @@ function frame(now) {
   const speed = Math.hypot(me.pl.vx, me.pl.vz);
   me.avatar.place(me.pl.x, me.pl.y, me.pl.z, me.yaw, dt);
   me.avatar.animate(dt, { speed, grounded: !!me.pl.ground, vy: me.pl.vy, climb: me.pl.climb, emote: me.emote });
+  myPet.update(dt, me.pl.x, me.avatar.visualY ?? me.pl.y, me.pl.z, me.yaw, me.avatar.root.visible && game.started);
   // 카메라
   let tx = me.pl.x, ty = (me.avatar.visualY ?? me.pl.y) + 2.3, tz = me.pl.z;
   const spec = game.world.runtime?.spectateTarget?.(); // 탈락해서 관전 중이면 그 사람을 따라간다
@@ -797,4 +837,4 @@ requestAnimationFrame(t => { last = t; frame(t); });
 $('loading')?.remove();
 
 // 디버그 (시험용): 콘솔에서 쓰기
-globalThis.brickverse = { game, me, enterWorld, loadWorld, view, controls };
+globalThis.brickverse = { game, me, enterWorld, loadWorld, view, controls, phone, eggShop, myPet };

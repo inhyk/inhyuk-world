@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -342,4 +342,65 @@ test('팀전: 웨이브가 갈수록 몬스터가 많고 세지고, 5와 10 번�
   const s = cleanSave({ battle: { teamWins: 2, teamBest: 7 } });
   assert.equal(s.battle.teamWins, 2);
   assert.equal(s.battle.teamBest, 7);
+});
+
+test('펫: 알을 까면 적은 확률대로 나오고 속도를 올려 준다', () => {
+  assert.equal(EGG_PRICE, 100);
+  assert.deepEqual(PETS.map(p => [p.id, p.speed]), [['dog', 1.5], ['cat', 2], ['panda', 5], ['parrot', 10]]);
+  assert.ok(Math.abs(PETS.reduce((a, p) => a + p.chance, 0) - 1) < 1e-9);
+  assert.equal(hatchPet(0), 'parrot');
+  assert.equal(hatchPet(0.0005), 'parrot');
+  assert.equal(hatchPet(0.002), 'panda');
+  assert.equal(hatchPet(0.06), 'cat');
+  assert.equal(hatchPet(0.5), 'dog');
+  assert.equal(hatchPet(0.9999), 'dog');
+  const n = 200000, got = { dog: 0, cat: 0, panda: 0, parrot: 0 };
+  for (let i = 0; i < n; i++) got[hatchPet((i + 0.5) / n)]++;
+  assert.equal(got.parrot, n * 0.001);
+  assert.equal(got.panda, n * 0.05);
+  assert.equal(got.cat, n * 0.3);
+  assert.equal(petSpeed(''), 1);
+  assert.equal(petSpeed('parrot'), 10);
+  const s = cleanSave({ pets: { dog: 2, parrot: 1, cat: -3, bad: 9 }, pet: 'parrot' });
+  assert.deepEqual(s.pets, { dog: 2, cat: 0, panda: 0, parrot: 1 });
+  assert.equal(s.pet, 'parrot');
+  assert.equal(cleanSave({ pets: { dog: 1 }, pet: 'panda' }).pet, '');
+});
+
+test('펫 속도: 같은 시간에 앵무새는 10배 멀리 가고 벽은 뚫지 않는다', () => {
+  const floor = makeBox({ x: 0, y: -0.5, z: 0, w: 400, h: 1, d: 400 });
+  const run = speed => { const pl = newPlayer(0, 0, 0); for (let i = 0; i < 120; i++) stepPlayer(pl, { mx: 1, mz: 0, speed }, [floor], 1 / 60); return pl.x; };
+  const one = run(1), ten = run(10);
+  assert.ok(ten > one * 8, `${one} ${ten}`);
+  const wall = makeBox({ x: 6, y: 2, z: 0, w: 0.5, h: 4, d: 6 });
+  const pl = newPlayer(0, 0, 0);
+  for (let i = 0; i < 120; i++) stepPlayer(pl, { mx: 1, mz: 0, speed: 10 }, [floor, wall], 0.05);
+  assert.ok(pl.x < 6, `wall ${pl.x}`);
+});
+
+test('술래잡기: 닿으면 잡히고, 끝나면 코인', () => {
+  assert.ok(touching({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 1 }));
+  assert.ok(!touching({ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }));
+  assert.ok(!touching({ x: 0, y: 0, z: 0 }, { x: 0.5, y: 3, z: 0 }));
+  assert.equal(tagCoins('tag', { it: false }), 15);
+  assert.equal(tagCoins('tag', { it: true }), 3);
+  assert.equal(tagCoins('hide', { won: true }), 25);
+  assert.equal(tagCoins('hide', { won: false }), 5);
+  assert.ok(TAG.HIDE < TAG.SEEK);
+  const s = cleanSave({ tag: { wins: 3, hideWins: 2, seekWins: 1 } });
+  assert.deepEqual(s.tag, { wins: 3, hideWins: 2, seekWins: 1 });
+});
+
+test('술래잡기 마을: 시작 자리와 숨을 곳은 블록 안이 아니다', async () => {
+  const { buildTag } = await import('./worlds.mjs');
+  const def = buildTag();
+  const boxes = def.parts.filter(p => !p.deco).map(makeBox);
+  const inside = (x, z) => boxes.some(b => x + P.R > b.x0 && x - P.R < b.x1 && z + P.R > b.z0 && z - P.R < b.z1 && 0.35 + P.H > b.y0 && 0.35 < b.y1 && b.y1 > 0.7);
+  const { TAG_STARTS } = await import('./worlds.mjs');
+  for (const [x, z] of TAG_STARTS) assert.ok(!inside(x, z), `start ${x},${z}`);
+  for (const s of def.spots) {
+    assert.ok(!inside(s.x, s.z), `spot ${s.x},${s.z}`);
+    for (const [x, z] of s.way ?? []) assert.ok(!inside(x, z), `way ${x},${z} → ${s.x},${s.z}`);
+  }
+  assert.ok(def.spots.length >= 30);
 });

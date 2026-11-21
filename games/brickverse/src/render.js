@@ -11,6 +11,7 @@ export const SKIES = {
   obby: { top: '#6c8dff', horizon: '#ffe0f2', bottom: '#ffd6ec', sun: [0.3, 0.75, -0.4], fog: '#f5dcff', near: 120, far: 520, hemiSky: '#f1e4ff', hemiGround: '#b59ad6', sunColor: '#fff2e4', sunI: 2.5, hemiI: 1.35, exposure: 1.0 },
   tycoon: { top: '#4f9bff', horizon: '#ffeccc', bottom: '#ffe1b0', sun: [-0.5, 0.62, 0.35], fog: '#ffe9cf', near: 100, far: 460, hemiSky: '#fff0d6', hemiGround: '#8ca35f', sunColor: '#ffe8c4', sunI: 2.7, hemiI: 1.15, exposure: 1.0 },
   tower: { top: '#2f7dff', horizon: '#d8f6ff', bottom: '#a8e4ff', sun: [0.35, 0.8, 0.35], fog: '#d6f2ff', near: 140, far: 620, hemiSky: '#e0f4ff', hemiGround: '#84b86a', sunColor: '#fff6e8', sunI: 2.6, hemiI: 1.3, exposure: 1.0 },
+  tag: { top: '#5aa7ff', horizon: '#fff0d8', bottom: '#ffe3b8', sun: [-0.4, 0.55, 0.45], fog: '#ffeedd', near: 90, far: 380, hemiSky: '#fff2df', hemiGround: '#86b85a', sunColor: '#ffe9c8', sunI: 2.6, hemiI: 1.25, exposure: 1.0 },
   survival: { top: '#2b1b5e', horizon: '#ff8f6b', bottom: '#5a1a2e', sun: [0.2, 0.32, -0.9], fog: '#7a3a5e', near: 70, far: 300, hemiSky: '#ffb4a0', hemiGround: '#5a2040', sunColor: '#ffc69a', sunI: 2.3, hemiI: 1.1, exposure: 1.05 },
 };
 
@@ -271,7 +272,26 @@ function partGeometry(p) {
   if (shape === 'cyl') g = new THREE.CylinderGeometry(p.w / 2, (p.w2 ?? p.w) / 2, p.h, 20);
   else if (shape === 'cone') g = new THREE.ConeGeometry(p.w / 2, p.h, 20);
   else if (shape === 'sphere') { g = new THREE.SphereGeometry(0.5, 20, 14); g.scale(p.w, p.h, p.d); }
-  else {
+  else if (shape === 'fir') {
+    // 크리스마스 트리 한 층: 밑 둘레가 뾰족뾰족 (끝은 바깥으로 내려오고, 사이는 안으로)
+    const seg = 24;
+    g = new THREE.ConeGeometry(p.w / 2, p.h, seg, 1);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      if (y > -p.h / 2 + 1e-4 || Math.hypot(x, z) < 1e-3) continue;
+      const k = Math.round(((Math.atan2(z, x) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2 / seg)) % 2;
+      if (k === 0) pos.setY(i, y - p.h * 0.08);
+      else { pos.setX(i, x * 0.74); pos.setZ(i, z * 0.74); }
+    }
+    g.computeVertexNormals();
+  } else if (shape === 'star') {
+    const s = new THREE.Shape();
+    for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 0.21 : 0.5; if (i) s.lineTo(Math.cos(a) * r, Math.sin(a) * r); else s.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+    s.closePath();
+    g = new THREE.ExtrudeGeometry(s, { depth: 0.7, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.05, bevelSegments: 1 });
+    g.translate(0, 0, -0.35); g.scale(p.w, p.h, p.d);
+  } else {
     const min = Math.min(p.w, p.h, p.d);
     const r = p.round ?? Math.min(0.14, min * 0.22);
     g = r > 0.005 ? new RoundedBoxGeometry(p.w, p.h, p.d, 2, r) : new THREE.BoxGeometry(p.w, p.h, p.d);
