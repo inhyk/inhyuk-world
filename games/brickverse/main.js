@@ -13,6 +13,7 @@ import { Cloud } from './src/cloud.js';
 import { Tower } from './src/tower.js';
 import { Battle } from './src/battle.js';
 import { Tag } from './src/tag.js';
+import { EggHunt } from './src/egghunt.js';
 import { PetFollower, EggShop, eggSign } from './src/pets.js';
 import { Phone } from './src/phone.js';
 import { startUpdateCheck } from './src/update.js';
@@ -22,7 +23,7 @@ import {
   OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS, validGift, GIFT_MAX, NET_VERSION, GIFT_WAIT_MS, packBlocks, unpackBlocks, inTower, cellKey, TOWER,
   PETS, petOf, petSpeed,
 } from './core.mjs';
-import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, buildBattle, buildTag, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
+import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, buildBattle, buildTag, buildEgg, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -34,6 +35,7 @@ const WORLD_INFO = [
   { icon: '🏗️', name: '하늘 타워 짓기', build: buildTower },
   { icon: '🎯', name: '블록 배틀 로얄', build: buildBattle },
   { icon: '🏃', name: '술래잡기', build: buildTag },
+  { icon: '🥚', name: '달걀 도둑', build: buildEgg },
 ];
 const fmtTime = ms => { const s = ms / 1000; return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; };
 const LOOK_KEYS = { hat: HATS, face: FACES, emblem: EMBLEMS, hair: HAIRS };
@@ -218,11 +220,12 @@ function loadWorld(id) {
   if (id === 4) w.runtime = new Tower(game);
   if (id === 5) w.runtime = new Battle(game);
   if (id === 6) w.runtime = new Tag(game);
+  if (id === 7) w.runtime = new EggHunt(game);
   if (id === 0) group.add(eggSign());
   view.setSky(def.sky);
   playMusic(def.sky);
   ui.setWorld(info.icon, info.name);
-  if (id !== 2 && id !== 3 && id !== 6) ui.setInfo('');
+  if (id !== 2 && id !== 3 && id !== 6 && id !== 7) ui.setInfo('');
   // 시작 위치
   let spawn = def.spawn;
   if (id === 1) {
@@ -386,10 +389,10 @@ game.net = new Net({
   opened: () => {
     ui.renderFriends();
     sendHi(); sendPose(true);
-    if (game.worldId === 2 || game.worldId === 4) loadWorld(game.worldId); // 내 땅 번호가 바뀐다
+    if (game.worldId === 2 || game.worldId === 4 || game.worldId === 7) loadWorld(game.worldId); // 내 땅 번호가 바뀐다
   },
-  closed: () => { for (const id of [...game.remotes.keys()]) removeRemote(id); ui.renderFriends(); if (game.worldId === 2 || game.worldId === 4) loadWorld(game.worldId); },
-  join: id => { sendHi(id); sendPose(true); sendTower(id); },
+  closed: () => { for (const id of [...game.remotes.keys()]) removeRemote(id); ui.renderFriends(); if (game.worldId === 2 || game.worldId === 4 || game.worldId === 7) loadWorld(game.worldId); },
+  join: id => { sendHi(id); sendPose(true); sendTower(id); if (game.worldId === 7) game.world.runtime?.sendBase(true); },
   depart: id => { if (id) removeRemote(id); else for (const k of [...game.remotes.keys()]) removeRemote(k); ui.renderFriends(); },
   message: (data, from) => onMessage(data, from),
 });
@@ -570,6 +573,9 @@ function onMessage(data, from) {
     case 'tg':
       if (game.worldId === 6 && game.world.runtime) game.world.runtime.message(data, from);
       break;
+    case 'eg':
+      if (game.worldId === 7 && game.world.runtime) game.world.runtime.message(data, from);
+      break;
     default: break;
   }
 }
@@ -624,7 +630,7 @@ controls.onKey = (k) => {
   if (k === 'KeyT' || k === 'Slash') ui.togglePanel('chat');
   if (k === 'KeyG') ui.togglePanel('emote');
   if (k === 'KeyR' && game.worldId === 0) game.goHome();
-  if ((game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6) && game.world.runtime?.key?.(k)) return;
+  if ((game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6 || game.worldId === 7) && game.world.runtime?.key?.(k)) return;
   if (k.startsWith('Digit')) { const n = Number(k.slice(5)); if (n >= 1 && n <= 4) game.emote(n); }
 };
 
@@ -717,7 +723,7 @@ function updateMe(dt) {
   let jump = game.started && !game.wardrobeOpen && controls.takeJump();
   if (w.runtime?.driving) { mv = { x: 0, z: 0 }; jump = false; } // 🌈 카펫을 조종하는 동안은 키가 카펫을 움직인다
   if (w.runtime?.frozen > 0) { mv = { x: 0, z: 0 }; jump = false; } // 술래가 숫자 세는 중
-  const ev = stepPlayer(me.pl, { mx: mv.x, mz: mv.z, jump, speed: petSpeed(game.save.pet) }, w.boxes, dt);
+  const ev = stepPlayer(me.pl, { mx: mv.x, mz: mv.z, jump, speed: w.runtime?.speed ?? petSpeed(game.save.pet) }, w.boxes, dt);
   const moving = Math.hypot(mv.x, mv.z) > 0.1;
   if (controls.shiftLock && game.started && !game.wardrobeOpen) {
     // 쉬프트락: 언제나 카메라가 보는 쪽을 본다 (옆으로 걸으면 게걸음)

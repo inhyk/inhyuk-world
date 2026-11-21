@@ -412,3 +412,15 @@ body.tagw.tg-lobby.playing:not(.dressing) #mode-bar { display: flex; }
   .ph-games { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
 }
 @media (max-width: 520px) { #btn-sound { display: none; } }
+
+/* ───── 달걀 도둑 ───── */
+#egg-bar { display: none; position: fixed; left: 50%; bottom: 66px; transform: translateX(-50%); z-index: 6; gap: 8px; max-width: calc(100vw - 24px); }
+body.eggw.playing:not(.dressing) #egg-bar { display: flex; }
+#egg-bar button { font-size: 15px; padding: 9px 12px; white-space: nowrap; background: linear-gradient(#fff9e6, #ffe9a8); box-shadow: 0 4px 0 #d9a320; }
+#egg-bar button.poor { background: rgba(255, 255, 255, .9); box-shadow: 0 4px 0 rgba(20, 30, 60, .18); color: #7a8090; }
+#egg-bar kbd { font: 12px Jua, sans-serif; background: rgba(0, 0, 0, .12); border-radius: 6px; padding: 1px 6px; margin-right: 6px; }
+@media (pointer: coarse) {
+  #egg-bar { bottom: 168px; left: 12px; transform: none; flex-direction: column; align-items: flex-start; }
+  #egg-bar button { font-size: 13px; padding: 7px 10px; }
+  #egg-bar kbd { display: none; }
+}

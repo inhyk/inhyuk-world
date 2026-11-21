@@ -399,6 +399,7 @@ export function defaultSave(rand = Math.random) {
     battle: { wins: 0, kills: 0, best: 0, teamWins: 0, teamBest: 0 },
     tower: { blocks: [], best: 0 },
     tag: { wins: 0, hideWins: 0, seekWins: 0 },
+    egg: { cash: 0, pets: [], boots: 0, ped: EGG.PED0, zones: 1, stolen: 0, hatched: 0, saved: 0 },
     pets: { dog: 0, cat: 0, panda: 0, parrot: 0 },
     pet: '',
     sound: true,
@@ -453,6 +454,7 @@ export function cleanSave(raw, rand = Math.random) {
   s.tower = { blocks: cleanTowerBlocks(raw.tower?.blocks), best: Math.floor(num(raw.tower?.best, 0, TOWER.TOP + 1, 0)) };
   s.tag = { wins: Math.floor(num(raw.tag?.wins, 0, 99_999, 0)), hideWins: Math.floor(num(raw.tag?.hideWins, 0, 99_999, 0)), seekWins: Math.floor(num(raw.tag?.seekWins, 0, 99_999, 0)) };
   for (const p of PETS) s.pets[p.id] = Math.floor(num(raw.pets?.[p.id], 0, 99_999, 0));
+  s.egg = cleanEgg(raw.egg);
   s.pet = PETS.some(p => p.id === raw.pet) && s.pets[raw.pet] > 0 ? raw.pet : '';
   s.sound = raw.sound !== false;
   s.music = raw.music !== false;
@@ -468,7 +470,7 @@ export const OBBY_CLEAR_COINS = 100;
 
 // ───────────── 네트워크 ─────────────
 // 위치는 숫자만 보낸다 (글자열 속 숫자는 서버가 가릴 수 있다).
-export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower', 'battle', 'tag'];
+export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower', 'battle', 'tag', 'egg'];
 const r2 = v => Math.round(v * 100) / 100;
 export function packPose(pl, yaw, w, anim, emote) {
   return [w, r2(pl.x), r2(pl.y), r2(pl.z), r2(yaw), anim, emote];
@@ -691,4 +693,61 @@ export const touching = (a, b, r = TAG.TOUCH) => Math.hypot(a.x - b.x, a.z - b.z
 export function tagCoins(mode, { it = false, won = false } = {}) {
   if (mode === 'tag') return it ? 3 : 15;
   return won ? 25 : 5;
+}
+
+// ───── 달걀 도둑 (2026-11-22 인혁: "달걀을 훔치세요도 만들어줘 (거의 똑같이) 그리고 포탈이야") ─────
+// 다른 사람의 게임을 베끼지 않고, 노는 방식(경비를 피해 알 훔치기 → 내 기지에서 부화 → 동물이 돈 벌기 → 신발, 새 둥지, 도둑 막기)만 같은 우리 게임.
+export const EGG = Object.freeze({ PED0: 4, PED_MAX: 12, BOOTS_MAX: 10, CARRY: 0.9, LOCK: 30, LOCK_COOL: 60, RESPAWN: 8, GOLD: 0.03, GOLD_X: 3, SELL: 20 });
+// 둥지 마당: 열 때 드는 돈, 알, 경비, 경비 빠르기
+export const EGG_ZONES = [
+  { id: 'meadow', name: '풀밭 둥지', icon: '🌾', price: 0, egg: '풀밭 알', eggColor: '#fff6e0', spot: '#ffd23f', guard: 'goose', guardName: '경비 거위', guardSpeed: 6.3, guards: 1 },
+  { id: 'forest', name: '숲속 둥지', icon: '🌲', price: 500, egg: '숲 알', eggColor: '#9be07a', spot: '#2f9d63', guard: 'bear', guardName: '경비 곰', guardSpeed: 7.2, guards: 1 },
+  { id: 'lava', name: '용암 둥지', icon: '🌋', price: 8000, egg: '불꽃 알', eggColor: '#ff7a3d', spot: '#ffcf33', guard: 'golem', guardName: '용암 골렘', guardSpeed: 8.2, guards: 2 },
+  { id: 'cloud', name: '구름 둥지', icon: '☁️', price: 120000, egg: '무지개 알', eggColor: '#c9b6ff', spot: '#ff8fc7', guard: 'thunder', guardName: '번개 새', guardSpeed: 9.3, guards: 2 },
+];
+// 알에서 나오는 동물 (zone 번호, 확률, 1초에 버는 돈, 부화 시간)
+export const CRITTERS = [
+  { id: 'chick', name: '병아리', icon: '🐤', zone: 0, chance: 0.6, income: 1, hatch: 5 },
+  { id: 'duck', name: '오리', icon: '🦆', zone: 0, chance: 0.3, income: 2, hatch: 6 },
+  { id: 'bunny', name: '토끼', icon: '🐰', zone: 0, chance: 0.1, income: 4, hatch: 8 },
+  { id: 'squirrel', name: '다람쥐', icon: '🐿️', zone: 1, chance: 0.6, income: 9, hatch: 10 },
+  { id: 'fox', name: '여우', icon: '🦊', zone: 1, chance: 0.3, income: 15, hatch: 12 },
+  { id: 'owl', name: '부엉이', icon: '🦉', zone: 1, chance: 0.1, income: 25, hatch: 14 },
+  { id: 'dino', name: '아기 공룡', icon: '🦕', zone: 2, chance: 0.6, income: 70, hatch: 18 },
+  { id: 'salamander', name: '불도마뱀', icon: '🦎', zone: 2, chance: 0.3, income: 110, hatch: 20 },
+  { id: 'turtle', name: '화산 거북', icon: '🐢', zone: 2, chance: 0.1, income: 180, hatch: 24 },
+  { id: 'unicorn', name: '유니콘', icon: '🦄', zone: 3, chance: 0.6, income: 600, hatch: 30 },
+  { id: 'whale', name: '구름 고래', icon: '🐋', zone: 3, chance: 0.3, income: 1000, hatch: 34 },
+  { id: 'dragon', name: '무지개 용', icon: '🐉', zone: 3, chance: 0.1, income: 2200, hatch: 40 },
+];
+export const critterOf = id => CRITTERS.find(c => c.id === id) ?? null;
+export const critterIndex = id => CRITTERS.findIndex(c => c.id === id);
+// 알 까기 (r: 0~1, g: 황금 굴리기 0~1)
+export function hatchCritter(zone, r = Math.random(), g = Math.random()) {
+  const list = CRITTERS.filter(c => c.zone === zone);
+  let acc = 0, pick = list[0];
+  for (const c of list) { acc += c.chance; if (r < acc) { pick = c; break; } }
+  return { c: pick.id, gold: g < EGG.GOLD };
+}
+export const petIncome = p => { const c = critterOf(p?.c); return c ? c.income * (p.gold ? EGG.GOLD_X : 1) : 0; };
+export const baseIncome = pets => pets.reduce((a, p) => a + (p && p.t <= 0 ? petIncome(p) : 0), 0);
+export const bootsPrice = lv => Math.round(80 * Math.pow(2.3, lv));
+export const bootsSpeed = lv => 1 + 0.1 * lv;
+export const pedPrice = n => Math.round(150 * Math.pow(2.4, n - EGG.PED0));
+export const sellValue = p => petIncome(p) * EGG.SELL;
+export function cleanEgg(raw) {
+  const e = { cash: 0, pets: [], boots: 0, ped: EGG.PED0, zones: 1, stolen: 0, hatched: 0, saved: 0 };
+  if (!raw || typeof raw !== 'object') return e;
+  e.cash = Math.floor(num(raw.cash, 0, 1e13, 0));
+  e.boots = Math.floor(num(raw.boots, 0, EGG.BOOTS_MAX, 0));
+  e.ped = Math.floor(num(raw.ped, EGG.PED0, EGG.PED_MAX, EGG.PED0));
+  e.zones = Math.floor(num(raw.zones, 1, EGG_ZONES.length, 1));
+  for (const k of ['stolen', 'hatched', 'saved']) e[k] = Math.floor(num(raw[k], 0, 9_999_999, 0));
+  if (Array.isArray(raw.pets)) {
+    for (const p of raw.pets.slice(0, e.ped)) {
+      const c = critterOf(p?.c);
+      e.pets.push(c ? { c: c.id, gold: !!p.gold, t: Math.max(0, Math.min(c.hatch, num(p.t, 0, 999, 0))) } : null);
+    }
+  }
+  return e;
 }
