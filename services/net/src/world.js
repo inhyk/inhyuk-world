@@ -6,8 +6,8 @@
 // - SQLite 쓰기는 무료 요금제에서 모든 게임 합쳐 하루 10만 행이라, 칸 놓기와 지우기는 따로 1초에 4번(몰아서 20번),
 //   한 사람이 한 세계에서 하루 2,000번까지다. 값이 그대로인 칸 놓기는 쓰지 않는다.
 // - 들어올 때 보내는 칸은 깨어 있는 동안 메모리에 들고 있어서, 여러 사람이 들어와도 SQLite 를 한 번만 읽는다.
-//   ttl(초)을 주면 그 시간이 지나면 사라지는 칸이 된다 (부순 나무가 10분 뒤 다시 자라기 같은 것). 사라질 때 서버는 알리지 않고,
-//   클라이언트가 exp 를 보고 스스로 지운다.
+//   ttl(초, 1분~30일)을 주면 그 시간이 지나면 사라지는 칸이 된다 (부순 나무가 10분 뒤 다시 자라기, 놓은 지 7일 뒤
+//   사라지는 블록 같은 것). 사라질 때 서버는 알리지 않고, 클라이언트가 exp 를 보고 스스로 지운다.
 // - 위치(pose)와 메시지(send)는 저장하지 않고 다른 사람에게 전하기만 한다. 서로 차단한 사이에는 전하지 않는다 (칸은 같이 본다).
 //   차단은 들어올 때 D1 에서 확인하고, 같이 있는 동안 차단하거나 풀면 로비가 알려 준다 (blocksChanged).
 // - 채팅(data.chat)은 방(Room)과 같은 거르개, 같은 횟수 제한을 거치고, 신고에 쓰려고 마지막 50줄을 기억한다.
@@ -26,12 +26,12 @@ export const CELL_KEY_RE = /^[A-Za-z0-9|._:-]{1,64}$/;
 export const CELL_VALUE_MAX = 256;     // JSON.stringify(v) 글자 수
 export const CELL_STRING_MAX = 24;     // v 안의 글자열 하나의 글자 수
 export const CELLS_PER_USER = 400;     // 한 사람이 한 세계에 놓을 수 있는 ttl 없는 칸
-export const TTL_CELLS_PER_USER = 100; // 한 사람이 한 세계에 놓을 수 있는, 아직 안 사라진 ttl 칸
+export const TTL_CELLS_PER_USER = 400; // 한 사람이 한 세계에 놓을 수 있는, 아직 안 사라진 ttl 칸
 export const CELLS_PER_WORLD = 20000;  // 한 세계의 칸 (ttl 칸 포함)
 export const WRITES_PER_SECOND = 4, WRITE_BURST = 20; // 칸 놓기와 지우기 (한 사람마다, 아니면 'rate')
 export const WRITES_PER_DAY = 2000;    // 한 사람이 한 세계에서 하루(UTC)에 칸을 바꾸는 횟수 (아니면 'limit-day')
 const DAY_FLUSH = 20;                  // 하루 횟수는 메모리에 모았다가 20번마다 (나갈 때도) 적는다
-export const TTL_MIN = 60, TTL_MAX = 3600;
+export const TTL_MIN = 60, TTL_MAX = 30 * 24 * 3600; // ttl 은 1분부터 30일까지 (exp 는 ms 라 2^53 보다 한참 작다)
 export const POSE_MAX = 512;           // JSON.stringify(d) 글자 수
 export const CHUNK = 500;              // 들어올 때 칸을 몇 개씩 나눠 보내나
 const USERS_MAX = 500;                 // 신고용으로 기억하는 "이 세계에 있었던 사람" 수
@@ -198,7 +198,7 @@ export class World extends DurableObject {
       const row = { k, v: text, owner: uid, nick, exp };
       // 값도 닉네임도 그대로인 ttl 없는 칸은 쓰지 않는다. (ttl 칸을 다시 놓는 것은 사라질 때를 미루는 것이라 쓴다.)
       if (old && permanent && old.exp === null && old.v === text && old.nick === nick) return { row, unchanged: true };
-      // 한 사람의 칸 수: ttl 없는 칸은 'u<번호>' 400개, ttl 칸은 't<번호>' 100개까지.
+      // 한 사람의 칸 수: ttl 없는 칸은 'u<번호>' 400개, ttl 칸은 't<번호>' 400개까지.
       const key = `${permanent ? 'u' : 't'}${uid}`;
       const oldKey = old ? `${old.exp === null ? 'u' : 't'}${uid}` : '';
       if (key !== oldKey) {

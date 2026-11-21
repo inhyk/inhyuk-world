@@ -18,7 +18,7 @@
 //   leave(id)                다른 사람이 나감
 //   pose(id, d)              다른 사람의 위치
 //   message(data, from)      다른 사람이 보낸 메시지 (채팅은 data.chat)
-//   error(code, k)           taken(남의 칸) | not-owner | missing | limit(내 칸 400개, 사라지는 칸 100개) | world-full | bad
+//   error(code, k)           taken(남의 칸) | not-owner | missing | limit(내 칸 400개, 사라지는 칸 400개) | world-full | bad
 //                            | rate(메시지 1초 30개, 칸 놓기와 지우기 1초 4번) | limit-day(오늘 이 세계에서 칸 바꾸기 2,000번) | chat-rate | too-big
 //                            | full | replaced | suspended | not-deployed(서버가 아직 World 를 모름) | no-world(서버에 없는 세계)
 //                            | join-rate(1분에 20번 넘게 들어옴) | login-required
@@ -223,7 +223,8 @@ export class World {
   sendMsg(message) { return !!this.id && this.raw(JSON.stringify(message)); }
 
   // 칸 놓기. 결과는 cell hook 으로 (내 것도 서버를 거쳐 돌아온다). 남의 칸이면 error('taken', k).
-  // ttl: 60~3600초. 주면 그 시간 뒤에 사라지는 칸 (내 칸 400개에 세지 않는다).
+  // ttl: 60초~30일(2,592,000초) 정수. 주면 그 시간 뒤에 사라지는 칸 (내 칸 400개에 세지 않고, 사라지는 칸 400개에 센다).
+  // 한도를 넓히기 전의 서버는 3600초까지만 받고 넘으면 error('bad', k) 를 준다.
   set(k, v, { ttl } = {}) { return this.sendMsg(ttl === undefined ? { t: 'set', k, v } : { t: 'set', k, v, ttl }); }
   del(k) { return this.sendMsg({ t: 'del', k }); }
 

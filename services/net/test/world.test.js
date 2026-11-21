@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { SELF, env, runInDurableObject, runDurableObjectAlarm } from 'cloudflare:test';
 import { api, signup, connect, ticketFor, ORIGIN, sleep } from './helpers.js';
 import { maskText } from '../src/filter.js';
-import { CELLS_PER_USER, CELLS_PER_WORLD, WORLD_MAX, TTL_CELLS_PER_USER, WRITE_BURST, WRITES_PER_DAY } from '../src/world.js';
+import { CELLS_PER_USER, CELLS_PER_WORLD, WORLD_MAX, TTL_CELLS_PER_USER, TTL_MAX, WRITE_BURST, WRITES_PER_DAY } from '../src/world.js';
 import { SWEEP_MS } from '../src/rooms.js';
 import { World as Client } from '../../../packages/net/world.mjs';
 
@@ -127,7 +127,7 @@ describe('world: cells', () => {
       ca.send({ t: 'set', k: 'k', v });
       expect(await ca.next()).toEqual({ t: 'error', code: 'bad', k: 'k' });
     }
-    for (const ttl of [59, 3601, 1.5, '60']) {
+    for (const ttl of [59, TTL_MAX + 1, 1.5, '60']) {
       ca.send({ t: 'set', k: 'k', v: 1, ttl });
       expect(await ca.next()).toEqual({ t: 'error', code: 'bad', k: 'k' });
     }
@@ -187,6 +187,46 @@ describe('world: cells', () => {
       expect(instance.count('total')).toBe(1);
       expect(instance.count(`u${a.id}`)).toBe(0); // ttl 칸은 세지 않는다
     });
+  });
+
+  it('ttl can be as long as 30 days; a 7-day cell keeps its exp across joins and is gone once the time is past', async () => {
+    expect(TTL_MAX).toBe(30 * 24 * 3600);
+    const week = 7 * 24 * 3600;
+    const world = newWorld();
+    const a = await signup(), b = await signup();
+    const ca = await join(a, world);
+    const before = Date.now();
+    ca.send({ t: 'set', k: 'b|1|0|1', v: 3, ttl: week });
+    const cell = await ca.next();
+    expect(cell.exp).toBeGreaterThanOrEqual(before + week * 1000);
+    expect(cell.exp).toBeLessThan(Date.now() + week * 1000 + 1000);
+    ca.send({ t: 'set', k: 'month', v: 1, ttl: TTL_MAX });
+    expect((await ca.next()).exp).toBeGreaterThanOrEqual(before + TTL_MAX * 1000);
+    ca.send({ t: 'set', k: 'too-long', v: 1, ttl: TTL_MAX + 1 });
+    expect(await ca.next()).toEqual({ t: 'error', code: 'bad', k: 'too-long' });
+    ca.close();
+    await sleep(100);
+    // SQLite 에서 다시 읽어도 (메모리 사본을 버려도) 같은 exp 가 온다
+    await runInDurableObject(stub(world), instance => {
+      instance.snapshot = null;
+      expect(instance.sql.exec("SELECT exp FROM cells WHERE k = 'b|1|0|1'").one().exp).toBe(cell.exp);
+    });
+    const cb = await join(b, world);
+    expect(cb.cells.find(c => c.k === 'b|1|0|1')).toEqual({ k: 'b|1|0|1', v: 3, owner: { id: a.id, nickname: a.nickname }, exp: cell.exp });
+    cb.close();
+    await sleep(100);
+    // 7일 앞의 시각으로 store 를 부르면 지난 칸을 먼저 치우고 남의 칸이 아닌 빈 칸으로 친다
+    await runInDurableObject(stub(world), instance => {
+      const later = cell.exp + 1;
+      expect(instance.store(b.id, b.nickname, 'b|1|0|1', 5, week, later).row.owner).toBe(b.id);
+      expect(instance.count(`t${a.id}`)).toBe(1); // 'month' 만 남음
+      // 지난 칸은 들어올 때 오지 않는다
+      instance.sql.exec("UPDATE cells SET exp = ? WHERE k = 'month'", Date.now() - 1);
+      instance.snapshot = null;
+    });
+    const late = await join(await signup(), world);
+    expect(late.cells.map(c => c.k)).toEqual(['b|1|0|1']);
+    expect(late.cells[0].owner.id).toBe(b.id);
   });
 
   it('limits each account to 400 lasting cells and a world to 20,000 cells', async () => {
@@ -413,28 +453,30 @@ describe('world: limits against abuse', () => {
     await runInDurableObject(stub(world), instance => { expect(instance.snapshot.size).toBe(0); });
   });
 
-  it('caps live ttl cells per account at 100 (renewing does not get around it)', async () => {
+  it('caps live ttl cells per account at 400 (renewing does not get around it)', async () => {
     const world = newWorld();
     const a = await signup(), b = await signup();
+    expect(TTL_CELLS_PER_USER).toBe(400);
+    const week = 7 * 24 * 3600;
     await runInDurableObject(stub(world), instance => {
-      for (let i = 0; i < TTL_CELLS_PER_USER - 1; i++) expect(instance.store(a.id, a.nickname, `t${i}`, 1, 3600).row).toBeTruthy();
+      for (let i = 0; i < TTL_CELLS_PER_USER - 1; i++) expect(instance.store(a.id, a.nickname, `t${i}`, 1, week).row).toBeTruthy();
     });
     const ca = await join(a, world);
-    ca.send({ t: 'set', k: 'last', v: 1, ttl: 3600 });
+    ca.send({ t: 'set', k: 'last', v: 1, ttl: week });
     expect((await ca.next()).k).toBe('last');
-    ca.send({ t: 'set', k: 'over', v: 1, ttl: 3600 });
+    ca.send({ t: 'set', k: 'over', v: 1, ttl: week });
     expect(await ca.next()).toEqual({ t: 'error', code: 'limit', k: 'over' });
-    ca.send({ t: 'set', k: 'last', v: 2, ttl: 3600 }); // 내 ttl 칸을 다시 놓는 것은 된다
+    ca.send({ t: 'set', k: 'last', v: 2, ttl: week }); // 내 ttl 칸을 다시 놓는 것은 된다
     expect((await ca.next()).v).toBe(2);
     ca.send({ t: 'set', k: 'last', v: 3 }); // ttl 칸을 남는 칸으로 바꾸면 ttl 칸 자리가 하나 빈다
     expect((await ca.next()).exp).toBeUndefined();
-    ca.send({ t: 'set', k: 'over', v: 1, ttl: 3600 });
+    ca.send({ t: 'set', k: 'over', v: 1, ttl: week });
     expect((await ca.next()).k).toBe('over');
-    ca.send({ t: 'set', k: 'over2', v: 1, ttl: 3600 });
+    ca.send({ t: 'set', k: 'over2', v: 1, ttl: week });
     expect(await ca.next()).toEqual({ t: 'error', code: 'limit', k: 'over2' });
     // 시간이 지난 ttl 칸은 세지 않는다 (한도에 닿으면 먼저 치운다)
     await runInDurableObject(stub(world), instance => { instance.sql.exec("UPDATE cells SET exp = ? WHERE k IN ('t0', 't1')", Date.now() - 1); });
-    ca.send({ t: 'set', k: 'over2', v: 1, ttl: 3600 });
+    ca.send({ t: 'set', k: 'over2', v: 1, ttl: week });
     expect((await ca.next()).k).toBe('over2');
     await runInDurableObject(stub(world), instance => {
       expect(instance.count(`t${a.id}`)).toBe(TTL_CELLS_PER_USER - 1); // t1 은 치웠고 아직 한 자리 남음
