@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, EGG, EGG_ZONES, CRITTERS, hatchCritter, petIncome, baseIncome, bootsPrice, pedPrice, cleanEgg, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, EGG, EGG_ZONES, CRITTERS, hatchCritter, RUN_MAX, EGG_TREADS, runSpeed, runNeed, trainRun, josa, petIncome, baseIncome, bootsPrice, pedPrice, cleanEgg, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -435,4 +435,25 @@ test('달걀 도둑: 둥지마다 동물 셋, 확률 합 1, 뒤 둥지일수록 
   assert.equal(e.zones, EGG_ZONES.length);
   assert.deepEqual(e.pets, [{ c: 'dragon', gold: false, t: 40 }, null, { c: 'chick', gold: true, t: 0 }]);
   assert.equal(cleanSave({}).egg.ped, EGG.PED0);
+});
+
+test('러닝머신: 달리면 레벨이 오르고 빨라진다, 좋은 러닝머신은 비싸고 빠르다', () => {
+  assert.equal(runSpeed(0), 1);
+  assert.ok(Math.abs(runSpeed(RUN_MAX) - 1.9) < 1e-9);
+  assert.deepEqual(trainRun(0, 0, runNeed(0) - 0.5), { run: 0, xp: runNeed(0) - 0.5, up: 0 });
+  const a = trainRun(0, 0, runNeed(0) + runNeed(1) + 1);
+  assert.equal(a.run, 2); assert.equal(a.up, 2); assert.ok(Math.abs(a.xp - 1) < 1e-9);
+  assert.equal(trainRun(RUN_MAX - 1, 0, 1e6).run, RUN_MAX);
+  assert.equal(trainRun(RUN_MAX, 0, 50).xp, 0);
+  for (let i = 1; i < EGG_TREADS.length; i++) { assert.ok(EGG_TREADS[i].price > EGG_TREADS[i - 1].price); assert.ok(EGG_TREADS[i].mult > EGG_TREADS[i - 1].mult); }
+  const e = cleanEgg({ run: 99, xp: 9999, tread: 7 });
+  assert.equal(e.run, RUN_MAX); assert.equal(e.tread, EGG_TREADS.length);
+  assert.equal(cleanEgg({}).tread, 1);
+});
+
+test('받침에 맞는 을/를, 이/가', () => {
+  assert.equal(josa('여우', '을', '를'), '여우를');
+  assert.equal(josa('아기 공룡', '을', '를'), '아기 공룡을');
+  assert.equal(josa('졸린 곰', '이', '가'), '졸린 곰이');
+  assert.equal(josa('신난 사자', '이', '가'), '신난 사자가');
 });

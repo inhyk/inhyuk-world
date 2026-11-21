@@ -399,7 +399,7 @@ export function defaultSave(rand = Math.random) {
     battle: { wins: 0, kills: 0, best: 0, teamWins: 0, teamBest: 0 },
     tower: { blocks: [], best: 0 },
     tag: { wins: 0, hideWins: 0, seekWins: 0 },
-    egg: { cash: 0, pets: [], boots: 0, ped: EGG.PED0, zones: 1, stolen: 0, hatched: 0, saved: 0 },
+    egg: { cash: 0, pets: [], boots: 0, ped: EGG.PED0, zones: 1, stolen: 0, hatched: 0, saved: 0, run: 0, xp: 0, tread: 1 },
     pets: { dog: 0, cat: 0, panda: 0, parrot: 0 },
     pet: '',
     sound: true,
@@ -736,13 +736,16 @@ export const bootsSpeed = lv => 1 + 0.1 * lv;
 export const pedPrice = n => Math.round(150 * Math.pow(2.4, n - EGG.PED0));
 export const sellValue = p => petIncome(p) * EGG.SELL;
 export function cleanEgg(raw) {
-  const e = { cash: 0, pets: [], boots: 0, ped: EGG.PED0, zones: 1, stolen: 0, hatched: 0, saved: 0 };
+  const e = { cash: 0, pets: [], boots: 0, ped: EGG.PED0, zones: 1, stolen: 0, hatched: 0, saved: 0, run: 0, xp: 0, tread: 1 };
   if (!raw || typeof raw !== 'object') return e;
   e.cash = Math.floor(num(raw.cash, 0, 1e13, 0));
   e.boots = Math.floor(num(raw.boots, 0, EGG.BOOTS_MAX, 0));
   e.ped = Math.floor(num(raw.ped, EGG.PED0, EGG.PED_MAX, EGG.PED0));
   e.zones = Math.floor(num(raw.zones, 1, EGG_ZONES.length, 1));
   for (const k of ['stolen', 'hatched', 'saved']) e[k] = Math.floor(num(raw[k], 0, 9_999_999, 0));
+  e.run = Math.floor(num(raw.run, 0, RUN_MAX, 0));
+  e.xp = num(raw.xp, 0, runNeed(e.run), 0);
+  e.tread = Math.floor(num(raw.tread, 1, EGG_TREADS.length, 1));
   if (Array.isArray(raw.pets)) {
     for (const p of raw.pets.slice(0, e.ped)) {
       const c = critterOf(p?.c);
@@ -750,4 +753,30 @@ export function cleanEgg(raw) {
     }
   }
   return e;
+}
+
+// ───── 러닝머신 (2026-11-22 인혁: "러닝머신도 만들어줘") ─────
+// 벨트가 뒤로 움직여서 앞으로 달려야 버틴다. 달리는 동안 달리기 힘이 쌓여 레벨이 오르고, 레벨마다 3% 빨라진다.
+export const RUN_MAX = 30;
+export const EGG_TREADS = [
+  { name: '러닝머신', icon: '🏃', mult: 1, price: 0, color: '#3fa7ff' },
+  { name: '골드 러닝머신', icon: '⭐', mult: 2, price: 3000, color: '#ffcf33' },
+  { name: '무지개 러닝머신', icon: '🌈', mult: 5, price: 60000, color: '#ff8fc7' },
+];
+export const runSpeed = lv => 1 + 0.03 * lv;
+export const runNeed = lv => 8 + lv * 4; // 다음 레벨까지 달려야 하는 초 (1배 러닝머신)
+// dt 초 달리기 → { run, xp, up: 오른 레벨 수 }
+export function trainRun(run, xp, sec) {
+  let up = 0;
+  xp += sec;
+  while (run < RUN_MAX && xp >= runNeed(run)) { xp -= runNeed(run); run++; up++; }
+  if (run >= RUN_MAX) xp = 0;
+  return { run, xp, up };
+}
+
+// 받침 있는 말이면 a(을, 이, 은), 없으면 b(를, 가, 는): josa('여우', '을', '를') → '여우를'
+export function josa(word, a, b) {
+  const c = String(word).charCodeAt(String(word).length - 1);
+  if (!(c >= 0xac00 && c <= 0xd7a3)) return `${word}${b}`;
+  return `${word}${(c - 0xac00) % 28 ? a : b}`;
 }
