@@ -4,7 +4,7 @@
 import { THREE, textSprite } from './render.js';
 import { Avatar } from './avatar.js';
 import { makeCritter } from './egghunt.js';
-import { CAMP, CUBS, STALKER, fireLevel, fireRadius, nightMonsters, dayCoins, freshCamp, seeded, displayName, ADJECTIVES, ANIMALS, SKINS, COLORS } from '../core.mjs';
+import { CAMP, CUBS, STALKER, AXES, ARMORS, CHESTS, LANTERN_R, CHEST_REFILL, chestLoot, fireLevel, fireRadius, nightMonsters, dayCoins, freshCamp, seeded, displayName, ADJECTIVES, ANIMALS, SKINS, COLORS } from '../core.mjs';
 import { CAMP_R, CAMP_DENS } from '../worlds.mjs';
 
 const r2 = v => Math.round(v * 100) / 100;
@@ -29,6 +29,7 @@ export class Camp {
     this.makeHud();
     this.makeBots();
     this.makeCubs();
+    this.makeChests();
     this.night = null; // 첫 프레임에 낮/밤 하늘을 맞춘다 (loadWorld 가 기본 하늘을 나중에 칠한다)
     if (this.c.hp <= 0) this.c.hp = CAMP.HP;
   }
@@ -44,6 +45,8 @@ export class Camp {
   lights() {
     const out = [{ x: 0, z: 0, r: this.fireR }];
     for (const [x, z] of this.c.torches) out.push({ x, z, r: CAMP.TORCH_R });
+    const me = this.game.player;
+    if (this.c.lantern && this.isNight && !this.game.isDead() && !(this.downT > 0)) out.push({ x: me.x, z: me.z, r: LANTERN_R, mine: true });
     return out;
   }
   inLight(x, z, pad = 0) { return this.lights().some(l => l.r > 0 && Math.hypot(x - l.x, z - l.z) < l.r - pad); }
@@ -106,6 +109,12 @@ export class Camp {
     this.ring = ring;
     this.group.add(g);
     this.fire = g;
+    // 내 랜턴 빛 (처음부터 만들어 두고 켜고 끈다)
+    this.lanternLight = new THREE.PointLight('#ffd9a0', 0, 14, 1.4);
+    this.group.add(this.lanternLight);
+    this.lanternRing = new THREE.Mesh(new THREE.RingGeometry(LANTERN_R - 0.08, LANTERN_R, 48), new THREE.MeshBasicMaterial({ color: '#ffe0a0', transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }));
+    this.lanternRing.rotation.x = -Math.PI / 2;
+    this.group.add(this.lanternRing);
   }
   makeTorchPool() {
     this.torchPool = [];
@@ -122,6 +131,9 @@ export class Camp {
     }
   }
   drawFire() {
+    const me = this.game.player, lon = this.c.lantern && this.isNight && !this.game.isDead() && !(this.downT > 0);
+    this.lanternLight.intensity = lon ? 14 : 0; this.lanternLight.position.set(me.x, me.y + 2.6, me.z);
+    this.lanternRing.visible = lon; this.lanternRing.position.set(me.x, 0.1, me.z);
     const lv = this.fireLv, fuel = this.c.fuel, on = fuel > 0;
     const size = on ? (0.6 + lv * 0.25) * (0.5 + Math.min(1, fuel / 40) * 0.5) : 0.001;
     this.flames.forEach((m, i) => { const f = 1 + Math.sin(this.t * (9 + i * 3)) * 0.08; m.scale.set(size * f, size * (1 + Math.sin(this.t * 7 + i) * 0.12), size * f); m.visible = on; });
@@ -193,15 +205,18 @@ export class Camp {
     if (mon) {
       g.sfx('hit');
       g.effects.burst(mon.x, 1.2, mon.z, ['#2a2d3a', '#ff3b3b', '#ffffff'], 8, 4);
-      if (this.auth) this.hitMonster(mon, CAMP.AXE, this.myNum, me);
-      else this.net.send({ t: 'cp', k: 'hit', id: mon.id, x: r2(me.x), z: r2(me.z) });
+      const dmg = AXES[c.axe].dmg;
+      if (this.auth) this.hitMonster(mon, dmg, this.myNum, me);
+      else this.net.send({ t: 'cp', k: 'hit', id: mon.id, x: r2(me.x), z: r2(me.z), dmg });
       return;
     }
     const cub = this.cubs.find(u => u.state === 'lost' && Math.hypot(u.x - me.x, u.z - me.z) < 3);
     if (cub) { this.takeCub(cub); return; }
+    const chest = this.chests.find(ch => !ch.open && Math.hypot(ch.x - me.x, ch.z - me.z) < 2.8);
+    if (chest) { this.openChest(chest); return; }
     let tree = null, td = 2.7;
     for (const t of this.trees) { if (t.down > 0) continue; const d = Math.hypot(t.x - me.x, t.z - me.z); if (d < td) { td = d; tree = t; } }
-    if (tree) { this.chop(tree, () => { c.wood++; }); g.sfx('hit'); return; }
+    if (tree) { this.chop(tree, n => { c.wood += n; }, AXES[c.axe].chop); g.sfx('hit'); return; }
     for (const b of this.bushes) {
       if (b.t > 0 || Math.hypot(b.x - me.x, b.z - me.z) > 2.6) continue;
       b.t = CAMP.BUSH_REGROW; b.berries.visible = false;
@@ -212,9 +227,10 @@ export class Camp {
     this.cool = 0.1;
     this.say('🪓 나무, 열매 덤불, 늑대 가까이에서 눌러!');
   }
-  chop(t, gain) {
-    t.hp--; t.shake = 0.25;
-    gain();
+  chop(t, gain, power = 1) {
+    const n = Math.min(power, t.hp);
+    t.hp -= n; t.shake = 0.25;
+    gain(n);
     this.game.effects.burst(t.x, 1.5, t.z, ['#c98a4b', '#8b5a3c', '#3a8f55'], 6, 4);
     if (t.hp <= 0) { t.down = CAMP.TREE_REGROW; t.box.on = false; this.game.sfx('crumble'); }
     this.drawTree(t);
@@ -223,7 +239,12 @@ export class Camp {
   // ───── 늑대 ─────
   spawnMonster(type, rnd = Math.random) {
     const N = nightMonsters(this.c.day);
-    const a = rnd() * Math.PI * 2, r = CAMP_R - 8 - rnd() * 10;
+    let a = rnd() * Math.PI * 2, r = 60 + rnd() * 30, cx = 0, cz = 0;
+    const out = this.victims().filter(v => !this.inLight(v.x, v.z));
+    if (out.length && rnd() < 0.7) { const v = out[Math.floor(rnd() * out.length)]; cx = v.x; cz = v.z; r = 40 + rnd() * 20; }
+    let sx = cx + Math.cos(a) * r, sz = cz + Math.sin(a) * r;
+    const sr = Math.hypot(sx, sz); if (sr > CAMP_R - 6) { sx *= (CAMP_R - 6) / sr; sz *= (CAMP_R - 6) / sr; }
+    a = Math.atan2(sz, sx); r = Math.hypot(sx, sz);
     const boss = type === 'boss', stalker = type === 'stalker';
     if (stalker) return this.spawnStalker(a, r);
     const body = makeCritter(boss ? 'shade' : 'wolf');
@@ -303,7 +324,7 @@ export class Camp {
       if (!this.isNight) { m.dawn = (m.dawn ?? 0) + dt; if (m.dawn > 0.4) { this.removeMonster(m, true); continue; } }
       if (m.stun > 0) { m.stun -= dt; m.body.rotation.z = Math.sin(this.t * 30) * 0.03; this.drawMonster(m, false); continue; }
       let tx, tz, sp = m.speed;
-      let tgt = null, td = m.stalker ? 70 : 45;
+      let tgt = null, td = m.stalker ? 80 : 55;
       for (const v of vs) { const d = Math.hypot(v.x - m.x, v.z - m.z); if (d < td) { td = d; tgt = v; } }
       if (m.flee > 0) { const d = Math.hypot(m.x, m.z) || 1; tx = m.x + (m.x / d) * 5; tz = m.z + (m.z / d) * 5; }
       else if (tgt) { tx = tgt.x; tz = tgt.z; }
@@ -345,7 +366,7 @@ export class Camp {
   hurtMe(dmg) {
     const g = this.game, c = this.c;
     if (g.isDead() || this.downT > 0) return;
-    c.hp -= this.has('bear') ? dmg * 0.7 : dmg;
+    c.hp -= dmg * (this.has('bear') ? 0.7 : 1) * (1 - ARMORS[c.armor].cut);
     this.hurtT = 0.35;
     g.sfx('hurt');
     if (c.hp <= 0) this.down();
@@ -374,11 +395,12 @@ export class Camp {
   }
   resetRun(won) {
     const c = this.c;
-    const keep = { best: Math.max(c.best, won ? CAMP.DAYS : c.day - 1), wins: c.wins + (won ? 1 : 0), runs: c.runs + 1 };
+    const keep = { best: Math.max(c.best, won ? CAMP.DAYS : c.day - 1), wins: c.wins + (won ? 1 : 0), runs: c.runs + 1, axe: c.axe, armor: c.armor, lantern: c.lantern }; // 파밍한 장비는 남는다
     Object.assign(c, freshCamp(), keep);
     for (const m of [...this.monsters.values()]) this.removeMonster(m, false);
     for (const t of this.trees) { t.down = 0; t.hp = CAMP.TREE_HP; t.box.on = true; this.drawTree(t); }
     this.cubs?.forEach(u => this.resetCub(u));
+    this.chests?.forEach(ch => this.setChest(ch, false));
     for (const b of this.bots) { b.hp = 100; b.wood = 0; b.x = Math.cos(b.k * 2.1) * 5; b.z = Math.sin(b.k * 2.1) * 5; }
     this.syncSky(true);
     this.game.persist();
@@ -414,6 +436,7 @@ export class Camp {
     }
     c.day++;
     if (c.day - 1 > c.best) c.best = c.day - 1;
+    this.refillChests();
     if (this.has('fox')) { c.wood += 5; setTimeout(() => g.ui.toast('🦊 아기 여우가 🪵 나무 5개를 물어 왔어!', 2200), 2600); }
     g.sfx('check');
     g.ui.big(`☀️ ${survived}일 버텼어! ${c.day}일째 아침 · 🪙+${coins}`, 2400, coins > 2 ? 'gold' : '');
@@ -438,6 +461,62 @@ export class Camp {
     c.fuel = Math.min(CAMP.FUEL_MAX, c.fuel + n * CAMP.WOOD_FUEL);
     c.fed += n;
     if (this.fireLv > before) { this.game.sfx('win'); this.game.ui.big(`🔥 모닥불 Lv${this.fireLv}! 빛이 더 넓어졌어`, 2000, 'gold'); }
+  }
+
+  // 화면 기준 방향 화살표 (카메라가 보는 쪽이 ⬆)
+  arrowTo(x, z) {
+    const me = this.game.player, yaw = this.game.controls.yaw;
+    const vx = x - me.x, vz = z - me.z, fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+    const rel = Math.atan2(vx * rx + vz * rz, vx * fx + vz * fz);
+    return ['⬆️', '↗️', '➡️', '↘️', '⬇️', '↙️', '⬅️', '↖️'][((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8];
+  }
+
+  // ───── 보물 상자 (파밍) ─────
+  makeChests() {
+    this.chests = (this.def.chests ?? []).map((ch, i) => {
+      const T = CHESTS[ch.tier];
+      const g = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.8, 0.95), std(T.color, ch.tier === 2 ? { metalness: 0.6, roughness: 0.35, emissive: '#7a5200', emissiveIntensity: 0.25 } : {}));
+      base.position.y = 0.4; base.castShadow = true; g.add(base);
+      for (const x of [-0.45, 0.45]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.82, 0.97), std(T.band)); b.position.set(x, 0.4, 0); g.add(b); }
+      const lid = new THREE.Group(); lid.position.set(0, 0.8, -0.475); g.add(lid);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.32, 0.97), std(T.color, ch.tier === 2 ? { metalness: 0.6, roughness: 0.35 } : {})); top.position.set(0, 0.16, 0.475); top.castShadow = true; lid.add(top);
+      const lock = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.26, 0.08), std('#ffd23f', { metalness: 0.7 })); lock.position.set(0, 0.02, 0.98); lid.add(lock);
+      const glow = textSprite(ch.tier === 2 ? '✨' : ch.tier === 1 ? '📦' : '📦', { bg: 'rgba(0,0,0,0)', size: 40, scale: 0.012 }); glow.position.y = 1.8; g.add(glow);
+      g.position.set(ch.x, 0, ch.z);
+      g.rotation.y = Math.atan2(-ch.x, -ch.z); // 모닥불 쪽을 본다
+      this.group.add(g);
+      const c = { ...ch, i, g, lid, glow, open: false };
+      this.setChest(c, this.c.opened.some(([k, d]) => k === i && this.c.day < d + CHEST_REFILL));
+      return c;
+    });
+  }
+  setChest(ch, open) { ch.open = open; ch.lid.rotation.x = open ? -1.9 : 0; ch.glow.visible = !open; }
+  openChest(ch) {
+    const g = this.game, c = this.c;
+    const loot = chestLoot(ch.tier, Math.random, { axe: c.axe, armor: c.armor, lantern: c.lantern });
+    this.setChest(ch, true);
+    c.opened = c.opened.filter(([k]) => k !== ch.i);
+    c.opened.push([ch.i, c.day]);
+    const got = [];
+    if (loot.wood) { c.wood += loot.wood; got.push(`🪵${loot.wood}`); }
+    if (loot.berry) { c.berry += loot.berry; got.push(`🫐${loot.berry}`); }
+    if (loot.cooked) { c.cooked += loot.cooked; got.push(`🍗${loot.cooked}`); }
+    if (loot.coins) { g.addCoins(loot.coins); got.push(`🪙${loot.coins}`); }
+    let big = '';
+    if (loot.axe) { c.axe = loot.axe; big = `${AXES[c.axe].icon} ${AXES[c.axe].name}! 늑대 ${AXES[c.axe].dmg} 데미지, 나무 ${AXES[c.axe].chop}개씩`; }
+    if (loot.armor) { c.armor = loot.armor; big = `🛡️ ${ARMORS[c.armor].name}! ${Math.round(ARMORS[c.armor].cut * 100)}% 덜 아파`; }
+    if (loot.lantern) { c.lantern = true; big = '🏮 랜턴! 밤에 내 둘레가 밝아서 늑대가 못 와'; }
+    g.sfx(big ? 'win' : 'coin');
+    g.effects.burst(ch.x, 1.2, ch.z, ch.tier === 2 ? ['#ffd23f', '#ffffff', '#ff8fc7'] : ['#c98a4b', '#ffd23f', '#ffffff'], ch.tier === 2 ? 30 : 14, 5);
+    if (big) g.ui.big(big, 2800, 'gold');
+    g.ui.toast(`📦 ${CHESTS[ch.tier].name}: ${got.join(' ')}`, 2600);
+    g.persist();
+  }
+  refillChests() {
+    const c = this.c;
+    c.opened = c.opened.filter(([, d]) => c.day < d + CHEST_REFILL);
+    for (const ch of this.chests) if (ch.open && !c.opened.some(([k]) => k === ch.i)) this.setChest(ch, false);
   }
 
   // ───── 길 잃은 아기 동물 ─────
@@ -573,7 +652,7 @@ export class Camp {
         if (t) {
           const d = Math.hypot(t.x - b.x, t.z - b.z);
           if (d > 1.8) { const k = (d - 1.5) / d; moving = this.botGo(b, b.x + (t.x - b.x) * k, b.z + (t.z - b.z) * k, dt) > 0.05; }
-          else if (b.cool <= 0) { b.cool = 0.7; b.yaw = Math.atan2(t.x - b.x, t.z - b.z); this.chop(t, () => { b.wood++; }); }
+          else if (b.cool <= 0) { b.cool = 0.7; b.yaw = Math.atan2(t.x - b.x, t.z - b.z); this.chop(t, n => { b.wood += n; }); }
         }
       }
       b.avatar.place(b.x, 0.3, b.z, b.yaw, dt);
@@ -587,7 +666,7 @@ export class Camp {
     if (this.auth) {
       if (d.k === 'feed' && Number.isInteger(d.n) && d.n > 0 && d.n <= 20) this.feedFire(d.n);
       else if (d.k === 'torch' && Number.isFinite(d.x) && Number.isFinite(d.z)) this.addTorch(d.x, d.z);
-      else if (d.k === 'hit' && Number.isInteger(d.id)) { const m = this.monsters.get(d.id); if (m && Number.isFinite(d.x) && Number.isFinite(d.z)) this.hitMonster(m, CAMP.AXE, numOf(from), { x: d.x, z: d.z }); }
+      else if (d.k === 'hit' && Number.isInteger(d.id)) { const m = this.monsters.get(d.id); if (m && Number.isFinite(d.x) && Number.isFinite(d.z)) this.hitMonster(m, Math.max(1, Math.min(AXES[AXES.length - 1].dmg, d.dmg | 0 || CAMP.AXE)), numOf(from), { x: d.x, z: d.z }); }
       return;
     }
     if (from !== hostId) return;
@@ -674,7 +753,10 @@ export class Camp {
     const fire = c.fuel > 0 ? `🔥 Lv${this.fireLv} ${Math.ceil(c.fuel)}%` : '🔥 꺼짐!';
     const cubs = ` · 🐾 ${c.cubs.length}/${CUBS.length}${this.cubs.some(u => u.state === 'follow') ? ' (데려가는 중!)' : ''}`;
     const warn = this.stalkNear ? ' · 👁️ 사냥꾼이 가까이 있어!' : '';
-    const html = `<b>${this.isNight ? '🌙' : '☀️'} ${c.day}일째 / ${CAMP.DAYS} · ${this.isNight ? '밤' : '낮'} ${fmt(left)} · ${fire}</b><small>체력 ${Math.ceil(Math.max(0, c.hp))} · 🍖 ${Math.ceil(c.hunger)} · 🪵 ${c.wood} · 🫐 ${c.berry} · 🍗 ${c.cooked}${c.meat ? ` · 🥩 ${c.meat}` : ''} · ${lives}${cubs}${c.best ? ` · 최고 ${c.best}일` : ''}${warn}</small>`;
+    const me = this.game.player, far = Math.hypot(me.x, me.z);
+    const home = far > 22 ? ` · 🔥 ${this.arrowTo(0, 0)} ${Math.round(far)}m` : '';
+    const gear = ` · ${AXES[c.axe].icon}${c.armor ? ' 🛡️' : ''}${c.lantern ? ' 🏮' : ''}`;
+    const html = `<b>${this.isNight ? '🌙' : '☀️'} ${c.day}일째 / ${CAMP.DAYS} · ${this.isNight ? '밤' : '낮'} ${fmt(left)} · ${fire}</b><small>체력 ${Math.ceil(Math.max(0, c.hp))} · 🍖 ${Math.ceil(c.hunger)} · 🪵 ${c.wood} · 🫐 ${c.berry} · 🍗 ${c.cooked}${c.meat ? ` · 🥩 ${c.meat}` : ''} · ${lives}${cubs}${gear}${home}${c.best ? ` · 최고 ${c.best}일` : ''}${warn}</small>`;
     this.game.ui.setInfo(html);
   }
 

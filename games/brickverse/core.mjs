@@ -786,7 +786,7 @@ export function josa(word, a, b) {
 // ───── 모닥불 캠프 (2026-11-22 인혁: "99일동안 살아남기도 만들어줘") ─────
 // 다른 게임의 이야기와 괴물은 쓰지 않고, 노는 방식(낮에 나무 모으기 → 밤에 모닥불 빛 안에서 버티기 → 99일)만 비슷한 우리 게임.
 export const CAMP = Object.freeze({
-  DAYS: 99, DAY: 45, NIGHT: 35, LIVES: 3, HP: 100, HUNGER: 100, HUNGER_RATE: 0.5, STARVE: 2,
+  DAYS: 99, DAY: 60, NIGHT: 35, LIVES: 3, HP: 100, HUNGER: 100, HUNGER_RATE: 0.5, STARVE: 2,
   FUEL_MAX: 100, WOOD_FUEL: 10, BURN_DAY: 0.35, BURN_NIGHT: 1.0, TORCH_WOOD: 5, TORCH_NIGHTS: 3, TORCH_R: 6, TORCH_MAX: 6,
   TREE_HP: 3, TREE_REGROW: 90, BUSH_REGROW: 60, BERRY: 3, BERRY_FOOD: 20, MEAT_FOOD: 45, AXE: 25, FEED_R: 4.5,
 });
@@ -801,7 +801,7 @@ export function nightMonsters(day) {
 // 하루를 버틸 때 받는 코인
 export const dayCoins = day => 2 + ({ 10: 20, 25: 50, 50: 100, 75: 150, 99: 500 }[day] ?? 0);
 export function freshCamp() {
-  return { day: 1, t: 0, lives: CAMP.LIVES, hp: CAMP.HP, hunger: CAMP.HUNGER, wood: 0, berry: 3, meat: 0, cooked: 0, fed: 0, cubs: [], fuel: 60, torches: [], best: 0, wins: 0, runs: 0 };
+  return { day: 1, t: 0, lives: CAMP.LIVES, hp: CAMP.HP, hunger: CAMP.HUNGER, wood: 0, berry: 3, meat: 0, cooked: 0, fed: 0, cubs: [], opened: [], axe: 0, armor: 0, lantern: false, fuel: 60, torches: [], best: 0, wins: 0, runs: 0 };
 }
 export function cleanCamp(raw) {
   const c = freshCamp();
@@ -816,6 +816,10 @@ export function cleanCamp(raw) {
   c.fuel = num(raw.fuel, 0, CAMP.FUEL_MAX, 60);
   c.torches = Array.isArray(raw.torches) ? raw.torches.slice(0, CAMP.TORCH_MAX).filter(t => Array.isArray(t) && t.slice(0, 3).every(Number.isFinite)).map(([x, z, n]) => [Math.max(-90, Math.min(90, x)), Math.max(-90, Math.min(90, z)), Math.max(1, Math.min(CAMP.TORCH_NIGHTS, Math.floor(n)))]) : [];
   c.cubs = Array.isArray(raw.cubs) ? CUBS.map(u => u.id).filter(id => raw.cubs.includes(id)) : [];
+  c.opened = Array.isArray(raw.opened) ? raw.opened.filter(o => Array.isArray(o) && Number.isInteger(o[0]) && o[0] >= 0 && o[0] < 500 && Number.isInteger(o[1])).slice(0, 200).map(([i, d]) => [i, Math.max(1, Math.min(CAMP.DAYS, d))]) : [];
+  c.axe = Math.floor(num(raw.axe, 0, AXES.length - 1, 0));
+  c.armor = Math.floor(num(raw.armor, 0, ARMORS.length - 1, 0));
+  c.lantern = !!raw.lantern;
   c.best = Math.floor(num(raw.best, 0, CAMP.DAYS, 0));
   c.wins = Math.floor(num(raw.wins, 0, 99_999, 0));
   c.runs = Math.floor(num(raw.runs, 0, 99_999, 0));
@@ -832,3 +836,29 @@ export const CUBS = [
 ];
 // 그림자 사냥꾼: 2일째 밤부터 한 마리. 도끼로는 못 쓰러뜨리고 잠깐 얼린다. 빛 안에는 못 들어오고 횃불을 끈다.
 export const STALKER = Object.freeze({ FROM: 2, SPEED: 7.4, DMG: 30, STUN: 3, WARN: 26, DELAY: 8 });
+
+// ───── 파밍 (2026-11-22 인혁: "맵 엄청 넓혀 그리고 파밍도 할 수 있게 해줘") ─────
+// 숲 곳곳의 보물 상자: 🟫 나무(가까운 숲) · ⬜ 쇠(먼 숲, 오두막) · 🟨 황금(섬 끝, 바위 언덕). 연 상자는 3일 뒤에 다시 찬다.
+// 도끼, 갑옷, 랜턴은 한 번 얻으면 처음부터 다시 해도 그대로 남는다.
+export const AXES = [{ name: '돌 도끼', icon: '🪓', dmg: 25, chop: 1 }, { name: '쇠 도끼', icon: '⛏️', dmg: 40, chop: 2 }, { name: '황금 도끼', icon: '✨', dmg: 60, chop: 3 }];
+export const ARMORS = [{ name: '옷만', cut: 0 }, { name: '가죽 갑옷', cut: 0.15 }, { name: '쇠 갑옷', cut: 0.3 }, { name: '황금 갑옷', cut: 0.45 }];
+export const CHESTS = [{ name: '나무 상자', color: '#a0612f', band: '#5b3a22' }, { name: '쇠 상자', color: '#9aa3b5', band: '#4a4f5c' }, { name: '황금 상자', color: '#ffcf33', band: '#b8860b' }];
+export const LANTERN_R = 5;
+export const CHEST_REFILL = 3;
+// 상자 하나 열기: rnd 는 0~1 을 주는 함수. gear 는 지금 가진 도끼·갑옷·랜턴 (더 좋은 것만 준다)
+export function chestLoot(tier, rnd, gear = { axe: 0, armor: 0, lantern: false }) {
+  const T = [
+    { wood: [3, 6], berry: 0.5, cooked: [0.3, 1], coins: [0.25, 3], armor: [0.12, 1], axe: [0.08, 1], lantern: 0 },
+    { wood: [6, 10], berry: 0.4, cooked: [0.7, 2], coins: [0.6, 8], armor: [0.3, 2], axe: [0.35, 1], lantern: 0.18 },
+    { wood: [10, 15], berry: 0.3, cooked: [1, 3], coins: [1, 25], armor: [0.4, 3], axe: [0.45, 2], lantern: 0.35 },
+  ][tier] ?? null;
+  if (!T) return null;
+  const out = { wood: T.wood[0] + Math.floor(rnd() * (T.wood[1] - T.wood[0] + 1)), berry: 0, cooked: 0, coins: 0 };
+  if (rnd() < T.berry) out.berry = 3;
+  if (rnd() < T.cooked[0]) out.cooked = T.cooked[1];
+  if (rnd() < T.coins[0]) out.coins = T.coins[1];
+  if (rnd() < T.armor[0] && gear.armor < T.armor[1]) out.armor = Math.min(gear.armor + 1, T.armor[1]);
+  if (rnd() < T.axe[0] && gear.axe < T.axe[1]) out.axe = Math.min(gear.axe + 1, T.axe[1]);
+  if (rnd() < T.lantern && !gear.lantern) out.lantern = true;
+  return out;
+}

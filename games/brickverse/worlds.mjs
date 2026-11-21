@@ -1587,36 +1587,52 @@ export function buildEgg({ slot = 0 } = {}) {
 }
 
 // ───────────────────────── 모닥불 캠프 ─────────────────────────
-// 둥근 숲 섬. 가운데 빈터에 모닥불, 둘레에 통나무 의자와 텐트. 나무와 열매 덤불은 src/camp.js 가 그리고 베면 다시 자란다.
-export const CAMP_R = 95;
+// 엄청 넓은 둥근 숲 섬 (2026-11-22 인혁: "맵 엄청 넓혀"). 가운데 빈터에 모닥불, 둘레에 통나무 의자와 텐트.
+// 호수, 바위 언덕 3곳, 버려진 오두막 4채, 동서남북으로 빛나는 길 버섯, 보물 상자 (파밍).
+// 나무, 열매 덤불, 상자는 src/camp.js 가 그리고 베거나 열면 다시 자라고 찬다.
+export const CAMP_R = 210;
 export const CAMP_HOME = { x: 11, z: 7 };
-// 아기 동물이 울고 있는 굴 (숲 끝 어두운 곳, 아기 여우·곰·토끼·부엉이 순서)
-export const CAMP_DENS = [[6, -76], [74, 14], [-10, 77], [-72, -24]];
+// 아기 동물이 울고 있는 굴 (섬 끝 어두운 곳, 아기 여우·곰·토끼·부엉이 순서)
+export const CAMP_DENS = [[12, -186], [182, 34], [-22, 190], [-178, -52]];
+export const CAMP_LAKE = { x: -70, z: 62, r: 22 };
+export const CAMP_HILLS = [[96, -88], [-118, -112], [126, 124]];
+export const CAMP_CABINS = [[58, 44, 0.3], [-66, -46, 2.2], [146, -24, 1.4], [-150, 92, 4.0]];
+
+function cabin(out, x, z, ry) {
+  const c = Math.cos(ry), s = Math.sin(ry);
+  const P = (dx, dz) => [x + dx * c - dz * s, z + dx * s + dz * c];
+  const box = (dx, dz, y, w, h, d, extra = {}) => { const [px, pz] = P(dx, dz); out.push({ ...extra, x: px, y, z: pz, w: Math.abs(c) > 0.7 ? w : d, h, d: Math.abs(c) > 0.7 ? d : w }); };
+  const wood = { c: '#6b4a2f', m: 'wood' };
+  box(0, 0, 0.1, 8, 0.2, 7, { c: '#5b3a22', m: 'wood' });
+  box(0, -3.4, 1.6, 8, 3.2, 0.4, wood);
+  box(-3.8, 0, 1.6, 0.4, 3.2, 7, wood); box(3.8, 0, 1.6, 0.4, 3.2, 7, wood);
+  box(-2.6, 3.4, 1.6, 2.8, 3.2, 0.4, wood); box(2.6, 3.4, 1.6, 2.8, 3.2, 0.4, wood);
+  box(0, 0, 3.45, 9, 0.5, 8.2, { c: '#4a3324', m: 'wood', deco: true });
+  box(1.5, 3.6, 3.0, 1.4, 1.0, 0.2, { c: '#2a2d3a', deco: true });
+}
+
 export function buildCamp() {
-  const parts = [], signs = [], effects = [], zones = [], coins = [], npcs = [], trees = [], bushes = [];
+  const parts = [], signs = [], effects = [], zones = [], coins = [], npcs = [], trees = [], bushes = [], chests = [];
   const rnd = seeded(20261199);
   const R = CAMP_R;
-  parts.push({ x: 0, y: -1, z: 0, w: R * 2 + 10, h: 2, d: R * 2 + 10, c: '#4f8f45', m: 'grass', round: 0.4, shadow: false, shape: 'cyl' });
-  parts.push({ x: 0, y: -1.3, z: 0, w: 900, h: 0.2, d: 900, c: '#2c5a3a', m: 'grass', deco: true, shadow: false, round: 0 });
-  for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2; parts.push({ x: Math.cos(a) * (R + 3), y: 5, z: Math.sin(a) * (R + 3), w: 14, h: 10, d: 2, ry: -a + Math.PI / 2, hidden: true }); }
-  // 섬 끝 바위
-  for (let i = 0; i < 60; i++) { const a = rnd() * Math.PI * 2, r = R + rnd() * 4, s2 = 2 + rnd() * 4; parts.push({ x: Math.cos(a) * r, y: s2 * 0.35, z: Math.sin(a) * r, w: s2 * 1.4, h: s2, d: s2, c: '#5b5f6b', m: 'stone', ry: rnd() * 3, round: 0.4, deco: true }); }
+  parts.push({ x: 0, y: -1, z: 0, w: R * 2 + 12, h: 2, d: R * 2 + 12, c: '#4f8f45', m: 'grass', round: 0.4, shadow: false, shape: 'cyl' });
+  parts.push({ x: 0, y: -1.3, z: 0, w: 1400, h: 0.2, d: 1400, c: '#2c5a3a', m: 'grass', deco: true, shadow: false, round: 0 });
+  // 섬 둘레: 겹치는 네모 벽(안 보임)과 바위
+  const nWall = Math.ceil((2 * Math.PI * (R + 6)) / 7);
+  for (let i = 0; i < nWall; i++) { const a = (i / nWall) * Math.PI * 2; parts.push({ x: Math.cos(a) * (R + 6), y: 5, z: Math.sin(a) * (R + 6), w: 10, h: 10, d: 10, hidden: true }); }
+  for (let i = 0; i < 150; i++) { const a = rnd() * Math.PI * 2, r = R + rnd() * 5, s2 = 2 + rnd() * 5; parts.push({ x: Math.cos(a) * r, y: s2 * 0.35, z: Math.sin(a) * r, w: s2 * 1.4, h: s2, d: s2, c: '#5b5f6b', m: 'stone', ry: rnd() * 3, round: 0.4, deco: true }); }
   // 빈터와 모닥불
   parts.push({ x: 0, y: 0.03, z: 0, w: 30, h: 0.06, d: 30, c: '#8a7350', m: 'sand', shape: 'cyl', deco: true, shadow: false });
   for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; parts.push({ x: Math.cos(a) * 1.9, y: 0.3, z: Math.sin(a) * 1.9, w: 0.9, h: 0.6, d: 0.8, c: '#7a7d88', m: 'stone', ry: a, round: 0.25 }); }
   for (const a of [0.3, 1.4, 2.5]) parts.push({ x: 0, y: 0.35, z: 0, w: 2.6, h: 0.35, d: 0.35, c: '#6b4a2f', m: 'wood', ry: a, deco: true, shape: 'cyl', rz: Math.PI / 2 });
-  // 통나무 의자
   for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + 0.3; parts.push({ x: Math.cos(a) * 6, y: 0.4, z: Math.sin(a) * 6, w: 2.6, h: 0.8, d: 0.8, c: '#8b5a3c', m: 'wood', ry: -a + Math.PI / 2, round: 0.3 }); }
-  // 텐트
   for (const [x, z, c, ry] of [[-10, -6, '#ff7a3d', 0.5], [-4, -11, '#3fa7ff', 0.1], [8, -9, '#5ad16b', -0.5]]) {
     parts.push({ x, y: 1.3, z, w: 3.6, h: 2.6, d: 3.6, c, shape: 'cone', ry, deco: true });
     parts.push({ x, y: 0.05, z, w: 3.8, h: 0.1, d: 3.8, c: '#4a3a2a', m: 'wood', deco: true, shadow: false });
   }
-  // 장작 더미, 표지판
   for (let i = 0; i < 6; i++) parts.push({ x: 4 + (i % 3) * 0.5, y: 0.25 + Math.floor(i / 3) * 0.45, z: 10, w: 0.45, h: 0.45, d: 2.2, c: '#8b5a3c', m: 'wood', shape: 'cyl', rx: Math.PI / 2, deco: true });
-  signs.push({ x: -6, y: 2.6, z: 11, ry: Math.PI, w: 7.4, h: 3.2, lines: ['🔥 모닥불 캠프', '낮: 🪓 나무 베기 · 🫐 열매 따기', '불 옆에 서면 나무를 넣어 · 빛 안은 안전!', '밤: 그림자 늑대를 🪓 로 쫓아내 · 99일 버티기', '🐾 숲 끝에서 우는 아기 동물을 구해 줘!'], bg: '#2a2218', fg: '#ffe9c8', accent: '#ff7a3d', sizes: [80, 50, 50, 50, 50], double: true });
+  signs.push({ x: -6, y: 2.6, z: 11, ry: Math.PI, w: 7.6, h: 3.6, lines: ['🔥 모닥불 캠프', '낮: 🪓 나무 베기 · 🫐 열매 · 📦 보물 상자 열기', '불 옆에 서면 나무를 넣어 · 빛 안은 안전!', '밤: 그림자 늑대를 🪓 로 쫓아내 · 99일 버티기', '🐾 섬 끝에서 우는 아기 동물을 구해 줘!', '💡 빛나는 버섯 길을 따라가면 모닥불로 돌아와'], bg: '#2a2218', fg: '#ffe9c8', accent: '#ff7a3d', sizes: [76, 46, 46, 46, 46, 46], double: true });
   parts.push({ x: -6, y: 1.1, z: 11, w: 0.4, h: 2.2, d: 0.4, c: '#6b4a2f', m: 'wood', deco: true });
-  // 광장으로 가는 문
   {
     const { x, z } = CAMP_HOME;
     effects.push({ type: 'portal', x, y: 2.4, z, w: 4.2, h: 4.4, color: '#3fa7ff', ry: -0.9 });
@@ -1624,30 +1640,62 @@ export function buildCamp() {
     signs.push({ x, y: 5.3, z, ry: -0.9, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
     zones.push({ x0: x - 1, x1: x + 1, y0: 0, y1: 4.5, z0: z - 1, z1: z + 1, portal: 0 });
   }
-  // 아기 동물 굴: 둥근 바위와 가시 덤불
+  // 아기 동물 굴
   for (const [x, z] of CAMP_DENS) {
-    for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; if (i === 0) continue; parts.push({ x: x + Math.cos(a) * 3.2, y: 0.7, z: z + Math.sin(a) * 3.2, w: 1.6, h: 1.4, d: 1.4, c: '#3e4250', m: 'stone', ry: a, round: 0.4 }); }
+    for (let i = 1; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + Math.atan2(-z, -x); parts.push({ x: x + Math.cos(a) * 3.2, y: 0.7, z: z + Math.sin(a) * 3.2, w: 1.6, h: 1.4, d: 1.4, c: '#3e4250', m: 'stone', ry: a, round: 0.4 }); }
     for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 + 0.3; parts.push({ x: x + Math.cos(a) * 4.6, y: 0.6, z: z + Math.sin(a) * 4.6, w: 1.4, h: 1.2, d: 1.4, c: '#3a5a2f', shape: 'cone', deco: true }); }
     parts.push({ x, y: 0.05, z, w: 5.6, h: 0.1, d: 5.6, c: '#2a2a22', m: 'stone', shape: 'cyl', deco: true, shadow: false });
   }
-  // 베는 나무와 열매 덤불 (자리만)
-  for (let tries = 0; tries < 3000 && trees.length < 190; tries++) {
-    const a = rnd() * Math.PI * 2, r = 15 + Math.sqrt(rnd()) * (R - 19);
-    const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (trees.some(t => Math.hypot(t.x - x, t.z - z) < 4.2) || CAMP_DENS.some(([dx, dz]) => Math.hypot(dx - x, dz - z) < 7)) continue;
-    trees.push({ x, z, s: 0.9 + rnd() * 0.5, kind: rnd() < 0.7 ? 0 : 1 });
+  // 호수
+  { const L = CAMP_LAKE; parts.push({ x: L.x, y: 0.02, z: L.z, w: L.r * 2 + 6, h: 0.05, d: L.r * 2 + 6, c: '#d9c79a', m: 'sand', shape: 'cyl', deco: true, shadow: false }); parts.push({ x: L.x, y: 0.06, z: L.z, w: L.r * 2, h: 0.05, d: L.r * 2, c: '#3fa0d6', m: 'water', shape: 'cyl', deco: true, shadow: false }); }
+  // 바위 언덕 (가운데 황금 상자)
+  for (const [hx, hz] of CAMP_HILLS) {
+    for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2, r = 7 + rnd() * 2, sz = 2.5 + rnd() * 2.5; if (i % 7 === 0) continue; parts.push({ x: hx + Math.cos(a) * r, y: sz * 0.45, z: hz + Math.sin(a) * r, w: sz * 1.3, h: sz, d: sz * 1.2, c: '#6a6e7a', m: 'stone', ry: rnd() * 3, round: 0.5 }); }
+    parts.push({ x: hx, y: 0.05, z: hz, w: 12, h: 0.1, d: 12, c: '#5b5f6b', m: 'stone', shape: 'cyl', deco: true, shadow: false });
+    chests.push({ x: hx, z: hz, tier: 2 });
   }
-  for (let tries = 0; tries < 1500 && bushes.length < 30; tries++) {
-    const a = rnd() * Math.PI * 2, r = 14 + rnd() * (R - 20);
+  // 버려진 오두막 (안에 쇠 상자)
+  for (const [x, z, ry] of CAMP_CABINS) { cabin(parts, x, z, ry); chests.push({ x, z, tier: 1 }); }
+  // 굴 옆 황금 상자
+  for (const [x, z] of CAMP_DENS) { const d = Math.hypot(x, z); chests.push({ x: x - (x / d) * 9, z: z - (z / d) * 9, tier: 2 }); }
+  // 빛나는 길 버섯 (동서남북, 밤에 모닥불로 돌아오는 길)
+  const path = [];
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.2; for (let r = 22; r < R - 12; r += 9) { const x = Math.cos(a) * r, z = Math.sin(a) * r; path.push([x, z]); parts.push({ x, y: 0.2, z, w: 0.16, h: 0.4, d: 0.16, c: '#e8f0ff', deco: true, shadow: false }); parts.push({ x, y: 0.48, z, w: 0.6, h: 0.3, d: 0.6, c: '#7df9ff', m: 'neon', shape: 'sphere', deco: true, shadow: false }); } }
+  // 나무, 덤불, 상자 자리 (6칸 바둑판으로 빨리 겹침 검사)
+  const grid = new Map(), cell = 6;
+  const near = (x, z, r) => { const out = []; for (let i = Math.floor((x - r) / cell); i <= Math.floor((x + r) / cell); i++) for (let k = Math.floor((z - r) / cell); k <= Math.floor((z + r) / cell); k++) for (const o of grid.get(`${i},${k}`) ?? []) if (Math.hypot(o.x - x, o.z - z) < r) out.push(o); return out; };
+  const put = o => { const key = `${Math.floor(o.x / cell)},${Math.floor(o.z / cell)}`; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(o); };
+  const free = (x, z, r) => Math.hypot(x, z) > 17 && Math.hypot(x - CAMP_LAKE.x, z - CAMP_LAKE.z) > CAMP_LAKE.r + 3 + r
+    && !CAMP_DENS.some(([dx, dz]) => Math.hypot(dx - x, dz - z) < 8 + r) && !CAMP_HILLS.some(([hx, hz]) => Math.hypot(hx - x, hz - z) < 12 + r)
+    && !CAMP_CABINS.some(([cx, cz]) => Math.hypot(cx - x, cz - z) < 8 + r) && !path.some(([px, pz]) => Math.hypot(px - x, pz - z) < 2 + r);
+  for (const c of chests) put({ ...c, chest: true });
+  // 나무 상자 (가까운 숲), 쇠 상자 (먼 숲), 황금 상자 (섬 끝)
+  const scatter = (n, r0, r1, tier) => {
+    for (let tries = 0, k = 0; tries < 4000 && k < n; tries++) {
+      const a = rnd() * Math.PI * 2, r = r0 + rnd() * (r1 - r0), x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (!free(x, z, 2) || near(x, z, 14).some(o => o.chest)) continue;
+      const c = { x, z, tier, chest: true }; chests.push({ x, z, tier }); put(c); k++;
+    }
+  };
+  scatter(28, 24, 110, 0); scatter(14, 100, 175, 1); scatter(6, 165, R - 10, 2);
+  for (let tries = 0; tries < 30000 && trees.length < 640; tries++) {
+    const a = rnd() * Math.PI * 2, r = 17 + Math.sqrt(rnd()) * (R - 21);
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (trees.some(t => Math.hypot(t.x - x, t.z - z) < 3) || bushes.some(b => Math.hypot(b.x - x, b.z - z) < 8)) continue;
+    if (!free(x, z, 0) || near(x, z, 4.2).length) continue;
+    const t = { x, z, s: 0.9 + rnd() * 0.5, kind: rnd() < 0.7 ? 0 : 1 };
+    trees.push(t); put(t);
+  }
+  for (let tries = 0; tries < 6000 && bushes.length < 90; tries++) {
+    const a = rnd() * Math.PI * 2, r = 16 + rnd() * (R - 24);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (!free(x, z, 1) || near(x, z, 3).length || bushes.some(b => Math.hypot(b.x - x, b.z - z) < 12)) continue;
     bushes.push({ x, z });
   }
-  // 버섯, 풀 장식
-  for (let i = 0; i < 70; i++) {
-    const a = rnd() * Math.PI * 2, r = 14 + rnd() * (R - 16), x = Math.cos(a) * r, z = Math.sin(a) * r;
+  for (let i = 0; i < 260; i++) {
+    const a = rnd() * Math.PI * 2, r = 16 + rnd() * (R - 18), x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.hypot(x - CAMP_LAKE.x, z - CAMP_LAKE.z) < CAMP_LAKE.r + 2) continue;
     if (i % 2) { parts.push({ x, y: 0.25, z, w: 0.14, h: 0.5, d: 0.14, c: '#f4efe6', deco: true, shadow: false }); parts.push({ x, y: 0.55, z, w: 0.55, h: 0.3, d: 0.55, c: i % 4 === 1 ? '#ff4d5e' : '#c98a4b', shape: 'sphere', deco: true, shadow: false }); }
     else parts.push({ x, y: 0.35, z, w: 0.8, h: 0.7, d: 0.8, c: '#3e8a3a', shape: 'cone', deco: true, shadow: false });
   }
-  return { parts, signs, effects, zones, coins, npcs, trees, bushes, spawn: { x: 0, y: 0.3, z: 7, yaw: Math.PI }, killY: -20, sky: 'camp' };
+  return { parts, signs, effects, zones, coins, npcs, trees, bushes, chests, spawn: { x: 0, y: 0.3, z: 7, yaw: Math.PI }, killY: -20, sky: 'camp' };
 }

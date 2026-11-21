@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, EGG, EGG_ZONES, CRITTERS, hatchCritter, RUN_MAX, EGG_TREADS, runSpeed, runNeed, trainRun, josa, CAMP, CUBS, STALKER, fireLevel, fireRadius, nightMonsters, dayCoins, freshCamp, cleanCamp, petIncome, baseIncome, bootsPrice, pedPrice, cleanEgg, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, EGG, EGG_ZONES, CRITTERS, hatchCritter, RUN_MAX, EGG_TREADS, runSpeed, runNeed, trainRun, josa, CAMP, CUBS, STALKER, AXES, ARMORS, chestLoot, fireLevel, fireRadius, nightMonsters, dayCoins, freshCamp, cleanCamp, petIncome, baseIncome, bootsPrice, pedPrice, cleanEgg, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -478,4 +478,32 @@ test('모닥불 캠프: 아기 동물 4마리 저장, 그림자 사냥꾼은 2�
   assert.deepEqual(cleanCamp({ cubs: ['owl', 'fox', 'nope', 'owl'] }).cubs, ['fox', 'owl']);
   assert.deepEqual(freshCamp().cubs, []);
   assert.equal(STALKER.FROM, 2);
+});
+
+test('파밍: 상자가 좋을수록 많이 주고, 도끼·갑옷은 한 단계씩 더 좋은 것만', () => {
+  const lo = () => 0, hi = () => 0.999;
+  const a = chestLoot(0, lo, { axe: 0, armor: 0, lantern: false });
+  assert.equal(a.wood, 3); assert.equal(a.armor, 1); assert.equal(a.axe, 1); assert.equal(a.lantern, undefined);
+  const b = chestLoot(2, lo, { axe: 0, armor: 1, lantern: false });
+  assert.equal(b.axe, 1); assert.equal(b.armor, 2); assert.equal(b.lantern, true); assert.equal(b.coins, 25);
+  assert.equal(chestLoot(2, lo, { axe: 2, armor: 3, lantern: true }).axe, undefined);
+  const c = chestLoot(1, hi);
+  assert.equal(c.wood, 10); assert.equal(c.cooked, 0); assert.equal(c.axe, undefined);
+  assert.ok(AXES[2].dmg > AXES[0].dmg && ARMORS[3].cut > ARMORS[1].cut);
+  const s = cleanCamp({ axe: 9, armor: -1, lantern: 1, opened: [[3, 5], [999, 1], ['x', 2]] });
+  assert.equal(s.axe, AXES.length - 1); assert.equal(s.armor, 0); assert.equal(s.lantern, true); assert.deepEqual(s.opened, [[3, 5]]);
+});
+
+test('모닥불 캠프 지도: 엄청 넓고, 상자와 시작 자리가 막혀 있지 않다', async () => {
+  const { buildCamp, CAMP_R, CAMP_DENS } = await import('./worlds.mjs');
+  const d = buildCamp();
+  assert.ok(CAMP_R >= 200);
+  assert.ok(d.trees.length >= 500 && d.chests.length >= 40);
+  for (const t of [0, 1, 2]) assert.ok(d.chests.some(c => c.tier === t));
+  const boxes = d.parts.filter(p => !p.deco).map(makeBox);
+  const blocked = (x, z) => boxes.some(b => x + 0.5 > b.x0 && x - 0.5 < b.x1 && z + 0.5 > b.z0 && z - 0.5 < b.z1 && b.y1 > 0.8 && b.y0 < 2);
+  for (const c of d.chests) assert.ok(Math.hypot(c.x, c.z) < CAMP_R - 3, 'chest inside');
+  for (const t of d.trees) for (const c of d.chests) assert.ok(Math.hypot(t.x - c.x, t.z - c.z) > 2.5, 'tree on chest');
+  for (const [x, z] of CAMP_DENS) assert.ok(Math.hypot(x, z) < CAMP_R - 5 && !blocked(x, z));
+  assert.ok(!blocked(d.spawn.x, d.spawn.z));
 });
