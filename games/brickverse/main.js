@@ -734,6 +734,7 @@ function updateMe(dt) {
     let d = target - me.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
     me.yaw += d * (1 - Math.exp(-dt * 16));
   }
+  if (w.runtime?.treadRun) { let d = Math.PI - me.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); me.yaw += d * (1 - Math.exp(-dt * 10)); } // 러닝머신: 계기판(북쪽)을 보고 달린다
   if (moving && me.emote) { me.emote = 0; sendPose(true); }
   if (ev.jumped) { sound.jump(); if (me.emote) me.emote = 0; }
   if (ev.bounce) sound.bounce();
@@ -798,7 +799,7 @@ function frame(now) {
   view.clouds.update(dt);
   me.hurtCooldown -= dt;
   // 내 아바타
-  const speed = Math.hypot(me.pl.vx, me.pl.vz);
+  const speed = game.world.runtime?.treadRun ? P.SPEED * 0.95 : Math.hypot(me.pl.vx, me.pl.vz); // 러닝머신 위에서는 제자리 달리기
   me.avatar.place(me.pl.x, me.pl.y, me.pl.z, me.yaw, dt);
   me.avatar.animate(dt, { speed, grounded: !!me.pl.ground, vy: me.pl.vy, climb: me.pl.climb, emote: me.emote });
   myPet.update(dt, me.pl.x, me.avatar.visualY ?? me.pl.y, me.pl.z, me.yaw, me.avatar.root.visible && game.started);

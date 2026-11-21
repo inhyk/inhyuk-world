@@ -168,6 +168,8 @@ export class EggHunt {
   get slot() { return this.net.active ? this.net.slot : 0; }
   get myId() { return this.net.active ? this.net.id : 'me'; }
   // 달리기 빠르기: 알이나 동물을 들면 무거워서 펫 힘은 못 쓴다
+  // 러닝머신에서 저절로 달리는 중 (main.js 가 달리는 몸짓과 앞을 보게 한다)
+  get treadRun() { return !!(this.onTread && this.running); }
   get speed() { const b = bootsSpeed(this.e.boots) * runSpeed(this.e.run); return this.carry ? b * EGG.CARRY : b * petSpeed(this.game.save.pet); }
 
   // ───── 울타리 문 ─────
@@ -634,13 +636,10 @@ export class EggHunt {
   // 러닝머신 위에서 앞으로 달리면 달리기 힘이 쌓인다 (안 산 러닝머신은 올라서면 산다)
   treadmill(dt) {
     const g = this.game, e = this.e, me = g.player, box = me.ground, k = box?.part?.tread;
-    if (this.treadBox && this.treadBox !== box) { this.treadBox.cz = 0; this.treadBox = null; }
     this.onTread = k !== undefined;
+    this.running = false;
     if (!this.onTread) return;
-    // 안 끌려간다: 내가 앞으로 달리는 만큼만 벨트가 뒤로 밀어서 제자리에서 달린다. 멈추면 벨트도 나를 안 민다.
-    this.treadBox = box;
-    box.cz = Math.max(0, -me.vz);
-    box.cx = 0;
+    // 벨트는 나를 절대 안 움직인다 (2026-11-22 인혁: "아직 끌려가는데"). 올라가서 가만히 서 있으면 저절로 제자리 달리기.
     const T = EGG_TREADS[k];
     if (k >= e.tread) {
       if (k > e.tread) { this.say(`${T.icon} 먼저 ${EGG_TREADS[e.tread].name}부터 사!`); return; }
@@ -649,8 +648,7 @@ export class EggHunt {
       g.sfx('buy'); g.ui.big(`${T.icon} ${T.name} 샀다! ${T.mult}배로 빨리 늘어`, 2200, 'gold');
       g.persist();
     }
-    const mv = g.controls.move();
-    this.running = mv.z < -0.4 && !this.carry;
+    this.running = Math.hypot(me.vx, me.vz) < 1.2 && !this.carry && !g.isDead();
     if (!this.running || e.run >= RUN_MAX) return;
     const r = trainRun(e.run, e.xp, dt * T.mult);
     e.run = r.run; e.xp = r.xp;
@@ -919,7 +917,7 @@ export class EggHunt {
     const income = baseIncome(this.pets());
     const holding = !this.carry ? '빈손' : this.carry.kind === 'egg' ? `🥚 ${EGG_ZONES[this.carry.zone].egg} 들고 가는 중!` : `${critterOf(this.carry.p.c).icon} ${critterOf(this.carry.p.c).name} 들고 가는 중!`;
     const next = EGG_ZONES[e.zones];
-    const run = this.onTread ? (e.run >= RUN_MAX ? `🏃 달리기 Lv${e.run} 최고!` : `🏃 달리기 Lv${e.run} → ${e.run + 1}: ${Math.floor((e.xp / runNeed(e.run)) * 100)}%${this.running ? '' : ' · 앞으로 달려!'}`) : null;
+    const run = this.onTread ? (e.run >= RUN_MAX ? `🏃 달리기 Lv${e.run} 최고!` : `🏃 달리기 Lv${e.run} → ${e.run + 1}: ${Math.floor((e.xp / runNeed(e.run)) * 100)}%${this.running ? '' : ' · 가만히 서 있으면 달려!'}`) : null;
     const raid = this.bots.find(b => b.state === 'raid' || (b.carry?.kind === 'pet' && b.carry.mine));
     const html = `<b>💵 ${money(e.cash)} · +${money(income)}/초</b><small>${run ?? holding}${next ? ` · 다음 ${next.icon} ${money(next.price)}` : ' · 모든 둥지 열림!'}${this.raccoon ? ' · 🦝 너구리!' : ''}${raid ? ` · 🚨 ${josa(raid.short, '이', '가')} 훔치러 와!` : ''}</small>`;
     this.game.ui.setInfo(html);
