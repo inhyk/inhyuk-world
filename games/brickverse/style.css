@@ -329,3 +329,86 @@ body.battle.br-team.playing:not(.dressing) #core-bar { display: flex; }
 body.br-team #toast.show { transform: translate(-50%, 92px); }
 #core-bar em { font-style: normal; }
 @media (pointer: coarse) { #core-bar { top: 168px; left: 12px; transform: none; white-space: nowrap; font-size: 14px; } #core-bar em { display: none; } #core-bar .track { width: 120px; } #mode-bar { top: 222px; gap: 6px; padding: 6px 8px; white-space: nowrap; } #mode-bar small { display: none; } #mode-bar button { font-size: 14px; padding: 8px 10px; white-space: nowrap; } }
+
+/* ───── 술래잡기 마을 ───── */
+body.tagw.tg-lobby.playing:not(.dressing) #mode-bar { display: flex; }
+#tag-blind { position: fixed; inset: 0; z-index: 4; display: grid; place-items: center; background: radial-gradient(circle at center, rgba(20, 16, 36, .9), rgba(8, 6, 16, .97)); color: #fff; text-align: center; pointer-events: none; }
+#tag-blind b { font-size: 84px; font-weight: normal; display: block; animation: bump 1s infinite; }
+#tag-blind p { font-size: 26px; margin: 6px 0; }
+#tag-blind em { font-style: normal; font-size: 96px; color: #ffcf33; display: block; line-height: 1; }
+#tag-blind small { font-size: 16px; opacity: .8; }
+
+/* ───── 알 판매 ───── */
+#eggs { position: fixed; inset: 0; display: grid; place-items: center; z-index: 17; background: rgba(20, 30, 60, .3); padding: 16px; }
+#eggs .card { width: min(480px, 100%); max-height: calc(100dvh - 32px); overflow: auto; }
+#eggs h3 { margin: 14px 0 6px; font-weight: normal; font-size: 19px; }
+.egg-odds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+.egg-odds .odd { display: flex; flex-direction: column; align-items: center; gap: 2px; background: #fff7e6; border: 2px solid #ffd59a; border-radius: 50% / 40%; padding: 10px 4px 12px; }
+.egg-odds i { font-style: normal; font-size: 34px; }
+.egg-odds b { font-weight: normal; font-size: 15px; }
+.egg-odds span { font-size: 12px; color: #e0335a; }
+.egg-odds em { font-style: normal; font-size: 13px; color: #5b6275; }
+.egg-stage { display: flex; flex-direction: column; align-items: center; min-height: 118px; justify-content: center; }
+.egg-big { font-size: 72px; line-height: 1; }
+.egg-big.shake { animation: eggShake .25s infinite; }
+.egg-big.born { animation: eggBorn .6s cubic-bezier(.2, 1.6, .4, 1); }
+.egg-big.born.parrot, .egg-big.born.panda { filter: drop-shadow(0 0 14px #ffcf33); }
+.egg-msg { margin: 6px 0 0; font-size: 18px; min-height: 24px; }
+.egg-msg b { font-weight: normal; color: #e0335a; }
+@keyframes eggShake { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg) translateY(-4px); } }
+@keyframes eggBorn { from { transform: scale(.2) rotate(-30deg); } to { transform: scale(1); } }
+#eggs .hatch { font-size: 20px; margin-top: 6px; }
+#eggs .hatch.poor { filter: grayscale(.6); }
+.my-pets { display: grid; gap: 8px; }
+.my-pets button { display: grid; grid-template-columns: 44px 1fr; grid-template-rows: auto auto; text-align: left; align-items: center; column-gap: 8px; padding: 8px 12px; background: #f1f4fa; }
+.my-pets button i { grid-row: span 2; font-style: normal; font-size: 32px; text-align: center; }
+.my-pets button b { font-weight: normal; font-size: 17px; }
+.my-pets button span { font-size: 13px; color: #5b6275; }
+.my-pets button.on { background: linear-gradient(#fff2c4, #ffe08a); box-shadow: 0 4px 0 #d9a320; }
+
+/* ───── 핸드폰 (가로, 위에 카메라) ───── */
+#phone { position: fixed; inset: 0; z-index: 18; display: grid; place-items: center; background: rgba(10, 14, 30, .38); padding: 12px; }
+.phone-body { position: relative; width: min(900px, 94vw, calc((100dvh - 40px) * 2)); aspect-ratio: 2 / 1; background: #15171f; border-radius: 42px; padding: 26px 30px 26px; box-shadow: 0 0 0 3px #3a3f4b, 0 18px 50px rgba(0, 0, 0, .45); display: flex; animation: phoneUp .25s cubic-bezier(.2, 1.3, .4, 1); }
+@keyframes phoneUp { from { transform: translateY(40px) scale(.92); opacity: 0; } }
+.phone-cam { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 96px; height: 13px; background: #0a0b10; border-radius: 0 0 10px 10px; display: grid; place-items: center; }
+.phone-cam i { width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #6f8cff, #12162a 60%); box-shadow: 0 0 0 2px #23263a; }
+.phone-screen { position: relative; flex: 1; border-radius: 18px; overflow: hidden; background: linear-gradient(160deg, #7ec8ff, #b9a3ff 55%, #ffb3d9); display: flex; flex-direction: column; }
+.phone-status { display: flex; justify-content: space-between; padding: 6px 14px 2px; color: #fff; font-size: 14px; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+.phone-status b { font-weight: normal; }
+.phone-page { flex: 1; overflow: auto; position: relative; -webkit-user-select: text; user-select: text; touch-action: pan-y; }
+.phone-home { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); width: 18px; height: 54px; padding: 0; border-radius: 9px; background: #2a2d38; color: #555a6a; font-size: 10px; box-shadow: none; }
+.ph-home { height: 100%; display: flex; align-items: center; justify-content: center; gap: clamp(18px, 4vw, 46px); padding: 10px 20px 26px; flex-wrap: wrap; }
+.ph-app { display: flex; flex-direction: column; align-items: center; gap: 8px; background: none; box-shadow: none; padding: 4px; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .4); font-size: 17px; }
+.ph-app i { font-style: normal; display: grid; place-items: center; width: clamp(64px, 9vw, 92px); aspect-ratio: 1; border-radius: 24%; font-size: clamp(32px, 4.6vw, 48px); box-shadow: 0 4px 0 rgba(0, 0, 0, .18), inset 0 2px 0 rgba(255, 255, 255, .25); }
+.ph-app:active { transform: scale(.94); }
+.ph-head { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(255, 255, 255, .92); }
+.ph-head > button { width: 38px; height: 34px; padding: 0; background: #f1f4fa; }
+.ph-head b { font-weight: normal; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-head span { display: flex; gap: 6px; align-items: center; }
+.ph-head span button, .ph-head span a { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; background: #f1f4fa; border-radius: 12px; text-decoration: none; color: var(--ink); font-size: 17px; box-shadow: 0 3px 0 rgba(20, 30, 60, .15); }
+.ph-lead { margin: 8px 14px 2px; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); font-size: 15px; }
+.ph-games { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; padding: 8px 12px 16px; }
+.ph-games button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; font-size: 13px; line-height: 1.2; min-height: 92px; }
+.ph-games button i { font-style: normal; font-size: 30px; }
+.ph-games button span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ph-frame { position: absolute; inset: 46px 0 0 0; width: 100%; height: calc(100% - 46px); border: 0; background: #000; }
+#phone.big { padding: 0; }
+#phone.big .phone-body { width: 100vw; height: 100dvh; aspect-ratio: auto; border-radius: 0; padding: 10px; }
+#phone.big .phone-cam, #phone.big .phone-home { display: none; }
+.ph-list { display: grid; gap: 8px; padding: 10px 12px 16px; }
+.ph-row { display: grid; grid-template-columns: 34px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; background: rgba(255, 255, 255, .92); border-radius: 14px; padding: 8px 12px; }
+.ph-row i { grid-row: span 2; font-style: normal; font-size: 24px; text-align: center; }
+.ph-row b { font-weight: normal; font-size: 16px; }
+.ph-row span { font-size: 13px; color: #5b6275; }
+.ph-switch { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, .92); text-align: left; }
+.ph-switch b { font-weight: normal; }
+.ph-switch i { font-style: normal; font-size: 13px; padding: 4px 10px; border-radius: 99px; background: #d9dde6; color: #5b6275; }
+.ph-switch.on i { background: #5ad16b; color: #fff; }
+.ph-btn { background: rgba(255, 255, 255, .92); }
+@media (max-aspect-ratio: 1/1) {
+  .phone-body { width: min(94vw, calc((100dvh - 40px) / 1.9)); aspect-ratio: 1 / 1.9; padding: 30px 14px 26px; border-radius: 38px; }
+  .phone-home { right: auto; left: 50%; top: auto; bottom: 7px; transform: translateX(-50%); width: 64px; height: 14px; }
+  .ph-home { align-content: center; gap: 22px 30px; }
+  .ph-games { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+}
+@media (max-width: 520px) { #btn-sound { display: none; } }

@@ -51,6 +51,7 @@ export const PORTALS = [
   { id: 'survival', world: 3, name: '바닥이 사라져요', sub: '끝까지 살아남기', color: '#9b5cff', icon: '🔥' },
   { id: 'tower', world: 4, name: '하늘 타워 짓기', sub: '블록으로 높이높이', color: '#21c7b8', icon: '🏗️' },
   { id: 'battle', world: 5, name: '블록 배틀 로얄', sub: '블래스터로 끝까지', color: '#ff5e3a', icon: '🎯' },
+  { id: 'tag', world: 6, name: '술래잡기', sub: '술래잡기 · 숨바꼭질', color: '#ff8fc7', icon: '🏃' },
 ];
 
 function tree(out, x, z, rnd, scale = 1, y0 = 0) {
@@ -102,6 +103,73 @@ function bench(out, x, z, alongX) {
   for (const s of [-1, 1]) out.push({ x: x + (alongX ? s * 1.4 : 0), y: 0.32, z: z + (alongX ? 0 : s * 1.4), w: alongX ? 0.2 : 0.9, h: 0.64, d: alongX ? 0.9 : 0.2, c: '#3a3f4b', m: 'metal', deco: true });
 }
 
+// 크리스마스 트리: 둥근 눈 받침 + 빙 둘러싼 지팡이 사탕 울타리, 줄기, 뾰족뾰족한 잎 6층, 장식 공, 불빛, 꼭대기 별, 선물
+export const XMAS = { top: 33.5, ring: 9.4 };
+function xmasTree(out, effects, x, z) {
+  out.push({ x, y: 0.3, z, w: 20, h: 0.36, d: 20, c: '#ffffff', m: 'matte', shape: 'cyl' });
+  out.push({ x, y: 0.5, z, w: 18.2, h: 0.06, d: 18.2, c: '#eef6ff', m: 'cloud', shape: 'cyl', deco: true, shadow: false });
+  const R = XMAS.ring, N = 32;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2, b = ((i + 0.5) / N) * Math.PI * 2;
+    out.push({ x: x + Math.cos(a) * R, y: 1.05, z: z + Math.sin(a) * R, w: 0.34, h: 1.1, d: 0.34, c: i % 2 ? '#ff3b4e' : '#ffffff', shape: 'cyl', deco: true });
+    out.push({ x: x + Math.cos(a) * R, y: 1.68, z: z + Math.sin(a) * R, w: 0.42, h: 0.42, d: 0.42, c: '#ffd23f', m: 'gold', shape: 'sphere', deco: true, shadow: false });
+    out.push({ x: x + Math.cos(b) * R, y: 1.3, z: z + Math.sin(b) * R, w: 0.16, h: 0.16, d: (2 * Math.PI * R) / N, c: i % 2 ? '#ffffff' : '#ff3b4e', ry: -b, deco: true, shadow: false });
+  }
+  out.push({ x, y: 3.4, z, w: 2.6, h: 6, d: 2.6, c: '#7a4a2a', m: 'wood', shape: 'cyl' });
+  const layers = 6, y0 = 5.6, top = XMAS.top - 3;
+  const greens = ['#2f8f5a', '#277a4d', '#2f9d63', '#26804f', '#33a16a', '#2a8a55'];
+  const balls = ['#ff3b4e', '#ffd23f', '#3fa7ff', '#ff8fc7', '#ffffff', '#b38cff'];
+  for (let i = 0; i < layers; i++) {
+    const k = i / (layers - 1);
+    const w = 18 - k * 13, h = 7.2 - k * 2.2, yb = y0 + k * (top - y0 - 5);
+    out.push({ x, y: yb + h / 2, z, w, h, d: w, c: greens[i], shape: 'fir', deco: true });
+    // 층마다 아래 끝에 동그란 장식
+    const n = 9 - i, r = (w / 2) * 0.82;
+    for (let j = 0; j < n; j++) {
+      const a = (j / n) * Math.PI * 2 + i * 0.7, c = balls[(i + j) % balls.length];
+      out.push({ x: x + Math.cos(a) * r, y: yb + 0.15, z: z + Math.sin(a) * r, w: 0.95, h: 0.95, d: 0.95, c, m: c === '#ffd23f' ? 'gold' : 'plastic', shape: 'sphere', deco: true, shadow: false });
+      out.push({ x: x + Math.cos(a) * r, y: yb + 0.72, z: z + Math.sin(a) * r, w: 0.08, h: 0.5, d: 0.08, c: '#d9d9d9', deco: true, shadow: false });
+    }
+  }
+  // 빙글빙글 감긴 불빛
+  for (let t = 0; t < 1; t += 1 / 90) {
+    const yy = y0 + 0.8 + t * (top - y0 - 2), a = t * Math.PI * 2 * 6;
+    const r = Math.max(0.6, 8.6 * (1 - (yy - y0) / (top - y0 + 3)));
+    out.push({ x: x + Math.cos(a) * r, y: yy, z: z + Math.sin(a) * r, w: 0.36, h: 0.36, d: 0.36, c: ['#fff1b8', '#ff8fc7', '#7df9ff', '#ffd23f'][Math.floor(t * 90) % 4], m: 'neon', shape: 'sphere', deco: true, shadow: false });
+  }
+  // 꼭대기 별 (천천히 돈다)
+  out.push({ x, y: XMAS.top, z, w: 4.2, h: 4.2, d: 1.2, c: '#ffd23f', m: 'neon', shape: 'star', deco: true, turn: { ax: 'y', spd: 0.6 } });
+  effects.push({ type: 'sparkle', x, y: XMAS.top, z });
+  // 트리 밑 선물
+  const gifts = [[3.6, 1.2, 2.2, '#ff3b4e', '#ffd23f'], [-3.4, 2.4, 1.8, '#3fa7ff', '#ffffff'], [1.6, -3.8, 2.0, '#5ad16b', '#ff3b4e'], [-2.6, -3.2, 1.5, '#ffd23f', '#ff3b4e'], [4.6, -2.2, 1.6, '#b38cff', '#ffd23f'], [-4.8, -0.6, 1.4, '#ff8fc7', '#ffffff'], [0.4, 4.6, 1.7, '#ffffff', '#ff3b4e'], [-1.2, 5.6, 1.2, '#21c7b8', '#ffd23f']];
+  for (const [dx, dz, s, c, rib] of gifts) {
+    const gx = x + dx, gz = z + dz, gy = 0.48 + s / 2;
+    out.push({ x: gx, y: gy, z: gz, w: s, h: s, d: s, c, round: 0.08 });
+    out.push({ x: gx, y: gy, z: gz, w: s + 0.04, h: s + 0.04, d: s * 0.2, c: rib, deco: true, round: 0.02 });
+    out.push({ x: gx, y: gy, z: gz, w: s * 0.2, h: s + 0.04, d: s + 0.04, c: rib, deco: true, round: 0.02 });
+    for (const sx of [-1, 1]) out.push({ x: gx + sx * s * 0.16, y: gy + s / 2 + 0.16, z: gz, w: s * 0.3, h: s * 0.22, d: s * 0.18, c: rib, shape: 'sphere', deco: true, shadow: false });
+  }
+}
+
+// 알 판매: 큰 알이 올라간 가게. 앞에 서면 알 까기 창이 열린다 (src/pets.js)
+export const EGG_STAND = { x: 15, z: 22 };
+function eggStand(out, zones, effects, x, z) {
+  out.push({ x, y: 0.15, z, w: 8, h: 0.3, d: 5.2, c: '#fff6e8', m: 'stone', round: 0.1 });
+  out.push({ x, y: 1.2, z: z + 0.6, w: 6.4, h: 1.8, d: 2.2, c: '#ffd9a0', m: 'wood' });
+  out.push({ x, y: 2.22, z: z + 0.6, w: 6.8, h: 0.25, d: 2.6, c: '#ffffff', round: 0.08 });
+  for (const sx of [-1, 1]) {
+    out.push({ x: x + sx * 3.5, y: 3.0, z: z + 1.9, w: 0.3, h: 5.6, d: 0.3, c: '#ffffff', shape: 'cyl' });
+  }
+  out.push({ x, y: 5.9, z: z + 1.1, w: 7.8, h: 0.3, d: 3.4, c: '#ffb347', m: 'stripes', rx: -0.3, deco: true });
+  // 큰 알과 무늬
+  out.push({ x, y: 3.85, z: z + 0.6, w: 2.3, h: 3.0, d: 2.3, c: '#fff6e0', shape: 'sphere' });
+  for (const [dx, dy, dz, c] of [[-0.9, 0.4, -0.55, '#ff8fc7'], [0.75, 0.9, -0.7, '#7df9ff'], [0.1, -0.2, -1.08, '#ffd23f'], [-0.4, 1.25, -0.6, '#5ad16b'], [0.95, -0.25, -0.3, '#b38cff']]) {
+    out.push({ x: x + dx, y: 3.85 + dy, z: z + 0.6 + dz, w: 0.55, h: 0.55, d: 0.3, c, shape: 'sphere', deco: true, shadow: false });
+  }
+  effects.push({ type: 'sparkle', x, y: 4.2, z: z + 0.6 });
+  zones.push({ x0: x - 3.2, x1: x + 3.2, y0: 0, y1: 4, z0: z - 2.6, z1: z - 0.4, eggs: true });
+}
+
 export function buildHub() {
   const parts = [], coins = [], zones = [], signs = [], effects = [], npcs = [];
   const rnd = seeded(20261106);
@@ -113,21 +181,16 @@ export function buildHub() {
   // 광장 바닥
   parts.push({ x: 0, y: 0, z: 0, w: 46, h: 0.24, d: 46, c: '#efe6d8', m: 'stone', round: 0.1 });
   parts.push({ x: 0, y: 0.02, z: 0, w: 22, h: 0.26, d: 22, c: '#e0d0bb', m: 'stone', round: 0.1 });
-  // 분수
-  for (const [x, z, w, d] of [[0, -5, 10.8, 0.8], [0, 5, 10.8, 0.8], [-5, 0, 0.8, 9.2], [5, 0, 0.8, 9.2]]) parts.push({ x, y: 0.55, z, w, h: 0.9, d, c: '#cfc3b2', m: 'stone' });
-  parts.push({ x: 0, y: 0.62, z: 0, w: 9.3, h: 0.12, d: 9.3, c: '#4cc3ff', m: 'water', deco: true, shadow: false, round: 0 });
-  parts.push({ x: 0, y: 1.6, z: 0, w: 1.6, h: 3, d: 1.6, c: '#e9dfcf', m: 'stone' });
-  parts.push({ x: 0, y: 3.2, z: 0, w: 4.2, h: 0.5, d: 4.2, c: '#e9dfcf', m: 'stone', shape: 'cyl' });
-  parts.push({ x: 0, y: 3.45, z: 0, w: 3.6, h: 0.08, d: 3.6, c: '#4cc3ff', m: 'water', shape: 'cyl', deco: true, shadow: false });
-  parts.push({ x: 0, y: 4.1, z: 0, w: 0.8, h: 1.4, d: 0.8, c: '#e9dfcf', m: 'stone', shape: 'cyl', deco: true });
-  parts.push({ x: 0, y: 5.0, z: 0, w: 1.1, h: 1.1, d: 1.1, c: '#ffd23f', m: 'gold', shape: 'sphere', deco: true });
-  effects.push({ type: 'fountain', x: 0, y: 5.2, z: 0 });
+  // 광장 가운데: 분수 대신 엄청 큰 크리스마스 트리 (2026-11-21 인혁 그림: 꼭대기 별, 동그란 장식, 둥근 울타리, 선물)
+  xmasTree(parts, effects, 0, 0);
+  // 알 판매 (펫 알 까기, 코인 100)
+  eggStand(parts, zones, effects, EGG_STAND.x, EGG_STAND.z);
   // 시작 발판
   parts.push({ x: 0, y: 0.15, z: 18, w: 6, h: 0.3, d: 6, c: '#ffffff', round: 0.12 });
   parts.push({ x: 0, y: 0.32, z: 18, w: 4.4, h: 0.06, d: 4.4, c: '#3fa7ff', m: 'neon', deco: true, shadow: false, round: 0.02 });
   // 문 (포털)
   PORTALS.forEach((p, i) => {
-    const x = (i - (PORTALS.length - 1) / 2) * 22, z = -32;
+    const x = (i - (PORTALS.length - 1) / 2) * 21, z = -32;
     parts.push({ x, y: 0.3, z, w: 14, h: 0.6, d: 7, c: '#f4efe6', m: 'stone' });
     parts.push({ x, y: 0.3, z: z + 4.6, w: 10, h: 0.3, d: 2.4, c: '#f4efe6', m: 'stone' });
     for (const s of [-1, 1]) {
@@ -161,7 +224,7 @@ export function buildHub() {
     npcs.push({ x: x - 3.5, z: z - 1.5, yaw: 0.4, still: true, mannequin: true, look: { skin: 9, shirt: 1, pants: 12, hat: 10, face: 6, emblem: 6, hair: 4, hairColor: 0 } });
   }
   // 안내판
-  signs.push({ x: 30, y: 3.4, z: 8, ry: -Math.PI / 2, w: 8, h: 4.6, lines: ['브릭버스에 온 걸 환영해!', 'WASD 이동 · Space 점프', '마우스 끌기: 시점 · 휠: 확대', '빛나는 문으로 게임에 들어가!', '🪙 코인으로 모자와 얼굴을 사요'], bg: '#ffffff', fg: '#2a2d3a', accent: '#3fa7ff', sizes: [86, 62, 62, 62, 62] });
+  signs.push({ x: 30, y: 3.4, z: 8, ry: -Math.PI / 2, w: 8, h: 4.6, lines: ['브릭버스에 온 걸 환영해!', 'WASD 이동 · Space 점프', '마우스 끌기: 시점 · 휠: 확대', '빛나는 문으로 게임에 들어가!', '🥚 알 판매: 펫이 달리기를 빠르게 · 📱 P 핸드폰'], bg: '#ffffff', fg: '#2a2d3a', accent: '#3fa7ff', sizes: [86, 62, 62, 62, 62] });
   parts.push({ x: 30.3, y: 1.6, z: 8, w: 0.5, h: 3.2, d: 0.5, c: '#8b5a3c', m: 'wood', deco: true });
   // 점프대 공원
   {
@@ -212,7 +275,7 @@ export function buildHub() {
   for (const [x, z] of [[-21, 21], [21, 21], [-21, -21], [21, -21], [-6, 28], [6, 28], [-12, 40], [12, 40]]) lamp(parts, x, z);
   for (const [x, z, w, d] of [[-9, 9, 3, 3], [9, 9, 3, 3], [-9, -9, 3, 3], [9, -9, 3, 3], [-28, 24, 6, 3], [26, 24, 6, 3], [-50, -20, 4, 8]]) flowers(parts, x, z, w, d, rnd);
   // 나무
-  const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -44 && Math.abs(x) < 60) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
+  const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -44 && Math.abs(x) < 67) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
     || (Math.abs(x - 42) < 14 && Math.abs(z + 6) < 15) || (Math.abs(x + 42) < 8 && Math.abs(z - 40) < 8) || (Math.abs(x - 36) < 12 && Math.abs(z - 34) < 12)
     || (Math.abs(x - 30) < 4 && Math.abs(z - 8) < 6) || (Math.abs(x) < 5 && z > 20 && z < 60);
   let placed = 0;
@@ -1230,4 +1293,136 @@ export function buildBattle() {
     tree(parts, x, z, rnd); n++;
   }
   return { parts, signs, effects, zones, coins, loot, npcs: [], spawn: { x: L.x, y: L.y + 0.1, z: L.z + 5, yaw: Math.PI }, sky: 'hub', killY: -20, island: R };
+}
+
+// ───────────────────────── 술래잡기 마을 (술래잡기 · 숨바꼭질) ─────────────────────────
+// 가운데 "술래 집"에서 시작. 집 4채(옷장, 침대), 덤불, 키 큰 풀밭, 상자 더미, 굴, 짚더미, 놀이터가 숨을 곳.
+// spots: 봇이 숨거나 찾으러 가는 곳. cover: 덤불·풀숲처럼 가까이 와야 보이는 곳.
+export const TAG_HALF = 44;
+export const TAG_STARTS = [[-10, -8], [10, -8], [-10, 8], [10, 8], [0, -20], [0, 20], [-20, 8], [20, -8], [-34, 24], [34, -24], [-24, -37], [24, 37]];
+
+function bush(out, x, z, rnd, s = 1) {
+  const cols = ['#3faa55', '#4fbf5a', '#2f9d63', '#5cc95f'];
+  out.push({ x, y: 1.35 * s, z, w: 3.8 * s, h: 2.9 * s, d: 3.6 * s, c: cols[Math.floor(rnd() * 4)], shape: 'sphere', deco: true });
+  out.push({ x: x + 1.1 * s, y: 1.1 * s, z: z + 0.7 * s, w: 2.6 * s, h: 2.2 * s, d: 2.6 * s, c: cols[Math.floor(rnd() * 4)], shape: 'sphere', deco: true });
+  out.push({ x: x - 1.0 * s, y: 1.0 * s, z: z - 0.8 * s, w: 2.4 * s, h: 2.0 * s, d: 2.4 * s, c: cols[Math.floor(rnd() * 4)], shape: 'sphere', deco: true });
+  for (let i = 0; i < 3; i++) out.push({ x: x + (rnd() - 0.5) * 3 * s, y: 1.6 * s + rnd() * 1.1 * s, z: z + (rnd() - 0.5) * 3 * s, w: 0.35, h: 0.35, d: 0.35, c: ['#ff5e7e', '#ffffff', '#ffd23f'][i], shape: 'sphere', deco: true, shadow: false });
+}
+
+export function buildTag() {
+  const parts = [], signs = [], effects = [], zones = [], coins = [], npcs = [], spots = [];
+  const rnd = seeded(20261121);
+  const H = TAG_HALF;
+  parts.push({ x: 0, y: -1, z: 0, w: H * 2 + 6, h: 2, d: H * 2 + 6, c: '#7cc95a', m: 'grass', round: 0.4, shadow: false });
+  parts.push({ x: 0, y: -1.2, z: 0, w: 700, h: 0.2, d: 700, c: '#8fd16a', m: 'grass', deco: true, shadow: false, round: 0 });
+  // 울타리 (안 보이는 벽 + 하얀 나무 울타리)
+  for (const [x, z, w, d] of [[0, -H, H * 2, 1], [0, H, H * 2, 1], [-H, 0, 1, H * 2], [H, 0, 1, H * 2]]) parts.push({ x, y: 4, z, w, h: 8, d, hidden: true });
+  for (let a = -H; a <= H; a += 1.6) {
+    for (const [x, z] of [[a, -H], [a, H], [-H, a], [H, a]]) parts.push({ x, y: 0.75, z, w: 0.3, h: 1.5, d: 0.3, c: '#ffffff', deco: true, round: 0.05 });
+  }
+  for (const y of [0.6, 1.2]) for (const [x, z, w, d] of [[0, -H, H * 2, 0.14], [0, H, H * 2, 0.14], [-H, 0, 0.14, H * 2], [H, 0, 0.14, H * 2]]) parts.push({ x, y, z, w, h: 0.14, d, c: '#ffffff', deco: true, shadow: false, round: 0 });
+  // 길
+  for (const [x, z, w, d] of [[0, -24, 4, 36], [0, 24, 4, 36], [-24, 0, 36, 4], [24, 0, 36, 4]]) parts.push({ x, y: 0.03, z, w, h: 0.06, d, c: '#e9dfcf', m: 'stone', deco: true, shadow: false, round: 0 });
+  // 술래 집 (가운데 돌 마당, 기둥, 팻말)
+  parts.push({ x: 0, y: 0.06, z: 0, w: 13, h: 0.12, d: 13, c: '#efe6d8', m: 'stone', shape: 'cyl' });
+  parts.push({ x: 0, y: 2.2, z: 0, w: 1, h: 4.4, d: 1, c: '#8b5a3c', m: 'wood' });
+  parts.push({ x: 0, y: 4.7, z: 0, w: 1.6, h: 0.6, d: 1.6, c: '#ff5e7e', round: 0.2 });
+  signs.push({ x: 0, y: 5.9, z: 0, ry: 0, w: 4.2, h: 1.5, double: true, lines: ['👹 술래 집'], bg: '#ffffff', fg: '#e0335a', accent: '#ff5e7e' });
+  signs.push({ x: 0, y: 2.6, z: -6.8, ry: 0, w: 7.2, h: 3.2, lines: ['🏃 술래잡기: 술래에게 닿으면 내가 술래!', '🙈 숨바꼭질: 20초 동안 숨어! 찾으면 술래 편', '대기실에서 숫자 1, 2 로 고르기'], bg: '#ffffff', fg: '#2a2d3a', accent: '#ff8fc7', sizes: [64, 64, 56] });
+  parts.push({ x: 0, y: 1.0, z: -6.85, w: 0.3, h: 2, d: 0.3, c: '#8b5a3c', m: 'wood', deco: true });
+  for (const [x, z] of [[-6, 6], [6, 6], [-6, -6], [6, -6]]) lamp(parts, x, z);
+  for (const [x, z, a] of [[-4, 9, true], [4, 9, true]]) bench(parts, x, z, a);
+  // 집 4채 (문은 가운데 쪽), 안에 옷장과 침대
+  const dummy = [];
+  for (const [x, z, door, c, roof] of [[-26, -26, 's', '#ffe2b8', '#ff7a59'], [26, -26, 's', '#d8f0ff', '#3fa7ff'], [-26, 26, 'n', '#e6ffd8', '#4fbf5a'], [26, 26, 'n', '#ffe0f0', '#ff5ec4']]) {
+    bHouse(parts, dummy, x, z, 11, 9, 4, c, roof, door);
+    const back = door === 's' ? -1 : 1; // 문 반대쪽 벽 방향 (z)
+    const wz = z + back * 4.5;
+    // 옷장 (문 쪽이 열려 있고 안에 들어갈 수 있다)
+    const cx = x + 3, cz = wz - back * 1.0;
+    parts.push({ x: cx - 1.35, y: 1.7, z: cz, w: 0.25, h: 3.4, d: 1.8, c: '#a0612f', m: 'wood' });
+    parts.push({ x: cx + 1.35, y: 1.7, z: cz, w: 0.25, h: 3.4, d: 1.8, c: '#a0612f', m: 'wood' });
+    parts.push({ x: cx, y: 3.5, z: cz, w: 2.95, h: 0.25, d: 1.8, c: '#8b5a3c', m: 'wood' });
+    parts.push({ x: cx - 0.9, y: 1.7, z: cz - back * 0.95, w: 0.9, h: 3.0, d: 0.1, c: '#c98a4b', m: 'wood', deco: true, ry: back * 0.9 });
+    spots.push({ x: cx, z: cz + back * 0.1, cover: true, room: [x, z, door], way: [[x, z + back * 0.5], [cx, z + back * 1.8]] });
+    // 침대와 이불, 침대 뒤 구석
+    parts.push({ x: x - 2.0, y: 0.55, z: wz - back * 2.1, w: 2.6, h: 0.7, d: 3.8, c: '#ffffff', round: 0.12 });
+    parts.push({ x: x - 2.0, y: 0.95, z: wz - back * 2.6, w: 2.7, h: 0.18, d: 2.6, c: c === '#ffe2b8' ? '#ff9a76' : roof, deco: true, round: 0.08 });
+    parts.push({ x: x - 2.0, y: 1.0, z: wz - back * 0.6, w: 2.0, h: 0.4, d: 0.8, c: '#fff6e0', deco: true, round: 0.15 });
+    spots.push({ x: x - 4.3, z: wz - back * 0.8, cover: false, room: [x, z, door], way: [[x - 4.3, z - back * 0.2]] });
+    // 식탁
+    parts.push({ x: x + 2.5, y: 1.1, z: z + back * -1.2, w: 2.2, h: 0.2, d: 1.6, c: '#c98a4b', m: 'wood' });
+    for (const [dx, dz] of [[-0.9, -0.6], [0.9, -0.6], [-0.9, 0.6], [0.9, 0.6]]) parts.push({ x: x + 2.5 + dx, y: 0.5, z: z + back * -1.2 + dz, w: 0.16, h: 1.0, d: 0.16, c: '#8b5a3c', m: 'wood', deco: true });
+  }
+  // 덤불 (안에 쏙 들어가 숨을 수 있다)
+  const bushes = [[-14, -4], [-16, 6], [14, -6], [16, 5], [-6, -15], [6, -17], [-5, 16], [7, 15], [-38, -12], [-38, 14], [38, -14], [38, 12], [-12, -38], [14, -38], [-14, 38], [12, 38], [-38, -38], [38, 38], [38, -38], [-38, 38]];
+  for (const [x, z] of bushes) { bush(parts, x, z, rnd); spots.push({ x, z, cover: true }); }
+  // 키 큰 풀밭
+  {
+    const ox = 0, oz = -30;
+    parts.push({ x: ox, y: 0.05, z: oz, w: 13, h: 0.1, d: 8, c: '#5aa845', m: 'grass', deco: true, shadow: false, round: 0 });
+    for (let i = 0; i < 150; i++) {
+      const gx = ox + (rnd() - 0.5) * 12.4, gz = oz + (rnd() - 0.5) * 7.4, h = 2.6 + rnd() * 1.2;
+      parts.push({ x: gx, y: h / 2, z: gz, w: 0.18, h, d: 0.18, c: ['#4fae47', '#63c051', '#3e9a40'][i % 3], ry: rnd() * 3, rz: (rnd() - 0.5) * 0.3, deco: true, shadow: false, round: 0 });
+    }
+    spots.push({ x: ox - 3, z: oz, cover: true }, { x: ox + 3, z: oz + 1, cover: true });
+    signs.push({ x: ox, y: 1.2, z: oz + 4.4, ry: 0, w: 3.4, h: 0.9, lines: ['🌾 풀숲'], bg: '#ffffff', fg: '#3e7d2f', accent: '#5aa845' });
+  }
+  // 상자 더미 (ㄱ자, 뒤에 숨기)
+  for (const [x, z, flip] of [[12, -27, 1], [-12, 27, -1], [20, 14, 1], [-20, -14, -1]]) {
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) {
+      parts.push({ x: x + i * 1.7 * flip, y: 0.8 + j * 1.6, z, w: 1.6, h: 1.6, d: 1.6, c: j ? '#d9a066' : '#c98a4b', m: 'wood', round: 0.05 });
+      if (i < 2) parts.push({ x, y: 0.8 + j * 1.6, z: z + (i + 1) * 1.7, w: 1.6, h: 1.6, d: 1.6, c: j ? '#c98a4b' : '#d9a066', m: 'wood', round: 0.05 });
+    }
+    spots.push({ x: x + 1.7 * flip, z: z + 1.7, cover: false, way: [[x + 4.4 * flip, z + 4.4]] });
+  }
+  // 굴 (양쪽이 뚫린 긴 굴)
+  {
+    const x = -30;
+    for (const dx of [-1.75, 1.75]) parts.push({ x: x + dx, y: 1.6, z: 0, w: 0.5, h: 3.2, d: 10, c: '#a7a9b4', m: 'stone' });
+    parts.push({ x, y: 3.35, z: 0, w: 4, h: 0.5, d: 10, c: '#9a9da8', m: 'stone' });
+    parts.push({ x, y: 3.9, z: 0, w: 4.4, h: 0.6, d: 10.4, c: '#7cc95a', m: 'grass', round: 0.2 });
+    spots.push({ x, z: 0, cover: false, way: [[x, 7.5]] });
+    signs.push({ x, y: 4.8, z: 5.3, ry: 0, w: 3, h: 0.9, lines: ['🕳️ 굴'], bg: '#ffffff', fg: '#555a66', accent: '#a7a9b4' });
+  }
+  // 짚더미
+  {
+    const ox = 30;
+    for (const [dx, dz, two] of [[-2.6, -4.6, 1], [2.6, -4.6, 0], [-2.6, 0, 0], [2.6, 0, 1], [-2.6, 4.6, 1], [2.6, 4.6, 0]]) {
+      parts.push({ x: ox + dx, y: 0.8, z: dz, w: 2.4, h: 1.6, d: 3.2, c: '#e8c26a', m: 'wood', round: 0.2 });
+      if (two) parts.push({ x: ox + dx, y: 2.4, z: dz, w: 2.4, h: 1.6, d: 3.2, c: '#f0cf7a', m: 'wood', round: 0.2 });
+    }
+    spots.push({ x: ox, z: -2.3, cover: false, way: [[ox, -9]] }, { x: ox, z: 2.3, cover: false, way: [[ox, 9]] });
+  }
+  // 놀이터 (계단으로 올라가는 놀이 탑, 밑은 숨는 곳, 미끄럼틀)
+  {
+    const ox = 0, oz = 31;
+    for (const [dx, dz] of [[-2.8, -2.8], [2.8, -2.8], [-2.8, 2.8], [2.8, 2.8]]) parts.push({ x: ox + dx, y: 1.8, z: oz + dz, w: 0.4, h: 3.6, d: 0.4, c: '#ff5e7e' });
+    parts.push({ x: ox, y: 3.75, z: oz, w: 6.2, h: 0.3, d: 6.2, c: '#3fa7ff' });
+    for (const [dx, dz, w, d] of [[0, 3.05, 6.2, 0.2], [-3.05, 0, 0.2, 6.2], [3.05, 0, 0.2, 6.2]]) parts.push({ x: ox + dx, y: 4.4, z: oz + dz, w, h: 1, d, c: '#ffd23f' });
+    for (const [dx, dz, w, d] of [[0, 2.9, 5.2, 0.15], [-2.9, 0.6, 0.15, 4.4], [2.9, 0.6, 0.15, 4.4]]) parts.push({ x: ox + dx, y: 1.5, z: oz + dz, w, h: 3, d, c: '#ffffff', k: 'glass' });
+    for (let i = 0; i < 6; i++) parts.push({ x: ox - 1.6, y: 0.3 + i * 0.6, z: oz - 3.6 - (5 - i) * 0.8, w: 2.2, h: 0.6, d: 0.8, c: hsl(200 + i * 20, 80, 65) });
+    parts.push({ x: ox + 4.8, y: 2.0, z: oz, w: 1.6, h: 0.2, d: 6.4, c: '#ffd23f', rx: 0, rz: -0.55, deco: true });
+    spots.push({ x: ox, z: oz + 0.6, cover: false, way: [[ox, oz - 6]] });
+    signs.push({ x: ox, y: 5.6, z: oz + 3.2, ry: 0, w: 3.4, h: 0.9, lines: ['🛝 놀이터'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff' });
+  }
+  // 통 무더기
+  for (const [x, z] of [[-34, -26], [34, 26], [-8, -36], [8, 36]]) {
+    for (const [dx, dz] of [[0, 0], [1.4, 0.3], [0.6, 1.3]]) parts.push({ x: x + dx, y: 1.0, z: z + dz, w: 1.2, h: 2, d: 1.2, c: '#5a8ad6', m: 'metal', shape: 'cyl' });
+  }
+  // 꽃밭, 가로등
+  for (const [x, z, w, d] of [[-10, -20, 3, 2], [10, 20, 3, 2], [20, -16, 2, 3], [-20, 16, 2, 3]]) flowers(parts, x, z, w, d, rnd);
+  for (const [x, z] of [[-16, -16], [16, 16], [16, -16], [-16, 16], [-36, 0], [36, 0], [0, -40], [0, 40]]) lamp(parts, x, z);
+  // 나무
+  const busy = [[0, 0, 9], [-26, -26, 9], [26, -26, 9], [-26, 26, 9], [26, 26, 9], [0, -30, 8], [-30, 0, 7], [30, 0, 7], [0, 31, 7], ...bushes.map(([x, z]) => [x, z, 4]),
+    [12, -26, 5], [-12, 27, 5], [20, 14, 5], [-20, -14, 5], ...TAG_STARTS.map(([x, z]) => [x, z, 3])];
+  let placed = 0;
+  for (let tries = 0; tries < 500 && placed < 18; tries++) {
+    const x = (rnd() - 0.5) * (H * 2 - 8), z = (rnd() - 0.5) * (H * 2 - 8);
+    if (busy.some(([bx, bz, r]) => Math.hypot(x - bx, z - bz) < r + 3) || Math.abs(x) < 3 || Math.abs(z) < 3) continue;
+    tree(parts, x, z, rnd);
+    busy.push([x, z, 3]);
+    placed++;
+  }
+  return { parts, signs, effects, zones, coins, npcs, spots, spawn: { x: 0, y: 0.3, z: 7, yaw: Math.PI }, killY: -20, sky: 'tag' };
 }

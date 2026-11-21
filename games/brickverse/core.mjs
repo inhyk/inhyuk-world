@@ -127,8 +127,9 @@ export function stepPlayer(pl, inp, boxes, dt) {
   depenetrate(pl, boxes, ev);
 
   const ground = pl.ground;
-  const rate = !ground ? P.AIR : ground.kind === 'ice' ? P.ICE : P.ACCEL;
-  const tx = (inp.mx || 0) * P.SPEED, tz = (inp.mz || 0) * P.SPEED;
+  const sm = inp.speed > 0 ? inp.speed : 1; // 펫이 주는 속도 (강아지 1.5배 … 앵무새 10배)
+  const rate = (!ground ? P.AIR : ground.kind === 'ice' ? P.ICE : P.ACCEL) * Math.max(1, Math.sqrt(sm));
+  const tx = (inp.mx || 0) * P.SPEED * sm, tz = (inp.mz || 0) * P.SPEED * sm;
   let ax = tx - pl.vx, az = tz - pl.vz;
   const len = Math.hypot(ax, az), lim = rate * dt;
   if (len > lim) { ax *= lim / len; az *= lim / len; }
@@ -146,7 +147,7 @@ export function stepPlayer(pl, inp, boxes, dt) {
   let ex = 0, ez = 0;
   if (ground && ground.kind === 'conveyor' && !ev.jumped) { ex = ground.cx; ez = ground.cz; }
   const mx = (pl.vx + ex) * dt, my = pl.vy * dt, mz = (pl.vz + ez) * dt;
-  const n = Math.min(10, Math.max(1, Math.ceil(Math.max(Math.abs(mx), Math.abs(my), Math.abs(mz)) / 0.3)));
+  const n = Math.min(24, Math.max(1, Math.ceil(Math.max(Math.abs(mx), Math.abs(my), Math.abs(mz)) / 0.3)));
   const grounded = !!ground && !ev.jumped;
   pl.ground = null;
   for (let i = 0; i < n; i++) {
@@ -397,6 +398,9 @@ export function defaultSave(rand = Math.random) {
     survival: { best: 0, wins: 0 },
     battle: { wins: 0, kills: 0, best: 0, teamWins: 0, teamBest: 0 },
     tower: { blocks: [], best: 0 },
+    tag: { wins: 0, hideWins: 0, seekWins: 0 },
+    pets: { dog: 0, cat: 0, panda: 0, parrot: 0 },
+    pet: '',
     sound: true,
     music: true,
     tutorial: false,
@@ -447,6 +451,9 @@ export function cleanSave(raw, rand = Math.random) {
   s.survival = { best: Math.floor(num(raw.survival?.best, 0, 3600, 0)), wins: Math.floor(num(raw.survival?.wins, 0, 99_999, 0)) };
   s.battle = { wins: Math.floor(num(raw.battle?.wins, 0, 99_999, 0)), kills: Math.floor(num(raw.battle?.kills, 0, 9_999_999, 0)), best: Math.floor(num(raw.battle?.best, 0, 99, 0)), teamWins: Math.floor(num(raw.battle?.teamWins, 0, 99_999, 0)), teamBest: Math.floor(num(raw.battle?.teamBest, 0, 99, 0)) };
   s.tower = { blocks: cleanTowerBlocks(raw.tower?.blocks), best: Math.floor(num(raw.tower?.best, 0, TOWER.TOP + 1, 0)) };
+  s.tag = { wins: Math.floor(num(raw.tag?.wins, 0, 99_999, 0)), hideWins: Math.floor(num(raw.tag?.hideWins, 0, 99_999, 0)), seekWins: Math.floor(num(raw.tag?.seekWins, 0, 99_999, 0)) };
+  for (const p of PETS) s.pets[p.id] = Math.floor(num(raw.pets?.[p.id], 0, 99_999, 0));
+  s.pet = PETS.some(p => p.id === raw.pet) && s.pets[raw.pet] > 0 ? raw.pet : '';
   s.sound = raw.sound !== false;
   s.music = raw.music !== false;
   s.tutorial = !!raw.tutorial;
@@ -461,7 +468,7 @@ export const OBBY_CLEAR_COINS = 100;
 
 // ───────────── 네트워크 ─────────────
 // 위치는 숫자만 보낸다 (글자열 속 숫자는 서버가 가릴 수 있다).
-export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower', 'battle'];
+export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower', 'battle', 'tag'];
 const r2 = v => Math.round(v * 100) / 100;
 export function packPose(pl, yaw, w, anim, emote) {
   return [w, r2(pl.x), r2(pl.y), r2(pl.z), r2(yaw), anim, emote];
@@ -655,3 +662,33 @@ export function waveOf(n, team = DEFENSE.TEAM) {
 // 웨이브가 갈수록 몬스터 체력이 늘어난다 (킹 슬라임은 5번째가 더 약하다)
 export const monsterHp = (type, n) => Math.round(MONSTERS[type].hp * (1 + (n - 1) * 0.08) * (type === 'king' && n === 5 ? 0.6 : 1));
 export const defenseCoins = (wave, kills, won) => kills + wave * 5 + (won ? 100 : 0);
+
+// ───── 펫 (2026-11-21 인혁: "코인 100이 있으면 속도에 버프를 주는 펫을 가질 수 있게 해줘 (알 까서)") ─────
+// 적어 준 확률은 75 + 30 + 5 + 0.1 = 110% 라서, 귀한 펫은 적은 그대로 두고 강아지가 나머지(64.9%)를 갖는다.
+export const EGG_PRICE = 100;
+export const PETS = [
+  { id: 'dog', name: '강아지', icon: '🐶', speed: 1.5, chance: 0.649, color: '#c98a4b' },
+  { id: 'cat', name: '고양이', icon: '🐱', speed: 2.0, chance: 0.30, color: '#ffb347' },
+  { id: 'panda', name: '판다', icon: '🐼', speed: 5.0, chance: 0.05, color: '#f4f4f4' },
+  { id: 'parrot', name: '앵무새', icon: '🦜', speed: 10, chance: 0.001, color: '#3fd16b' },
+];
+export const petOf = id => PETS.find(p => p.id === id) ?? null;
+export const petSpeed = id => petOf(id)?.speed ?? 1;
+// 알 까기: 귀한 것부터 굴린다 (r 은 0 이상 1 미만)
+export function hatchPet(r = Math.random()) {
+  let acc = 0;
+  for (const p of [...PETS].reverse()) { acc += p.chance; if (r < acc) return p.id; }
+  return PETS[0].id;
+}
+export const chanceText = c => `${Math.round(c * 1000) / 10}%`;
+
+// ───── 술래잡기 · 숨바꼭질 ─────
+export const TAG = Object.freeze({ LOBBY_WAIT: 10, TIME: 90, HIDE: 20, SEEK: 100, PLAYERS: 6, FREEZE: 3, IMMUNE: 2, TOUCH: 1.8, END_WAIT: 5, BOT_SPEED: 0.94 });
+export const TAG_MODES = ['tag', 'hide'];
+// 닿았나: 옆으로 TOUCH 안, 높이 차이 2.2 안
+export const touching = (a, b, r = TAG.TOUCH) => Math.hypot(a.x - b.x, a.z - b.z) < r && Math.abs(a.y - b.y) < 2.2;
+// 끝났을 때 코인. 술래잡기: 술래가 아니면 15, 술래로 끝나면 3. 숨바꼭질: 이긴 편 25, 진 편 5
+export function tagCoins(mode, { it = false, won = false } = {}) {
+  if (mode === 'tag') return it ? 3 : 15;
+  return won ? 25 : 5;
+}
