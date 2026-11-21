@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, EGG, EGG_ZONES, CRITTERS, hatchCritter, petIncome, baseIncome, bootsPrice, pedPrice, cleanEgg, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -410,4 +410,29 @@ test('술래잡기 마을: 시작 자리와 숨을 곳은 블록 안이 아니�
   for (const [x, z] of TAG_STARTS) assert.ok(!inZone(x, z), `start in portal ${x},${z}`);
   for (const s of def.spots) assert.ok(!inZone(s.x, s.z), `spot in portal ${s.x},${s.z}`);
   assert.ok(!inZone(def.spawn.x, def.spawn.z));
+});
+
+test('달걀 도둑: 둥지마다 동물 셋, 확률 합 1, 뒤 둥지일수록 비싸고 많이 번다', () => {
+  for (let z = 0; z < EGG_ZONES.length; z++) {
+    const list = CRITTERS.filter(c => c.zone === z);
+    assert.equal(list.length, 3);
+    assert.ok(Math.abs(list.reduce((a, c) => a + c.chance, 0) - 1) < 1e-9);
+    if (z) {
+      assert.ok(EGG_ZONES[z].price > EGG_ZONES[z - 1].price);
+      assert.ok(Math.min(...list.map(c => c.income)) > Math.max(...CRITTERS.filter(c => c.zone === z - 1).map(c => c.income)));
+    }
+  }
+  assert.deepEqual(hatchCritter(0, 0.1, 0.5), { c: 'chick', gold: false });
+  assert.deepEqual(hatchCritter(0, 0.95, 0.01), { c: 'bunny', gold: true });
+  assert.equal(hatchCritter(3, 0.75, 0.9).c, 'whale');
+  assert.equal(petIncome({ c: 'duck', gold: true }), 2 * EGG.GOLD_X);
+  assert.equal(baseIncome([{ c: 'chick', t: 0 }, { c: 'fox', t: 3 }, null, { c: 'owl', t: 0, gold: true }]), 1 + 25 * 3);
+  assert.ok(bootsPrice(1) > bootsPrice(0) && pedPrice(EGG.PED0 + 1) > pedPrice(EGG.PED0));
+  const e = cleanEgg({ cash: 99.9, pets: [{ c: 'dragon', t: 500 }, { c: 'nope' }, { c: 'chick', gold: 1 }], boots: 99, ped: 2, zones: 9 });
+  assert.equal(e.cash, 99);
+  assert.equal(e.boots, EGG.BOOTS_MAX);
+  assert.equal(e.ped, EGG.PED0);
+  assert.equal(e.zones, EGG_ZONES.length);
+  assert.deepEqual(e.pets, [{ c: 'dragon', gold: false, t: 40 }, null, { c: 'chick', gold: true, t: 0 }]);
+  assert.equal(cleanSave({}).egg.ped, EGG.PED0);
 });
