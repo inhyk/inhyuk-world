@@ -430,9 +430,10 @@ body.eggw.playing:not(.dressing) #egg-bar { display: flex; }
 body.campw.playing:not(.dressing) #camp-bar { display: flex; }
 #camp-bar button { font-size: 15px; padding: 9px 12px; white-space: nowrap; background: linear-gradient(#fff3e0, #ffd9a8); box-shadow: 0 4px 0 #c47a2a; }
 #camp-bar kbd { font: 12px Jua, sans-serif; background: rgba(0, 0, 0, .12); border-radius: 6px; padding: 1px 6px; margin-right: 6px; }
-#camp-hurt { position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0; box-shadow: inset 0 0 90px 30px rgba(255, 40, 60, .55); }
+#camp-hurt { position: fixed; inset: 0; pointer-events: none; z-index: 4; opacity: 0; box-shadow: inset 0 0 90px 30px rgba(255, 40, 60, .55); }
 @media (pointer: coarse) {
   #camp-bar { bottom: 168px; left: 12px; transform: none; flex-direction: column; align-items: flex-start; }
   #camp-bar button { font-size: 14px; padding: 9px 12px; }
   #camp-bar kbd { display: none; }
 }
+#camp-hurt.stalk { opacity: 1 !important; box-shadow: inset 0 0 160px 70px rgba(8, 8, 20, .85); transition: box-shadow .4s; }

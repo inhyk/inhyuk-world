@@ -1590,6 +1590,8 @@ export function buildEgg({ slot = 0 } = {}) {
 // 둥근 숲 섬. 가운데 빈터에 모닥불, 둘레에 통나무 의자와 텐트. 나무와 열매 덤불은 src/camp.js 가 그리고 베면 다시 자란다.
 export const CAMP_R = 95;
 export const CAMP_HOME = { x: 11, z: 7 };
+// 아기 동물이 울고 있는 굴 (숲 끝 어두운 곳, 아기 여우·곰·토끼·부엉이 순서)
+export const CAMP_DENS = [[6, -76], [74, 14], [-10, 77], [-72, -24]];
 export function buildCamp() {
   const parts = [], signs = [], effects = [], zones = [], coins = [], npcs = [], trees = [], bushes = [];
   const rnd = seeded(20261199);
@@ -1612,7 +1614,7 @@ export function buildCamp() {
   }
   // 장작 더미, 표지판
   for (let i = 0; i < 6; i++) parts.push({ x: 4 + (i % 3) * 0.5, y: 0.25 + Math.floor(i / 3) * 0.45, z: 10, w: 0.45, h: 0.45, d: 2.2, c: '#8b5a3c', m: 'wood', shape: 'cyl', rx: Math.PI / 2, deco: true });
-  signs.push({ x: -6, y: 2.6, z: 11, ry: Math.PI, w: 7.4, h: 3.2, lines: ['🔥 모닥불 캠프', '낮: 🪓 나무 베기 · 🫐 열매 따기', '불 옆에 서면 나무를 넣어 · 빛 안은 안전!', '밤: 그림자 늑대를 🪓 로 쫓아내 · 99일 버티기'], bg: '#2a2218', fg: '#ffe9c8', accent: '#ff7a3d', sizes: [80, 50, 50, 50], double: true });
+  signs.push({ x: -6, y: 2.6, z: 11, ry: Math.PI, w: 7.4, h: 3.2, lines: ['🔥 모닥불 캠프', '낮: 🪓 나무 베기 · 🫐 열매 따기', '불 옆에 서면 나무를 넣어 · 빛 안은 안전!', '밤: 그림자 늑대를 🪓 로 쫓아내 · 99일 버티기', '🐾 숲 끝에서 우는 아기 동물을 구해 줘!'], bg: '#2a2218', fg: '#ffe9c8', accent: '#ff7a3d', sizes: [80, 50, 50, 50, 50], double: true });
   parts.push({ x: -6, y: 1.1, z: 11, w: 0.4, h: 2.2, d: 0.4, c: '#6b4a2f', m: 'wood', deco: true });
   // 광장으로 가는 문
   {
@@ -1622,11 +1624,17 @@ export function buildCamp() {
     signs.push({ x, y: 5.3, z, ry: -0.9, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
     zones.push({ x0: x - 1, x1: x + 1, y0: 0, y1: 4.5, z0: z - 1, z1: z + 1, portal: 0 });
   }
+  // 아기 동물 굴: 둥근 바위와 가시 덤불
+  for (const [x, z] of CAMP_DENS) {
+    for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; if (i === 0) continue; parts.push({ x: x + Math.cos(a) * 3.2, y: 0.7, z: z + Math.sin(a) * 3.2, w: 1.6, h: 1.4, d: 1.4, c: '#3e4250', m: 'stone', ry: a, round: 0.4 }); }
+    for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 + 0.3; parts.push({ x: x + Math.cos(a) * 4.6, y: 0.6, z: z + Math.sin(a) * 4.6, w: 1.4, h: 1.2, d: 1.4, c: '#3a5a2f', shape: 'cone', deco: true }); }
+    parts.push({ x, y: 0.05, z, w: 5.6, h: 0.1, d: 5.6, c: '#2a2a22', m: 'stone', shape: 'cyl', deco: true, shadow: false });
+  }
   // 베는 나무와 열매 덤불 (자리만)
   for (let tries = 0; tries < 3000 && trees.length < 190; tries++) {
     const a = rnd() * Math.PI * 2, r = 15 + Math.sqrt(rnd()) * (R - 19);
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (trees.some(t => Math.hypot(t.x - x, t.z - z) < 4.2)) continue;
+    if (trees.some(t => Math.hypot(t.x - x, t.z - z) < 4.2) || CAMP_DENS.some(([dx, dz]) => Math.hypot(dx - x, dz - z) < 7)) continue;
     trees.push({ x, z, s: 0.9 + rnd() * 0.5, kind: rnd() < 0.7 ? 0 : 1 });
   }
   for (let tries = 0; tries < 1500 && bushes.length < 30; tries++) {

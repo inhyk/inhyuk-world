@@ -801,7 +801,7 @@ export function nightMonsters(day) {
 // 하루를 버틸 때 받는 코인
 export const dayCoins = day => 2 + ({ 10: 20, 25: 50, 50: 100, 75: 150, 99: 500 }[day] ?? 0);
 export function freshCamp() {
-  return { day: 1, t: 0, lives: CAMP.LIVES, hp: CAMP.HP, hunger: CAMP.HUNGER, wood: 0, berry: 3, meat: 0, cooked: 0, fed: 0, fuel: 60, torches: [], best: 0, wins: 0, runs: 0 };
+  return { day: 1, t: 0, lives: CAMP.LIVES, hp: CAMP.HP, hunger: CAMP.HUNGER, wood: 0, berry: 3, meat: 0, cooked: 0, fed: 0, cubs: [], fuel: 60, torches: [], best: 0, wins: 0, runs: 0 };
 }
 export function cleanCamp(raw) {
   const c = freshCamp();
@@ -815,8 +815,20 @@ export function cleanCamp(raw) {
   c.fed = Math.floor(num(raw.fed, 0, 999_999, 0));
   c.fuel = num(raw.fuel, 0, CAMP.FUEL_MAX, 60);
   c.torches = Array.isArray(raw.torches) ? raw.torches.slice(0, CAMP.TORCH_MAX).filter(t => Array.isArray(t) && t.slice(0, 3).every(Number.isFinite)).map(([x, z, n]) => [Math.max(-90, Math.min(90, x)), Math.max(-90, Math.min(90, z)), Math.max(1, Math.min(CAMP.TORCH_NIGHTS, Math.floor(n)))]) : [];
+  c.cubs = Array.isArray(raw.cubs) ? CUBS.map(u => u.id).filter(id => raw.cubs.includes(id)) : [];
   c.best = Math.floor(num(raw.best, 0, CAMP.DAYS, 0));
   c.wins = Math.floor(num(raw.wins, 0, 99_999, 0));
   c.runs = Math.floor(num(raw.runs, 0, 99_999, 0));
   return c;
 }
+
+// 길 잃은 아기 동물 (2026-11-22 인혁: "사슴 괴물이랑 아이들도 넣어" → 그 게임의 캐릭터 대신 우리 캐릭터).
+// 숲 끝에서 울고 있는 아기 동물을 모닥불까지 데려오면 구조. 구한 동물마다 도와주는 힘이 하나씩.
+export const CUBS = [
+  { id: 'fox', name: '아기 여우', look: 'fox', icon: '🦊', perk: '아침마다 🪵 나무 5개를 물어 와' },
+  { id: 'bear', name: '아기 곰', look: 'bear', icon: '🐻', perk: '늑대한테 30% 덜 아파' },
+  { id: 'bunny', name: '아기 토끼', look: 'bunny', icon: '🐰', perk: '🫐 열매를 2배로 따' },
+  { id: 'owl', name: '아기 부엉이', look: 'owl', icon: '🦉', perk: '🔥 불빛이 3칸 더 넓어져' },
+];
+// 그림자 사냥꾼: 2일째 밤부터 한 마리. 도끼로는 못 쓰러뜨리고 잠깐 얼린다. 빛 안에는 못 들어오고 횃불을 끈다.
+export const STALKER = Object.freeze({ FROM: 2, SPEED: 7.4, DMG: 30, STUN: 3, WARN: 26, DELAY: 8 });

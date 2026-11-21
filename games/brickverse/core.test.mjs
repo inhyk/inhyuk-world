@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, EGG, EGG_ZONES, CRITTERS, hatchCritter, RUN_MAX, EGG_TREADS, runSpeed, runNeed, trainRun, josa, CAMP, fireLevel, fireRadius, nightMonsters, dayCoins, freshCamp, cleanCamp, petIncome, baseIncome, bootsPrice, pedPrice, cleanEgg, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, EGG, EGG_ZONES, CRITTERS, hatchCritter, RUN_MAX, EGG_TREADS, runSpeed, runNeed, trainRun, josa, CAMP, CUBS, STALKER, fireLevel, fireRadius, nightMonsters, dayCoins, freshCamp, cleanCamp, petIncome, baseIncome, bootsPrice, pedPrice, cleanEgg, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -471,4 +471,11 @@ test('모닥불 캠프: 나무를 넣을수록 불이 커지고, 밤이 갈수�
   assert.equal(c.day, CAMP.DAYS); assert.equal(c.lives, CAMP.LIVES); assert.equal(c.wood, 0); assert.equal(c.fuel, CAMP.FUEL_MAX);
   assert.deepEqual(c.torches, [[1, 2, CAMP.TORCH_NIGHTS], [90, 0, 1]]);
   assert.deepEqual(cleanSave({}).camp, freshCamp());
+});
+
+test('모닥불 캠프: 아기 동물 4마리 저장, 그림자 사냥꾼은 2일째부터', () => {
+  assert.equal(CUBS.length, 4);
+  assert.deepEqual(cleanCamp({ cubs: ['owl', 'fox', 'nope', 'owl'] }).cubs, ['fox', 'owl']);
+  assert.deepEqual(freshCamp().cubs, []);
+  assert.equal(STALKER.FROM, 2);
 });
