@@ -151,10 +151,10 @@ body:not(.playing) #build-bar, body.dressing #build-bar, body:not(.playing) #sti
 .join-row input:focus { outline: none; border-color: var(--blue); }
 .code-label { margin: 10px 0 0; color: #8a90a2; text-align: center; }
 .code { font-family: 'Black Han Sans', var(--font); font-size: 52px; letter-spacing: .14em; text-align: center; margin: 2px 0 10px; color: var(--blue-d); -webkit-user-select: text; user-select: text; }
-#room-people { list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-direction: column; gap: 6px; }
-#room-people li { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #f3f5fa; border-radius: 12px; padding: 8px 10px; }
-#room-people li b { color: var(--blue-d); margin-right: 6px; font-weight: normal; }
-#room-people li button { font-size: 13px; padding: 6px 8px; }
+#room-people, #plaza-people { list-style: none; padding: 0; margin: 0 0 14px; display: flex; flex-direction: column; gap: 6px; }
+#room-people li, #plaza-people li { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #f3f5fa; border-radius: 12px; padding: 8px 10px; }
+#room-people li b, #plaza-people li b { color: var(--blue-d); margin-right: 6px; font-weight: normal; }
+#room-people li button, #plaza-people li button { font-size: 13px; padding: 6px 8px; }
 .card .small { color: #5b6275; }
 
 /* ───── 메뉴 ───── */
@@ -412,3 +412,5 @@ body.tagw.tg-lobby.playing:not(.dressing) #mode-bar { display: flex; }
   .ph-games { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
 }
 @media (max-width: 520px) { #btn-sound { display: none; } }
+#friends .card { max-height: calc(100dvh - 32px); overflow: auto; }
+.plaza-title { font-size: 16px; margin: 16px 0 4px; }
