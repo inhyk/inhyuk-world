@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, EGG, EGG_ZONES, CRITTERS, hatchCritter, RUN_MAX, EGG_TREADS, runSpeed, runNeed, trainRun, josa, petIncome, baseIncome, bootsPrice, pedPrice, cleanEgg, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, EGG, EGG_ZONES, CRITTERS, hatchCritter, RUN_MAX, EGG_TREADS, runSpeed, runNeed, trainRun, josa, CAMP, fireLevel, fireRadius, nightMonsters, dayCoins, freshCamp, cleanCamp, petIncome, baseIncome, bootsPrice, pedPrice, cleanEgg, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -456,4 +456,19 @@ test('받침에 맞는 을/를, 이/가', () => {
   assert.equal(josa('아기 공룡', '을', '를'), '아기 공룡을');
   assert.equal(josa('졸린 곰', '이', '가'), '졸린 곰이');
   assert.equal(josa('신난 사자', '이', '가'), '신난 사자가');
+});
+
+test('모닥불 캠프: 나무를 넣을수록 불이 커지고, 밤이 갈수록 괴물이 늘고, 10일마다 보스', () => {
+  assert.equal(fireLevel(0), 1); assert.equal(fireLevel(20), 2); assert.equal(fireLevel(299), 4); assert.equal(fireLevel(300), 5);
+  assert.ok(fireRadius(5, 100) > fireRadius(1, 100));
+  assert.equal(fireRadius(3, 0), 0);
+  assert.ok(fireRadius(3, 5) < fireRadius(3, 50));
+  assert.ok(nightMonsters(30).wolves > nightMonsters(1).wolves);
+  assert.ok(nightMonsters(99).wolves <= 18);
+  assert.equal(nightMonsters(10).boss, true); assert.equal(nightMonsters(11).boss, false);
+  assert.equal(dayCoins(3), 2); assert.equal(dayCoins(99), 502);
+  const c = cleanCamp({ day: 500, lives: 9, wood: -4, torches: [[1, 2, 9], ['x'], [300, 0, 1]], fuel: 999 });
+  assert.equal(c.day, CAMP.DAYS); assert.equal(c.lives, CAMP.LIVES); assert.equal(c.wood, 0); assert.equal(c.fuel, CAMP.FUEL_MAX);
+  assert.deepEqual(c.torches, [[1, 2, CAMP.TORCH_NIGHTS], [90, 0, 1]]);
+  assert.deepEqual(cleanSave({}).camp, freshCamp());
 });

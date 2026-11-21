@@ -17,7 +17,7 @@ function part(g, geo, c, sx, sy, sz, x, y, z, extra) {
   g.add(m);
   return m;
 }
-const eyes = (g, y, z, gap, s = 0.1) => { for (const k of [-1, 1]) { part(g, BOX, '#1e1f26', s, s * 1.2, 0.04, k * gap, y, z); part(g, BOX, '#ffffff', s * 0.35, s * 0.35, 0.02, k * gap - s * 0.2, y + s * 0.3, z + 0.02); } };
+const eyes = (g, y, z, gap, s = 0.1, c = '#1e1f26', ex = undefined) => { for (const k of [-1, 1]) { part(g, BOX, c, s, s * 1.2, 0.04, k * gap, y, z, ex); if (!ex) part(g, BOX, '#ffffff', s * 0.35, s * 0.35, 0.02, k * gap - s * 0.2, y + s * 0.3, z + 0.02); } };
 
 // 동물 모양 (앞 +z, 발 y=0). 황금이면 몸이 금빛
 const LOOKS = {
@@ -38,6 +38,8 @@ const LOOKS = {
   bear: { kind: 'quad', c: '#7a4a2a', ears: 'round', snout: '#c9a07a', s: 1.3, helmet: '#3fa7ff' },
   golem: { kind: 'quad', c: '#3a2e2e', crack: '#ff7a1a', s: 1.35, ears: 'none', helmet: '#ffcf33' },
   thunder: { kind: 'bird', c: '#ffd23f', beak: '#3a3f4b', s: 1.2, wings: '#3f7dff', helmet: '#ffffff' },
+  wolf: { kind: 'quad', c: '#2a2d3a', ears: 'pointy', tail: 'brush', snout: '#3a3f4b', glow: true, s: 1.15 },
+  shade: { kind: 'quad', c: '#151722', ears: 'pointy', spikes: '#5b3aff', tail: 'long', glow: true, neck: true, s: 1.2 },
 };
 export function makeCritter(id, gold = false) {
   const L = LOOKS[id] ?? LOOKS.chick;
@@ -89,7 +91,7 @@ export function makeCritter(id, gold = false) {
     if (L.neck) part(body, BOX, c, 0.28, 0.6, 0.28, 0, by + 0.35, 0.42, gx);
     const head = new THREE.Group(); head.position.set(0, hy, L.neck ? 0.55 : 0.5); body.add(head);
     part(head, BOX, c, 0.56, 0.48, 0.5, 0, 0, 0, gx);
-    eyes(head, 0.06, 0.26, 0.14);
+    if (L.glow) eyes(head, 0.06, 0.26, 0.14, 0.12, '#ff3b3b', { emissive: '#ff2020', emissiveIntensity: 2.5 }); else eyes(head, 0.06, 0.26, 0.14);
     if (L.mask) part(head, BOX, L.mask, 0.58, 0.14, 0.04, 0, 0.06, 0.25);
     if (L.snout) part(head, BOX, L.snout, 0.28, 0.18, 0.2, 0, -0.1, 0.32);
     if (L.nose) part(head, BOX, L.nose, 0.1, 0.07, 0.04, 0, -0.04, 0.27);

@@ -14,6 +14,7 @@ import { Tower } from './src/tower.js';
 import { Battle } from './src/battle.js';
 import { Tag } from './src/tag.js';
 import { EggHunt } from './src/egghunt.js';
+import { Camp } from './src/camp.js';
 import { PetFollower, EggShop, eggSign } from './src/pets.js';
 import { Phone } from './src/phone.js';
 import { startUpdateCheck } from './src/update.js';
@@ -23,7 +24,7 @@ import {
   OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS, validGift, GIFT_MAX, NET_VERSION, GIFT_WAIT_MS, packBlocks, unpackBlocks, inTower, cellKey, TOWER,
   PETS, petOf, petSpeed,
 } from './core.mjs';
-import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, buildBattle, buildTag, buildEgg, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
+import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, buildBattle, buildTag, buildEgg, buildCamp, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -36,6 +37,7 @@ const WORLD_INFO = [
   { icon: '🎯', name: '블록 배틀 로얄', build: buildBattle },
   { icon: '🏃', name: '술래잡기', build: buildTag },
   { icon: '🥚', name: '달걀 도둑', build: buildEgg },
+  { icon: '🔥', name: '모닥불 캠프', build: buildCamp },
 ];
 const fmtTime = ms => { const s = ms / 1000; return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; };
 const LOOK_KEYS = { hat: HATS, face: FACES, emblem: EMBLEMS, hair: HAIRS };
@@ -69,6 +71,7 @@ game.ui = ui;
 game.canvas = canvas;
 game.controls = controls;
 game.camera = view.camera;
+game.setSky = name => { view.setSky(name); view.scene.environmentIntensity = name === 'campNight' ? 0.1 : 0.55; playMusic(name); };
 
 // 나
 const me = { pl: newPlayer(0, 0.3, 18), yaw: Math.PI, avatar: new Avatar(game.save.look, '', { local: true }), dead: 0, emote: 0, hurtCooldown: 0 };
@@ -221,11 +224,13 @@ function loadWorld(id) {
   if (id === 5) w.runtime = new Battle(game);
   if (id === 6) w.runtime = new Tag(game);
   if (id === 7) w.runtime = new EggHunt(game);
+  if (id === 8) w.runtime = new Camp(game);
   if (id === 0) group.add(eggSign());
   view.setSky(def.sky);
+  view.scene.environmentIntensity = 0.55;
   playMusic(def.sky);
   ui.setWorld(info.icon, info.name);
-  if (id !== 2 && id !== 3 && id !== 6 && id !== 7) ui.setInfo('');
+  if (id !== 2 && id !== 3 && id !== 6 && id !== 7 && id !== 8) ui.setInfo('');
   // 시작 위치
   let spawn = def.spawn;
   if (id === 1) {
@@ -576,6 +581,9 @@ function onMessage(data, from) {
     case 'eg':
       if (game.worldId === 7 && game.world.runtime) game.world.runtime.message(data, from);
       break;
+    case 'cp':
+      if (game.worldId === 8 && game.world.runtime) game.world.runtime.message(data, from);
+      break;
     default: break;
   }
 }
@@ -630,7 +638,7 @@ controls.onKey = (k) => {
   if (k === 'KeyT' || k === 'Slash') ui.togglePanel('chat');
   if (k === 'KeyG') ui.togglePanel('emote');
   if (k === 'KeyR' && game.worldId === 0) game.goHome();
-  if ((game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6 || game.worldId === 7) && game.world.runtime?.key?.(k)) return;
+  if ((game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6 || game.worldId === 7 || game.worldId === 8) && game.world.runtime?.key?.(k)) return;
   if (k.startsWith('Digit')) { const n = Number(k.slice(5)); if (n >= 1 && n <= 4) game.emote(n); }
 };
 

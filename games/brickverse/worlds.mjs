@@ -53,6 +53,7 @@ export const PORTALS = [
   { id: 'battle', world: 5, name: '블록 배틀 로얄', sub: '블래스터로 끝까지', color: '#ff5e3a', icon: '🎯' },
   { id: 'tag', world: 6, name: '술래잡기', sub: '술래잡기 · 숨바꼭질', color: '#ff8fc7', icon: '🏃' },
   { id: 'egg', world: 7, name: '달걀 도둑', sub: '알 훔쳐서 부화시키기', color: '#ffcf33', icon: '🥚' },
+  { id: 'camp', world: 8, name: '모닥불 캠프', sub: '99일 동안 살아남기', color: '#ff7a3d', icon: '🔥' },
 ];
 
 function tree(out, x, z, rnd, scale = 1, y0 = 0) {
@@ -191,7 +192,7 @@ export function buildHub() {
   parts.push({ x: 0, y: 0.32, z: 18, w: 4.4, h: 0.06, d: 4.4, c: '#3fa7ff', m: 'neon', deco: true, shadow: false, round: 0.02 });
   // 문 (포털)
   PORTALS.forEach((p, i) => {
-    const x = (i - (PORTALS.length - 1) / 2) * 19.5, z = -32;
+    const x = (i - (PORTALS.length - 1) / 2) * 18, z = -32;
     parts.push({ x, y: 0.3, z, w: 14, h: 0.6, d: 7, c: '#f4efe6', m: 'stone' });
     parts.push({ x, y: 0.3, z: z + 4.6, w: 10, h: 0.3, d: 2.4, c: '#f4efe6', m: 'stone' });
     for (const s of [-1, 1]) {
@@ -276,7 +277,7 @@ export function buildHub() {
   for (const [x, z] of [[-21, 21], [21, 21], [-21, -21], [21, -21], [-6, 28], [6, 28], [-12, 40], [12, 40]]) lamp(parts, x, z);
   for (const [x, z, w, d] of [[-9, 9, 3, 3], [9, 9, 3, 3], [-9, -9, 3, 3], [9, -9, 3, 3], [-28, 24, 6, 3], [26, 24, 6, 3], [-50, -20, 4, 8]]) flowers(parts, x, z, w, d, rnd);
   // 나무
-  const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -44 && Math.abs(x) < 67) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
+  const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -44 && Math.abs(x) < 74) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
     || (Math.abs(x - 42) < 14 && Math.abs(z + 6) < 15) || (Math.abs(x + 42) < 8 && Math.abs(z - 40) < 8) || (Math.abs(x - 36) < 12 && Math.abs(z - 34) < 12)
     || (Math.abs(x - 30) < 4 && Math.abs(z - 8) < 6) || (Math.abs(x) < 5 && z > 20 && z < 60);
   let placed = 0;
@@ -1583,4 +1584,62 @@ export function buildEgg({ slot = 0 } = {}) {
   for (const [x, z] of [[-30, 44], [0, 44], [30, 44], [-60, 44], [60, 44]]) lamp(parts, x, z);
   const sp = EGG_SLOTS[slot];
   return { parts, signs, effects, zones, coins, npcs, nests, spawn: { x: sp.x, y: 0.3, z: sp.z - EGG_BASE.d / 2 - 3, yaw: Math.PI }, killY: -20, sky: 'hub' };
+}
+
+// ───────────────────────── 모닥불 캠프 ─────────────────────────
+// 둥근 숲 섬. 가운데 빈터에 모닥불, 둘레에 통나무 의자와 텐트. 나무와 열매 덤불은 src/camp.js 가 그리고 베면 다시 자란다.
+export const CAMP_R = 95;
+export const CAMP_HOME = { x: 11, z: 7 };
+export function buildCamp() {
+  const parts = [], signs = [], effects = [], zones = [], coins = [], npcs = [], trees = [], bushes = [];
+  const rnd = seeded(20261199);
+  const R = CAMP_R;
+  parts.push({ x: 0, y: -1, z: 0, w: R * 2 + 10, h: 2, d: R * 2 + 10, c: '#4f8f45', m: 'grass', round: 0.4, shadow: false, shape: 'cyl' });
+  parts.push({ x: 0, y: -1.3, z: 0, w: 900, h: 0.2, d: 900, c: '#2c5a3a', m: 'grass', deco: true, shadow: false, round: 0 });
+  for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2; parts.push({ x: Math.cos(a) * (R + 3), y: 5, z: Math.sin(a) * (R + 3), w: 14, h: 10, d: 2, ry: -a + Math.PI / 2, hidden: true }); }
+  // 섬 끝 바위
+  for (let i = 0; i < 60; i++) { const a = rnd() * Math.PI * 2, r = R + rnd() * 4, s2 = 2 + rnd() * 4; parts.push({ x: Math.cos(a) * r, y: s2 * 0.35, z: Math.sin(a) * r, w: s2 * 1.4, h: s2, d: s2, c: '#5b5f6b', m: 'stone', ry: rnd() * 3, round: 0.4, deco: true }); }
+  // 빈터와 모닥불
+  parts.push({ x: 0, y: 0.03, z: 0, w: 30, h: 0.06, d: 30, c: '#8a7350', m: 'sand', shape: 'cyl', deco: true, shadow: false });
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; parts.push({ x: Math.cos(a) * 1.9, y: 0.3, z: Math.sin(a) * 1.9, w: 0.9, h: 0.6, d: 0.8, c: '#7a7d88', m: 'stone', ry: a, round: 0.25 }); }
+  for (const a of [0.3, 1.4, 2.5]) parts.push({ x: 0, y: 0.35, z: 0, w: 2.6, h: 0.35, d: 0.35, c: '#6b4a2f', m: 'wood', ry: a, deco: true, shape: 'cyl', rz: Math.PI / 2 });
+  // 통나무 의자
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + 0.3; parts.push({ x: Math.cos(a) * 6, y: 0.4, z: Math.sin(a) * 6, w: 2.6, h: 0.8, d: 0.8, c: '#8b5a3c', m: 'wood', ry: -a + Math.PI / 2, round: 0.3 }); }
+  // 텐트
+  for (const [x, z, c, ry] of [[-10, -6, '#ff7a3d', 0.5], [-4, -11, '#3fa7ff', 0.1], [8, -9, '#5ad16b', -0.5]]) {
+    parts.push({ x, y: 1.3, z, w: 3.6, h: 2.6, d: 3.6, c, shape: 'cone', ry, deco: true });
+    parts.push({ x, y: 0.05, z, w: 3.8, h: 0.1, d: 3.8, c: '#4a3a2a', m: 'wood', deco: true, shadow: false });
+  }
+  // 장작 더미, 표지판
+  for (let i = 0; i < 6; i++) parts.push({ x: 4 + (i % 3) * 0.5, y: 0.25 + Math.floor(i / 3) * 0.45, z: 10, w: 0.45, h: 0.45, d: 2.2, c: '#8b5a3c', m: 'wood', shape: 'cyl', rx: Math.PI / 2, deco: true });
+  signs.push({ x: -6, y: 2.6, z: 11, ry: Math.PI, w: 7.4, h: 3.2, lines: ['🔥 모닥불 캠프', '낮: 🪓 나무 베기 · 🫐 열매 따기', '불 옆에 서면 나무를 넣어 · 빛 안은 안전!', '밤: 그림자 늑대를 🪓 로 쫓아내 · 99일 버티기'], bg: '#2a2218', fg: '#ffe9c8', accent: '#ff7a3d', sizes: [80, 50, 50, 50], double: true });
+  parts.push({ x: -6, y: 1.1, z: 11, w: 0.4, h: 2.2, d: 0.4, c: '#6b4a2f', m: 'wood', deco: true });
+  // 광장으로 가는 문
+  {
+    const { x, z } = CAMP_HOME;
+    effects.push({ type: 'portal', x, y: 2.4, z, w: 4.2, h: 4.4, color: '#3fa7ff', ry: -0.9 });
+    parts.push({ x, y: 0.08, z, w: 4.6, h: 0.16, d: 4.6, c: '#d9cbb0', m: 'stone', shape: 'cyl' });
+    signs.push({ x, y: 5.3, z, ry: -0.9, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
+    zones.push({ x0: x - 1, x1: x + 1, y0: 0, y1: 4.5, z0: z - 1, z1: z + 1, portal: 0 });
+  }
+  // 베는 나무와 열매 덤불 (자리만)
+  for (let tries = 0; tries < 3000 && trees.length < 190; tries++) {
+    const a = rnd() * Math.PI * 2, r = 15 + Math.sqrt(rnd()) * (R - 19);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (trees.some(t => Math.hypot(t.x - x, t.z - z) < 4.2)) continue;
+    trees.push({ x, z, s: 0.9 + rnd() * 0.5, kind: rnd() < 0.7 ? 0 : 1 });
+  }
+  for (let tries = 0; tries < 1500 && bushes.length < 30; tries++) {
+    const a = rnd() * Math.PI * 2, r = 14 + rnd() * (R - 20);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (trees.some(t => Math.hypot(t.x - x, t.z - z) < 3) || bushes.some(b => Math.hypot(b.x - x, b.z - z) < 8)) continue;
+    bushes.push({ x, z });
+  }
+  // 버섯, 풀 장식
+  for (let i = 0; i < 70; i++) {
+    const a = rnd() * Math.PI * 2, r = 14 + rnd() * (R - 16), x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (i % 2) { parts.push({ x, y: 0.25, z, w: 0.14, h: 0.5, d: 0.14, c: '#f4efe6', deco: true, shadow: false }); parts.push({ x, y: 0.55, z, w: 0.55, h: 0.3, d: 0.55, c: i % 4 === 1 ? '#ff4d5e' : '#c98a4b', shape: 'sphere', deco: true, shadow: false }); }
+    else parts.push({ x, y: 0.35, z, w: 0.8, h: 0.7, d: 0.8, c: '#3e8a3a', shape: 'cone', deco: true, shadow: false });
+  }
+  return { parts, signs, effects, zones, coins, npcs, trees, bushes, spawn: { x: 0, y: 0.3, z: 7, yaw: Math.PI }, killY: -20, sky: 'camp' };
 }

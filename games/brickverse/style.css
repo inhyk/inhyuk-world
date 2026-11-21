@@ -424,3 +424,15 @@ body.eggw.playing:not(.dressing) #egg-bar { display: flex; }
   #egg-bar button { font-size: 13px; padding: 7px 10px; }
   #egg-bar kbd { display: none; }
 }
+
+/* ───── 모닥불 캠프 ───── */
+#camp-bar { display: none; position: fixed; left: 50%; bottom: 66px; transform: translateX(-50%); z-index: 6; gap: 8px; max-width: calc(100vw - 24px); }
+body.campw.playing:not(.dressing) #camp-bar { display: flex; }
+#camp-bar button { font-size: 15px; padding: 9px 12px; white-space: nowrap; background: linear-gradient(#fff3e0, #ffd9a8); box-shadow: 0 4px 0 #c47a2a; }
+#camp-bar kbd { font: 12px Jua, sans-serif; background: rgba(0, 0, 0, .12); border-radius: 6px; padding: 1px 6px; margin-right: 6px; }
+#camp-hurt { position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0; box-shadow: inset 0 0 90px 30px rgba(255, 40, 60, .55); }
+@media (pointer: coarse) {
+  #camp-bar { bottom: 168px; left: 12px; transform: none; flex-direction: column; align-items: flex-start; }
+  #camp-bar button { font-size: 14px; padding: 9px 12px; }
+  #camp-bar kbd { display: none; }
+}
