@@ -7,10 +7,12 @@ import { Effects } from './src/effects.js';
 import { sfx as sound, unlock, setSound, setMusic, playMusic } from './src/audio.js';
 import { UI } from './src/ui.js';
 import { Net } from './src/net.js';
+import { Plaza, plazaHi, plazaSay, plazaShows, PLAZA_AWAY_MS, PLAZA_TEXT } from './src/plaza.js';
 import { Tycoon, remoteTycoonFrom } from './src/tycoon.js';
 import { Survival } from './src/survival.js';
 import { Cloud } from './src/cloud.js';
 import { Tower } from './src/tower.js';
+import { Commons } from './src/commons.js';
 import { Battle } from './src/battle.js';
 import { Tag } from './src/tag.js';
 import { EggHunt } from './src/egghunt.js';
@@ -53,7 +55,8 @@ const game = {
   started: false,
   world: null,
   worldId: 0,
-  remotes: new Map(),
+  remotes: new Map(),      // 방 코드 방에서 만난 사람 (미니게임이 보는 것)
+  plazaRemotes: new Map(), // 모두의 광장에서 만난 사람 (미니게임은 보지 않는다)
   wardrobeOpen: false,
   obbyStart: 0,
   obbyTiming: false,
@@ -127,7 +130,7 @@ game.cloud = new Cloud({
   toast: t => ui.toast(t),
   choose: (a, b, first) => ui.choose(a, b, first),
 });
-game.cloud.onStatus = () => ui.renderLogin();
+game.cloud.onStatus = () => { ui.renderLogin(); syncPlaza(); };
 ui.renderLogin();
 game.controlsOff = off => { controls.enabled = !off && !game.wardrobeOpen; };
 addEventListener('pagehide', () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(game.save)); } catch { /* 무시 */ } });
@@ -225,7 +228,7 @@ function loadWorld(id) {
   if (id === 6) w.runtime = new Tag(game);
   if (id === 7) w.runtime = new EggHunt(game);
   if (id === 8) w.runtime = new Camp(game);
-  if (id === 0) group.add(eggSign());
+  if (id === 0) { group.add(eggSign()); w.runtime = new Commons(game); } // 🧱 모두의 공터
   view.setSky(def.sky);
   view.scene.environmentIntensity = 0.55;
   playMusic(def.sky);
@@ -368,6 +371,7 @@ game.say = i => {
   sound.say();
   ui.log(`나: ${PHRASES[i]}`);
   game.net.send({ t: 'say', i });
+  game.plaza?.send(plazaSay(i));
 };
 game.emote = i => { me.emote = i; sendPose(true); };
 
@@ -390,7 +394,7 @@ game.resetAll = () => {
 
 // ───── 친구와 같이 ─────
 game.net = new Net({
-  status: () => { ui.renderFriends(); },
+  status: () => { syncPlaza(); ui.renderFriends(); },
   opened: () => {
     ui.renderFriends();
     sendHi(); sendPose(true);
@@ -409,20 +413,25 @@ function myHi() {
   return msg;
 }
 function sendHi(to) {
-  if (!game.net?.active) return;
-  const msg = myHi();
-  if (to) game.net.sendTo(to, msg); else game.net.send(msg);
+  if (game.net?.active) {
+    const msg = myHi();
+    if (to) game.net.sendTo(to, msg); else game.net.send(msg);
+  } else if (game.plaza?.live) {
+    const msg = plazaHi(myHi());
+    if (to) game.plaza.sendTo(to, msg); else game.plaza.send(msg);
+  }
 }
 
 let poseTimer = 0, lastPose = '';
 function sendPose(force) {
-  if (!game.net?.live) return;
+  const room = !!game.net?.live;
+  if (!room && !game.plaza?.live) return;
   const anim = me.pl.climb ? 2 : me.pl.ground ? 0 : 1;
   const q = packPose(me.pl, me.yaw, game.worldId, anim, me.emote);
   const key = q.join(',');
   if (!force && key === lastPose && poseTimer > -0.9) return;
   lastPose = key; poseTimer = 0;
-  game.net.send({ t: 'p', q });
+  if (room) game.net.send({ t: 'p', q }); else game.plaza.pose(q);
 }
 
 // 내 타워 블록 전체를 친구 한 명에게 (숫자만, 250개씩 나눠서)
@@ -464,42 +473,68 @@ game.giveMoney = (to, amt) => {
   return true;
 };
 
-function getRemote(id) {
-  let r = game.remotes.get(id);
+// plaza: 모두의 광장에서 만난 사람 (game.plazaRemotes). 아니면 방에서 만난 사람 (game.remotes).
+const remotesOf = plaza => (plaza ? game.plazaRemotes : game.remotes);
+function getRemote(id, plaza = false) {
+  const map = remotesOf(plaza);
+  let r = map.get(id);
   if (!r) {
-    r = { id, name: '친구', look: null, avatar: null, w: -1, x: 0, y: -100, z: 0, yaw: 0, tx: 0, ty: -100, tz: 0, tyaw: 0, anim: 0, emote: 0, speed: 0, muted: false, slot: slotOf(id), tycoon: null, where: '' };
-    game.remotes.set(id, r);
+    r = { id, plaza, name: '친구', look: null, avatar: null, w: -1, x: 0, y: -100, z: 0, yaw: 0, tx: 0, ty: -100, tz: 0, tyaw: 0, anim: 0, emote: 0, speed: 0, muted: false, slot: slotOf(id), tycoon: null, where: '' };
+    map.set(id, r);
   }
   return r;
 }
+// 지금 내 화면에 보이는 사람인가 (방 사람은 같은 세계, 광장 사람은 같은 세계이고 그 세계가 브릭 광장이나 점프 탑)
+const shown = r => (r.plaza ? plazaShows(game.worldId, r.w) : r.w === game.worldId);
+const everyone = () => [...game.remotes.values(), ...game.plazaRemotes.values()];
 const slotOf = id => { const n = parseInt(String(id).replace(/\D/g, ''), 10); return Number.isFinite(n) && n > 0 ? (n - 1) % PLOT_SLOTS.length : 0; };
 game.slotOf = slotOf;
 
-function removeRemote(id) {
-  const r = game.remotes.get(id);
+function removeRemote(id, plaza = false, quiet = false) {
+  const map = remotesOf(plaza);
+  const r = map.get(id);
   if (!r) return;
   r.avatar?.dispose();
   r.petF?.dispose();
-  game.remotes.delete(id);
-  if (game.worldId === 2 && r.tycoon) game.world.runtime?.remoteChanged(r.slot);
-  if (game.worldId === 4 && r.tower?.size) game.world.runtime?.remoteChanged();
-  ui.log(`${r.name} 님이 나갔어`);
+  map.delete(id);
+  if (!plaza && game.worldId === 2 && r.tycoon) game.world.runtime?.remoteChanged(r.slot);
+  if (!plaza && game.worldId === 4 && r.tower?.size) game.world.runtime?.remoteChanged();
+  if (!quiet && (!plaza || r.avatar)) ui.log(`${r.name} 님이 나갔어`);
   updatePlayerList();
+}
+
+// hi: 별명 번호, 옷, 있는 세계, 펫. 처음 받았으면 true
+function applyHi(r, data) {
+  const first = !r.avatar;
+  const n = Array.isArray(data.n) ? [data.n[0] | 0, data.n[1] | 0] : [0, 0];
+  r.name = displayName([Math.min(Math.max(n[0], 0), ADJECTIVES.length - 1), Math.min(Math.max(n[1], 0), ANIMALS.length - 1)]);
+  r.look = lookFromArray(data.l);
+  if (!r.avatar) { r.avatar = new Avatar(r.look, r.name); view.scene.add(r.avatar.root); }
+  else { r.avatar.setLook(r.look); r.avatar.setName(r.name); }
+  if (Number.isInteger(data.w)) r.w = data.w;
+  r.v = Number.isInteger(data.v) ? data.v : 1;
+  r.pet = PETS[(data.pt | 0) - 1]?.id ?? '';
+  return first;
+}
+function applyPose(r, q) {
+  const p = unpackPose(q);
+  if (!p) return;
+  const moved = p.w !== r.w;
+  r.w = p.w; r.tx = p.x; r.ty = p.y; r.tz = p.z; r.tyaw = p.yaw; r.anim = p.anim; r.emote = p.emote;
+  if (moved || r.y < -90) { r.x = p.x; r.y = p.y; r.z = p.z; r.yaw = p.yaw; refreshRemoteVisibility(); updatePlayerList(); }
+}
+function applySay(r, i) {
+  if (!Number.isInteger(i) || i < 0 || i >= PHRASES.length || r.muted) return;
+  if (shown(r)) r.avatar?.say(PHRASES[i]);
+  ui.log(`${r.name}: ${PHRASES[i]}`);
+  sound.say();
 }
 
 function onMessage(data, from) {
   const r = getRemote(from);
   switch (data.t) {
     case 'hi': {
-      const first = !r.avatar;
-      const n = Array.isArray(data.n) ? [data.n[0] | 0, data.n[1] | 0] : [0, 0];
-      r.name = displayName([Math.min(Math.max(n[0], 0), ADJECTIVES.length - 1), Math.min(Math.max(n[1], 0), ANIMALS.length - 1)]);
-      r.look = lookFromArray(data.l);
-      if (!r.avatar) { r.avatar = new Avatar(r.look, r.name); view.scene.add(r.avatar.root); }
-      else { r.avatar.setLook(r.look); r.avatar.setName(r.name); }
-      if (Number.isInteger(data.w)) r.w = data.w;
-      r.v = Number.isInteger(data.v) ? data.v : 1;
-      r.pet = PETS[(data.pt | 0) - 1]?.id ?? '';
+      const first = applyHi(r, data);
       if (data.o !== undefined) {
         const items = remoteTycoonFrom(data.o);
         if (items) { r.tycoon = items; if (game.worldId === 2) game.world.runtime?.remoteChanged(r.slot); }
@@ -511,22 +546,12 @@ function onMessage(data, from) {
       ui.renderFriends();
       break;
     }
-    case 'p': {
-      const p = unpackPose(data.q);
-      if (!p) return;
-      const moved = p.w !== r.w;
-      r.w = p.w; r.tx = p.x; r.ty = p.y; r.tz = p.z; r.tyaw = p.yaw; r.anim = p.anim; r.emote = p.emote;
-      if (moved || r.y < -90) { r.x = p.x; r.y = p.y; r.z = p.z; r.yaw = p.yaw; refreshRemoteVisibility(); updatePlayerList(); }
+    case 'p':
+      applyPose(r, data.q);
       break;
-    }
-    case 'say': {
-      const i = data.i;
-      if (!Number.isInteger(i) || i < 0 || i >= PHRASES.length || r.muted) return;
-      if (r.w === game.worldId) r.avatar?.say(PHRASES[i]);
-      ui.log(`${r.name}: ${PHRASES[i]}`);
-      sound.say();
+    case 'say':
+      applySay(r, data.i);
       break;
-    }
     case 'gift': {
       if (!validGift(data)) return;
       const key = `${from}:${data.n}`;
@@ -588,14 +613,59 @@ function onMessage(data, from) {
   }
 }
 
+// 모두의 광장에서 받은 메시지 (acceptPlaza 를 지난 hi, say 만 온다. 미니게임 메시지는 오지 않는다)
+function onPlazaMessage(data, from) {
+  const r = getRemote(from, true);
+  if (data.t === 'hi') {
+    const first = applyHi(r, data);
+    if (first) { ui.log(`${r.name} 님이 광장에 왔어! 👋`); sound.pop(); }
+    refreshRemoteVisibility();
+    updatePlayerList();
+    ui.renderFriends();
+  } else if (data.t === 'say') applySay(r, data.i);
+}
+
 function refreshRemoteVisibility() {
-  for (const r of game.remotes.values()) if (r.avatar) { r.avatar.root.visible = r.w === game.worldId && !r.muted; if (r.petF?.mesh) r.petF.mesh.visible = r.avatar.root.visible; }
+  for (const r of everyone()) if (r.avatar) { r.avatar.root.visible = shown(r) && !r.muted; if (r.petF?.mesh) r.petF.mesh.visible = r.avatar.root.visible; }
 }
 function updatePlayerList() {
-  const list = [...game.remotes.values()].filter(r => r.avatar).map(r => { r.where = WORLD_INFO[r.w]?.name ?? ''; return r; });
+  const list = everyone().filter(r => r.avatar).map(r => { r.where = WORLD_INFO[r.w]?.name ?? ''; return r; });
   ui.setPlayers(list);
 }
-game.toggleMute = id => { const r = game.remotes.get(id); if (!r) return; r.muted = !r.muted; refreshRemoteVisibility(); };
+game.toggleMute = (id, plaza = false) => { const r = remotesOf(plaza).get(id); if (!r) return; r.muted = !r.muted; refreshRemoteVisibility(); };
+
+// ───── 모두의 광장 (로그인하면 방 코드 없이 같은 광장에 모이기) ─────
+// 방 코드 방과 동시에 쓰지 않는다: 방에 들어가면 광장에서 나오고, 방에서 나오면 다시 광장에 들어간다.
+// 칸은 브릭 광장의 🧱 모두의 공터(src/commons.js) 블록이다. 브릭 광장에 있을 때만 그 런타임에 넘긴다.
+let plazaAway = false, plazaAwayTimer = 0;
+const commons = () => (game.worldId === 0 ? game.world?.runtime : null);
+game.plaza = new Plaza({
+  status: () => { ui.renderFriends(); },
+  opened: ({ again }) => {
+    sendHi(); sendPose(true);
+    commons()?.sync();
+    if (!again) ui.toast(PLAZA_TEXT.hello(game.plaza.number, game.plaza.count), 3200);
+  },
+  join: id => { sendHi(id); sendPose(true); },
+  leave: id => { removeRemote(id, true); ui.renderFriends(); },
+  reset: () => { for (const id of [...game.plazaRemotes.keys()]) removeRemote(id, true, true); ui.renderFriends(); commons()?.sync(); },
+  cell: (k, entry) => commons()?.cell(k, entry),
+  cellError: (code, k) => commons()?.cellError(code, k),
+  pose: (id, d) => applyPose(getRemote(id, true), d),
+  message: (data, from) => onPlazaMessage(data, from),
+  notice: text => ui.toast(text, 3600),
+}, { server: game.cloud.server, ticket: () => game.cloud.account.ticket() });
+
+// 탭이 5분 넘게 가려져 있으면 광장 자리(12명)를 비워 주고, 다시 보이면 들어간다
+function syncPlaza() {
+  if (!game.plaza) return;
+  game.plaza.want(game.started && game.cloud.loggedIn && !game.net?.active && !plazaAway);
+}
+document.addEventListener('visibilitychange', () => {
+  clearTimeout(plazaAwayTimer);
+  if (document.hidden) plazaAwayTimer = setTimeout(() => { plazaAway = true; syncPlaza(); }, PLAZA_AWAY_MS);
+  else if (plazaAway) { plazaAway = false; syncPlaza(); }
+});
 
 // ───── 시작 ─────
 game.start = () => {
@@ -608,6 +678,7 @@ game.start = () => {
   controls.faceBehind(me.yaw);
   canvas.focus();
   if (game.cloud.loggedIn) game.cloud.sync();
+  syncPlaza();
   if (!game.save.tutorial) {
     game.save.tutorial = true; game.persist();
     setTimeout(() => ui.toast('빛나는 문으로 걸어 들어가면 게임이 시작돼! 🌈🏭🔥', 4200), 900);
@@ -638,7 +709,7 @@ controls.onKey = (k) => {
   if (k === 'KeyT' || k === 'Slash') ui.togglePanel('chat');
   if (k === 'KeyG') ui.togglePanel('emote');
   if (k === 'KeyR' && game.worldId === 0) game.goHome();
-  if ((game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6 || game.worldId === 7 || game.worldId === 8) && game.world.runtime?.key?.(k)) return;
+  if ((game.worldId === 0 || game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6 || game.worldId === 7 || game.worldId === 8) && game.world.runtime?.key?.(k)) return;
   if (k.startsWith('Digit')) { const n = Number(k.slice(5)); if (n >= 1 && n <= 4) game.emote(n); }
 };
 
@@ -769,8 +840,8 @@ function updateMe(dt) {
 
 function updateRemotes(dt) {
   const k = 1 - Math.exp(-dt * 10);
-  for (const r of game.remotes.values()) {
-    if (!r.avatar || r.w !== game.worldId) continue;
+  for (const r of everyone()) {
+    if (!r.avatar || !shown(r)) continue;
     const px = r.x, pz = r.z;
     // 받은 위치로 부드럽게 (멀면 바로)
     if (Math.hypot(r.tx - r.x, r.ty - r.y, r.tz - r.z) > 12) { r.x = r.tx; r.y = r.ty; r.z = r.tz; }

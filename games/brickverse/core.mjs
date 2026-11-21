@@ -551,6 +551,53 @@ export function unpackBlocks(flat) {
   return cleanTowerBlocks(list);
 }
 
+// 블록 칸 (가운데 x, y, z, 한 변 TOWER.CELL) 이 캐릭터 몸과 겹치나 (하늘 타워와 모두의 공터: 내 자리에는 못 놓는다)
+export function touchesCell(pl, x, y, z) {
+  const h = TOWER.CELL / 2;
+  return pl.x + P.R > x - h && pl.x - P.R < x + h && pl.z + P.R > z - h && pl.z - P.R < z + h && pl.y + P.H > y - h && pl.y < y + h;
+}
+
+// ───── 모두의 공터 (브릭 광장 오른쪽 아래, 모두의 광장 World 의 칸으로 저장) ─────
+// 칸은 타워와 같은 2×2×2. i, k 는 0~11 (가로세로 12칸), j 는 0~15 (16층).
+// 가운데 (X, Z), 바닥판 윗면 높이 Y. 칸 이름은 'b|i|j|k', 값은 블록 번호(0~16) 하나.
+// 한 사람이 놓을 수 있는 칸은 서버와 같이 400개(LIMIT), 놓는 간격은 0.3초(RATE, 서버는 1초 4번). NEAR: 이만큼 가까우면 막대가 켜진다.
+export const COMMONS = Object.freeze({ X: 60, Z: 20, Y: 0.14, N: 12, TOP: 15, LIMIT: 400, RATE: 0.3, NEAR: 6 });
+export const COMMONS_HALF = (COMMONS.N * TOWER.CELL) / 2;
+export const inCommons = (i, j, k) => [i, j, k].every(Number.isInteger) && i >= 0 && i < COMMONS.N && k >= 0 && k < COMMONS.N && j >= 0 && j <= COMMONS.TOP;
+export const commonsKey = (i, j, k) => `b|${i}|${j}|${k}`;
+// 칸 이름 → { i, j, k }. 공터 밖이거나 모양이 다르면 null ('b|01|0|0' 처럼 같은 칸을 다르게 쓴 이름도 null)
+export function parseCommonsKey(key) {
+  if (typeof key !== 'string') return null;
+  const m = /^b\|(\d{1,2})\|(\d{1,2})\|(\d{1,2})$/.exec(key);
+  if (!m) return null;
+  const [i, j, k] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  return inCommons(i, j, k) && commonsKey(i, j, k) === key ? { i, j, k } : null;
+}
+// 서버에서 온 칸 하나 → { i, j, k, t, owner(사용자 번호) }. 그리면 안 되는 칸이면 null.
+export function commonsBlock(key, entry) {
+  const at = parseCommonsKey(key);
+  if (!at || !entry) return null;
+  const t = entry.v;
+  if (!Number.isInteger(t) || t < 0 || t >= BLOCKS.length) return null;
+  return { ...at, t, owner: entry.owner?.id ?? null };
+}
+// 칸 가운데의 광장 좌표
+export const commonsCenter = (i, j, k) => [COMMONS.X - COMMONS_HALF + (i + 0.5) * TOWER.CELL, COMMONS.Y + (j + 0.5) * TOWER.CELL, COMMONS.Z - COMMONS_HALF + (k + 0.5) * TOWER.CELL];
+// 광장 바닥의 (x, z) 가 공터의 어느 칸 위인가. 밖이면 null
+export function commonsCellAt(x, z) {
+  const i = Math.floor((x - COMMONS.X + COMMONS_HALF) / TOWER.CELL), k = Math.floor((z - COMMONS.Z + COMMONS_HALF) / TOWER.CELL);
+  return inCommons(i, 0, k) ? { i, k } : null;
+}
+// (x, z) 가 공터 안이거나 margin 만큼 가까운가
+export const nearCommons = (x, z, margin = COMMONS.NEAR) => Math.abs(x - COMMONS.X) < COMMONS_HALF + margin && Math.abs(z - COMMONS.Z) < COMMONS_HALF + margin;
+// 받은 칸(World 의 cells: 칸 이름 → { v, owner, exp? }) 중 내가 놓은 칸 수. 서버의 400개 한도처럼 사라지는 칸(exp)은 세지 않는다.
+export function countMine(cells, userId) {
+  if (userId === null || userId === undefined) return 0;
+  let n = 0;
+  for (const entry of cells.values()) if (entry?.owner?.id === userId && entry.exp === undefined) n++;
+  return n;
+}
+
 // ───── 타이쿤 돈 주기 (친구 방) ─────
 // 'hi' 에 실어 보내는 게임 버전. 2 부터 돈 주기를 안다 (1 이나 없음 = 예전 게임: 돈을 받지 못한다).
 export const NET_VERSION = 2;

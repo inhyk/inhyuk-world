@@ -1,6 +1,7 @@
 // 화면 위 글자와 버튼: 코인, 세계 이름, 알림, 옷장, 친구 방, 메뉴, 말하기와 감정 표현.
 import { SKINS, COLORS, HATS, FACES, EMBLEMS, HAIRS, HAIR_COLORS, ADJECTIVES, ANIMALS, PHRASES, EMOTES, displayName, GIFT_AMOUNTS, halfOf } from '../core.mjs';
 import { faceTexture, emblemTexture, hairIcon } from './avatar.js';
+import { PLAZA_TEXT } from './plaza.js';
 
 const $ = id => document.getElementById(id);
 const HAT_ICON = { none: '🚫', cap: '🧢', beanie: '🧶', party: '🥳', flower: '🌸', antenna: '👽', bunny: '🐰', cat: '🐱', chef: '👨‍🍳', headphones: '🎧', tophat: '🎩', horns: '🐲', viking: '⛑️', crown: '👑', wizard: '🧙', halo: '😇' };
@@ -330,6 +331,7 @@ export class UI {
 
   renderFriends() {
     const net = this.game.net;
+    if (!net) return;
     const inRoom = net.active;
     $('room-idle').hidden = inRoom;
     $('room-live').hidden = !inRoom;
@@ -340,16 +342,27 @@ export class UI {
     if (inRoom) {
       const me = document.createElement('li'); me.innerHTML = `<b>나</b> ${displayName(this.game.save.name)}`;
       list.append(me);
-      for (const r of this.game.remotes.values()) {
-        const li = document.createElement('li');
-        const name = document.createElement('span'); name.textContent = `${r.name}${r.where ? ` · ${r.where}` : ''}`;
-        const mute = document.createElement('button');
-        mute.textContent = r.muted ? '🔈 다시 보기' : '🔇 안 보기';
-        mute.title = '이 친구의 말풍선과 모습을 나에게만 숨겨요';
-        mute.addEventListener('click', () => { this.game.toggleMute(r.id); this.renderFriends(); });
-        li.append(name, mute); list.append(li);
-      }
+      for (const r of this.game.remotes.values()) list.append(this.personRow(r));
     }
+    // 모두의 광장 (방에 없을 때만)
+    const plaza = this.game.plaza;
+    const people = $('plaza-people');
+    if (!plaza || !people) return;
+    $('plaza-status').textContent = !this.game.cloud.loggedIn ? PLAZA_TEXT.loggedOut : plaza.statusText;
+    people.innerHTML = '';
+    if (!inRoom && plaza.live) for (const r of this.game.plazaRemotes.values()) if (r.avatar) people.append(this.personRow(r));
+  }
+
+  // 사람 한 줄: 별명, 있는 곳, 🔇 나에게만 숨기기
+  personRow(r) {
+    const li = document.createElement('li');
+    const name = document.createElement('span'); name.textContent = `${r.name}${r.where ? ` · ${r.where}` : ''}`;
+    const mute = document.createElement('button');
+    mute.textContent = r.muted ? '🔈 다시 보기' : '🔇 안 보기';
+    mute.title = '이 사람의 말풍선과 모습을 나에게만 숨겨요';
+    mute.addEventListener('click', () => { this.game.toggleMute(r.id, r.plaza); this.renderFriends(); });
+    li.append(name, mute);
+    return li;
   }
 
   setPlayers(remotes) {

@@ -1,6 +1,6 @@
 // 세계 모양(부품 목록)을 만든다. three.js 없이 숫자만 만들어서 node 로 시험할 수 있다.
 // 부품: { x, y, z (가운데), w, h, d (크기), c (색), k (종류), m (재질), shape, move, spin, cp, deco (안 부딪힘), hidden (안 그림) }
-import { OBBY_STAGES, seeded, SURVIVAL, TOWER, EGG_ZONES, EGG_TREADS } from './core.mjs';
+import { OBBY_STAGES, seeded, SURVIVAL, TOWER, COMMONS, COMMONS_HALF, EGG_ZONES, EGG_TREADS } from './core.mjs';
 
 export function hsl(h, s, l) {
   s /= 100; l /= 100;
@@ -172,6 +172,30 @@ function eggStand(out, zones, effects, x, z) {
   zones.push({ x0: x - 3.2, x1: x + 3.2, y0: 0, y1: 4, z0: z - 2.6, z1: z - 0.4, eggs: true });
 }
 
+// 🧱 모두의 공터: 광장 오른쪽 아래(통통 점프 공원 남쪽, 작은 점프길 동쪽)의 빈 땅. 로그인한 사람들이 같이 블록을 놓는다 (src/commons.js).
+// 바닥판(윗면 COMMONS.Y)과 테두리, 모퉁이 기둥, 안내판. 부품에 commons: true 를 붙여 시험에서 다른 부품과 겹치지 않는지 본다.
+export const COMMONS_RIM = 0.6; // 테두리 너비
+export const commonsArea = (pad = 0) => {
+  const h = COMMONS_HALF + COMMONS_RIM + pad;
+  return { x0: COMMONS.X - h, x1: COMMONS.X + h, z0: COMMONS.Z - h, z1: COMMONS.Z + h };
+};
+function commonsLot(parts, signs) {
+  const { X: x, Z: z, Y: y } = COMMONS, half = COMMONS_HALF, rim = COMMONS_RIM;
+  // 테두리 판은 바닥판보다 0.04 낮게 (같은 높이면 겹쳐서 깜빡인다)
+  parts.push({ x, y: y - 0.04 - 0.2, z, w: half * 2 + rim * 2, h: 0.4, d: half * 2 + rim * 2, c: '#ff8a3d', round: 0.12, shadow: false, commons: true });
+  parts.push({ x, y: y - 0.15, z, w: half * 2, h: 0.3, d: half * 2, c: '#fff6e8', m: 'grid', round: 0.02, shadow: false, commons: true });
+  const cols = ['#ff4d5e', '#ffd23f', '#5ad16b', '#3fa7ff'];
+  [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([sx, sz], n) => {
+    const px = x + sx * (half + rim / 2), pz = z + sz * (half + rim / 2);
+    parts.push({ x: px, y: 0.8, z: pz, w: 0.9, h: 1.6, d: 0.9, c: cols[n], round: 0.12, commons: true });
+    parts.push({ x: px, y: 1.85, z: pz, w: 0.7, h: 0.5, d: 0.7, c: '#ffffff', round: 0.12, deco: true, commons: true });
+  });
+  // 안내판: 광장 쪽(서쪽) 테두리 밖, 광장을 보고 선다
+  const sx = x - half - rim - 1.4;
+  signs.push({ x: sx, y: 3.4, z, ry: -Math.PI / 2, w: 8, h: 3.4, lines: ['🧱 모두의 공터', '누구나 블록을 놓을 수 있어', '내가 놓은 블록만 부술 수 있어', '로그인하면 같이 놓아!'], bg: '#ffffff', fg: '#2a2d3a', accent: '#ff8a3d', sizes: [96, 58, 58, 58], commons: true });
+  for (const dz of [-2.6, 2.6]) parts.push({ x: sx + 0.3, y: 0.9, z: z + dz, w: 0.4, h: 1.8, d: 0.4, c: '#8b5a3c', m: 'wood', deco: true, commons: true });
+}
+
 export function buildHub() {
   const parts = [], coins = [], zones = [], signs = [], effects = [], npcs = [];
   const rnd = seeded(20261106);
@@ -272,14 +296,18 @@ export function buildHub() {
     parts.push({ x: ox, y: 12.4, z: oz, w: 3, h: 0.8, d: 3, c: '#ffd23f' });
     coins.push([ox, 14, oz]);
   }
+  // 모두의 공터
+  commonsLot(parts, signs);
   // 벤치, 가로등, 꽃밭
   for (const [x, z, a] of [[-14, 12, true], [14, 12, true], [-14, -12, true], [14, -12, true], [-19, 0, false], [19, 0, false]]) bench(parts, x, z, a);
   for (const [x, z] of [[-21, 21], [21, 21], [-21, -21], [21, -21], [-6, 28], [6, 28], [-12, 40], [12, 40]]) lamp(parts, x, z);
   for (const [x, z, w, d] of [[-9, 9, 3, 3], [9, 9, 3, 3], [-9, -9, 3, 3], [9, -9, 3, 3], [-28, 24, 6, 3], [26, 24, 6, 3], [-50, -20, 4, 8]]) flowers(parts, x, z, w, d, rnd);
   // 나무
+  const lot = commonsArea(COMMONS.NEAR + 2);
   const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -44 && Math.abs(x) < 74) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
     || (Math.abs(x - 42) < 14 && Math.abs(z + 6) < 15) || (Math.abs(x + 42) < 8 && Math.abs(z - 40) < 8) || (Math.abs(x - 36) < 12 && Math.abs(z - 34) < 12)
-    || (Math.abs(x - 30) < 4 && Math.abs(z - 8) < 6) || (Math.abs(x) < 5 && z > 20 && z < 60);
+    || (Math.abs(x - 30) < 4 && Math.abs(z - 8) < 6) || (Math.abs(x) < 5 && z > 20 && z < 60)
+    || (x > lot.x0 && x < lot.x1 && z > lot.z0 && z < lot.z1); // 공터와 안내판, 공터로 다가가는 곳
   let placed = 0;
   for (let tries = 0; tries < 400 && placed < 44; tries++) {
     const x = (rnd() - 0.5) * 140, z = (rnd() - 0.5) * 140;
@@ -290,8 +318,10 @@ export function buildHub() {
   // 바닷가 바위
   for (let i = 0; i < 18; i++) {
     const a = rnd() * Math.PI * 2, r = 79 + rnd() * 3;
-    const s = 1.5 + rnd() * 2.5;
-    parts.push({ x: Math.cos(a) * r, y: -0.6 + s * 0.3, z: Math.sin(a) * r, w: s * 1.3, h: s, d: s, c: '#a7a9b4', m: 'stone', ry: rnd() * 3, round: 0.4 });
+    const s = 1.5 + rnd() * 2.5, ry = rnd() * 3;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r, lot = commonsArea(1.5 + s);
+    if (x > lot.x0 && x < lot.x1 && z > lot.z0 && z < lot.z1) continue; // 공터 모퉁이 옆 바닷가는 비운다
+    parts.push({ x, y: -0.6 + s * 0.3, z, w: s * 1.3, h: s, d: s, c: '#a7a9b4', m: 'stone', ry, round: 0.4 });
   }
   // 광장 코인
   for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; coins.push([Math.cos(a) * 16, 1.4, Math.sin(a) * 16]); }

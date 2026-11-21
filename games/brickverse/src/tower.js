@@ -3,15 +3,13 @@
 // 친구 타워는 보이고 올라갈 수도 있지만 블록은 내 땅에만 놓고 부순다.
 // 🌈 무지개 카펫: 내 땅 앞에 있다. 올라타면 조종한다 (WASD 이동, Space 위, C 아래, X 내리기).
 //    내 땅 위에서만 날고, 블록에 부딪히면 멈춘다. 🏗️ 꼭대기로, 🌈 부르기 버튼도 있다.
-import { THREE, material, textSprite } from './render.js';
+import { THREE, textSprite } from './render.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { TOWER, BLOCKS, P, cellKey, cellCenter, inTower, towerFloor, makeBox, placeBox } from '../core.mjs';
+import { TOWER, BLOCKS, P, cellKey, cellCenter, inTower, towerFloor, makeBox, placeBox, touchesCell } from '../core.mjs';
 import { TOWER_SLOTS, TOWER_HALF, carpetHome } from '../worlds.mjs';
+import { BlockMeshes, Ghost, pickCell, makeBlockBar, barSelect, barMode } from './blocks.js';
 
 const CAP = 3200;
-const geo = new RoundedBoxGeometry(TOWER.CELL, TOWER.CELL, TOWER.CELL, 2, 0.14);
-const ICON = { glass: '💎', neon: '✨', gold: '👑', ice: '🧊', bounce: '⤒', ladder: '🪜', wood: '🪵', stone: '🪨' };
-const matOf = b => material(b.c, b.m ?? (b.k === 'glass' ? 'glass' : b.k === 'ice' ? 'ice' : 'plastic'));
 const RAINBOW = ['#ff4d5e', '#ff8a3d', '#ffd23f', '#5ad16b', '#3fa7ff', '#4a5cff', '#9b5cff'];
 const CARPET = { W: 3.2, H: 0.3, Y: 0.16, SPEED: 7, CLIMB: 6, ACCEL: 22, AUTO: 7, MARGIN: 6, IDLE: 60 };
 
@@ -38,22 +36,8 @@ export class Tower {
     this.cool = 0;
     this.hover = null;
     this.clearArmed = 0;
-    this.m = new THREE.Matrix4();
-    this.meshes = BLOCKS.map(b => {
-      const mesh = new THREE.InstancedMesh(geo, matOf(b), CAP);
-      mesh.count = 0; mesh.castShadow = b.k !== 'glass'; mesh.receiveShadow = true; mesh.frustumCulled = false;
-      game.world.group.add(mesh);
-      return mesh;
-    });
-    const g = new THREE.BoxGeometry(TOWER.CELL + 0.06, TOWER.CELL + 0.06, TOWER.CELL + 0.06);
-    this.ghostMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.38, depthWrite: false });
-    this.ghost = new THREE.Mesh(g, this.ghostMat);
-    this.edges = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: '#ffffff' }));
-    this.ghost.add(this.edges);
-    this.ghost.visible = false;
-    game.world.group.add(this.ghost);
-    this.ray = new THREE.Raycaster();
-    this.ndc = new THREE.Vector2();
+    this.blocks = new BlockMeshes(game.world.group, CAP);
+    this.ghost = new Ghost(game.world.group);
     this.labels = [];
 
     for (const [i, j, k, t] of game.save.tower.blocks) this.addMine(i, j, k, t, false);
@@ -91,17 +75,9 @@ export class Tower {
   removeMine(key, redraw = true) { const c = this.dropCell(this.cells, key); if (c && redraw) this.redraw(); return c; }
 
   redraw() {
-    const counts = BLOCKS.map(() => 0);
-    const put = c => {
-      const n = counts[c.t]++;
-      if (n >= CAP) return;
-      const [x, y, z] = this.world(c.i, c.j, c.k, c.slot);
-      this.m.makeTranslation(x, y, z);
-      this.meshes[c.t].setMatrixAt(n, this.m);
-    };
-    for (const c of this.cells.values()) put(c);
-    for (const map of this.remote.values()) for (const c of map.values()) put(c);
-    this.meshes.forEach((mesh, t) => { mesh.count = Math.min(CAP, counts[t]); mesh.instanceMatrix.needsUpdate = true; });
+    const all = [...this.cells.values()];
+    for (const map of this.remote.values()) all.push(...map.values());
+    this.blocks.draw(all, c => this.world(c.i, c.j, c.k, c.slot));
   }
 
   // 친구 블록과 이름표를 다시 맞춘다 (친구가 들어오거나 나갈 때)
@@ -147,39 +123,11 @@ export class Tower {
 
   // ───── 화면 위치 → 칸 (내 땅만) ─────
   pick(cx, cy) {
-    this.ndc.set((cx / innerWidth) * 2 - 1, -(cy / innerHeight) * 2 + 1);
-    this.ray.setFromCamera(this.ndc, this.game.camera);
-    const o = this.ray.ray.origin, d = this.ray.ray.direction;
-    let best = 90, hit = null;
-    const oo = [o.x, o.y, o.z], dd = [d.x, d.y, d.z];
-    for (const c of this.cells.values()) {
-      const b = c.box;
-      const lo = [b.x0, b.y0, b.z0], hi = [b.x1, b.y1, b.z1];
-      let t0 = 0, t1 = best, axis = -1, ok = true;
-      for (let a = 0; a < 3; a++) {
-        if (Math.abs(dd[a]) < 1e-9) { if (oo[a] < lo[a] || oo[a] > hi[a]) { ok = false; break; } continue; }
-        let ta = (lo[a] - oo[a]) / dd[a], tb = (hi[a] - oo[a]) / dd[a];
-        if (ta > tb) [ta, tb] = [tb, ta];
-        if (ta > t0) { t0 = ta; axis = a; }
-        if (tb < t1) t1 = tb;
-        if (t0 > t1) { ok = false; break; }
-      }
-      if (ok && axis >= 0 && t0 < best) {
-        best = t0;
-        const n = [0, 0, 0]; n[axis] = dd[axis] > 0 ? -1 : 1;
-        hit = { cell: c, normal: n };
-      }
-    }
-    if (d.y < -1e-6) {
-      const tg = -o.y / d.y;
-      if (tg < best) {
-        const [ox, oz] = this.origin();
-        const i = Math.floor((o.x + d.x * tg - ox) / TOWER.CELL), k = Math.floor((o.z + d.z * tg - oz) / TOWER.CELL);
-        if (inTower(i, 0, k)) hit = { ground: true, i, k };
-        else hit = { outside: true };
-      }
-    }
-    return hit;
+    const [ox, oz] = this.origin();
+    return pickCell(this.game.camera, cx, cy, this.cells.values(), 0, (x, z) => {
+      const i = Math.floor((x - ox) / TOWER.CELL), k = Math.floor((z - oz) / TOWER.CELL);
+      return inTower(i, 0, k) ? { i, k } : null;
+    });
   }
 
   target(hit) {
@@ -195,9 +143,9 @@ export class Tower {
     else if (this.cells.has(cellKey(i, j, k))) why = '이미 블록이 있어';
     else if (this.mine >= TOWER.LIMIT) why = `블록은 ${TOWER.LIMIT}개까지야. 부수고 다시 놓아 봐`;
     else {
-      const [x, y, z] = this.world(i, j, k), pl = this.game.player, h = TOWER.CELL / 2;
+      const [x, y, z] = this.world(i, j, k), pl = this.game.player;
       if (Math.hypot(x - pl.x, y - (pl.y + 1.6), z - pl.z) > TOWER.REACH) why = '너무 멀어! 가까이 가서 놓아 (🌈 카펫을 타 봐)';
-      else if (pl.x + P.R > x - h && pl.x - P.R < x + h && pl.z + P.R > z - h && pl.z - P.R < z + h && pl.y + P.H > y - h && pl.y < y + h) why = '내 자리에는 못 놓아';
+      else if (touchesCell(pl, x, y, z)) why = '내 자리에는 못 놓아';
       else if (this.carpet && this.overlapsCarpet(x, y, z)) why = '카펫 자리에는 못 놓아';
     }
     return { i, j, k, ok: !why, why };
@@ -430,45 +378,32 @@ export class Tower {
     if (t < 0 || t >= BLOCKS.length) return;
     this.type = t;
     this.setMode('place');
-    this.bar.querySelectorAll('.blocks button').forEach((b, n) => b.classList.toggle('on', n === t));
-    this.bar.querySelector('.blocks button.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    barSelect(this.bar, t);
   }
   setMode(m) {
     this.mode = m;
-    const btn = this.bar.querySelector('.mode');
-    btn.textContent = m === 'place' ? '🧱 놓기' : '⛏️ 부수기';
-    btn.classList.toggle('remove', m === 'remove');
+    barMode(this.bar, m);
   }
 
   makeBar() {
-    const bar = document.createElement('div');
-    bar.id = 'build-bar';
-    bar.innerHTML = '<button class="mode" title="놓기/부수기 바꾸기 (F)">🧱 놓기</button><div class="blocks"></div><button class="clear" title="내 블록 모두 치우기">🗑</button><p class="tip"></p>';
-    const list = bar.querySelector('.blocks');
-    BLOCKS.forEach((b, n) => {
-      const btn = document.createElement('button');
-      btn.title = `${b.name}${n < 10 ? ` (${(n + 1) % 10})` : ''}`;
-      btn.setAttribute('aria-label', b.name);
-      btn.style.setProperty('--c', b.c);
-      const ic = ICON[b.id];
-      if (ic) btn.textContent = ic;
-      if (b.k === 'glass') btn.classList.add('glass');
-      btn.addEventListener('click', () => { this.game.sfx('click'); this.select(n); });
-      list.append(btn);
+    const bar = makeBlockBar({
+      tip: matchMedia('(pointer: coarse)').matches ? '톡: 놓기 · 버튼으로 부수기 모드 · 🌈 카펫으로 꼭대기까지' : '클릭 놓기 · 오른쪽 클릭 부수기 · 숫자/Q E 고르기 · F 바꾸기 · 🌈 카펫으로 꼭대기까지',
+      sfx: name => this.game.sfx(name),
+      onSelect: n => this.select(n),
+      onToggle: () => this.setMode(this.mode === 'place' ? 'remove' : 'place'),
     });
-    bar.querySelector('.mode').addEventListener('click', () => { this.game.sfx('click'); this.setMode(this.mode === 'place' ? 'remove' : 'place'); });
-    const clear = bar.querySelector('.clear');
+    const call = document.createElement('button');
+    call.className = 'call'; call.title = '카펫 부르기'; call.textContent = '🌈 부르기';
+    call.addEventListener('click', () => { this.game.sfx('click'); this.callCarpet(); });
+    const clear = document.createElement('button');
+    clear.className = 'clear'; clear.title = '내 블록 모두 치우기'; clear.textContent = '🗑';
     clear.addEventListener('click', () => {
       if (this.clearArmed > 0) { this.clearArmed = 0; clear.textContent = '🗑'; this.clearMine(); return; }
       this.clearArmed = 3; clear.textContent = '정말?';
       this.game.ui.toast('한 번 더 누르면 내 블록을 모두 치워');
     });
-    bar.querySelector('.tip').textContent = matchMedia('(pointer: coarse)').matches ? '톡: 놓기 · 버튼으로 부수기 모드 · 🌈 카펫으로 꼭대기까지' : '클릭 놓기 · 오른쪽 클릭 부수기 · 숫자/Q E 고르기 · F 바꾸기 · 🌈 카펫으로 꼭대기까지';
-    const call = document.createElement('button');
-    call.className = 'call'; call.title = '카펫 부르기'; call.textContent = '🌈 부르기';
-    call.addEventListener('click', () => { this.game.sfx('click'); this.callCarpet(); });
-    bar.insertBefore(call, bar.querySelector('.clear'));
-    document.body.append(bar);
+    bar.insertBefore(call, bar.querySelector('.tip'));
+    bar.insertBefore(clear, bar.querySelector('.tip'));
     this.bar = bar;
     // 카펫에 탔을 때만 보이는 조종 버튼
     const cb = document.createElement('div');
@@ -527,13 +462,9 @@ export class Tower {
     if (aim && this.ready()) tg = this.target(this.pick(aim.x, aim.y));
     if (tg && !tg.hidden) {
       const [x, y, z] = this.world(tg.i, tg.j, tg.k);
-      this.ghost.position.set(x, y, z);
       const col = this.mode === 'remove' ? '#ff4d5e' : tg.ok ? BLOCKS[this.type].c : '#ff4d5e';
-      this.ghostMat.color.set(col);
-      this.ghostMat.opacity = this.mode === 'remove' ? 0.3 : tg.ok ? 0.45 : 0.22;
-      this.edges.material.color.set(tg.ok ? '#ffffff' : '#ff4d5e');
-      this.ghost.visible = true;
-    } else this.ghost.visible = false;
+      this.ghost.show(x, y, z, col, this.mode === 'remove' ? 0.3 : tg.ok ? 0.45 : 0.22, tg.ok ? '#ffffff' : '#ff4d5e');
+    } else this.ghost.hide();
     this.infoTimer = (this.infoTimer ?? 0) - dt;
     if (this.infoTimer <= 0) { this.infoTimer = 0.3; this.updateInfo(); }
   }
@@ -546,10 +477,9 @@ export class Tower {
     c.removeEventListener('pointerleave', this.onLeave);
     this.bar.remove();
     this.carpetBar.remove();
-    for (const m of this.meshes) { m.removeFromParent(); m.dispose(); }
+    this.blocks.dispose();
     for (const s of this.labels) { s.removeFromParent(); s.material.map.dispose(); s.material.dispose(); }
-    this.ghost.removeFromParent();
-    this.ghost.geometry.dispose(); this.ghostMat.dispose(); this.edges.geometry.dispose(); this.edges.material.dispose();
+    this.ghost.dispose();
     this.carpetGroup.removeFromParent();
     this.carpetMat.map.dispose(); this.carpetMat.dispose();
     this.game.ui.setInfo('');

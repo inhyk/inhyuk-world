@@ -147,6 +147,7 @@ export class Phone {
            <button class="ph-btn" data-act="save">☁️ 지금 저장</button><button class="ph-btn" data-act="logout">로그아웃</button>`
         : `<div class="ph-row"><i>☁️</i><b>seonn 계정</b><span>로그인 안 했어. 로그인하면 기록이 서버에 저장돼서 다른 기기에서 이어서 해.</span></div>
            <button class="ph-btn primary" data-act="login">👤 로그인 · 새 계정 만들기</button>`}
+      <div class="ph-row"><i>🌍</i><b>모두의 광장</b><span>${esc(!c.loggedIn ? '로그인하면 방 코드 없이도 다른 사람을 만나.' : g.plaza?.live ? `광장 ${g.plaza.number}에 ${g.plaza.count}명 같이 있어` : g.plaza?.statusText ?? '')}</span></div>
       <div class="ph-row"><i>👥</i><b>친구 방</b><span>${net.active ? `방 코드 ${esc(net.code ?? '')} · 친구 ${g.remotes.size}명` : '방에 없어'}</span></div>
       <button class="ph-btn" data-act="friends">👥 친구랑 같이 하기</button>
       <button class="ph-btn" data-act="wardrobe">👕 별명과 꾸미기 바꾸기</button>
