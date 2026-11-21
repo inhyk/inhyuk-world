@@ -1299,6 +1299,7 @@ export function buildBattle() {
 // 가운데 "술래 집"에서 시작. 집 4채(옷장, 침대), 덤불, 키 큰 풀밭, 상자 더미, 굴, 짚더미, 놀이터가 숨을 곳.
 // spots: 봇이 숨거나 찾으러 가는 곳. cover: 덤불·풀숲처럼 가까이 와야 보이는 곳.
 export const TAG_HALF = 44;
+export const TAG_HOME = [-9, 12.5];
 export const TAG_STARTS = [[-10, -8], [10, -8], [-10, 8], [10, 8], [0, -20], [0, 20], [-20, 8], [20, -8], [-34, 24], [34, -24], [-24, -37], [24, 37]];
 
 function bush(out, x, z, rnd, s = 1) {
@@ -1332,6 +1333,19 @@ export function buildTag() {
   parts.push({ x: 0, y: 1.0, z: -6.85, w: 0.3, h: 2, d: 0.3, c: '#8b5a3c', m: 'wood', deco: true });
   for (const [x, z] of [[-6, 6], [6, 6], [-6, -6], [6, -6]]) lamp(parts, x, z);
   for (const [x, z, a] of [[-4, 9, true], [4, 9, true]]) bench(parts, x, z, a);
+  // 광장으로 가는 문 (2026-11-22 인혁: "광장으로 돌아가는 포탈이 없어 만들어줘"). 시작 자리 옆, 길과 출발 자리는 비켜서
+  {
+    const [gx, gz] = TAG_HOME;
+    parts.push({ x: gx, y: 0.08, z: gz, w: 3.2, h: 0.16, d: 5.4, c: '#ffffff', round: 0.06 });
+    for (const s of [-1, 1]) {
+      parts.push({ x: gx, y: 2.4, z: gz + s * 2.5, w: 0.7, h: 4.8, d: 0.7, c: '#3fa7ff' });
+      parts.push({ x: gx, y: 5.0, z: gz + s * 2.5, w: 1.0, h: 0.4, d: 1.0, c: '#ffffff' });
+    }
+    parts.push({ x: gx, y: 5.3, z: gz, w: 0.8, h: 0.6, d: 5.8, c: '#3fa7ff' });
+    effects.push({ type: 'portal', x: gx, y: 2.4, z: gz, w: 4.2, h: 4.4, color: '#3fa7ff', ry: Math.PI / 2 });
+    signs.push({ x: gx, y: 6.4, z: gz, ry: Math.PI / 2, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
+    zones.push({ x0: gx - 0.6, x1: gx + 0.6, y0: 0, y1: 4.5, z0: gz - 2.0, z1: gz + 2.0, portal: 0 });
+  }
   // 집 4채 (문은 가운데 쪽), 안에 옷장과 침대
   const dummy = [];
   for (const [x, z, door, c, roof] of [[-26, -26, 's', '#ffe2b8', '#ff7a59'], [26, -26, 's', '#d8f0ff', '#3fa7ff'], [-26, 26, 'n', '#e6ffd8', '#4fbf5a'], [26, 26, 'n', '#ffe0f0', '#ff5ec4']]) {
@@ -1414,7 +1428,7 @@ export function buildTag() {
   for (const [x, z, w, d] of [[-10, -20, 3, 2], [10, 20, 3, 2], [20, -16, 2, 3], [-20, 16, 2, 3]]) flowers(parts, x, z, w, d, rnd);
   for (const [x, z] of [[-16, -16], [16, 16], [16, -16], [-16, 16], [-36, 0], [36, 0], [0, -40], [0, 40]]) lamp(parts, x, z);
   // 나무
-  const busy = [[0, 0, 9], [-26, -26, 9], [26, -26, 9], [-26, 26, 9], [26, 26, 9], [0, -30, 8], [-30, 0, 7], [30, 0, 7], [0, 31, 7], ...bushes.map(([x, z]) => [x, z, 4]),
+  const busy = [[TAG_HOME[0], TAG_HOME[1], 4], [0, 0, 9], [-26, -26, 9], [26, -26, 9], [-26, 26, 9], [26, 26, 9], [0, -30, 8], [-30, 0, 7], [30, 0, 7], [0, 31, 7], ...bushes.map(([x, z]) => [x, z, 4]),
     [12, -26, 5], [-12, 27, 5], [20, 14, 5], [-20, -14, 5], ...TAG_STARTS.map(([x, z]) => [x, z, 3])];
   let placed = 0;
   for (let tries = 0; tries < 500 && placed < 18; tries++) {

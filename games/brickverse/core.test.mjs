@@ -403,4 +403,11 @@ test('술래잡기 마을: 시작 자리와 숨을 곳은 블록 안이 아니�
     for (const [x, z] of s.way ?? []) assert.ok(!inside(x, z), `way ${x},${z} → ${s.x},${s.z}`);
   }
   assert.ok(def.spots.length >= 30);
+  // 광장으로 돌아가는 문이 있고, 출발 자리나 숨을 곳과 겹치지 않는다
+  const home = def.zones.find(z => z.portal === 0);
+  assert.ok(home, '광장 문');
+  const inZone = (x, z) => x + P.R > home.x0 && x - P.R < home.x1 && z + P.R > home.z0 && z - P.R < home.z1;
+  for (const [x, z] of TAG_STARTS) assert.ok(!inZone(x, z), `start in portal ${x},${z}`);
+  for (const s of def.spots) assert.ok(!inZone(s.x, s.z), `spot in portal ${s.x},${s.z}`);
+  assert.ok(!inZone(def.spawn.x, def.spawn.z));
 });
