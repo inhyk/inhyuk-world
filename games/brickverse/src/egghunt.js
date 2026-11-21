@@ -633,9 +633,14 @@ export class EggHunt {
   }
   // 러닝머신 위에서 앞으로 달리면 달리기 힘이 쌓인다 (안 산 러닝머신은 올라서면 산다)
   treadmill(dt) {
-    const g = this.game, e = this.e, k = g.player.ground?.part?.tread;
+    const g = this.game, e = this.e, me = g.player, box = me.ground, k = box?.part?.tread;
+    if (this.treadBox && this.treadBox !== box) { this.treadBox.cz = 0; this.treadBox = null; }
     this.onTread = k !== undefined;
     if (!this.onTread) return;
+    // 안 끌려간다: 내가 앞으로 달리는 만큼만 벨트가 뒤로 밀어서 제자리에서 달린다. 멈추면 벨트도 나를 안 민다.
+    this.treadBox = box;
+    box.cz = Math.max(0, -me.vz);
+    box.cx = 0;
     const T = EGG_TREADS[k];
     if (k >= e.tread) {
       if (k > e.tread) { this.say(`${T.icon} 먼저 ${EGG_TREADS[e.tread].name}부터 사!`); return; }
