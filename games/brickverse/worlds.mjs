@@ -1457,9 +1457,10 @@ export function eggPedestals(slot) {
   return out;
 }
 export const eggInBase = (slot, px, pz) => { const b = EGG_SLOTS[slot % EGG_SLOTS.length]; return Math.abs(px - b.x) < EGG_BASE.w / 2 - 0.3 && pz > b.z - EGG_BASE.d / 2 && pz < b.z + EGG_BASE.d / 2; };
-// 러닝머신 3대: 기지 앞 오른쪽, 북쪽(-z)을 보고 달린다. 벨트는 남쪽으로 민다.
-export const TREAD_BELT = 7;
-export const eggTreadmills = slot => { const { x, z } = EGG_SLOTS[slot % EGG_SLOTS.length]; return EGG_TREADS.map((t, k) => ({ k, x: x + 4.5 + k * 3.6, z: z - EGG_BASE.d / 2 - 7.5 })); };
+// 러닝머신 3대: 기지 앞 오른쪽, 북쪽(-z)을 보고 달린다.
+// 벨트는 스스로 밀지 않는다 (2026-11-22 인혁: "안끌리게"). 달릴 때만 src/egghunt.js 가 내 빠르기만큼 밀어서 제자리 달리기가 된다.
+export const TREAD_BELT = 0;
+export const eggTreadmills = slot => { const { x, z } = EGG_SLOTS[slot % EGG_SLOTS.length]; return EGG_TREADS.map((t, k) => ({ k, x: x + 4.5 + k * 3.6, z: z - EGG_BASE.d / 2 - 13 })); };
 function treadmill(out, signs, x, z, k) {
   const T = EGG_TREADS[k];
   out.push({ x, y: 0.25, z, w: 2.7, h: 0.5, d: 4.8, c: '#2a2d33', m: 'metal' });
