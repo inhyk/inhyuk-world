@@ -400,6 +400,7 @@ export function defaultSave(rand = Math.random) {
     tower: { blocks: [], best: 0 },
     tag: { wins: 0, hideWins: 0, seekWins: 0 },
     egg: { cash: 0, pets: [], boots: 0, ped: EGG.PED0, zones: 1, stolen: 0, hatched: 0, saved: 0, run: 0, xp: 0, tread: 1 },
+    camp: freshCamp(),
     pets: { dog: 0, cat: 0, panda: 0, parrot: 0 },
     pet: '',
     sound: true,
@@ -455,6 +456,7 @@ export function cleanSave(raw, rand = Math.random) {
   s.tag = { wins: Math.floor(num(raw.tag?.wins, 0, 99_999, 0)), hideWins: Math.floor(num(raw.tag?.hideWins, 0, 99_999, 0)), seekWins: Math.floor(num(raw.tag?.seekWins, 0, 99_999, 0)) };
   for (const p of PETS) s.pets[p.id] = Math.floor(num(raw.pets?.[p.id], 0, 99_999, 0));
   s.egg = cleanEgg(raw.egg);
+  s.camp = cleanCamp(raw.camp);
   s.pet = PETS.some(p => p.id === raw.pet) && s.pets[raw.pet] > 0 ? raw.pet : '';
   s.sound = raw.sound !== false;
   s.music = raw.music !== false;
@@ -470,7 +472,7 @@ export const OBBY_CLEAR_COINS = 100;
 
 // ───────────── 네트워크 ─────────────
 // 위치는 숫자만 보낸다 (글자열 속 숫자는 서버가 가릴 수 있다).
-export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower', 'battle', 'tag', 'egg'];
+export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower', 'battle', 'tag', 'egg', 'camp'];
 const r2 = v => Math.round(v * 100) / 100;
 export function packPose(pl, yaw, w, anim, emote) {
   return [w, r2(pl.x), r2(pl.y), r2(pl.z), r2(yaw), anim, emote];
@@ -756,7 +758,7 @@ export function cleanEgg(raw) {
 }
 
 // ───── 러닝머신 (2026-11-22 인혁: "러닝머신도 만들어줘") ─────
-// 멈추면 안 끌려가고, 앞으로 달리면 제자리 달리기. 달리는 동안 달리기 힘이 쌓여 레벨이 오르고, 레벨마다 3% 빨라진다.
+// 벨트는 나를 안 움직이고, 올라가서 가만히 서 있으면 저절로 제자리 달리기. 달리는 동안 달리기 힘이 쌓여 레벨이 오르고, 레벨마다 3% 빨라진다.
 export const RUN_MAX = 30;
 export const EGG_TREADS = [
   { name: '러닝머신', icon: '🏃', mult: 1, price: 0, color: '#3fa7ff' },
@@ -780,3 +782,53 @@ export function josa(word, a, b) {
   if (!(c >= 0xac00 && c <= 0xd7a3)) return `${word}${b}`;
   return `${word}${(c - 0xac00) % 28 ? a : b}`;
 }
+
+// ───── 모닥불 캠프 (2026-11-22 인혁: "99일동안 살아남기도 만들어줘") ─────
+// 다른 게임의 이야기와 괴물은 쓰지 않고, 노는 방식(낮에 나무 모으기 → 밤에 모닥불 빛 안에서 버티기 → 99일)만 비슷한 우리 게임.
+export const CAMP = Object.freeze({
+  DAYS: 99, DAY: 45, NIGHT: 35, LIVES: 3, HP: 100, HUNGER: 100, HUNGER_RATE: 0.5, STARVE: 2,
+  FUEL_MAX: 100, WOOD_FUEL: 10, BURN_DAY: 0.35, BURN_NIGHT: 1.0, TORCH_WOOD: 5, TORCH_NIGHTS: 3, TORCH_R: 6, TORCH_MAX: 6,
+  TREE_HP: 3, TREE_REGROW: 90, BUSH_REGROW: 60, BERRY: 3, BERRY_FOOD: 20, MEAT_FOOD: 45, AXE: 25, FEED_R: 4.5,
+});
+export const FIRE_LEVELS = [0, 20, 60, 140, 300]; // 지금까지 넣은 나무 수 → 불 레벨 1~5
+export const fireLevel = fed => FIRE_LEVELS.filter(n => fed >= n).length;
+export const fireRadius = (lv, fuel) => (fuel > 0 ? 7 + lv * 3 : 0) * (fuel > 0 && fuel < 15 ? 0.6 + (fuel / 15) * 0.4 : 1);
+// n 번째 밤의 괴물: 그림자 늑대 수와 체력, 10일마다 보스
+export function nightMonsters(day) {
+  const wolves = Math.min(18, 2 + Math.floor(day / 3));
+  return { wolves, wolfHp: 50 + day * 2, wolfDmg: 8 + Math.floor(day / 10) * 2, boss: day % 10 === 0, bossHp: 400 + day * 12 };
+}
+// 하루를 버틸 때 받는 코인
+export const dayCoins = day => 2 + ({ 10: 20, 25: 50, 50: 100, 75: 150, 99: 500 }[day] ?? 0);
+export function freshCamp() {
+  return { day: 1, t: 0, lives: CAMP.LIVES, hp: CAMP.HP, hunger: CAMP.HUNGER, wood: 0, berry: 3, meat: 0, cooked: 0, fed: 0, cubs: [], fuel: 60, torches: [], best: 0, wins: 0, runs: 0 };
+}
+export function cleanCamp(raw) {
+  const c = freshCamp();
+  if (!raw || typeof raw !== 'object') return c;
+  c.day = Math.floor(num(raw.day, 1, CAMP.DAYS, 1));
+  c.t = num(raw.t, 0, CAMP.DAY + CAMP.NIGHT, 0);
+  c.lives = Math.floor(num(raw.lives, 1, CAMP.LIVES, CAMP.LIVES));
+  c.hp = num(raw.hp, 1, CAMP.HP, CAMP.HP);
+  c.hunger = num(raw.hunger, 0, CAMP.HUNGER, CAMP.HUNGER);
+  for (const k of ['wood', 'berry', 'meat', 'cooked']) c[k] = Math.floor(num(raw[k], 0, 9999, c[k]));
+  c.fed = Math.floor(num(raw.fed, 0, 999_999, 0));
+  c.fuel = num(raw.fuel, 0, CAMP.FUEL_MAX, 60);
+  c.torches = Array.isArray(raw.torches) ? raw.torches.slice(0, CAMP.TORCH_MAX).filter(t => Array.isArray(t) && t.slice(0, 3).every(Number.isFinite)).map(([x, z, n]) => [Math.max(-90, Math.min(90, x)), Math.max(-90, Math.min(90, z)), Math.max(1, Math.min(CAMP.TORCH_NIGHTS, Math.floor(n)))]) : [];
+  c.cubs = Array.isArray(raw.cubs) ? CUBS.map(u => u.id).filter(id => raw.cubs.includes(id)) : [];
+  c.best = Math.floor(num(raw.best, 0, CAMP.DAYS, 0));
+  c.wins = Math.floor(num(raw.wins, 0, 99_999, 0));
+  c.runs = Math.floor(num(raw.runs, 0, 99_999, 0));
+  return c;
+}
+
+// 길 잃은 아기 동물 (2026-11-22 인혁: "사슴 괴물이랑 아이들도 넣어" → 그 게임의 캐릭터 대신 우리 캐릭터).
+// 숲 끝에서 울고 있는 아기 동물을 모닥불까지 데려오면 구조. 구한 동물마다 도와주는 힘이 하나씩.
+export const CUBS = [
+  { id: 'fox', name: '아기 여우', look: 'fox', icon: '🦊', perk: '아침마다 🪵 나무 5개를 물어 와' },
+  { id: 'bear', name: '아기 곰', look: 'bear', icon: '🐻', perk: '늑대한테 30% 덜 아파' },
+  { id: 'bunny', name: '아기 토끼', look: 'bunny', icon: '🐰', perk: '🫐 열매를 2배로 따' },
+  { id: 'owl', name: '아기 부엉이', look: 'owl', icon: '🦉', perk: '🔥 불빛이 3칸 더 넓어져' },
+];
+// 그림자 사냥꾼: 2일째 밤부터 한 마리. 도끼로는 못 쓰러뜨리고 잠깐 얼린다. 빛 안에는 못 들어오고 횃불을 끈다.
+export const STALKER = Object.freeze({ FROM: 2, SPEED: 7.4, DMG: 30, STUN: 3, WARN: 26, DELAY: 8 });
