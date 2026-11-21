@@ -1,6 +1,6 @@
 // 세계 모양(부품 목록)을 만든다. three.js 없이 숫자만 만들어서 node 로 시험할 수 있다.
 // 부품: { x, y, z (가운데), w, h, d (크기), c (색), k (종류), m (재질), shape, move, spin, cp, deco (안 부딪힘), hidden (안 그림) }
-import { OBBY_STAGES, seeded, SURVIVAL, TOWER, EGG_ZONES } from './core.mjs';
+import { OBBY_STAGES, seeded, SURVIVAL, TOWER, EGG_ZONES, EGG_TREADS } from './core.mjs';
 
 export function hsl(h, s, l) {
   s /= 100; l /= 100;
@@ -1457,6 +1457,24 @@ export function eggPedestals(slot) {
   return out;
 }
 export const eggInBase = (slot, px, pz) => { const b = EGG_SLOTS[slot % EGG_SLOTS.length]; return Math.abs(px - b.x) < EGG_BASE.w / 2 - 0.3 && pz > b.z - EGG_BASE.d / 2 && pz < b.z + EGG_BASE.d / 2; };
+// 러닝머신 3대: 기지 앞 오른쪽, 북쪽(-z)을 보고 달린다. 벨트는 남쪽으로 민다.
+export const TREAD_BELT = 7;
+export const eggTreadmills = slot => { const { x, z } = EGG_SLOTS[slot % EGG_SLOTS.length]; return EGG_TREADS.map((t, k) => ({ k, x: x + 4.5 + k * 3.6, z: z - EGG_BASE.d / 2 - 7.5 })); };
+function treadmill(out, signs, x, z, k) {
+  const T = EGG_TREADS[k];
+  out.push({ x, y: 0.25, z, w: 2.7, h: 0.5, d: 4.8, c: '#2a2d33', m: 'metal' });
+  out.push({ x, y: 0.55, z: z + 0.2, w: 2.0, h: 0.12, d: 4.2, k: 'conveyor', cv: [0, TREAD_BELT], tread: k });
+  for (const s of [-1, 1]) {
+    out.push({ x: x + s * 1.2, y: 0.62, z: z + 0.2, w: 0.3, h: 0.2, d: 4.4, c: T.color, deco: true });
+    out.push({ x: x + s * 1.15, y: 1.35, z: z - 2.05, w: 0.18, h: 1.7, d: 0.18, c: '#c7ccd6', m: 'metal', deco: true });
+    out.push({ x: x + s * 1.15, y: 1.6, z: z - 1.2, w: 0.14, h: 0.14, d: 1.7, c: '#c7ccd6', m: 'metal', deco: true });
+  }
+  // 앞 계기판 (몸이 닿아서 앞으로 빠져나가지 않게 막는다)
+  out.push({ x, y: 1.2, z: z - 2.3, w: 2.5, h: 1.4, d: 0.35, c: T.color });
+  out.push({ x, y: 2.2, z: z - 2.2, w: 1.6, h: 0.9, d: 0.2, c: '#1e2235', rx: -0.35 });
+  signs.push({ x, y: 2.25, z: z - 2.07, ry: 0, w: 1.45, h: 0.75, lines: [`${T.icon} ×${T.mult}`, T.price ? `$${T.price.toLocaleString('ko-KR')}` : '공짜'], bg: '#1e2235', fg: '#7df9ff', accent: T.color, sizes: [120, 80] });
+}
+
 // 잠긴 울타리 문 (src/egghunt.js 가 만들고 없앤다)
 export function eggGateParts(zone) {
   const z = EGG_GATE_Z[zone], c = ['#ffffff', '#ffffff', '#5ad16b', '#ff7a3d', '#c9b6ff'][zone + 1];
@@ -1549,6 +1567,7 @@ export function buildEgg({ slot = 0 } = {}) {
     parts.push({ x, y: 4.6, z: z - d / 2, w: door + 1.6, h: 0.6, d: 0.9, c: col });
     for (const p of eggPedestals(k)) parts.push({ x: p.x, y: 0.5, z: p.z, w: 2.2, h: 0.5, d: 2.2, c: '#ffffff', m: 'stone', shape: 'cyl' });
     signs.push({ x, y: 6, z: z - d / 2 - 0.1, ry: 0, w: 6, h: 1.4, lines: [mine ? '🏠 내 기지' : `기지 ${k + 1}`], bg: '#ffffff', fg: '#2a2d3a', accent: col, double: true });
+    for (const t of eggTreadmills(k)) treadmill(parts, signs, t.x, t.z, t.k);
   });
   // 광장으로 가는 문 (내 기지 옆 틈)
   {
@@ -1558,7 +1577,7 @@ export function buildEgg({ slot = 0 } = {}) {
     signs.push({ x, y: 5.4, z, ry: Math.PI / 2, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
     zones.push({ x0: x - 0.6, x1: x + 0.6, y0: 0, y1: 4.5, z0: z - 2, z1: z + 2, portal: 0 });
   }
-  signs.push({ x: EGG_SLOTS[slot].x - 9, y: 3.2, z: 46, ry: 0, w: 8, h: 3.2, lines: ['🥚 달걀 도둑', '경비를 피해서 둥지의 알을 훔쳐!', '내 기지에 가져오면 부화해서 돈을 벌어', '🦝 너구리 도둑은 닿아서 잡아!'], bg: '#ffffff', fg: '#2a2d3a', accent: '#ffcf33', sizes: [80, 50, 50, 50], double: true });
+  signs.push({ x: EGG_SLOTS[slot].x - 9, y: 3.2, z: 46, ry: 0, w: 8, h: 3.2, lines: ['🥚 달걀 도둑', '경비를 피해서 둥지의 알을 훔쳐!', '내 기지에 가져오면 부화해서 돈을 벌어', '🦝 너구리 도둑은 닿아서 잡아!', '🏃 러닝머신에서 달리면 빨라져!'], bg: '#ffffff', fg: '#2a2d3a', accent: '#ffcf33', sizes: [80, 50, 50, 50, 50], double: true });
   parts.push({ x: EGG_SLOTS[slot].x - 9, y: 1.2, z: 46, w: 0.4, h: 2.4, d: 0.4, c: '#8b5a3c', m: 'wood', deco: true });
   for (const [x, z] of [[-30, 44], [0, 44], [30, 44], [-60, 44], [60, 44]]) lamp(parts, x, z);
   const sp = EGG_SLOTS[slot];
