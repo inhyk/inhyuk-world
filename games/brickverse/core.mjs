@@ -399,6 +399,8 @@ export function defaultSave(rand = Math.random) {
     battle: { wins: 0, kills: 0, best: 0, teamWins: 0, teamBest: 0 },
     tower: { blocks: [], best: 0 },
     tag: { wins: 0, hideWins: 0, seekWins: 0 },
+    egg: { cash: 0, pets: [], boots: 0, ped: EGG.PED0, zones: 1, stolen: 0, hatched: 0, saved: 0, run: 0, xp: 0, tread: 1 },
+    camp: freshCamp(),
     pets: { dog: 0, cat: 0, panda: 0, parrot: 0 },
     pet: '',
     sound: true,
@@ -453,6 +455,8 @@ export function cleanSave(raw, rand = Math.random) {
   s.tower = { blocks: cleanTowerBlocks(raw.tower?.blocks), best: Math.floor(num(raw.tower?.best, 0, TOWER.TOP + 1, 0)) };
   s.tag = { wins: Math.floor(num(raw.tag?.wins, 0, 99_999, 0)), hideWins: Math.floor(num(raw.tag?.hideWins, 0, 99_999, 0)), seekWins: Math.floor(num(raw.tag?.seekWins, 0, 99_999, 0)) };
   for (const p of PETS) s.pets[p.id] = Math.floor(num(raw.pets?.[p.id], 0, 99_999, 0));
+  s.egg = cleanEgg(raw.egg);
+  s.camp = cleanCamp(raw.camp);
   s.pet = PETS.some(p => p.id === raw.pet) && s.pets[raw.pet] > 0 ? raw.pet : '';
   s.sound = raw.sound !== false;
   s.music = raw.music !== false;
@@ -468,7 +472,7 @@ export const OBBY_CLEAR_COINS = 100;
 
 // ───────────── 네트워크 ─────────────
 // 위치는 숫자만 보낸다 (글자열 속 숫자는 서버가 가릴 수 있다).
-export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower', 'battle', 'tag'];
+export const WORLDS = ['hub', 'obby', 'tycoon', 'survival', 'tower', 'battle', 'tag', 'egg', 'camp'];
 const r2 = v => Math.round(v * 100) / 100;
 export function packPose(pl, yaw, w, anim, emote) {
   return [w, r2(pl.x), r2(pl.y), r2(pl.z), r2(yaw), anim, emote];
@@ -738,4 +742,170 @@ export const touching = (a, b, r = TAG.TOUCH) => Math.hypot(a.x - b.x, a.z - b.z
 export function tagCoins(mode, { it = false, won = false } = {}) {
   if (mode === 'tag') return it ? 3 : 15;
   return won ? 25 : 5;
+}
+
+// ───── 달걀 도둑 (2026-11-22 인혁: "달걀을 훔치세요도 만들어줘 (거의 똑같이) 그리고 포탈이야") ─────
+// 다른 사람의 게임을 베끼지 않고, 노는 방식(경비를 피해 알 훔치기 → 내 기지에서 부화 → 동물이 돈 벌기 → 신발, 새 둥지, 도둑 막기)만 같은 우리 게임.
+export const EGG = Object.freeze({ PED0: 4, PED_MAX: 12, BOOTS_MAX: 10, CARRY: 0.9, LOCK: 30, LOCK_COOL: 60, RESPAWN: 8, GOLD: 0.03, GOLD_X: 3, SELL: 20 });
+// 둥지 마당: 열 때 드는 돈, 알, 경비, 경비 빠르기
+export const EGG_ZONES = [
+  { id: 'meadow', name: '풀밭 둥지', icon: '🌾', price: 0, egg: '풀밭 알', eggColor: '#fff6e0', spot: '#ffd23f', guard: 'goose', guardName: '경비 거위', guardSpeed: 6.3, guards: 1 },
+  { id: 'forest', name: '숲속 둥지', icon: '🌲', price: 500, egg: '숲 알', eggColor: '#9be07a', spot: '#2f9d63', guard: 'bear', guardName: '경비 곰', guardSpeed: 7.2, guards: 1 },
+  { id: 'lava', name: '용암 둥지', icon: '🌋', price: 8000, egg: '불꽃 알', eggColor: '#ff7a3d', spot: '#ffcf33', guard: 'golem', guardName: '용암 골렘', guardSpeed: 8.2, guards: 2 },
+  { id: 'cloud', name: '구름 둥지', icon: '☁️', price: 120000, egg: '무지개 알', eggColor: '#c9b6ff', spot: '#ff8fc7', guard: 'thunder', guardName: '번개 새', guardSpeed: 9.3, guards: 2 },
+];
+// 알에서 나오는 동물 (zone 번호, 확률, 1초에 버는 돈, 부화 시간)
+export const CRITTERS = [
+  { id: 'chick', name: '병아리', icon: '🐤', zone: 0, chance: 0.6, income: 1, hatch: 5 },
+  { id: 'duck', name: '오리', icon: '🦆', zone: 0, chance: 0.3, income: 2, hatch: 6 },
+  { id: 'bunny', name: '토끼', icon: '🐰', zone: 0, chance: 0.1, income: 4, hatch: 8 },
+  { id: 'squirrel', name: '다람쥐', icon: '🐿️', zone: 1, chance: 0.6, income: 9, hatch: 10 },
+  { id: 'fox', name: '여우', icon: '🦊', zone: 1, chance: 0.3, income: 15, hatch: 12 },
+  { id: 'owl', name: '부엉이', icon: '🦉', zone: 1, chance: 0.1, income: 25, hatch: 14 },
+  { id: 'dino', name: '아기 공룡', icon: '🦕', zone: 2, chance: 0.6, income: 70, hatch: 18 },
+  { id: 'salamander', name: '불도마뱀', icon: '🦎', zone: 2, chance: 0.3, income: 110, hatch: 20 },
+  { id: 'turtle', name: '화산 거북', icon: '🐢', zone: 2, chance: 0.1, income: 180, hatch: 24 },
+  { id: 'unicorn', name: '유니콘', icon: '🦄', zone: 3, chance: 0.6, income: 600, hatch: 30 },
+  { id: 'whale', name: '구름 고래', icon: '🐋', zone: 3, chance: 0.3, income: 1000, hatch: 34 },
+  { id: 'dragon', name: '무지개 용', icon: '🐉', zone: 3, chance: 0.1, income: 2200, hatch: 40 },
+];
+export const critterOf = id => CRITTERS.find(c => c.id === id) ?? null;
+export const critterIndex = id => CRITTERS.findIndex(c => c.id === id);
+// 알 까기 (r: 0~1, g: 황금 굴리기 0~1)
+export function hatchCritter(zone, r = Math.random(), g = Math.random()) {
+  const list = CRITTERS.filter(c => c.zone === zone);
+  let acc = 0, pick = list[0];
+  for (const c of list) { acc += c.chance; if (r < acc) { pick = c; break; } }
+  return { c: pick.id, gold: g < EGG.GOLD };
+}
+export const petIncome = p => { const c = critterOf(p?.c); return c ? c.income * (p.gold ? EGG.GOLD_X : 1) : 0; };
+export const baseIncome = pets => pets.reduce((a, p) => a + (p && p.t <= 0 ? petIncome(p) : 0), 0);
+export const bootsPrice = lv => Math.round(80 * Math.pow(2.3, lv));
+export const bootsSpeed = lv => 1 + 0.1 * lv;
+export const pedPrice = n => Math.round(150 * Math.pow(2.4, n - EGG.PED0));
+export const sellValue = p => petIncome(p) * EGG.SELL;
+export function cleanEgg(raw) {
+  const e = { cash: 0, pets: [], boots: 0, ped: EGG.PED0, zones: 1, stolen: 0, hatched: 0, saved: 0, run: 0, xp: 0, tread: 1 };
+  if (!raw || typeof raw !== 'object') return e;
+  e.cash = Math.floor(num(raw.cash, 0, 1e13, 0));
+  e.boots = Math.floor(num(raw.boots, 0, EGG.BOOTS_MAX, 0));
+  e.ped = Math.floor(num(raw.ped, EGG.PED0, EGG.PED_MAX, EGG.PED0));
+  e.zones = Math.floor(num(raw.zones, 1, EGG_ZONES.length, 1));
+  for (const k of ['stolen', 'hatched', 'saved']) e[k] = Math.floor(num(raw[k], 0, 9_999_999, 0));
+  e.run = Math.floor(num(raw.run, 0, RUN_MAX, 0));
+  e.xp = num(raw.xp, 0, runNeed(e.run), 0);
+  e.tread = Math.floor(num(raw.tread, 1, EGG_TREADS.length, 1));
+  if (Array.isArray(raw.pets)) {
+    for (const p of raw.pets.slice(0, e.ped)) {
+      const c = critterOf(p?.c);
+      e.pets.push(c ? { c: c.id, gold: !!p.gold, t: Math.max(0, Math.min(c.hatch, num(p.t, 0, 999, 0))) } : null);
+    }
+  }
+  return e;
+}
+
+// ───── 러닝머신 (2026-11-22 인혁: "러닝머신도 만들어줘") ─────
+// 벨트는 나를 안 움직이고, 올라가서 가만히 서 있으면 저절로 제자리 달리기. 달리는 동안 달리기 힘이 쌓여 레벨이 오르고, 레벨마다 3% 빨라진다.
+export const RUN_MAX = 30;
+export const EGG_TREADS = [
+  { name: '러닝머신', icon: '🏃', mult: 1, price: 0, color: '#3fa7ff' },
+  { name: '골드 러닝머신', icon: '⭐', mult: 2, price: 3000, color: '#ffcf33' },
+  { name: '무지개 러닝머신', icon: '🌈', mult: 5, price: 60000, color: '#ff8fc7' },
+];
+export const runSpeed = lv => 1 + 0.03 * lv;
+export const runNeed = lv => 8 + lv * 4; // 다음 레벨까지 달려야 하는 초 (1배 러닝머신)
+// dt 초 달리기 → { run, xp, up: 오른 레벨 수 }
+export function trainRun(run, xp, sec) {
+  let up = 0;
+  xp += sec;
+  while (run < RUN_MAX && xp >= runNeed(run)) { xp -= runNeed(run); run++; up++; }
+  if (run >= RUN_MAX) xp = 0;
+  return { run, xp, up };
+}
+
+// 받침 있는 말이면 a(을, 이, 은), 없으면 b(를, 가, 는): josa('여우', '을', '를') → '여우를'
+export function josa(word, a, b) {
+  const c = String(word).charCodeAt(String(word).length - 1);
+  if (!(c >= 0xac00 && c <= 0xd7a3)) return `${word}${b}`;
+  return `${word}${(c - 0xac00) % 28 ? a : b}`;
+}
+
+// ───── 모닥불 캠프 (2026-11-22 인혁: "99일동안 살아남기도 만들어줘") ─────
+// 다른 게임의 이야기와 괴물은 쓰지 않고, 노는 방식(낮에 나무 모으기 → 밤에 모닥불 빛 안에서 버티기 → 99일)만 비슷한 우리 게임.
+export const CAMP = Object.freeze({
+  DAYS: 99, DAY: 60, NIGHT: 35, LIVES: 3, HP: 100, HUNGER: 100, HUNGER_RATE: 0.5, STARVE: 2,
+  FUEL_MAX: 100, WOOD_FUEL: 10, BURN_DAY: 0.35, BURN_NIGHT: 1.0, TORCH_WOOD: 5, TORCH_NIGHTS: 3, TORCH_R: 6, TORCH_MAX: 6,
+  TREE_HP: 3, TREE_REGROW: 90, BUSH_REGROW: 60, BERRY: 3, BERRY_FOOD: 20, MEAT_FOOD: 45, AXE: 25, FEED_R: 4.5,
+});
+export const FIRE_LEVELS = [0, 20, 60, 140, 300]; // 지금까지 넣은 나무 수 → 불 레벨 1~5
+export const fireLevel = fed => FIRE_LEVELS.filter(n => fed >= n).length;
+export const fireRadius = (lv, fuel) => (fuel > 0 ? 7 + lv * 3 : 0) * (fuel > 0 && fuel < 15 ? 0.6 + (fuel / 15) * 0.4 : 1);
+// n 번째 밤의 괴물: 그림자 늑대 수와 체력, 10일마다 보스
+export function nightMonsters(day) {
+  const wolves = Math.min(18, 2 + Math.floor(day / 3));
+  return { wolves, wolfHp: 50 + day * 2, wolfDmg: 8 + Math.floor(day / 10) * 2, boss: day % 10 === 0, bossHp: 400 + day * 12 };
+}
+// 하루를 버틸 때 받는 코인
+export const dayCoins = day => 2 + ({ 10: 20, 25: 50, 50: 100, 75: 150, 99: 500 }[day] ?? 0);
+export function freshCamp() {
+  return { day: 1, t: 0, lives: CAMP.LIVES, hp: CAMP.HP, hunger: CAMP.HUNGER, wood: 0, berry: 3, meat: 0, cooked: 0, fed: 0, cubs: [], opened: [], axe: 0, armor: 0, lantern: false, fuel: 60, torches: [], best: 0, wins: 0, runs: 0 };
+}
+export function cleanCamp(raw) {
+  const c = freshCamp();
+  if (!raw || typeof raw !== 'object') return c;
+  c.day = Math.floor(num(raw.day, 1, CAMP.DAYS, 1));
+  c.t = num(raw.t, 0, CAMP.DAY + CAMP.NIGHT, 0);
+  c.lives = Math.floor(num(raw.lives, 1, CAMP.LIVES, CAMP.LIVES));
+  c.hp = num(raw.hp, 1, CAMP.HP, CAMP.HP);
+  c.hunger = num(raw.hunger, 0, CAMP.HUNGER, CAMP.HUNGER);
+  for (const k of ['wood', 'berry', 'meat', 'cooked']) c[k] = Math.floor(num(raw[k], 0, 9999, c[k]));
+  c.fed = Math.floor(num(raw.fed, 0, 999_999, 0));
+  c.fuel = num(raw.fuel, 0, CAMP.FUEL_MAX, 60);
+  c.torches = Array.isArray(raw.torches) ? raw.torches.slice(0, CAMP.TORCH_MAX).filter(t => Array.isArray(t) && t.slice(0, 3).every(Number.isFinite)).map(([x, z, n]) => [Math.max(-90, Math.min(90, x)), Math.max(-90, Math.min(90, z)), Math.max(1, Math.min(CAMP.TORCH_NIGHTS, Math.floor(n)))]) : [];
+  c.cubs = Array.isArray(raw.cubs) ? CUBS.map(u => u.id).filter(id => raw.cubs.includes(id)) : [];
+  c.opened = Array.isArray(raw.opened) ? raw.opened.filter(o => Array.isArray(o) && Number.isInteger(o[0]) && o[0] >= 0 && o[0] < 500 && Number.isInteger(o[1])).slice(0, 200).map(([i, d]) => [i, Math.max(1, Math.min(CAMP.DAYS, d))]) : [];
+  c.axe = Math.floor(num(raw.axe, 0, AXES.length - 1, 0));
+  c.armor = Math.floor(num(raw.armor, 0, ARMORS.length - 1, 0));
+  c.lantern = !!raw.lantern;
+  c.best = Math.floor(num(raw.best, 0, CAMP.DAYS, 0));
+  c.wins = Math.floor(num(raw.wins, 0, 99_999, 0));
+  c.runs = Math.floor(num(raw.runs, 0, 99_999, 0));
+  return c;
+}
+
+// 길 잃은 아기 동물 (2026-11-22 인혁: "사슴 괴물이랑 아이들도 넣어" → 그 게임의 캐릭터 대신 우리 캐릭터).
+// 숲 끝에서 울고 있는 아기 동물을 모닥불까지 데려오면 구조. 구한 동물마다 도와주는 힘이 하나씩.
+export const CUBS = [
+  { id: 'fox', name: '아기 여우', look: 'fox', icon: '🦊', perk: '아침마다 🪵 나무 5개를 물어 와' },
+  { id: 'bear', name: '아기 곰', look: 'bear', icon: '🐻', perk: '늑대한테 30% 덜 아파' },
+  { id: 'bunny', name: '아기 토끼', look: 'bunny', icon: '🐰', perk: '🫐 열매를 2배로 따' },
+  { id: 'owl', name: '아기 부엉이', look: 'owl', icon: '🦉', perk: '🔥 불빛이 3칸 더 넓어져' },
+];
+// 그림자 사냥꾼: 2일째 밤부터 한 마리. 도끼로는 못 쓰러뜨리고 잠깐 얼린다. 빛 안에는 못 들어오고 횃불을 끈다.
+export const STALKER = Object.freeze({ FROM: 2, SPEED: 7.4, DMG: 30, STUN: 3, WARN: 26, DELAY: 8 });
+
+// ───── 파밍 (2026-11-22 인혁: "맵 엄청 넓혀 그리고 파밍도 할 수 있게 해줘") ─────
+// 숲 곳곳의 보물 상자: 🟫 나무(가까운 숲) · ⬜ 쇠(먼 숲, 오두막) · 🟨 황금(섬 끝, 바위 언덕). 연 상자는 3일 뒤에 다시 찬다.
+// 도끼, 갑옷, 랜턴은 한 번 얻으면 처음부터 다시 해도 그대로 남는다.
+export const AXES = [{ name: '돌 도끼', icon: '🪓', dmg: 25, chop: 1 }, { name: '쇠 도끼', icon: '⛏️', dmg: 40, chop: 2 }, { name: '황금 도끼', icon: '✨', dmg: 60, chop: 3 }];
+export const ARMORS = [{ name: '옷만', cut: 0 }, { name: '가죽 갑옷', cut: 0.15 }, { name: '쇠 갑옷', cut: 0.3 }, { name: '황금 갑옷', cut: 0.45 }];
+export const CHESTS = [{ name: '나무 상자', color: '#a0612f', band: '#5b3a22' }, { name: '쇠 상자', color: '#9aa3b5', band: '#4a4f5c' }, { name: '황금 상자', color: '#ffcf33', band: '#b8860b' }];
+export const LANTERN_R = 5;
+export const CHEST_REFILL = 3;
+// 상자 하나 열기: rnd 는 0~1 을 주는 함수. gear 는 지금 가진 도끼·갑옷·랜턴 (더 좋은 것만 준다)
+export function chestLoot(tier, rnd, gear = { axe: 0, armor: 0, lantern: false }) {
+  const T = [
+    { wood: [3, 6], berry: 0.5, cooked: [0.3, 1], coins: [0.25, 3], armor: [0.12, 1], axe: [0.08, 1], lantern: 0 },
+    { wood: [6, 10], berry: 0.4, cooked: [0.7, 2], coins: [0.6, 8], armor: [0.3, 2], axe: [0.35, 1], lantern: 0.18 },
+    { wood: [10, 15], berry: 0.3, cooked: [1, 3], coins: [1, 25], armor: [0.4, 3], axe: [0.45, 2], lantern: 0.35 },
+  ][tier] ?? null;
+  if (!T) return null;
+  const out = { wood: T.wood[0] + Math.floor(rnd() * (T.wood[1] - T.wood[0] + 1)), berry: 0, cooked: 0, coins: 0 };
+  if (rnd() < T.berry) out.berry = 3;
+  if (rnd() < T.cooked[0]) out.cooked = T.cooked[1];
+  if (rnd() < T.coins[0]) out.coins = T.coins[1];
+  if (rnd() < T.armor[0] && gear.armor < T.armor[1]) out.armor = Math.min(gear.armor + 1, T.armor[1]);
+  if (rnd() < T.axe[0] && gear.axe < T.axe[1]) out.axe = Math.min(gear.axe + 1, T.axe[1]);
+  if (rnd() < T.lantern && !gear.lantern) out.lantern = true;
+  return out;
 }

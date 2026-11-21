@@ -11,6 +11,8 @@ export const SKIES = {
   obby: { top: '#6c8dff', horizon: '#ffe0f2', bottom: '#ffd6ec', sun: [0.3, 0.75, -0.4], fog: '#f5dcff', near: 120, far: 520, hemiSky: '#f1e4ff', hemiGround: '#b59ad6', sunColor: '#fff2e4', sunI: 2.5, hemiI: 1.35, exposure: 1.0 },
   tycoon: { top: '#4f9bff', horizon: '#ffeccc', bottom: '#ffe1b0', sun: [-0.5, 0.62, 0.35], fog: '#ffe9cf', near: 100, far: 460, hemiSky: '#fff0d6', hemiGround: '#8ca35f', sunColor: '#ffe8c4', sunI: 2.7, hemiI: 1.15, exposure: 1.0 },
   tower: { top: '#2f7dff', horizon: '#d8f6ff', bottom: '#a8e4ff', sun: [0.35, 0.8, 0.35], fog: '#d6f2ff', near: 140, far: 620, hemiSky: '#e0f4ff', hemiGround: '#84b86a', sunColor: '#fff6e8', sunI: 2.6, hemiI: 1.3, exposure: 1.0 },
+  camp: { top: '#4f86d6', horizon: '#ffd9a8', bottom: '#c8a77a', sun: [-0.5, 0.42, 0.4], fog: '#cfd8c0', near: 70, far: 300, hemiSky: '#ffe8c8', hemiGround: '#4f6b3a', sunColor: '#ffd9a8', sunI: 2.3, hemiI: 1.1, exposure: 1.0 },
+  campNight: { top: '#05081a', horizon: '#141a36', bottom: '#080b16', sun: [0.3, 0.6, -0.5], fog: '#070a18', near: 14, far: 80, hemiSky: '#2a3666', hemiGround: '#060a06', sunColor: '#7a90ff', sunI: 0.18, hemiI: 0.22, exposure: 0.62 },
   tag: { top: '#5aa7ff', horizon: '#fff0d8', bottom: '#ffe3b8', sun: [-0.4, 0.55, 0.45], fog: '#ffeedd', near: 90, far: 380, hemiSky: '#fff2df', hemiGround: '#86b85a', sunColor: '#ffe9c8', sunI: 2.6, hemiI: 1.25, exposure: 1.0 },
   survival: { top: '#2b1b5e', horizon: '#ff8f6b', bottom: '#5a1a2e', sun: [0.2, 0.32, -0.9], fog: '#7a3a5e', near: 70, far: 300, hemiSky: '#ffb4a0', hemiGround: '#5a2040', sunColor: '#ffc69a', sunI: 2.3, hemiI: 1.1, exposure: 1.05 },
 };

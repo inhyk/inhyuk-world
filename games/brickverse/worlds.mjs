@@ -1,6 +1,6 @@
 // 세계 모양(부품 목록)을 만든다. three.js 없이 숫자만 만들어서 node 로 시험할 수 있다.
 // 부품: { x, y, z (가운데), w, h, d (크기), c (색), k (종류), m (재질), shape, move, spin, cp, deco (안 부딪힘), hidden (안 그림) }
-import { OBBY_STAGES, seeded, SURVIVAL, TOWER, COMMONS, COMMONS_HALF } from './core.mjs';
+import { OBBY_STAGES, seeded, SURVIVAL, TOWER, COMMONS, COMMONS_HALF, EGG_ZONES, EGG_TREADS } from './core.mjs';
 
 export function hsl(h, s, l) {
   s /= 100; l /= 100;
@@ -52,6 +52,8 @@ export const PORTALS = [
   { id: 'tower', world: 4, name: '하늘 타워 짓기', sub: '블록으로 높이높이', color: '#21c7b8', icon: '🏗️' },
   { id: 'battle', world: 5, name: '블록 배틀 로얄', sub: '블래스터로 끝까지', color: '#ff5e3a', icon: '🎯' },
   { id: 'tag', world: 6, name: '술래잡기', sub: '술래잡기 · 숨바꼭질', color: '#ff8fc7', icon: '🏃' },
+  { id: 'egg', world: 7, name: '달걀 도둑', sub: '알 훔쳐서 부화시키기', color: '#ffcf33', icon: '🥚' },
+  { id: 'camp', world: 8, name: '모닥불 캠프', sub: '99일 동안 살아남기', color: '#ff7a3d', icon: '🔥' },
 ];
 
 function tree(out, x, z, rnd, scale = 1, y0 = 0) {
@@ -214,7 +216,7 @@ export function buildHub() {
   parts.push({ x: 0, y: 0.32, z: 18, w: 4.4, h: 0.06, d: 4.4, c: '#3fa7ff', m: 'neon', deco: true, shadow: false, round: 0.02 });
   // 문 (포털)
   PORTALS.forEach((p, i) => {
-    const x = (i - (PORTALS.length - 1) / 2) * 21, z = -32;
+    const x = (i - (PORTALS.length - 1) / 2) * 18, z = -32;
     parts.push({ x, y: 0.3, z, w: 14, h: 0.6, d: 7, c: '#f4efe6', m: 'stone' });
     parts.push({ x, y: 0.3, z: z + 4.6, w: 10, h: 0.3, d: 2.4, c: '#f4efe6', m: 'stone' });
     for (const s of [-1, 1]) {
@@ -302,7 +304,7 @@ export function buildHub() {
   for (const [x, z, w, d] of [[-9, 9, 3, 3], [9, 9, 3, 3], [-9, -9, 3, 3], [9, -9, 3, 3], [-28, 24, 6, 3], [26, 24, 6, 3], [-50, -20, 4, 8]]) flowers(parts, x, z, w, d, rnd);
   // 나무
   const lot = commonsArea(COMMONS.NEAR + 2);
-  const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -44 && Math.abs(x) < 67) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
+  const avoid = (x, z) => Math.abs(x) < 27 && Math.abs(z) < 27 || (z < -22 && z > -44 && Math.abs(x) < 74) || (Math.abs(x + 34) < 9 && Math.abs(z - 6) < 9)
     || (Math.abs(x - 42) < 14 && Math.abs(z + 6) < 15) || (Math.abs(x + 42) < 8 && Math.abs(z - 40) < 8) || (Math.abs(x - 36) < 12 && Math.abs(z - 34) < 12)
     || (Math.abs(x - 30) < 4 && Math.abs(z - 8) < 6) || (Math.abs(x) < 5 && z > 20 && z < 60)
     || (x > lot.x0 && x < lot.x1 && z > lot.z0 && z < lot.z1); // 공터와 안내판, 공터로 다가가는 곳
@@ -1329,6 +1331,7 @@ export function buildBattle() {
 // 가운데 "술래 집"에서 시작. 집 4채(옷장, 침대), 덤불, 키 큰 풀밭, 상자 더미, 굴, 짚더미, 놀이터가 숨을 곳.
 // spots: 봇이 숨거나 찾으러 가는 곳. cover: 덤불·풀숲처럼 가까이 와야 보이는 곳.
 export const TAG_HALF = 44;
+export const TAG_HOME = [-9, 12.5];
 export const TAG_STARTS = [[-10, -8], [10, -8], [-10, 8], [10, 8], [0, -20], [0, 20], [-20, 8], [20, -8], [-34, 24], [34, -24], [-24, -37], [24, 37]];
 
 function bush(out, x, z, rnd, s = 1) {
@@ -1362,6 +1365,19 @@ export function buildTag() {
   parts.push({ x: 0, y: 1.0, z: -6.85, w: 0.3, h: 2, d: 0.3, c: '#8b5a3c', m: 'wood', deco: true });
   for (const [x, z] of [[-6, 6], [6, 6], [-6, -6], [6, -6]]) lamp(parts, x, z);
   for (const [x, z, a] of [[-4, 9, true], [4, 9, true]]) bench(parts, x, z, a);
+  // 광장으로 가는 문 (2026-11-22 인혁: "광장으로 돌아가는 포탈이 없어 만들어줘"). 시작 자리 옆, 길과 출발 자리는 비켜서
+  {
+    const [gx, gz] = TAG_HOME;
+    parts.push({ x: gx, y: 0.08, z: gz, w: 3.2, h: 0.16, d: 5.4, c: '#ffffff', round: 0.06 });
+    for (const s of [-1, 1]) {
+      parts.push({ x: gx, y: 2.4, z: gz + s * 2.5, w: 0.7, h: 4.8, d: 0.7, c: '#3fa7ff' });
+      parts.push({ x: gx, y: 5.0, z: gz + s * 2.5, w: 1.0, h: 0.4, d: 1.0, c: '#ffffff' });
+    }
+    parts.push({ x: gx, y: 5.3, z: gz, w: 0.8, h: 0.6, d: 5.8, c: '#3fa7ff' });
+    effects.push({ type: 'portal', x: gx, y: 2.4, z: gz, w: 4.2, h: 4.4, color: '#3fa7ff', ry: Math.PI / 2 });
+    signs.push({ x: gx, y: 6.4, z: gz, ry: Math.PI / 2, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
+    zones.push({ x0: gx - 0.6, x1: gx + 0.6, y0: 0, y1: 4.5, z0: gz - 2.0, z1: gz + 2.0, portal: 0 });
+  }
   // 집 4채 (문은 가운데 쪽), 안에 옷장과 침대
   const dummy = [];
   for (const [x, z, door, c, roof] of [[-26, -26, 's', '#ffe2b8', '#ff7a59'], [26, -26, 's', '#d8f0ff', '#3fa7ff'], [-26, 26, 'n', '#e6ffd8', '#4fbf5a'], [26, 26, 'n', '#ffe0f0', '#ff5ec4']]) {
@@ -1444,7 +1460,7 @@ export function buildTag() {
   for (const [x, z, w, d] of [[-10, -20, 3, 2], [10, 20, 3, 2], [20, -16, 2, 3], [-20, 16, 2, 3]]) flowers(parts, x, z, w, d, rnd);
   for (const [x, z] of [[-16, -16], [16, 16], [16, -16], [-16, 16], [-36, 0], [36, 0], [0, -40], [0, 40]]) lamp(parts, x, z);
   // 나무
-  const busy = [[0, 0, 9], [-26, -26, 9], [26, -26, 9], [-26, 26, 9], [26, 26, 9], [0, -30, 8], [-30, 0, 7], [30, 0, 7], [0, 31, 7], ...bushes.map(([x, z]) => [x, z, 4]),
+  const busy = [[TAG_HOME[0], TAG_HOME[1], 4], [0, 0, 9], [-26, -26, 9], [26, -26, 9], [-26, 26, 9], [26, 26, 9], [0, -30, 8], [-30, 0, 7], [30, 0, 7], [0, 31, 7], ...bushes.map(([x, z]) => [x, z, 4]),
     [12, -26, 5], [-12, 27, 5], [20, 14, 5], [-20, -14, 5], ...TAG_STARTS.map(([x, z]) => [x, z, 3])];
   let placed = 0;
   for (let tries = 0; tries < 500 && placed < 18; tries++) {
@@ -1455,4 +1471,261 @@ export function buildTag() {
     placed++;
   }
   return { parts, signs, effects, zones, coins, npcs, spots, spawn: { x: 0, y: 0.3, z: 7, yaw: Math.PI }, killY: -20, sky: 'tag' };
+}
+
+// ───────────────────────── 달걀 도둑 ─────────────────────────
+// 남쪽에 기지 6개(친구마다 하나), 북쪽으로 갈수록 풀밭 → 숲속 → 용암 → 구름 둥지. 둥지 사이 울타리 문은 돈을 내면 열린다.
+export const EGG_SLOTS = [-15, 15, -45, 45, -75, 75].map(x => ({ x, z: 62 }));
+export const EGG_BASE = { w: 24, d: 16, door: 7 };
+export const EGG_ZONE_Z = [18, -28, -75, -120];      // 둥지 마당 가운데 z
+export const EGG_GATE_Z = [null, -5, -51, -97];      // 그 마당으로 들어가는 울타리 z
+export const EGG_HOME = { x: -30, z: 60 };
+// 받침대 12개 (뒷줄 6, 앞줄 6)
+export function eggPedestals(slot) {
+  const { x, z } = EGG_SLOTS[slot % EGG_SLOTS.length];
+  const out = [];
+  for (const dz of [5, -0.5]) for (const dx of [-9, -5.4, -1.8, 1.8, 5.4, 9]) out.push({ x: x + dx, y: 0.8, z: z + dz });
+  return out;
+}
+export const eggInBase = (slot, px, pz) => { const b = EGG_SLOTS[slot % EGG_SLOTS.length]; return Math.abs(px - b.x) < EGG_BASE.w / 2 - 0.3 && pz > b.z - EGG_BASE.d / 2 && pz < b.z + EGG_BASE.d / 2; };
+// 러닝머신 3대: 기지 앞 오른쪽, 북쪽(-z)을 보고 달린다.
+// 벨트는 스스로 밀지 않는다 (2026-11-22 인혁: "안끌리게"). 달릴 때만 src/egghunt.js 가 내 빠르기만큼 밀어서 제자리 달리기가 된다.
+export const TREAD_BELT = 0;
+export const eggTreadmills = slot => { const { x, z } = EGG_SLOTS[slot % EGG_SLOTS.length]; return EGG_TREADS.map((t, k) => ({ k, x: x + 4.5 + k * 3.6, z: z - EGG_BASE.d / 2 - 13 })); };
+function treadmill(out, signs, x, z, k) {
+  const T = EGG_TREADS[k];
+  out.push({ x, y: 0.25, z, w: 2.7, h: 0.5, d: 4.8, c: '#2a2d33', m: 'metal' });
+  out.push({ x, y: 0.55, z: z + 0.2, w: 2.0, h: 0.12, d: 4.2, k: 'conveyor', cv: [0, TREAD_BELT], tread: k });
+  for (const s of [-1, 1]) {
+    out.push({ x: x + s * 1.2, y: 0.62, z: z + 0.2, w: 0.3, h: 0.2, d: 4.4, c: T.color, deco: true });
+    out.push({ x: x + s * 1.15, y: 1.35, z: z - 2.05, w: 0.18, h: 1.7, d: 0.18, c: '#c7ccd6', m: 'metal', deco: true });
+    out.push({ x: x + s * 1.15, y: 1.6, z: z - 1.2, w: 0.14, h: 0.14, d: 1.7, c: '#c7ccd6', m: 'metal', deco: true });
+  }
+  // 앞 계기판 (몸이 닿아서 앞으로 빠져나가지 않게 막는다)
+  out.push({ x, y: 1.2, z: z - 2.3, w: 2.5, h: 1.4, d: 0.35, c: T.color });
+  out.push({ x, y: 2.2, z: z - 2.2, w: 1.6, h: 0.9, d: 0.2, c: '#1e2235', rx: -0.35 });
+  signs.push({ x, y: 2.25, z: z - 2.07, ry: 0, w: 1.45, h: 0.75, lines: [`${T.icon} ×${T.mult}`, T.price ? `$${T.price.toLocaleString('ko-KR')}` : '공짜'], bg: '#1e2235', fg: '#7df9ff', accent: T.color, sizes: [120, 80] });
+}
+
+// 잠긴 울타리 문 (src/egghunt.js 가 만들고 없앤다)
+export function eggGateParts(zone) {
+  const z = EGG_GATE_Z[zone], c = ['#ffffff', '#ffffff', '#5ad16b', '#ff7a3d', '#c9b6ff'][zone + 1];
+  const out = [{ x: 0, y: 2.5, z, w: 8, h: 5, d: 0.6, c: '#ff5e7e', m: 'neon' }];
+  for (let i = -3; i <= 3; i += 2) out.push({ x: i, y: 2.5, z: z - 0.4, w: 0.25, h: 5, d: 0.2, c, deco: true });
+  return out;
+}
+
+function nest(out, x, z, zone, rnd) {
+  const Z = EGG_ZONES[zone];
+  const straw = ['#e8c26a', '#8b5a3c', '#3a2a2a', '#ffffff'][zone];
+  out.push({ x, y: 0.25, z, w: 6.4, h: 0.5, d: 6.4, c: straw, m: zone === 3 ? 'cloud' : 'wood', shape: 'cyl' });
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    out.push({ x: x + Math.cos(a) * 3.1, y: 0.75, z: z + Math.sin(a) * 3.1, w: 1.0, h: 0.6, d: 1.0, c: straw, m: zone === 3 ? 'cloud' : 'wood', ry: a, deco: true, round: 0.2 });
+  }
+  out.push({ x, y: 0.52, z, w: 4.6, h: 0.06, d: 4.6, c: Z.spot, m: 'neon', shape: 'cyl', deco: true, shadow: false });
+  void rnd;
+}
+
+export function buildEgg({ slot = 0 } = {}) {
+  const parts = [], signs = [], effects = [], zones = [], coins = [], npcs = [], nests = [];
+  const rnd = seeded(20261122);
+  const W = 100, N = -138, S = 84;
+  // 땅: 마당마다 색이 다르다
+  parts.push({ x: 0, y: -1, z: (S + 30) / 2 + 2, w: W * 2, h: 2, d: S - 30 + 4, c: '#86d06a', m: 'grass', round: 0.2, shadow: false });
+  const grounds = [['#7cc95a', 'grass', 34, -5], ['#4f9e45', 'grass', -5, -51], ['#4a3b3b', 'stone', -51, -97], ['#f4f7ff', 'cloud', -97, N]];
+  grounds.forEach(([c, m, z0, z1]) => parts.push({ x: 0, y: -1, z: (z0 + z1) / 2, w: W * 2, h: 2, d: z0 - z1, c, m, round: 0.2, shadow: false }));
+  parts.push({ x: 0, y: -1.3, z: 0, w: 900, h: 0.2, d: 900, c: '#8fd16a', m: 'grass', deco: true, shadow: false, round: 0 });
+  for (const [x, z, w, d] of [[0, N, W * 2, 1], [0, S, W * 2, 1], [-W, (N + S) / 2, 1, S - N], [W, (N + S) / 2, 1, S - N]]) parts.push({ x, y: 5, z, w, h: 10, d, hidden: true });
+  // 울타리 (가운데 문 자리 8칸은 비우고, 잠긴 문은 실행하면서 세운다)
+  for (let zone = 1; zone < EGG_ZONES.length; zone++) {
+    const z = EGG_GATE_Z[zone], c = ['#ffffff', '#c98a4b', '#3a3f4b', '#ffffff'][zone];
+    for (const [a0, a1] of [[-W, -4], [4, W]]) {
+      parts.push({ x: (a0 + a1) / 2, y: 1.5, z, w: a1 - a0, h: 3, d: 0.5, c, m: zone === 2 ? 'stone' : 'wood' });
+      for (let a = a0; a <= a1; a += 4) parts.push({ x: a, y: 1.8, z, w: 0.6, h: 3.6, d: 0.7, c, m: zone === 2 ? 'stone' : 'wood', deco: true });
+    }
+    for (const sx of [-4.4, 4.4]) parts.push({ x: sx, y: 3, z, w: 1.2, h: 6, d: 1.2, c: EGG_ZONES[zone].spot });
+    const Z = EGG_ZONES[zone];
+    signs.push({ x: 0, y: 7.2, z: z + 0.7, ry: 0, w: 8, h: 1.9, lines: [`${Z.icon} ${Z.name}`, `🔒 $${Z.price.toLocaleString('ko-KR')} 내면 열려`], bg: '#ffffff', fg: '#2a2d3a', accent: Z.spot, sizes: [80, 56], double: true });
+  }
+  // 둥지 12개
+  EGG_ZONES.forEach((Z, zone) => {
+    const zc = EGG_ZONE_Z[zone];
+    for (const x of [-52, 0, 52]) { nest(parts, x, zc, zone, rnd); nests.push({ zone, x, z: zc }); }
+    signs.push({ x: -W + 8, y: 3.2, z: zc, ry: Math.PI / 2, w: 7, h: 1.8, lines: [`${Z.icon} ${Z.name}`, `${Z.egg} · ${Z.guardName} 조심!`], bg: '#ffffff', fg: '#2a2d3a', accent: Z.spot, sizes: [72, 50] });
+    parts.push({ x: -W + 8, y: 1.2, z: zc, w: 0.4, h: 2.4, d: 0.4, c: '#8b5a3c', m: 'wood', deco: true });
+  });
+  // 마당 꾸미기
+  const nearNest = (x, z, r) => nests.some(n => Math.hypot(n.x - x, n.z - z) < r) || Math.abs(x) < 7;
+  // 풀밭: 꽃밭, 나무 몇 그루
+  for (let i = 0; i < 10; i++) { const x = (rnd() - 0.5) * 180, z = -2 + rnd() * 34; if (!nearNest(x, z, 14)) flowers(parts, x, z, 2 + Math.floor(rnd() * 2), 2, rnd); }
+  for (let i = 0, n = 0; i < 80 && n < 12; i++) { const x = (rnd() - 0.5) * 186, z = -1 + rnd() * 33; if (!nearNest(x, z, 16)) { tree(parts, x, z, rnd); n++; } }
+  // 숲: 나무가 빽빽
+  for (let i = 0, n = 0; i < 300 && n < 46; i++) { const x = (rnd() - 0.5) * 190, z = -49 + rnd() * 40; if (!nearNest(x, z, 11)) { tree(parts, x, z, rnd, 1.2); n++; } }
+  // 용암: 바위와 용암 웅덩이(장식), 화산
+  for (let i = 0, n = 0; i < 200 && n < 26; i++) {
+    const x = (rnd() - 0.5) * 186, z = -94 + rnd() * 40;
+    if (nearNest(x, z, 12)) continue;
+    if (n % 2) parts.push({ x, y: 0.02, z, w: 4 + rnd() * 5, h: 0.1, d: 3 + rnd() * 4, c: '#ff6a1a', m: 'lava', deco: true, shadow: false, round: 0.04 });
+    else { const sz = 1.4 + rnd() * 2.4; parts.push({ x, y: sz * 0.4, z, w: sz * 1.3, h: sz, d: sz, c: '#2e2626', m: 'stone', ry: rnd() * 3, round: 0.3 }); }
+    n++;
+  }
+  for (const [x, h] of [[-80, 26], [78, 32]]) {
+    parts.push({ x, y: h / 2 - 1, z: -86, w: h * 1.1, h, d: h * 1.1, c: '#3a2a2a', m: 'stone', shape: 'cone', deco: true });
+    parts.push({ x, y: h - 1.2, z: -86, w: 4, h: 0.6, d: 4, c: '#ff7a1a', m: 'lava', shape: 'cyl', deco: true, shadow: false });
+  }
+  // 구름: 뭉게구름과 무지개 다리
+  for (let i = 0, n = 0; i < 200 && n < 22; i++) {
+    const x = (rnd() - 0.5) * 186, z = -134 + rnd() * 34;
+    if (nearNest(x, z, 12)) continue;
+    const r = 2 + rnd() * 2.5;
+    parts.push({ x, y: r * 0.5, z, w: r * 2, h: r * 1.3, d: r * 1.8, c: '#ffffff', m: 'cloud', shape: 'sphere', deco: true });
+    n++;
+  }
+  for (const x of [-26, 26]) for (let k = 0; k < 6; k++) {
+    const a = (k / 5) * Math.PI;
+    parts.push({ x: x + Math.cos(a) * 9, y: Math.sin(a) * 8 + 0.5, z: -120, w: 1.6, h: 1.6, d: 1.6, c: ['#ff5e7e', '#ff8a3d', '#ffd23f', '#5ad16b', '#3fa7ff', '#9b5cff'][k], m: 'neon', deco: true, shadow: false });
+  }
+  // 기지 6개
+  EGG_SLOTS.forEach(({ x, z }, k) => {
+    const { w, d, door } = EGG_BASE, mine = k === slot;
+    const col = ['#3fa7ff', '#ff5e7e', '#5ad16b', '#ffb820', '#9b5cff', '#21c7b8'][k];
+    parts.push({ x, y: 0.15, z, w, h: 0.3, d, c: mine ? '#fff6e0' : '#f1f4fa', m: 'stone', round: 0.08 });
+    // 낮은 담 (북쪽 가운데가 문)
+    parts.push({ x, y: 0.9, z: z + d / 2, w, h: 1.5, d: 0.5, c: col });
+    for (const sx of [-1, 1]) parts.push({ x: x + sx * w / 2, y: 0.9, z, w: 0.5, h: 1.5, d, c: col });
+    for (const sx of [-1, 1]) parts.push({ x: x + sx * (w / 2 + door / 2) / 2, y: 0.9, z: z - d / 2, w: (w - door) / 2, h: 1.5, d: 0.5, c: col });
+    for (const sx of [-1, 1]) parts.push({ x: x + sx * (door / 2 + 0.4), y: 2.2, z: z - d / 2, w: 0.8, h: 4.4, d: 0.8, c: '#ffffff' });
+    parts.push({ x, y: 4.6, z: z - d / 2, w: door + 1.6, h: 0.6, d: 0.9, c: col });
+    for (const p of eggPedestals(k)) parts.push({ x: p.x, y: 0.5, z: p.z, w: 2.2, h: 0.5, d: 2.2, c: '#ffffff', m: 'stone', shape: 'cyl' });
+    signs.push({ x, y: 6, z: z - d / 2 - 0.1, ry: 0, w: 6, h: 1.4, lines: [mine ? '🏠 내 기지' : `기지 ${k + 1}`], bg: '#ffffff', fg: '#2a2d3a', accent: col, double: true });
+    for (const t of eggTreadmills(k)) treadmill(parts, signs, t.x, t.z, t.k);
+  });
+  // 광장으로 가는 문 (내 기지 옆 틈)
+  {
+    const { x, z } = EGG_HOME;
+    effects.push({ type: 'portal', x, y: 2.4, z, w: 4.2, h: 4.4, color: '#3fa7ff', ry: Math.PI / 2 });
+    parts.push({ x, y: 0.08, z, w: 3.4, h: 0.16, d: 5.4, c: '#ffffff', round: 0.06 });
+    signs.push({ x, y: 5.4, z, ry: Math.PI / 2, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
+    zones.push({ x0: x - 0.6, x1: x + 0.6, y0: 0, y1: 4.5, z0: z - 2, z1: z + 2, portal: 0 });
+  }
+  signs.push({ x: EGG_SLOTS[slot].x - 9, y: 3.2, z: 46, ry: 0, w: 8, h: 3.2, lines: ['🥚 달걀 도둑', '경비를 피해서 둥지의 알을 훔쳐!', '내 기지에 가져오면 부화해서 돈을 벌어', '🦝 너구리 도둑은 닿아서 잡아!', '🏃 러닝머신에서 달리면 빨라져!'], bg: '#ffffff', fg: '#2a2d3a', accent: '#ffcf33', sizes: [80, 50, 50, 50, 50], double: true });
+  parts.push({ x: EGG_SLOTS[slot].x - 9, y: 1.2, z: 46, w: 0.4, h: 2.4, d: 0.4, c: '#8b5a3c', m: 'wood', deco: true });
+  for (const [x, z] of [[-30, 44], [0, 44], [30, 44], [-60, 44], [60, 44]]) lamp(parts, x, z);
+  const sp = EGG_SLOTS[slot];
+  return { parts, signs, effects, zones, coins, npcs, nests, spawn: { x: sp.x, y: 0.3, z: sp.z - EGG_BASE.d / 2 - 3, yaw: Math.PI }, killY: -20, sky: 'hub' };
+}
+
+// ───────────────────────── 모닥불 캠프 ─────────────────────────
+// 엄청 넓은 둥근 숲 섬 (2026-11-22 인혁: "맵 엄청 넓혀"). 가운데 빈터에 모닥불, 둘레에 통나무 의자와 텐트.
+// 호수, 바위 언덕 3곳, 버려진 오두막 4채, 동서남북으로 빛나는 길 버섯, 보물 상자 (파밍).
+// 나무, 열매 덤불, 상자는 src/camp.js 가 그리고 베거나 열면 다시 자라고 찬다.
+export const CAMP_R = 210;
+export const CAMP_HOME = { x: 11, z: 7 };
+// 아기 동물이 울고 있는 굴 (섬 끝 어두운 곳, 아기 여우·곰·토끼·부엉이 순서)
+export const CAMP_DENS = [[12, -186], [182, 34], [-22, 190], [-178, -52]];
+export const CAMP_LAKE = { x: -70, z: 62, r: 22 };
+export const CAMP_HILLS = [[96, -88], [-118, -112], [126, 124]];
+export const CAMP_CABINS = [[58, 44, 0.3], [-66, -46, 2.2], [146, -24, 1.4], [-150, 92, 4.0]];
+
+function cabin(out, x, z, ry) {
+  const c = Math.cos(ry), s = Math.sin(ry);
+  const P = (dx, dz) => [x + dx * c - dz * s, z + dx * s + dz * c];
+  const box = (dx, dz, y, w, h, d, extra = {}) => { const [px, pz] = P(dx, dz); out.push({ ...extra, x: px, y, z: pz, w: Math.abs(c) > 0.7 ? w : d, h, d: Math.abs(c) > 0.7 ? d : w }); };
+  const wood = { c: '#6b4a2f', m: 'wood' };
+  box(0, 0, 0.1, 8, 0.2, 7, { c: '#5b3a22', m: 'wood' });
+  box(0, -3.4, 1.6, 8, 3.2, 0.4, wood);
+  box(-3.8, 0, 1.6, 0.4, 3.2, 7, wood); box(3.8, 0, 1.6, 0.4, 3.2, 7, wood);
+  box(-2.6, 3.4, 1.6, 2.8, 3.2, 0.4, wood); box(2.6, 3.4, 1.6, 2.8, 3.2, 0.4, wood);
+  box(0, 0, 3.45, 9, 0.5, 8.2, { c: '#4a3324', m: 'wood', deco: true });
+  box(1.5, 3.6, 3.0, 1.4, 1.0, 0.2, { c: '#2a2d3a', deco: true });
+}
+
+export function buildCamp() {
+  const parts = [], signs = [], effects = [], zones = [], coins = [], npcs = [], trees = [], bushes = [], chests = [];
+  const rnd = seeded(20261199);
+  const R = CAMP_R;
+  parts.push({ x: 0, y: -1, z: 0, w: R * 2 + 12, h: 2, d: R * 2 + 12, c: '#4f8f45', m: 'grass', round: 0.4, shadow: false, shape: 'cyl' });
+  parts.push({ x: 0, y: -1.3, z: 0, w: 1400, h: 0.2, d: 1400, c: '#2c5a3a', m: 'grass', deco: true, shadow: false, round: 0 });
+  // 섬 둘레: 겹치는 네모 벽(안 보임)과 바위
+  const nWall = Math.ceil((2 * Math.PI * (R + 6)) / 7);
+  for (let i = 0; i < nWall; i++) { const a = (i / nWall) * Math.PI * 2; parts.push({ x: Math.cos(a) * (R + 6), y: 5, z: Math.sin(a) * (R + 6), w: 10, h: 10, d: 10, hidden: true }); }
+  for (let i = 0; i < 150; i++) { const a = rnd() * Math.PI * 2, r = R + rnd() * 5, s2 = 2 + rnd() * 5; parts.push({ x: Math.cos(a) * r, y: s2 * 0.35, z: Math.sin(a) * r, w: s2 * 1.4, h: s2, d: s2, c: '#5b5f6b', m: 'stone', ry: rnd() * 3, round: 0.4, deco: true }); }
+  // 빈터와 모닥불
+  parts.push({ x: 0, y: 0.03, z: 0, w: 30, h: 0.06, d: 30, c: '#8a7350', m: 'sand', shape: 'cyl', deco: true, shadow: false });
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; parts.push({ x: Math.cos(a) * 1.9, y: 0.3, z: Math.sin(a) * 1.9, w: 0.9, h: 0.6, d: 0.8, c: '#7a7d88', m: 'stone', ry: a, round: 0.25 }); }
+  for (const a of [0.3, 1.4, 2.5]) parts.push({ x: 0, y: 0.35, z: 0, w: 2.6, h: 0.35, d: 0.35, c: '#6b4a2f', m: 'wood', ry: a, deco: true, shape: 'cyl', rz: Math.PI / 2 });
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 + 0.3; parts.push({ x: Math.cos(a) * 6, y: 0.4, z: Math.sin(a) * 6, w: 2.6, h: 0.8, d: 0.8, c: '#8b5a3c', m: 'wood', ry: -a + Math.PI / 2, round: 0.3 }); }
+  for (const [x, z, c, ry] of [[-10, -6, '#ff7a3d', 0.5], [-4, -11, '#3fa7ff', 0.1], [8, -9, '#5ad16b', -0.5]]) {
+    parts.push({ x, y: 1.3, z, w: 3.6, h: 2.6, d: 3.6, c, shape: 'cone', ry, deco: true });
+    parts.push({ x, y: 0.05, z, w: 3.8, h: 0.1, d: 3.8, c: '#4a3a2a', m: 'wood', deco: true, shadow: false });
+  }
+  for (let i = 0; i < 6; i++) parts.push({ x: 4 + (i % 3) * 0.5, y: 0.25 + Math.floor(i / 3) * 0.45, z: 10, w: 0.45, h: 0.45, d: 2.2, c: '#8b5a3c', m: 'wood', shape: 'cyl', rx: Math.PI / 2, deco: true });
+  signs.push({ x: -6, y: 2.6, z: 11, ry: Math.PI, w: 7.6, h: 3.6, lines: ['🔥 모닥불 캠프', '낮: 🪓 나무 베기 · 🫐 열매 · 📦 보물 상자 열기', '불 옆에 서면 나무를 넣어 · 빛 안은 안전!', '밤: 그림자 늑대를 🪓 로 쫓아내 · 99일 버티기', '🐾 섬 끝에서 우는 아기 동물을 구해 줘!', '💡 빛나는 버섯 길을 따라가면 모닥불로 돌아와'], bg: '#2a2218', fg: '#ffe9c8', accent: '#ff7a3d', sizes: [76, 46, 46, 46, 46, 46], double: true });
+  parts.push({ x: -6, y: 1.1, z: 11, w: 0.4, h: 2.2, d: 0.4, c: '#6b4a2f', m: 'wood', deco: true });
+  {
+    const { x, z } = CAMP_HOME;
+    effects.push({ type: 'portal', x, y: 2.4, z, w: 4.2, h: 4.4, color: '#3fa7ff', ry: -0.9 });
+    parts.push({ x, y: 0.08, z, w: 4.6, h: 0.16, d: 4.6, c: '#d9cbb0', m: 'stone', shape: 'cyl' });
+    signs.push({ x, y: 5.3, z, ry: -0.9, w: 3.8, h: 1, lines: ['🏠 광장으로'], bg: '#ffffff', fg: '#2a6fb3', accent: '#3fa7ff', double: true });
+    zones.push({ x0: x - 1, x1: x + 1, y0: 0, y1: 4.5, z0: z - 1, z1: z + 1, portal: 0 });
+  }
+  // 아기 동물 굴
+  for (const [x, z] of CAMP_DENS) {
+    for (let i = 1; i < 9; i++) { const a = (i / 9) * Math.PI * 2 + Math.atan2(-z, -x); parts.push({ x: x + Math.cos(a) * 3.2, y: 0.7, z: z + Math.sin(a) * 3.2, w: 1.6, h: 1.4, d: 1.4, c: '#3e4250', m: 'stone', ry: a, round: 0.4 }); }
+    for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2 + 0.3; parts.push({ x: x + Math.cos(a) * 4.6, y: 0.6, z: z + Math.sin(a) * 4.6, w: 1.4, h: 1.2, d: 1.4, c: '#3a5a2f', shape: 'cone', deco: true }); }
+    parts.push({ x, y: 0.05, z, w: 5.6, h: 0.1, d: 5.6, c: '#2a2a22', m: 'stone', shape: 'cyl', deco: true, shadow: false });
+  }
+  // 호수
+  { const L = CAMP_LAKE; parts.push({ x: L.x, y: 0.02, z: L.z, w: L.r * 2 + 6, h: 0.05, d: L.r * 2 + 6, c: '#d9c79a', m: 'sand', shape: 'cyl', deco: true, shadow: false }); parts.push({ x: L.x, y: 0.06, z: L.z, w: L.r * 2, h: 0.05, d: L.r * 2, c: '#3fa0d6', m: 'water', shape: 'cyl', deco: true, shadow: false }); }
+  // 바위 언덕 (가운데 황금 상자)
+  for (const [hx, hz] of CAMP_HILLS) {
+    for (let i = 0; i < 14; i++) { const a = (i / 14) * Math.PI * 2, r = 7 + rnd() * 2, sz = 2.5 + rnd() * 2.5; if (i % 7 === 0) continue; parts.push({ x: hx + Math.cos(a) * r, y: sz * 0.45, z: hz + Math.sin(a) * r, w: sz * 1.3, h: sz, d: sz * 1.2, c: '#6a6e7a', m: 'stone', ry: rnd() * 3, round: 0.5 }); }
+    parts.push({ x: hx, y: 0.05, z: hz, w: 12, h: 0.1, d: 12, c: '#5b5f6b', m: 'stone', shape: 'cyl', deco: true, shadow: false });
+    chests.push({ x: hx, z: hz, tier: 2 });
+  }
+  // 버려진 오두막 (안에 쇠 상자)
+  for (const [x, z, ry] of CAMP_CABINS) { cabin(parts, x, z, ry); chests.push({ x, z, tier: 1 }); }
+  // 굴 옆 황금 상자
+  for (const [x, z] of CAMP_DENS) { const d = Math.hypot(x, z); chests.push({ x: x - (x / d) * 9, z: z - (z / d) * 9, tier: 2 }); }
+  // 빛나는 길 버섯 (동서남북, 밤에 모닥불로 돌아오는 길)
+  const path = [];
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.2; for (let r = 22; r < R - 12; r += 9) { const x = Math.cos(a) * r, z = Math.sin(a) * r; path.push([x, z]); parts.push({ x, y: 0.2, z, w: 0.16, h: 0.4, d: 0.16, c: '#e8f0ff', deco: true, shadow: false }); parts.push({ x, y: 0.48, z, w: 0.6, h: 0.3, d: 0.6, c: '#7df9ff', m: 'neon', shape: 'sphere', deco: true, shadow: false }); } }
+  // 나무, 덤불, 상자 자리 (6칸 바둑판으로 빨리 겹침 검사)
+  const grid = new Map(), cell = 6;
+  const near = (x, z, r) => { const out = []; for (let i = Math.floor((x - r) / cell); i <= Math.floor((x + r) / cell); i++) for (let k = Math.floor((z - r) / cell); k <= Math.floor((z + r) / cell); k++) for (const o of grid.get(`${i},${k}`) ?? []) if (Math.hypot(o.x - x, o.z - z) < r) out.push(o); return out; };
+  const put = o => { const key = `${Math.floor(o.x / cell)},${Math.floor(o.z / cell)}`; if (!grid.has(key)) grid.set(key, []); grid.get(key).push(o); };
+  const free = (x, z, r) => Math.hypot(x, z) > 17 && Math.hypot(x - CAMP_LAKE.x, z - CAMP_LAKE.z) > CAMP_LAKE.r + 3 + r
+    && !CAMP_DENS.some(([dx, dz]) => Math.hypot(dx - x, dz - z) < 8 + r) && !CAMP_HILLS.some(([hx, hz]) => Math.hypot(hx - x, hz - z) < 12 + r)
+    && !CAMP_CABINS.some(([cx, cz]) => Math.hypot(cx - x, cz - z) < 8 + r) && !path.some(([px, pz]) => Math.hypot(px - x, pz - z) < 2 + r);
+  for (const c of chests) put({ ...c, chest: true });
+  // 나무 상자 (가까운 숲), 쇠 상자 (먼 숲), 황금 상자 (섬 끝)
+  const scatter = (n, r0, r1, tier) => {
+    for (let tries = 0, k = 0; tries < 4000 && k < n; tries++) {
+      const a = rnd() * Math.PI * 2, r = r0 + rnd() * (r1 - r0), x = Math.cos(a) * r, z = Math.sin(a) * r;
+      if (!free(x, z, 2) || near(x, z, 14).some(o => o.chest)) continue;
+      const c = { x, z, tier, chest: true }; chests.push({ x, z, tier }); put(c); k++;
+    }
+  };
+  scatter(28, 24, 110, 0); scatter(14, 100, 175, 1); scatter(6, 165, R - 10, 2);
+  for (let tries = 0; tries < 30000 && trees.length < 640; tries++) {
+    const a = rnd() * Math.PI * 2, r = 17 + Math.sqrt(rnd()) * (R - 21);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (!free(x, z, 0) || near(x, z, 4.2).length) continue;
+    const t = { x, z, s: 0.9 + rnd() * 0.5, kind: rnd() < 0.7 ? 0 : 1 };
+    trees.push(t); put(t);
+  }
+  for (let tries = 0; tries < 6000 && bushes.length < 90; tries++) {
+    const a = rnd() * Math.PI * 2, r = 16 + rnd() * (R - 24);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (!free(x, z, 1) || near(x, z, 3).length || bushes.some(b => Math.hypot(b.x - x, b.z - z) < 12)) continue;
+    bushes.push({ x, z });
+  }
+  for (let i = 0; i < 260; i++) {
+    const a = rnd() * Math.PI * 2, r = 16 + rnd() * (R - 18), x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.hypot(x - CAMP_LAKE.x, z - CAMP_LAKE.z) < CAMP_LAKE.r + 2) continue;
+    if (i % 2) { parts.push({ x, y: 0.25, z, w: 0.14, h: 0.5, d: 0.14, c: '#f4efe6', deco: true, shadow: false }); parts.push({ x, y: 0.55, z, w: 0.55, h: 0.3, d: 0.55, c: i % 4 === 1 ? '#ff4d5e' : '#c98a4b', shape: 'sphere', deco: true, shadow: false }); }
+    else parts.push({ x, y: 0.35, z, w: 0.8, h: 0.7, d: 0.8, c: '#3e8a3a', shape: 'cone', deco: true, shadow: false });
+  }
+  return { parts, signs, effects, zones, coins, npcs, trees, bushes, chests, spawn: { x: 0, y: 0.3, z: 7, yaw: Math.PI }, killY: -20, sky: 'camp' };
 }

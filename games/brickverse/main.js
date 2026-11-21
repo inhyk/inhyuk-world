@@ -15,6 +15,8 @@ import { Tower } from './src/tower.js';
 import { Commons } from './src/commons.js';
 import { Battle } from './src/battle.js';
 import { Tag } from './src/tag.js';
+import { EggHunt } from './src/egghunt.js';
+import { Camp } from './src/camp.js';
 import { PetFollower, EggShop, eggSign } from './src/pets.js';
 import { Phone } from './src/phone.js';
 import { startUpdateCheck } from './src/update.js';
@@ -24,7 +26,7 @@ import {
   OBBY_STAGES, obbyStageCoins, OBBY_CLEAR_COINS, ADJECTIVES, ANIMALS, validGift, GIFT_MAX, NET_VERSION, GIFT_WAIT_MS, packBlocks, unpackBlocks, inTower, cellKey, TOWER,
   PETS, petOf, petSpeed,
 } from './core.mjs';
-import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, buildBattle, buildTag, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
+import { buildHub, buildObby, buildTycoon, buildSurvival, buildTower, buildBattle, buildTag, buildEgg, buildCamp, OBBY_NAMES, PLOT_SLOTS } from './worlds.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('game');
@@ -36,6 +38,8 @@ const WORLD_INFO = [
   { icon: '🏗️', name: '하늘 타워 짓기', build: buildTower },
   { icon: '🎯', name: '블록 배틀 로얄', build: buildBattle },
   { icon: '🏃', name: '술래잡기', build: buildTag },
+  { icon: '🥚', name: '달걀 도둑', build: buildEgg },
+  { icon: '🔥', name: '모닥불 캠프', build: buildCamp },
 ];
 const fmtTime = ms => { const s = ms / 1000; return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; };
 const LOOK_KEYS = { hat: HATS, face: FACES, emblem: EMBLEMS, hair: HAIRS };
@@ -70,6 +74,7 @@ game.ui = ui;
 game.canvas = canvas;
 game.controls = controls;
 game.camera = view.camera;
+game.setSky = name => { view.setSky(name); view.scene.environmentIntensity = name === 'campNight' ? 0.1 : 0.55; playMusic(name); };
 
 // 나
 const me = { pl: newPlayer(0, 0.3, 18), yaw: Math.PI, avatar: new Avatar(game.save.look, '', { local: true }), dead: 0, emote: 0, hurtCooldown: 0 };
@@ -221,11 +226,14 @@ function loadWorld(id) {
   if (id === 4) w.runtime = new Tower(game);
   if (id === 5) w.runtime = new Battle(game);
   if (id === 6) w.runtime = new Tag(game);
+  if (id === 7) w.runtime = new EggHunt(game);
+  if (id === 8) w.runtime = new Camp(game);
   if (id === 0) { group.add(eggSign()); w.runtime = new Commons(game); } // 🧱 모두의 공터
   view.setSky(def.sky);
+  view.scene.environmentIntensity = 0.55;
   playMusic(def.sky);
   ui.setWorld(info.icon, info.name);
-  if (id !== 2 && id !== 3 && id !== 6) ui.setInfo('');
+  if (id !== 2 && id !== 3 && id !== 6 && id !== 7 && id !== 8) ui.setInfo('');
   // 시작 위치
   let spawn = def.spawn;
   if (id === 1) {
@@ -390,10 +398,10 @@ game.net = new Net({
   opened: () => {
     ui.renderFriends();
     sendHi(); sendPose(true);
-    if (game.worldId === 2 || game.worldId === 4) loadWorld(game.worldId); // 내 땅 번호가 바뀐다
+    if (game.worldId === 2 || game.worldId === 4 || game.worldId === 7) loadWorld(game.worldId); // 내 땅 번호가 바뀐다
   },
-  closed: () => { for (const id of [...game.remotes.keys()]) removeRemote(id); ui.renderFriends(); if (game.worldId === 2 || game.worldId === 4) loadWorld(game.worldId); },
-  join: id => { sendHi(id); sendPose(true); sendTower(id); },
+  closed: () => { for (const id of [...game.remotes.keys()]) removeRemote(id); ui.renderFriends(); if (game.worldId === 2 || game.worldId === 4 || game.worldId === 7) loadWorld(game.worldId); },
+  join: id => { sendHi(id); sendPose(true); sendTower(id); if (game.worldId === 7) game.world.runtime?.sendBase(true); },
   depart: id => { if (id) removeRemote(id); else for (const k of [...game.remotes.keys()]) removeRemote(k); ui.renderFriends(); },
   message: (data, from) => onMessage(data, from),
 });
@@ -595,6 +603,12 @@ function onMessage(data, from) {
     case 'tg':
       if (game.worldId === 6 && game.world.runtime) game.world.runtime.message(data, from);
       break;
+    case 'eg':
+      if (game.worldId === 7 && game.world.runtime) game.world.runtime.message(data, from);
+      break;
+    case 'cp':
+      if (game.worldId === 8 && game.world.runtime) game.world.runtime.message(data, from);
+      break;
     default: break;
   }
 }
@@ -695,7 +709,7 @@ controls.onKey = (k) => {
   if (k === 'KeyT' || k === 'Slash') ui.togglePanel('chat');
   if (k === 'KeyG') ui.togglePanel('emote');
   if (k === 'KeyR' && game.worldId === 0) game.goHome();
-  if ((game.worldId === 0 || game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6) && game.world.runtime?.key?.(k)) return;
+  if ((game.worldId === 0 || game.worldId === 3 || game.worldId === 4 || game.worldId === 5 || game.worldId === 6 || game.worldId === 7 || game.worldId === 8) && game.world.runtime?.key?.(k)) return;
   if (k.startsWith('Digit')) { const n = Number(k.slice(5)); if (n >= 1 && n <= 4) game.emote(n); }
 };
 
@@ -788,7 +802,7 @@ function updateMe(dt) {
   let jump = game.started && !game.wardrobeOpen && controls.takeJump();
   if (w.runtime?.driving) { mv = { x: 0, z: 0 }; jump = false; } // 🌈 카펫을 조종하는 동안은 키가 카펫을 움직인다
   if (w.runtime?.frozen > 0) { mv = { x: 0, z: 0 }; jump = false; } // 술래가 숫자 세는 중
-  const ev = stepPlayer(me.pl, { mx: mv.x, mz: mv.z, jump, speed: petSpeed(game.save.pet) }, w.boxes, dt);
+  const ev = stepPlayer(me.pl, { mx: mv.x, mz: mv.z, jump, speed: w.runtime?.speed ?? petSpeed(game.save.pet) }, w.boxes, dt);
   const moving = Math.hypot(mv.x, mv.z) > 0.1;
   if (controls.shiftLock && game.started && !game.wardrobeOpen) {
     // 쉬프트락: 언제나 카메라가 보는 쪽을 본다 (옆으로 걸으면 게걸음)
@@ -799,6 +813,7 @@ function updateMe(dt) {
     let d = target - me.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
     me.yaw += d * (1 - Math.exp(-dt * 16));
   }
+  if (w.runtime?.treadRun) { let d = Math.PI - me.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); me.yaw += d * (1 - Math.exp(-dt * 10)); } // 러닝머신: 계기판(북쪽)을 보고 달린다
   if (moving && me.emote) { me.emote = 0; sendPose(true); }
   if (ev.jumped) { sound.jump(); if (me.emote) me.emote = 0; }
   if (ev.bounce) sound.bounce();
@@ -863,7 +878,7 @@ function frame(now) {
   view.clouds.update(dt);
   me.hurtCooldown -= dt;
   // 내 아바타
-  const speed = Math.hypot(me.pl.vx, me.pl.vz);
+  const speed = game.world.runtime?.treadRun ? P.SPEED * 0.95 : Math.hypot(me.pl.vx, me.pl.vz); // 러닝머신 위에서는 제자리 달리기
   me.avatar.place(me.pl.x, me.pl.y, me.pl.z, me.yaw, dt);
   me.avatar.animate(dt, { speed, grounded: !!me.pl.ground, vy: me.pl.vy, climb: me.pl.climb, emote: me.emote });
   myPet.update(dt, me.pl.x, me.avatar.visualY ?? me.pl.y, me.pl.z, me.yaw, me.avatar.root.visible && game.started);

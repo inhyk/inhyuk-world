@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   P, makeBox, newPlayer, stepPlayer, clearMotion, placeBox, cleanSave, defaultSave, rayBoxes, segmentDistance,
   TYCOON, tycoonIncome, tycoonAvailable, tycoonAwayEarnings, TYCOON_START_DROP, packPose, unpackPose, lookToArray, lookFromArray, DEFAULT_LOOK,
-  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
+  OBBY_STAGES, HATS, HAIRS, FREE_HAIRS, tileAt, WEAPONS, applyDamage, zonePhases, zoneAt, outsideZone, rayBody, battleCoins, BATTLE, freshAmmo, reloadAmmo, ammoBox, gearReduce, EGG, EGG_ZONES, CRITTERS, hatchCritter, RUN_MAX, EGG_TREADS, runSpeed, runNeed, trainRun, josa, CAMP, CUBS, STALKER, AXES, ARMORS, chestLoot, fireLevel, fireRadius, nightMonsters, dayCoins, freshCamp, cleanCamp, petIncome, baseIncome, bootsPrice, pedPrice, cleanEgg, PETS, hatchPet, petSpeed, EGG_PRICE, TAG, touching, tagCoins, waveOf, monsterHp, defenseCoins, DEFENSE, MONSTERS, SURVIVAL, validGift, halfOf, GIFT_MAX, TOWER, BLOCKS, cleanTowerBlocks, packBlocks, unpackBlocks, towerFloor, inTower,
 } from './core.mjs';
 import { buildHub, buildObby, buildTycoon, buildSurvival, tycoonBase, tycoonItem, PLOT_SLOTS } from './worlds.mjs';
 
@@ -403,4 +403,107 @@ test('술래잡기 마을: 시작 자리와 숨을 곳은 블록 안이 아니�
     for (const [x, z] of s.way ?? []) assert.ok(!inside(x, z), `way ${x},${z} → ${s.x},${s.z}`);
   }
   assert.ok(def.spots.length >= 30);
+  // 광장으로 돌아가는 문이 있고, 출발 자리나 숨을 곳과 겹치지 않는다
+  const home = def.zones.find(z => z.portal === 0);
+  assert.ok(home, '광장 문');
+  const inZone = (x, z) => x + P.R > home.x0 && x - P.R < home.x1 && z + P.R > home.z0 && z - P.R < home.z1;
+  for (const [x, z] of TAG_STARTS) assert.ok(!inZone(x, z), `start in portal ${x},${z}`);
+  for (const s of def.spots) assert.ok(!inZone(s.x, s.z), `spot in portal ${s.x},${s.z}`);
+  assert.ok(!inZone(def.spawn.x, def.spawn.z));
+});
+
+test('달걀 도둑: 둥지마다 동물 셋, 확률 합 1, 뒤 둥지일수록 비싸고 많이 번다', () => {
+  for (let z = 0; z < EGG_ZONES.length; z++) {
+    const list = CRITTERS.filter(c => c.zone === z);
+    assert.equal(list.length, 3);
+    assert.ok(Math.abs(list.reduce((a, c) => a + c.chance, 0) - 1) < 1e-9);
+    if (z) {
+      assert.ok(EGG_ZONES[z].price > EGG_ZONES[z - 1].price);
+      assert.ok(Math.min(...list.map(c => c.income)) > Math.max(...CRITTERS.filter(c => c.zone === z - 1).map(c => c.income)));
+    }
+  }
+  assert.deepEqual(hatchCritter(0, 0.1, 0.5), { c: 'chick', gold: false });
+  assert.deepEqual(hatchCritter(0, 0.95, 0.01), { c: 'bunny', gold: true });
+  assert.equal(hatchCritter(3, 0.75, 0.9).c, 'whale');
+  assert.equal(petIncome({ c: 'duck', gold: true }), 2 * EGG.GOLD_X);
+  assert.equal(baseIncome([{ c: 'chick', t: 0 }, { c: 'fox', t: 3 }, null, { c: 'owl', t: 0, gold: true }]), 1 + 25 * 3);
+  assert.ok(bootsPrice(1) > bootsPrice(0) && pedPrice(EGG.PED0 + 1) > pedPrice(EGG.PED0));
+  const e = cleanEgg({ cash: 99.9, pets: [{ c: 'dragon', t: 500 }, { c: 'nope' }, { c: 'chick', gold: 1 }], boots: 99, ped: 2, zones: 9 });
+  assert.equal(e.cash, 99);
+  assert.equal(e.boots, EGG.BOOTS_MAX);
+  assert.equal(e.ped, EGG.PED0);
+  assert.equal(e.zones, EGG_ZONES.length);
+  assert.deepEqual(e.pets, [{ c: 'dragon', gold: false, t: 40 }, null, { c: 'chick', gold: true, t: 0 }]);
+  assert.equal(cleanSave({}).egg.ped, EGG.PED0);
+});
+
+test('러닝머신: 달리면 레벨이 오르고 빨라진다, 좋은 러닝머신은 비싸고 빠르다', () => {
+  assert.equal(runSpeed(0), 1);
+  assert.ok(Math.abs(runSpeed(RUN_MAX) - 1.9) < 1e-9);
+  assert.deepEqual(trainRun(0, 0, runNeed(0) - 0.5), { run: 0, xp: runNeed(0) - 0.5, up: 0 });
+  const a = trainRun(0, 0, runNeed(0) + runNeed(1) + 1);
+  assert.equal(a.run, 2); assert.equal(a.up, 2); assert.ok(Math.abs(a.xp - 1) < 1e-9);
+  assert.equal(trainRun(RUN_MAX - 1, 0, 1e6).run, RUN_MAX);
+  assert.equal(trainRun(RUN_MAX, 0, 50).xp, 0);
+  for (let i = 1; i < EGG_TREADS.length; i++) { assert.ok(EGG_TREADS[i].price > EGG_TREADS[i - 1].price); assert.ok(EGG_TREADS[i].mult > EGG_TREADS[i - 1].mult); }
+  const e = cleanEgg({ run: 99, xp: 9999, tread: 7 });
+  assert.equal(e.run, RUN_MAX); assert.equal(e.tread, EGG_TREADS.length);
+  assert.equal(cleanEgg({}).tread, 1);
+});
+
+test('받침에 맞는 을/를, 이/가', () => {
+  assert.equal(josa('여우', '을', '를'), '여우를');
+  assert.equal(josa('아기 공룡', '을', '를'), '아기 공룡을');
+  assert.equal(josa('졸린 곰', '이', '가'), '졸린 곰이');
+  assert.equal(josa('신난 사자', '이', '가'), '신난 사자가');
+});
+
+test('모닥불 캠프: 나무를 넣을수록 불이 커지고, 밤이 갈수록 괴물이 늘고, 10일마다 보스', () => {
+  assert.equal(fireLevel(0), 1); assert.equal(fireLevel(20), 2); assert.equal(fireLevel(299), 4); assert.equal(fireLevel(300), 5);
+  assert.ok(fireRadius(5, 100) > fireRadius(1, 100));
+  assert.equal(fireRadius(3, 0), 0);
+  assert.ok(fireRadius(3, 5) < fireRadius(3, 50));
+  assert.ok(nightMonsters(30).wolves > nightMonsters(1).wolves);
+  assert.ok(nightMonsters(99).wolves <= 18);
+  assert.equal(nightMonsters(10).boss, true); assert.equal(nightMonsters(11).boss, false);
+  assert.equal(dayCoins(3), 2); assert.equal(dayCoins(99), 502);
+  const c = cleanCamp({ day: 500, lives: 9, wood: -4, torches: [[1, 2, 9], ['x'], [300, 0, 1]], fuel: 999 });
+  assert.equal(c.day, CAMP.DAYS); assert.equal(c.lives, CAMP.LIVES); assert.equal(c.wood, 0); assert.equal(c.fuel, CAMP.FUEL_MAX);
+  assert.deepEqual(c.torches, [[1, 2, CAMP.TORCH_NIGHTS], [90, 0, 1]]);
+  assert.deepEqual(cleanSave({}).camp, freshCamp());
+});
+
+test('모닥불 캠프: 아기 동물 4마리 저장, 그림자 사냥꾼은 2일째부터', () => {
+  assert.equal(CUBS.length, 4);
+  assert.deepEqual(cleanCamp({ cubs: ['owl', 'fox', 'nope', 'owl'] }).cubs, ['fox', 'owl']);
+  assert.deepEqual(freshCamp().cubs, []);
+  assert.equal(STALKER.FROM, 2);
+});
+
+test('파밍: 상자가 좋을수록 많이 주고, 도끼·갑옷은 한 단계씩 더 좋은 것만', () => {
+  const lo = () => 0, hi = () => 0.999;
+  const a = chestLoot(0, lo, { axe: 0, armor: 0, lantern: false });
+  assert.equal(a.wood, 3); assert.equal(a.armor, 1); assert.equal(a.axe, 1); assert.equal(a.lantern, undefined);
+  const b = chestLoot(2, lo, { axe: 0, armor: 1, lantern: false });
+  assert.equal(b.axe, 1); assert.equal(b.armor, 2); assert.equal(b.lantern, true); assert.equal(b.coins, 25);
+  assert.equal(chestLoot(2, lo, { axe: 2, armor: 3, lantern: true }).axe, undefined);
+  const c = chestLoot(1, hi);
+  assert.equal(c.wood, 10); assert.equal(c.cooked, 0); assert.equal(c.axe, undefined);
+  assert.ok(AXES[2].dmg > AXES[0].dmg && ARMORS[3].cut > ARMORS[1].cut);
+  const s = cleanCamp({ axe: 9, armor: -1, lantern: 1, opened: [[3, 5], [999, 1], ['x', 2]] });
+  assert.equal(s.axe, AXES.length - 1); assert.equal(s.armor, 0); assert.equal(s.lantern, true); assert.deepEqual(s.opened, [[3, 5]]);
+});
+
+test('모닥불 캠프 지도: 엄청 넓고, 상자와 시작 자리가 막혀 있지 않다', async () => {
+  const { buildCamp, CAMP_R, CAMP_DENS } = await import('./worlds.mjs');
+  const d = buildCamp();
+  assert.ok(CAMP_R >= 200);
+  assert.ok(d.trees.length >= 500 && d.chests.length >= 40);
+  for (const t of [0, 1, 2]) assert.ok(d.chests.some(c => c.tier === t));
+  const boxes = d.parts.filter(p => !p.deco).map(makeBox);
+  const blocked = (x, z) => boxes.some(b => x + 0.5 > b.x0 && x - 0.5 < b.x1 && z + 0.5 > b.z0 && z - 0.5 < b.z1 && b.y1 > 0.8 && b.y0 < 2);
+  for (const c of d.chests) assert.ok(Math.hypot(c.x, c.z) < CAMP_R - 3, 'chest inside');
+  for (const t of d.trees) for (const c of d.chests) assert.ok(Math.hypot(t.x - c.x, t.z - c.z) > 2.5, 'tree on chest');
+  for (const [x, z] of CAMP_DENS) assert.ok(Math.hypot(x, z) < CAMP_R - 5 && !blocked(x, z));
+  assert.ok(!blocked(d.spawn.x, d.spawn.z));
 });
