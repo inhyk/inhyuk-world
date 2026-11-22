@@ -560,8 +560,10 @@ export function touchesCell(pl, x, y, z) {
 // ───── 모두의 공터 (브릭 광장 오른쪽 아래, 모두의 광장 World 의 칸으로 저장) ─────
 // 칸은 타워와 같은 2×2×2. i, k 는 0~11 (가로세로 12칸), j 는 0~15 (16층).
 // 가운데 (X, Z), 바닥판 윗면 높이 Y. 칸 이름은 'b|i|j|k', 값은 블록 번호(0~16) 하나.
-// 한 사람이 놓을 수 있는 칸은 서버와 같이 400개(LIMIT), 놓는 간격은 0.3초(RATE, 서버는 1초 4번). NEAR: 이만큼 가까우면 막대가 켜진다.
-export const COMMONS = Object.freeze({ X: 60, Z: 20, Y: 0.14, N: 12, TOP: 15, LIMIT: 400, RATE: 0.3, NEAR: 6 });
+// 한 사람이 놓을 수 있는 칸은 서버의 사라지는 칸 한도와 같이 400개(LIMIT), 놓는 간격은 0.3초(RATE, 서버는 1초 4번).
+// NEAR: 이만큼 가까우면 막대가 켜진다. TTL: 블록은 놓은 때부터 이만큼(초, 7일) 지나면 저절로 사라진다 (서버 ttl, 30일까지 됨).
+export const COMMONS = Object.freeze({ X: 60, Z: 20, Y: 0.14, N: 12, TOP: 15, LIMIT: 400, RATE: 0.3, NEAR: 6, TTL: 7 * 24 * 3600 });
+export const COMMONS_DAYS = Math.round(COMMONS.TTL / (24 * 3600)); // 안내에 쓰는 날짜 수
 export const COMMONS_HALF = (COMMONS.N * TOWER.CELL) / 2;
 export const inCommons = (i, j, k) => [i, j, k].every(Number.isInteger) && i >= 0 && i < COMMONS.N && k >= 0 && k < COMMONS.N && j >= 0 && j <= COMMONS.TOP;
 export const commonsKey = (i, j, k) => `b|${i}|${j}|${k}`;
@@ -590,11 +592,12 @@ export function commonsCellAt(x, z) {
 }
 // (x, z) 가 공터 안이거나 margin 만큼 가까운가
 export const nearCommons = (x, z, margin = COMMONS.NEAR) => Math.abs(x - COMMONS.X) < COMMONS_HALF + margin && Math.abs(z - COMMONS.Z) < COMMONS_HALF + margin;
-// 받은 칸(World 의 cells: 칸 이름 → { v, owner, exp? }) 중 내가 놓은 칸 수. 서버의 400개 한도처럼 사라지는 칸(exp)은 세지 않는다.
-export function countMine(cells, userId) {
+// 받은 칸(World 의 cells: 칸 이름 → { v, owner, exp? }) 중 내가 놓은, 아직 안 사라진 사라지는 칸(exp) 수.
+// 서버의 사라지는 칸 한도('t<번호>' 400개)와 같게 센다. exp 없는 칸(한도를 넓히기 전에 놓은 블록)은 서버도 따로 세서 넣지 않는다.
+export function countMine(cells, userId, now = Date.now()) {
   if (userId === null || userId === undefined) return 0;
   let n = 0;
-  for (const entry of cells.values()) if (entry?.owner?.id === userId && entry.exp === undefined) n++;
+  for (const entry of cells.values()) if (entry?.owner?.id === userId && typeof entry.exp === 'number' && entry.exp > now) n++;
   return n;
 }
 

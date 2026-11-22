@@ -1,6 +1,7 @@
 // 🧱 모두의 공터: 브릭 광장 한쪽(COMMONS)의 바닥판에 로그인한 사람들이 같이 블록을 놓는다.
-// - 블록은 모두의 광장 세계(src/plaza.js 의 Plaza, World 의 칸)에 저장되어 모두 나가도 남는다.
-//   칸 이름은 'b|i|j|k', 값은 블록 번호 하나. 처음 놓은 사람만 부술 수 있다.
+// - 블록은 모두의 광장 세계(src/plaza.js 의 Plaza, World 의 칸)에 저장되어 모두 나가도 남다가, 놓은 지 7일(COMMONS.TTL)
+//   뒤 저절로 사라진다. 칸 이름은 'b|i|j|k', 값은 블록 번호 하나. 처음 놓은 사람만 부술 수 있다.
+//   사라질 때는 World 가 1초마다 cell(k, null) 로 알려 준다. 한꺼번에 많이 사라져도 반짝이는 한 번에 몇 개만 터뜨린다.
 // - 서버가 진실이다: 놓으면 plaza.setCell 을 보내고, 화면에는 cell 로 돌아온 칸만 그린다.
 //   들어올 때 받은 칸은 opened 뒤 sync() 로 채우고, 광장에서 나오면(reset) 모두 지운다.
 // - 막대와 놓기는 광장에 연결돼 있고 공터 안이나 가까이(COMMONS.NEAR) 있을 때만 켜진다.
@@ -11,6 +12,7 @@ import { BlockMeshes, Ghost, pickCell, makeBlockBar, barSelect, barMode } from '
 
 const CAP = COMMONS.N * COMMONS.N * (COMMONS.TOP + 1);
 const PENDING_MS = 4000; // 보낸 뒤 이만큼 답이 없으면 기다리기를 그만둔다
+const BURSTS_PER_FRAME = 4; // 한 번에(한 프레임에) 사라지는 블록이 많아도 반짝이는 이만큼만
 
 export class Commons {
   constructor(game) {
@@ -23,6 +25,8 @@ export class Commons {
     this.hover = null;
     this.state = '';
     this.infoTimer = 0;
+    this.dirty = false;  // 칸이 바뀌어서 다음 update 에서 다시 그려야 한다
+    this.bursts = 0;     // 이번 프레임에 터뜨린 반짝이 수
     this.notice = quietNotice(2500);
     this.blocks = new BlockMeshes(game.world.group, CAP);
     this.ghost = new Ghost(game.world.group);
@@ -50,11 +54,13 @@ export class Commons {
       if (drop.has(this.game.player.ground)) this.game.player.ground = null;
     }
     if (this.live) for (const [k, entry] of this.plaza.cells) this.put(k, commonsBlock(k, entry));
+    this.dirty = false;
     this.redraw();
     this.updateInfo();
   }
 
-  // plaza 의 cell hook: 칸이 생기거나 바뀌거나 없어졌다
+  // plaza 의 cell hook: 칸이 생기거나 바뀌거나 없어졌다 (7일이 지나 사라진 칸도 여기로 온다).
+  // 그리기와 안내는 다음 update 에서 한 번만 한다 (많이 사라져도 칸마다 다시 그리지 않게).
   cell(k, entry) {
     const waited = this.pending.get(k);
     this.pending.delete(k);
@@ -66,12 +72,14 @@ export class Commons {
       this.put(k, b);
       if (waited?.a === 'set') this.game.sfx('pop');
     } else if (old) {
-      const [x, y, z] = commonsCenter(old.i, old.j, old.k);
-      this.game.effects.burst(x, y, z, [BLOCKS[old.t].c, '#ffffff'], 10, 5);
+      if (waited?.a === 'del' || this.bursts < BURSTS_PER_FRAME) {
+        this.bursts++;
+        const [x, y, z] = commonsCenter(old.i, old.j, old.k);
+        this.game.effects.burst(x, y, z, [BLOCKS[old.t].c, '#ffffff'], 10, 5);
+      }
       if (waited?.a === 'del') this.game.sfx('crumble');
     }
-    this.redraw();
-    this.updateInfo();
+    this.dirty = true;
   }
 
   // plaza 의 cellError hook: 서버가 놓기나 부수기를 거절했다
@@ -209,12 +217,14 @@ export class Commons {
     const s = this.state;
     if (!s || s === 'far') return;
     const ui = this.game.ui;
-    if (s === 'live') ui.setInfo(`<b>🧱 모두의 공터</b><small>내 블록 ${this.mine}/${COMMONS.LIMIT}, 모두 ${this.cells.size}개</small>`);
+    if (s === 'live') ui.setInfo(`<b>🧱 모두의 공터</b><small>내 블록 ${this.mine}/${COMMONS.LIMIT}, 모두 ${this.cells.size}개<br>${COMMONS_TEXT.expiry}</small>`);
     else ui.setInfo(`<b>🧱 모두의 공터</b><small>${COMMONS_TEXT[s]}</small>`);
   }
 
   update(dt) {
     this.cool -= dt;
+    this.bursts = 0;
+    if (this.dirty) { this.dirty = false; this.redraw(); this.updateInfo(); }
     const now = performance.now();
     for (const [k, p] of this.pending) if (now - p.at > PENDING_MS) this.pending.delete(k);
     // 가까이 왔거나 멀어졌거나 연결이 바뀌면 막대와 안내를 바꾼다

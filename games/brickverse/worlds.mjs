@@ -1,6 +1,6 @@
 // 세계 모양(부품 목록)을 만든다. three.js 없이 숫자만 만들어서 node 로 시험할 수 있다.
 // 부품: { x, y, z (가운데), w, h, d (크기), c (색), k (종류), m (재질), shape, move, spin, cp, deco (안 부딪힘), hidden (안 그림) }
-import { OBBY_STAGES, seeded, SURVIVAL, TOWER, COMMONS, COMMONS_HALF, EGG_ZONES, EGG_TREADS } from './core.mjs';
+import { OBBY_STAGES, seeded, SURVIVAL, TOWER, COMMONS, COMMONS_HALF, COMMONS_DAYS, EGG_ZONES, EGG_TREADS } from './core.mjs';
 
 export function hsl(h, s, l) {
   s /= 100; l /= 100;
@@ -192,7 +192,7 @@ function commonsLot(parts, signs) {
   });
   // 안내판: 광장 쪽(서쪽) 테두리 밖, 광장을 보고 선다
   const sx = x - half - rim - 1.4;
-  signs.push({ x: sx, y: 3.4, z, ry: -Math.PI / 2, w: 8, h: 3.4, lines: ['🧱 모두의 공터', '누구나 블록을 놓을 수 있어', '내가 놓은 블록만 부술 수 있어', '로그인하면 같이 놓아!'], bg: '#ffffff', fg: '#2a2d3a', accent: '#ff8a3d', sizes: [96, 58, 58, 58], commons: true });
+  signs.push({ x: sx, y: 3.6, z, ry: -Math.PI / 2, w: 8, h: 4, lines: ['🧱 모두의 공터', '누구나 블록을 놓을 수 있어', '내가 놓은 블록만 부술 수 있어', `블록은 ${COMMONS_DAYS}일 뒤에 사라져`, '로그인하면 같이 놓아!'], bg: '#ffffff', fg: '#2a2d3a', accent: '#ff8a3d', sizes: [96, 56, 56, 56, 56], commons: true });
   for (const dz of [-2.6, 2.6]) parts.push({ x: sx + 0.3, y: 0.9, z: z + dz, w: 0.4, h: 1.8, d: 0.4, c: '#8b5a3c', m: 'wood', deco: true, commons: true });
 }
 

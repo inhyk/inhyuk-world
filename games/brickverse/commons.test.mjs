@@ -3,11 +3,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  BLOCKS, COMMONS, COMMONS_HALF, TOWER, P, commonsKey, parseCommonsKey, commonsBlock, commonsCenter, commonsCellAt,
+  BLOCKS, COMMONS, COMMONS_DAYS, COMMONS_HALF, TOWER, P, commonsKey, parseCommonsKey, commonsBlock, commonsCenter, commonsCellAt,
   inCommons, nearCommons, countMine, touchesCell, newPlayer,
 } from './core.mjs';
 import { buildHub, commonsArea } from './worlds.mjs';
 import { Plaza, COMMONS_TEXT, commonsError, quietNotice } from './src/plaza.js';
+import { World } from '../../packages/net/world.mjs';
 import { cleanData, hasSplitContact } from '../../services/net/src/filter.js';
 
 const serverWorld = readFileSync(new URL('../../services/net/src/world.js', import.meta.url), 'utf8');
@@ -20,7 +21,20 @@ test('공터 칸 이름: b|i|j|k 로 만들고 풀고, 서버 칸 이름 규칙�
     assert.ok(CELL_KEY_RE.test(key), key);
     assert.deepEqual(parseCommonsKey(key), { i, j, k });
   }
-  assert.ok(serverWorld.includes(`CELLS_PER_USER = ${COMMONS.LIMIT};`), '내 블록 한도는 서버와 같다');
+  assert.ok(serverWorld.includes(`TTL_CELLS_PER_USER = ${COMMONS.LIMIT};`), '내 블록 한도는 서버의 사라지는 칸 한도와 같다');
+});
+
+test('공터 블록은 놓은 지 7일 뒤 사라지고, 그 ttl 은 서버가 받는 범위(1분~30일) 안이다', () => {
+  assert.equal(COMMONS.TTL, 7 * 24 * 3600);
+  assert.equal(COMMONS_DAYS, 7);
+  const [, min, max] = serverWorld.match(/TTL_MIN = (\d+), TTL_MAX = ([\d *]+);/);
+  const maxSec = max.split('*').reduce((a, n) => a * Number(n), 1);
+  assert.equal(maxSec, 30 * 24 * 3600);
+  assert.ok(Number.isInteger(COMMONS.TTL) && COMMONS.TTL >= Number(min) && COMMONS.TTL <= maxSec);
+  assert.equal(COMMONS_TEXT.expiry, '블록은 7일 뒤에 사라져');
+  const sign = buildHub().signs.find(s => s.commons);
+  assert.ok(sign.lines.includes('블록은 7일 뒤에 사라져'), '안내판에도 적는다');
+  assert.equal(sign.lines.length, sign.sizes.length);
 });
 
 test('공터 칸 이름: 공터 밖, 다른 모양, 같은 칸을 다르게 쓴 이름은 null', () => {
@@ -55,16 +69,20 @@ test('보내는 칸 값은 숫자 하나라 서버 거르개를 그대로 지난
   }
 });
 
-test('내 블록 세기: 받은 칸의 주인 번호로 세고, 사라지는 칸은 빼고, 광장에 없으면 0', () => {
+test('내 블록 세기: 서버처럼 내가 놓은 사라지는 칸(exp)만 세고, 지난 칸과 exp 없는 예전 칸은 빼고, 광장에 없으면 0', () => {
+  const now = Date.now(), week = COMMONS.TTL * 1000;
   const cells = new Map([
-    ['b|0|0|0', { v: 1, owner: { id: 7, nickname: 'a' } }],
-    ['b|1|0|0', { v: 2, owner: { id: 7, nickname: 'a' } }],
-    ['b|2|0|0', { v: 3, owner: { id: 8, nickname: 'b' } }],
-    ['b|3|0|0', { v: 3, owner: { id: 7, nickname: 'a' }, exp: Date.now() + 60000 }],
+    ['b|0|0|0', { v: 1, owner: { id: 7, nickname: 'a' }, exp: now + week }],
+    ['b|1|0|0', { v: 2, owner: { id: 7, nickname: 'a' }, exp: now + 60000 }],
+    ['b|2|0|0', { v: 3, owner: { id: 8, nickname: 'b' }, exp: now + week }],
+    ['b|3|0|0', { v: 3, owner: { id: 7, nickname: 'a' } }], // 한도를 넓히기 전에 exp 없이 놓은 칸 (서버도 따로 센다)
+    ['b|4|0|0', { v: 3, owner: { id: 7, nickname: 'a' }, exp: now - 1 }], // 이미 지남
   ]);
-  assert.equal(countMine(cells, 7), 2);
-  assert.equal(countMine(cells, 8), 1);
-  assert.equal(countMine(cells, 9), 0);
+  assert.equal(countMine(cells, 7, now), 2);
+  assert.equal(countMine(cells, 8, now), 1);
+  assert.equal(countMine(cells, 9, now), 0);
+  assert.equal(countMine(cells, 7, now + 60000), 1, '1분 뒤에는 하나가 지났다');
+  assert.equal(countMine(cells, 7, now + week), 0);
   assert.equal(countMine(cells, null), 0);
   assert.equal(countMine(new Map(), 7), 0);
 });
@@ -128,12 +146,12 @@ function fakeWorld() {
       this.id = 'p3'; this.user = { id: 21, nickname: '서버닉네임' };
       // 들어올 때 받는 칸 (open 이 끝나기 전에 온다)
       for (const [k, v, id] of [['b|0|0|0', 2, 21], ['b|1|0|0', 4, 30]]) {
-        const entry = { v, owner: { id, nickname: 'n' } };
+        const entry = { v, owner: { id, nickname: 'n' }, exp: Date.now() + COMMONS.TTL * 1000 };
         this.cells.set(k, entry); this.hooks.cell?.(k, entry);
       }
     }
     close() { this.id = ''; this.user = null; this.cells = new Map(); }
-    set(k, v) { this.sent.push(['set', k, v]); return true; }
+    set(k, v, opts) { this.sent.push(['set', k, v, opts]); return true; }
     del(k) { this.sent.push(['del', k]); return true; }
   }
   return { FakeWorld, made };
@@ -158,7 +176,7 @@ test('Plaza 칸: 들어오는 중에 받은 칸은 넘기지 않고 cells 로 �
   // 보내기
   assert.equal(plaza.setCell('b|2|0|0', 7), true);
   assert.equal(plaza.delCell('b|0|0|0'), true);
-  assert.deepEqual(w.sent, [['set', 'b|2|0|0', 7], ['del', 'b|0|0|0']]);
+  assert.deepEqual(w.sent, [['set', 'b|2|0|0', 7, { ttl: COMMONS.TTL }], ['del', 'b|0|0|0']], '공터 블록은 언제나 7일 ttl 을 붙여 놓는다');
   // 서버가 돌려준 칸과 거절
   const entry = { v: 7, owner: { id: 21, nickname: 'n' } };
   w.hooks.cell('b|2|0|0', entry);
@@ -166,11 +184,14 @@ test('Plaza 칸: 들어오는 중에 받은 칸은 넘기지 않고 cells 로 �
   w.hooks.error('taken', 'b|1|0|0');
   w.hooks.error('not-owner', 'b|1|0|0');
   w.hooks.error('limit-day', 'b|3|0|0');
+  w.hooks.error('bad', 'b|4|0|0'); // 한도를 넓히기 전의 서버는 7일 ttl 을 bad 로 거절한다
   w.hooks.error('chat-rate');
   assert.deepEqual(events.slice(1), [
     ['cell', 'b|2|0|0', entry], ['cell', 'b|0|0|0', null],
     ['cellError', 'taken', 'b|1|0|0'], ['cellError', 'not-owner', 'b|1|0|0'], ['cellError', 'limit-day', 'b|3|0|0'],
+    ['cellError', 'bad', 'b|4|0|0'],
   ], '칸과 관계없는 오류(chat-rate)는 넘기지 않는다');
+  assert.equal(plaza.live, true, 'bad 를 받아도 광장에 그대로 있다');
   // 나가면 칸도 없다
   plaza.want(false);
   assert.equal(plaza.cells.size, 0);
@@ -178,8 +199,57 @@ test('Plaza 칸: 들어오는 중에 받은 칸은 넘기지 않고 cells 로 �
   assert.equal(plaza.delCell('b|2|0|0'), false);
 });
 
+// 진짜 World(packages/net/world.mjs)와 가짜 WebSocket 으로: 7일이 지난 칸은 World.expire 가 cell(k, null) 로 알리고
+// 공터의 내 블록 수가 줄어든다. 들어올 때 이미 지난 칸은 받지 않는다.
+class FakeSocket {
+  constructor(url) { this.url = url; this.readyState = 1; this.sent = []; this.listeners = {}; }
+  addEventListener(type, fn) { (this.listeners[type] ??= []).push(fn); }
+  send(text) { this.sent.push(JSON.parse(text)); }
+  close() { this.readyState = 3; }
+  serve(message) { for (const fn of this.listeners.message ?? []) fn({ data: JSON.stringify(message) }); }
+}
+
+test('7일이 지난 공터 블록은 저절로 사라지고 내 블록 수가 줄어든다', async () => {
+  const sockets = [], events = [];
+  const plaza = new Plaza({
+    cell: (k, e) => events.push([k, e]),
+  }, {
+    World, ticket: async () => 't', server: 'ws://local.test', timers: { setTimeout: () => 0, clearTimeout: () => {} },
+    connect: url => { const s = new FakeSocket(url); sockets.push(s); return s; },
+    fetch: async () => ({ status: 426, ok: false, json: async () => ({}) }),
+  });
+  plaza.want(true);
+  for (let i = 0; i < 5 && !sockets.length; i++) await new Promise(r => setTimeout(r, 0));
+  const socket = sockets[0], me = { id: 21, nickname: '나' }, friend = { id: 30, nickname: '친구' };
+  const now = Date.now(), week = COMMONS.TTL * 1000;
+  socket.serve({ t: 'welcome', id: 'p1', user: me, max: 12, peers: [] });
+  socket.serve({ t: 'cells', done: true, list: [
+    { k: 'b|0|0|0', v: 1, owner: me, exp: now + week },            // 방금 놓음
+    { k: 'b|1|0|0', v: 2, owner: me, exp: now + 1000 },            // 7일 전에 놓아서 1초 남음
+    { k: 'b|2|0|0', v: 3, owner: friend, exp: now + 1000 },
+    { k: 'b|3|0|0', v: 4, owner: me },                             // exp 없는 예전 블록 (그대로 그린다)
+    { k: 'b|4|0|0', v: 5, owner: me, exp: now - 1 },               // 이미 지남 (받지 않는다)
+  ] });
+  for (let i = 0; i < 5 && !plaza.live; i++) await new Promise(r => setTimeout(r, 0));
+  assert.equal(plaza.live, true);
+  assert.deepEqual([...plaza.cells.keys()], ['b|0|0|0', 'b|1|0|0', 'b|2|0|0', 'b|3|0|0']);
+  assert.ok(commonsBlock('b|3|0|0', plaza.cells.get('b|3|0|0')), 'exp 없는 예전 블록도 그린다');
+  assert.equal(countMine(plaza.cells, plaza.userId, now), 2);
+  // 1초가 지났다: World 의 1초마다 보기가 지난 칸을 cell(k, null) 로 알린다
+  plaza.world.expire(now + 1001);
+  assert.deepEqual(events, [['b|1|0|0', null], ['b|2|0|0', null]]);
+  assert.deepEqual([...plaza.cells.keys()], ['b|0|0|0', 'b|3|0|0']);
+  assert.equal(countMine(plaza.cells, plaza.userId, now + 1001), 1);
+  // 7일이 지났다: 방금 놓은 것도 사라지고, exp 없는 예전 블록만 남는다
+  plaza.world.expire(now + week);
+  assert.deepEqual(events.at(-1), ['b|0|0|0', null]);
+  assert.deepEqual([...plaza.cells.keys()], ['b|3|0|0']);
+  assert.equal(countMine(plaza.cells, plaza.userId, now + week), 0);
+  plaza.want(false);
+});
+
 test('공터 알림: 서버 오류마다 한 줄, missing 은 조용히, 같은 알림은 연달아 나오지 않는다', () => {
-  for (const code of ['taken', 'not-owner', 'limit', 'world-full', 'rate', 'limit-day']) {
+  for (const code of ['taken', 'not-owner', 'limit', 'world-full', 'rate', 'limit-day', 'bad']) {
     const text = commonsError(code);
     assert.ok(text && text.length <= 40, code);
   }
