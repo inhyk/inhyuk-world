@@ -1,5 +1,29 @@
 [
   {
+    "slug": "moamon",
+    "title": "모아몬 탐험대 · 걸어서 모으는 몬스터",
+    "description": "마을을 걸으며 몬스터 34마리를 찾고, 방울을 던져 잡고, 키워서 도장에 도전하는 3D 수집 모험.",
+    "longDescription": "직접 만든 3D 몬스터 수집 게임이에요. 끝없이 이어지는 마을(공원, 숲, 호수, 주택가, 상점가, 광장)을 걸어 다니면 모아몬이 나타나요. 몬스터를 누르고 방울을 위로 휙 밀어 던지면 잡을 수 있고, 고리가 작을 때 맞히면 더 잘 잡혀요. 풀, 불, 물, 번개, 돌, 바람, 달 일곱 속성의 모아몬 34마리가 있고, 사탕을 모아 진화시키거나 별가루로 강하게 키울 수 있어요. 별샘을 돌리면 방울과 열매, 알이 나오고, 알은 걸으면 깨어나요. 도장에서는 친구 세 마리로 지킴이와 싸워요. 낮과 밤, 날씨에 따라 나오는 몬스터가 달라지고, 아주 드물게 반짝이와 전설의 모아몬도 나타나요. 오늘의 할 일, 도감, 단짝, 상점이 있고 진행 상황은 이 브라우저에 자동 저장돼요. 키보드와 마우스, 터치를 모두 지원해요. 몬스터와 그림, 3D 모델, 음악은 모두 코드로 직접 만들었어요.",
+    "emoji": "🫧",
+    "thumbnail": "/images/games/moamon-thumb.png",
+    "screenshots": [
+      "/images/games/moamon-map.png",
+      "/images/games/moamon-catch.png",
+      "/images/games/moamon-mobile.png"
+    ],
+    "techStack": [
+      "JavaScript",
+      "Three.js",
+      "WebGL",
+      "Web Audio"
+    ],
+    "category": "어드벤처",
+    "playUrl": "/play/moamon",
+    "createdAt": "2026-11",
+    "featured": true,
+    "order": 108
+  },
+  {
     "slug": "zoom-kart",
     "title": "씽씽 카트 · 드리프트 레이싱",
     "description": "드리프트로 부스터를 모으고 아이템으로 역전! 친구 4명까지 같이 달리는 3D 카트 레이싱.",
