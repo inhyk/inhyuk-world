@@ -97,7 +97,18 @@ export function buildTrack(id) {
   }
   for (let k = 0; k < n; k++) curv[k] = wrap(h[(k + 1) % n] - h[(k - 1 + n) % n]) / (2 * ds);
   // 옆 방향(n)은 (tz, -tx). 곡률이 +면 +n 쪽이 안쪽.
-  const T = { id, def, name: def.name, theme: def.theme, half: def.half, wall: def.half + WALL_PAD, n, ds, length: L, x, z, tx, tz, h, curv };
+  const T = { id, def, name: def.name, theme: def.theme, half: def.half, wall: def.half + WALL_PAD, n, ds, length: L, x, z, tx, tz, h, curv, pads: [] };
+  // 부스터 발판: 곧은 길 세 곳에 놓는다 (밟으면 잠깐 빨라진다)
+  [0.22, 0.48, 0.74].forEach((f, pi) => {
+    for (let i = Math.round(n * f), tries = 0; tries < n / 4; i++, tries++) {
+      let straight = true;
+      for (let o = -4; o <= 10; o++) if (Math.abs(curv[(i + o + n) % n]) > 0.012) { straight = false; break; }
+      if (!straight) continue;
+      const idx = i % n, d = (pi % 2 ? 1 : -1) * def.half * 0.4;
+      T.pads.push({ idx, d, x: x[idx] + tz[idx] * d, z: z[idx] - tx[idx] * d, h: h[idx] });
+      break;
+    }
+  });
   trackCache.set(id, T);
   return T;
 }
@@ -147,7 +158,7 @@ export function createRace(opt = {}) {
       i: slot, player: isPlayer, kind, peer: sd ? sd.peer || '' : '', owned: !slots || kind === 'me' || (kind === 'ai' && !!opt.host), net: null, gone: false, shotN: 0, racer, kart, x: p.x, z: p.z, h: p.h, mv: p.h, s: 0,
       idx: Math.round(T.n - back / T.ds) % T.n, lap: -1, prog: 0, total: 0, d: side,
       steer: 0, drifting: false, driftDir: 0, driftT: 0, slip: 0, gauge: 0,
-      boostT: 0, turboT: 0, spinT: 0, shieldT: 0, slowT: 0, safeT: 0, wallT: 0,
+      boostT: 0, turboT: 0, spinT: 0, shieldT: 0, slowT: 0, safeT: 0, wallT: 0, padT: 0,
       items: [], rollT: 0, finished: false, finishT: 0, rank: slot + 1, lapStart: 0, lapTimes: [], bestLap: 0,
       offroad: false, wrong: false, stuckT: 0, wrongT: 0, gasAt: -1, prevGas: false, prevUse: false,
       // 컴퓨터 실력: 뒤 번호일수록 조금 느리다
@@ -331,7 +342,7 @@ function stepKart(race, k, inp, dt) {
   const T = race.track, st = k.kart, racing = race.state !== 'countdown';
   const can = racing && k.spinT <= 0;
   const steer = can ? clamp(inp.steer || 0, -1, 1) : 0, gas = can && !!inp.gas, brake = can && !!inp.brake;
-  for (const key of ['boostT', 'turboT', 'spinT', 'shieldT', 'slowT', 'safeT', 'rollT', 'wallT']) if (k[key] > 0) k[key] = Math.max(0, k[key] - dt);
+  for (const key of ['boostT', 'turboT', 'spinT', 'shieldT', 'slowT', 'safeT', 'rollT', 'wallT', 'padT']) if (k[key] > 0) k[key] = Math.max(0, k[key] - dt);
   k.steer += (steer - k.steer) * Math.min(1, 12 * dt);
   // 드리프트 시작과 끝
   if (!k.drifting && can && inp.drift && Math.abs(steer) > 0.3 && k.s > DRIFT_MIN) { k.drifting = true; k.driftDir = Math.sign(steer); k.driftT = 0; ev(race, 'drift', k); }
@@ -367,7 +378,7 @@ function stepKart(race, k, inp, dt) {
   k.x += Math.sin(k.mv) * k.s * dt; k.z += Math.cos(k.mv) * k.s * dt;
   locate(T, k);
   // 벽
-  const lim = T.wall - 0.9;
+  const lim = T.wall - 1.5; // 카트 몸이 벽을 뚫고 보이지 않게
   if (Math.abs(k.d) > lim) {
     const i = k.idx, sg = Math.sign(k.d), over = Math.abs(k.d) - lim, nx = T.tz[i], nz = -T.tx[i];
     k.x -= nx * sg * over; k.z -= nz * sg * over; k.d = sg * lim;
@@ -378,6 +389,11 @@ function stepKart(race, k, inp, dt) {
       k.h += wrap(k.mv - k.h) * 0.3;
       if (vn > 5 && k.wallT <= 0) { k.wallT = 0.4; endDrift(race, k, false); ev(race, 'wall', k, { power: vn }); }
     }
+  }
+  // 부스터 발판
+  if (racing && k.padT <= 0 && k.spinT <= 0) for (const pad of T.pads) {
+    const dx = k.x - pad.x, dz = k.z - pad.z;
+    if (dx * dx + dz * dz < 7.5) { k.padT = 1.2; k.turboT = Math.max(k.turboT, 1.1); ev(race, 'pad', k); break; }
   }
   // 거꾸로 가기, 끼임
   const along = Math.cos(wrap(k.h - T.h[k.idx]));

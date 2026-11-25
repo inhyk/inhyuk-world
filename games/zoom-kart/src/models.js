@@ -47,6 +47,15 @@ export function makeKart(racer, kart) {
     const f = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.3, 10).rotateX(-Math.PI / 2).translate(0, 0, -0.65), new THREE.MeshBasicMaterial({ color: 0x66d9ff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
     f.position.set(s * 0.36, 0.5, -1.72); f.visible = false; body.add(f); flames.push(f);
   }
+  // 뒤 불빛과 앞 불빛 (빛 번짐 효과로 반짝인다)
+  const tail = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff2b3d).multiplyScalar(7) }), headM = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xfff6c9).multiplyScalar(7) });
+  for (const s of [-1, 1]) {
+    body.add(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.06), tail).translateX(s * 0.55).translateY(0.62).translateZ(-1.42));
+    body.add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), headM).translateX(s * 0.3).translateY(0.56).translateZ(1.88));
+  }
+  // 밤 트랙에서 켜는 바닥 불빛
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 5.6).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: glowTexture(), color: kart.color, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }));
+  glow.position.y = 0.09; glow.visible = false; g.add(glow);
   // 핸들
   const wheelRing = mesh(new THREE.TorusGeometry(0.2, 0.045, 6, 14), dark, 0, 0.92, 0.42); wheelRing.rotation.x = -0.9; body.add(wheelRing);
   // 선수
@@ -70,7 +79,50 @@ export function makeKart(racer, kart) {
   const cm = new THREE.MeshLambertMaterial({ color: 0x59607a });
   for (const [x, s] of [[0, 0.7], [0.6, 0.5], [-0.6, 0.5]]) { const p = new THREE.Mesh(new THREE.SphereGeometry(s, 10, 8), cm); p.position.x = x; cloud.add(p); }
   g.add(cloud);
-  return { group: g, body, wheels, front, flames, shield, cloud, head: driver.head };
+  return { group: g, body, wheels, front, flames, shield, cloud, glow, head: driver.head };
+}
+
+let glowTex = null;
+function glowTexture() {
+  if (glowTex) return glowTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+  const gr = x.createRadialGradient(32, 32, 4, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+  return (glowTex = new THREE.CanvasTexture(c));
+}
+// 카트 위 이름표
+export function makeTag(racer, friend) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64; const x = c.getContext('2d');
+  x.fillStyle = friend ? 'rgba(31,164,255,.92)' : 'rgba(14,20,48,.72)'; x.beginPath(); x.roundRect(4, 6, 248, 52, 26); x.fill();
+  if (friend) { x.strokeStyle = '#fff'; x.lineWidth = 4; x.stroke(); }
+  x.font = '36px "Jua","Apple SD Gothic Neo",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff';
+  x.fillText(`${racer.emoji} ${racer.name}`, 128, 34);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthWrite: false, transparent: true }));
+  sp.scale.set(2.3, 0.575, 1); sp.position.y = 2.6; sp.renderOrder = 5;
+  return sp;
+}
+// 드리프트 타이어 자국: 네모 조각을 돌려 쓴다
+export class Skids {
+  constructor(scene, max = 900) {
+    this.max = max; this.i = 0; this.pos = new Float32Array(max * 18);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    this.mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0x15161c, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    this.mesh.frustumCulled = false; this.mesh.renderOrder = 1; scene.add(this.mesh); this.last = new Map();
+  }
+  // key: 카트와 바퀴마다 하나. on 이 false 면 줄을 끊는다
+  mark(key, x, z, h, on) {
+    const prev = this.last.get(key);
+    if (!on) { if (prev) this.last.delete(key); return; }
+    const w = 0.2, nx = Math.cos(h) * w, nz = -Math.sin(h) * w, cur = [x - nx, z - nz, x + nx, z + nz];
+    if (prev && Math.hypot(x - prev[4], z - prev[5]) < 6) {
+      const y = 0.06, o = this.i * 18, p = this.pos;
+      p.set([prev[0], y, prev[1], prev[2], y, prev[3], cur[0], y, cur[1], prev[2], y, prev[3], cur[2], y, cur[3], cur[0], y, cur[1]], o);
+      this.i = (this.i + 1) % this.max; this.mesh.geometry.attributes.position.needsUpdate = true;
+    }
+    this.last.set(key, [...cur, x, z]);
+  }
+  clear() { this.pos.fill(0); this.last.clear(); this.mesh.geometry.attributes.position.needsUpdate = true; }
 }
 
 export function makeItemBox() {
@@ -120,10 +172,11 @@ export class Particles {
     this.points = new THREE.Points(g, mat); this.points.frustumCulled = false; this.mat = mat;
     scene.add(this.points);
   }
-  emit(x, y, z, vx, vy, vz, color, size, life, grow = 0, grav = 0, alpha = 1) {
+  // glow: 1보다 크면 빛 번짐 효과로 반짝인다
+  emit(x, y, z, vx, vy, vz, color, size, life, grow = 0, grav = 0, alpha = 1, glow = 1) {
     const i = this.cursor; this.cursor = (this.cursor + 1) % this.max;
     this.pos.set([x, y, z], i * 3); this.vel.set([vx, vy, vz], i * 3);
-    const c = Particles.c.set(color); this.col.set([c.r, c.g, c.b, alpha], i * 4);
+    const c = Particles.c.set(color); this.col.set([c.r * glow, c.g * glow, c.b * glow, alpha], i * 4);
     this.size[i] = size; this.life[i] = this.maxLife[i] = life; this.grow[i] = grow; this.grav[i] = grav;
   }
   update(dt) {
